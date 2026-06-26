@@ -1,0 +1,31 @@
+{
+  "teacher": {
+    "first_name": "Althea",
+    "last_name": "Sample"
+  },
+  "classes": [
+    {
+      "class_name": "Grade 11",
+      "subject_name": "General Chemistry 1",
+      "school_year": "2023-2024",
+      "students": [
+        {
+          "lrn_number": "123456789012",
+          "first_name": "Juan",
+          "last_name": "Dela Cruz",
+          "middle_name": "Protacio",
+          "sex": "M",
+          "strand": "STEM"
+        },
+        {
+          "lrn_number": "987654321098",
+          "first_name": "Maria",
+          "last_name": "Clara",
+          "middle_name": "Luz",
+          "sex": "F",
+          "strand": "STEM"
+        }
+      ]
+    }
+  ]
+}

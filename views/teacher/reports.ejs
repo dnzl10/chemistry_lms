@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0fdfa; background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px); background-size: 24px 24px; }
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        #mainScroll { overflow-y: auto; }
+        #mainScroll::-webkit-scrollbar { width: 5px; }
+        #mainScroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+
+        .section-card { background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; overflow: hidden; }
+        .section-header { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+        /* Buttons */
+        .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; border: 1px solid transparent; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .btn-primary  { background: #6366f1; color: white; border-color: #4f46e5; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-outline  { background: white; color: #475569; border-color: #e2e8f0; }
+        .btn-outline:hover { border-color: #6366f1; color: #6366f1; background: #faf5ff; }
+        .btn-emerald  { background: #059669; color: white; border-color: #047857; }
+        .btn-emerald:hover { background: #047857; }
+        .btn-rose     { background: #e11d48; color: white; border-color: #be123c; }
+        .btn-rose:hover { background: #be123c; }
+        .btn-amber    { background: #d97706; color: white; border-color: #b45309; }
+        .btn-amber:hover { background: #b45309; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+        /* Tab system */
+        .tab-btn { padding: 9px 20px; border-radius: 10px; font-size: 12px; font-weight: 700; color: #64748b; cursor: pointer; border: none; background: transparent; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .15s; white-space: nowrap; }
+        .tab-btn:hover  { background: white; color: #334155; }
+        .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 1px 6px rgba(0,0,0,.1); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Export card */
+        .export-card { border: 1px solid #e2e8f0; border-radius: 1rem; padding: 18px; background: white; transition: box-shadow .2s, border-color .2s; }
+        .export-card:hover { box-shadow: 0 4px 20px rgba(99,102,241,.1); border-color: #c7d2fe; }
+
+        /* Heatmap cell */
+        .heat-cell { border-radius: 6px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; cursor: default; transition: transform .15s; }
+        .heat-cell:hover { transform: scale(1.08); }
+
+        /* Progress bar */
+        .prog-track { height: 8px; background: #f1f5f9; border-radius: 9999px; overflow: hidden; }
+        .prog-fill   { height: 100%; border-radius: 9999px; transition: width .6s ease; }
+
+        /* Rank badge */
+        .rank-1 { background: linear-gradient(135deg,#f59e0b,#fbbf24); color: white; }
+        .rank-2 { background: linear-gradient(135deg,#94a3b8,#cbd5e1); color: white; }
+        .rank-3 { background: linear-gradient(135deg,#cd7c2b,#e5a35a); color: white; }
+        .rank-n { background: #f1f5f9; color: #64748b; }
+
+        /* Form */
+        .form-select { width: 100%; padding: 8px 11px; border: 1px solid #e2e8f0; border-radius: 9px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b; outline: none; transition: border-color .2s; background: white; }
+        .form-select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+        .form-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; display: block; }
+
+        /* Toast */
+        #rp-toast { position: fixed; bottom: 24px; right: 24px; z-index: 999; background: #1e293b; color: white; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(15,23,42,.2); transform: translateY(80px); opacity: 0; transition: all .3s ease; pointer-events: none; max-width: 320px; }
+        #rp-toast.show { transform: translateY(0); opacity: 1; }
+        #rp-toast.success { background: #064e3b; }
+        #rp-toast.error   { background: #7f1d1d; }
+
+        /* Loading spinner */
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .fade-in { animation: fadeUp .25s ease forwards; }
+
+        /* Sequence error bar */
+        .seq-bar { height: 10px; border-radius: 9999px; background: #fee2e2; }
+        .seq-bar-fill { height: 100%; border-radius: 9999px; background: #ef4444; transition: width .5s; }
+
+        /* Modal */
+        .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(15,23,42,.55); align-items: center; justify-content: center; padding: 16px; }
+        .modal-backdrop.open { display: flex; }
+        .modal-card { background: white; border-radius: 1.25rem; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(15,23,42,.2); animation: mIn .2s ease; }
+        @keyframes mIn { from { opacity:0; transform:scale(.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; position: sticky; top: 0; background: white; z-index: 5; }
+        .modal-body   { padding: 18px 20px; display: flex; flex-direction: column; gap: 13px; }
+        .modal-footer { padding: 14px 20px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; }
+
+        /* Nav active state */
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 4px 16px rgba(6,182,212,0.3), 0 2px 8px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Profile dropdown */
+        .profile-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 210px;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(6,182,212,0.13), 0 2px 8px rgba(99,102,241,0.10);
+            border: 1px solid #e0f2fe;
+            z-index: 999;
+            opacity: 0;
+            transform: translateY(-6px) scale(0.97);
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+        .profile-dropdown.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+        .profile-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            cursor: pointer;
+            transition: background 0.13s;
+            border-radius: 0.75rem;
+            text-decoration: none;
+        }
+        .profile-dropdown-item:hover { background: #f0f9ff; color: #0369a1; }
+        .profile-dropdown-item.danger:hover { background: #fff1f2; color: #be123c; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+<div id="rp-toast"></div>
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+        <aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60" style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
+            <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+                <!-- Mobile close button -->
+                <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+
+                <!-- Logo -->
+                <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+
+                <!-- Brand name -->
+                <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                    Elem<span class="text-white">enta</span>
+                </h1>
+                <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Teacher Portal</p>
+
+                <!-- Divider -->
+                <!-- <div class="w-full mt-5 border-t border-indigo-800/60"></div> -->
+            </div>
+
+            <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/classes" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-chalkboard-user w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">My Classes</span>
+                        </a>
+                    </div>
+
+                    <div class="space-y-1">
+                        <a href="/teacher/question-bank" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-database w-5 text-rose-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Question Bank</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Engagement and Communication</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/forums" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-comments w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Forums</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Reports and Analytics</p>
+
+                    <div class="space-y-1">
+                        <a href="/teacher/reports" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-file-export w-5 text-fuchsia-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Reports</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
+                <a href="/logout"
+                class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+                    <i class="fas fa-right-from-bracket w-5"></i> Log Out
+                </a>
+            </div>
+        </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- Header -->
+        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="hidden sm:block">
+                    <h2 class="text-lg font-black text-indigo-900 uppercase tracking-tight">Reports & Analytics</h2>
+                    <p class="text-xs text-slate-400">Export documents, view charts & deep-dive data</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 md:gap-6">
+                <div class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
+                    <i class="far fa-bell text-xl text-cyan-600"></i>
+                    <% if (notifications && notifications.length > 0) { %>
+                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <% } %>
+                </div>
+                <div class="flex items-center gap-3 pl-4 border-l border-cyan-100">
+                        <div class="text-right hidden lg:block">
+                            <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
+                            <p class="text-[10px] uppercase font-black text-cyan-500 tracking-widest">Teacher</p>
+                        </div>
+                        <!-- Profile dropdown trigger -->
+                        <div class="relative" id="profileDropdownWrap">
+                            <button onclick="toggleProfileDropdown()"
+                                    class="block rounded-xl ring-2 ring-cyan-400 shadow-sm shadow-cyan-200 hover:ring-indigo-400 transition focus:outline-none">
+                                <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                                     class="w-10 h-10 rounded-xl object-cover">
+                            </button>
+                            <div class="profile-dropdown" id="profileDropdown">
+                                <!-- User info mini card -->
+                                <div class="px-4 pt-4 pb-3 border-b border-slate-100">
+                                    <div class="flex items-center gap-3">
+                                        <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                                             class="w-9 h-9 rounded-xl object-cover ring-2 ring-cyan-300">
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-black text-indigo-900 truncate"><%= user.first_name %> <%= user.last_name %></p>
+                                            <p class="text-[10px] text-cyan-500 font-bold uppercase tracking-widest">Teacher</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Options -->
+                                <div class="p-2">
+                                    <a href="/teacher/profile" class="profile-dropdown-item">
+                                        <i class="fas fa-user-circle text-cyan-500 w-4 text-center"></i>
+                                        View Profile
+                                    </a>
+                                    <a href="/logout" class="profile-dropdown-item danger">
+                                        <i class="fas fa-right-from-bracket text-rose-400 w-4 text-center"></i>
+                                        Logout
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+        </header>
+
+        <!-- ===== SCROLLABLE BODY ===== -->
+        <div id="mainScroll" class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
+            <div class="p-4 md:p-8 flex-1">
+
+                <!-- CLASS SELECTOR STRIP -->
+                <div class="section-card p-4 flex flex-wrap gap-4 items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
+                            <i class="fas fa-filter text-indigo-600 text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-black text-indigo-900 uppercase tracking-tight">Active Filter</p>
+                            <p class="text-[11px] text-slate-400 font-bold">All data below reflects the selected class</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 items-center flex-wrap">
+                        <div>
+                            <label class="form-label">Class</label>
+                            <select id="classFilter" class="form-select" style="width:220px" onchange="applyClassFilter()">
+                                <option value="">— All my classes —</option>
+                                <% classes.forEach(c => { %>
+                                <option value="<%= c.class_id %>" data-subject="<%= c.subject_id %>">
+                                    <%= c.class_name %> — <%= c.subject_name %>
+                                </option>
+                                <% }) %>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUMMARY STAT CARDS -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="section-card p-4 text-center">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Total Students</p>
+                        <p class="text-3xl font-black text-indigo-900" id="stat-students"><%= stats.totalStudents %></p>
+                    </div>
+                    <div class="section-card p-4 text-center">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Avg Accuracy</p>
+                        <p class="text-3xl font-black text-cyan-600" id="stat-accuracy"><%= Math.round(stats.avgAccuracy || 0) %>%</p>
+                    </div>
+                    <div class="section-card p-4 text-center">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Avg Completion</p>
+                        <p class="text-3xl font-black text-emerald-600" id="stat-completion"><%= Math.round(stats.avgCompletion || 0) %>%</p>
+                    </div>
+                    <div class="section-card p-4 text-center">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Total Attempts</p>
+                        <p class="text-3xl font-black text-violet-600" id="stat-attempts"><%= stats.totalAttempts %></p>
+                    </div>
+                </div>
+
+                <!-- TAB STRIP -->
+                <div class="bg-white/80 backdrop-blur border border-cyan-100 rounded-2xl p-1.5 flex gap-1 overflow-x-auto no-scrollbar mb-2">
+                    <button class="tab-btn active" onclick="switchTab('export', this)">
+                        <i class="fas fa-file-arrow-down mr-1.5"></i>Export Hub
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('analytics', this)">
+                        <i class="fas fa-chart-column mr-1.5"></i>Visual Analytics
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('deepdive', this)">
+                        <i class="fas fa-microscope mr-1.5"></i>Deep-Dive Reports
+                    </button>
+                </div>
+
+                <!-- ══════════════════════════════════════════════ -->
+                <!-- TAB 1: EXPORT HUB                             -->
+                <!-- ══════════════════════════════════════════════ -->
+                <div id="tab-export" class="tab-panel active space-y-4">
+
+                    <!-- A. Class List & Attendance Summary -->
+                    <div class="export-card fade-in">
+                        <div class="flex flex-wrap gap-4 items-start justify-between">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-users text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-black text-indigo-900">Class List & Attendance Summary</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5 leading-relaxed max-w-lg">
+                                        Master list with LRN Number, Full Name, Sex, Strand, and Section. Use PDF for formal printing or Excel for editing.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">classes</span>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">class_students</span>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">users</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 flex-shrink-0 flex-wrap">
+                                <button class="btn btn-rose btn-sm" onclick="exportDoc('class-list','pdf')">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button>
+                                <button class="btn btn-emerald btn-sm" onclick="exportDoc('class-list','excel')">
+                                    <i class="fas fa-file-excel"></i> Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- B. Student Progress Report Card -->
+                    <div class="export-card fade-in mb-6">
+                        <div class="flex flex-wrap gap-4 items-start justify-between ">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-id-card text-cyan-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-black text-indigo-900">Student Progress Report Card <span class="text-[10px] font-bold text-cyan-600 ml-1">(Individual PDF)</span></p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5 leading-relaxed max-w-lg">
+                                        Per-topic grades, overall progress %, achieved levels, and total EXP. Generated per student for parents or students as proof of performance.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">student_scores</span>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">student_progress</span>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">users</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 flex-shrink-0">
+                                <button class="btn btn-primary btn-sm" onclick="openStudentPickerModal('report-card')">
+                                    <i class="fas fa-user-check"></i> Pick Student
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Student list preview table -->
+                        <div class="mt-4 rounded-xl border border-slate-100 overflow-hidden">
+                            <table class="w-full text-xs">
+                                <thead><tr class="bg-slate-50 border-b border-slate-100">
+                                    <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Student</th>
+                                    <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Progress</th>
+                                    <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Level</th>
+                                    <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">EXP</th>
+                                    <th class="px-3 py-2"></th>
+                                </tr></thead>
+                                <tbody>
+                                <% students.forEach(s => { %>
+                                <tr class="border-b border-slate-50 hover:bg-indigo-50/40 transition">
+                                    <td class="px-3 py-2">
+                                        <div class="flex items-center gap-2">
+                                            <img src="/profile_uploads/<%= s.profile_pic || 'default_avatar.png' %>" class="w-7 h-7 rounded-lg object-cover" onerror="this.src='/profile_uploads/default_avatar.png'">
+                                            <span class="font-bold text-indigo-900"><%= s.last_name %>, <%= s.first_name %></span>
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <div class="flex items-center gap-2">
+                                            <div class="prog-track w-20"><div class="prog-fill" style="width:<%= s.progress_percent || 0 %>%;background:<%= (s.progress_percent||0) >= 75 ? '#10b981' : (s.progress_percent||0) >= 40 ? '#f59e0b' : '#ef4444' %>"></div></div>
+                                            <span class="font-black text-slate-600"><%= s.progress_percent || 0 %>%</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2"><span class="font-black text-violet-600">Lv.<%= s.current_level %></span></td>
+                                    <td class="px-3 py-2"><span class="font-black text-emerald-600">+<%= s.total_exp || 0 %></span></td>
+                                    <td class="px-3 py-2 text-right">
+                                        <a href="/teacher/reports/export/report-card/<%= s.user_id %>?class_id=<%= selectedClassId || '' %>" target="_blank"
+                                           class="btn btn-rose btn-sm">
+                                            <i class="fas fa-file-pdf"></i> PDF
+                                        </a>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                                <% if (!students.length) { %>
+                                <tr><td colspan="5" class="text-center py-6 text-slate-300 text-xs font-bold italic">Select a class to see students</td></tr>
+                                <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- C. Remediation List -->
+                    <div class="export-card fade-in">
+                        <div class="flex flex-wrap gap-4 items-start justify-between">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-kit-medical text-amber-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-black text-indigo-900">Remediation List</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5 leading-relaxed max-w-lg">
+                                        List of students and the specific topics they need to revisit — based on incorrect responses. For teacher intervention planning.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">remediation_materials</span>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">student_responses</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 flex-shrink-0">
+                                <button class="btn btn-rose btn-sm" onclick="exportDoc('remediation','pdf')">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Preview table -->
+                        <div class="mt-4 rounded-xl border border-slate-100 overflow-hidden max-h-64 overflow-y-auto">
+                            <table class="w-full text-xs">
+                                <thead class="sticky top-0"><tr class="bg-slate-50 border-b border-slate-100">
+                                    <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Student</th>
+                                    <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Needs Review</th>
+                                    <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Wrong Items</th>
+                                </tr></thead>
+                                <tbody>
+                                <% remediationList.forEach(r => { %>
+                                <tr class="border-b border-slate-50 hover:bg-amber-50/40 transition">
+                                    <td class="px-3 py-2 font-bold text-indigo-900"><%= r.last_name %>, <%= r.first_name %></td>
+                                    <td class="px-3 py-2 text-slate-600"><%= r.topic_name %></td>
+                                    <td class="px-3 py-2"><span class="font-black text-rose-600"><%= r.wrong_count %></span></td>
+                                </tr>
+                                <% }) %>
+                                <% if (!remediationList.length) { %>
+                                <tr><td colspan="3" class="text-center py-6 text-slate-300 text-xs font-bold italic">No remediation data. Select a class or check student responses.</td></tr>
+                                <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div><!-- /tab-export -->
+
+
+                <!-- ══════════════════════════════════════════════ -->
+                <!-- TAB 2: VISUAL ANALYTICS                       -->
+                <!-- ══════════════════════════════════════════════ -->
+                <div id="tab-analytics" class="tab-panel space-y-6">
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                        <!-- A. Score Distribution Histogram -->
+                        <div class="section-card">
+                            <div class="section-header">
+                                <div>
+                                    <p class="text-sm font-black text-indigo-900 uppercase tracking-tight">Score Distribution</p>
+                                    <p class="text-[10px] text-slate-400 font-bold mt-0.5">Assessment Results — Class score spread</p>
+                                </div>
+                                <span class="text-[10px] font-black text-indigo-500 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-full">Bar Chart</span>
+                            </div>
+                            <div class="p-4">
+                                <% if (scoreDistribution && scoreDistribution.some(b => b.count > 0)) { %>
+                                <canvas id="chartScoreDist" height="200"></canvas>
+                                <% } else { %>
+                                <div class="flex flex-col items-center justify-center h-40 text-slate-300">
+                                    <i class="fas fa-chart-bar text-3xl mb-2"></i>
+                                    <p class="text-xs font-bold italic">No assessment data yet</p>
+                                </div>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <!-- B. Win/Loss Pie Chart -->
+                        <div class="section-card">
+                            <div class="section-header">
+                                <div>
+                                    <p class="text-sm font-black text-indigo-900 uppercase tracking-tight">Win / Loss Ratio</p>
+                                    <p class="text-[10px] text-slate-400 font-bold mt-0.5">Competitive Arcade Matches — Duel Mode</p>
+                                </div>
+                                <span class="text-[10px] font-black text-fuchsia-500 bg-fuchsia-50 border border-fuchsia-100 px-2 py-1 rounded-full">Pie Chart</span>
+                            </div>
+                            <div class="p-4 flex gap-6 items-center">
+                                <% if (winLoss && winLoss.length > 0) { %>
+                                <div class="w-40 h-40 flex-shrink-0"><canvas id="chartWinLoss"></canvas></div>
+                                <div class="flex-1 space-y-2">
+                                    <% winLoss.slice(0, 5).forEach((w, i) => { %>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-5 h-5 rounded-md text-[9px] font-black flex items-center justify-center flex-shrink-0 <%= i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-n' %>"><%= i+1 %></span>
+                                            <span class="text-xs font-bold text-slate-700"><%= w.first_name %> <%= w.last_name %></span>
+                                        </div>
+                                        <span class="text-xs font-black text-emerald-600"><%= w.wins %>W</span>
+                                    </div>
+                                    <% }) %>
+                                </div>
+                                <% } else { %>
+                                <div class="flex flex-col items-center justify-center w-full h-40 text-slate-300">
+                                    <i class="fas fa-trophy text-3xl mb-2"></i>
+                                    <p class="text-xs font-bold italic">No competitive matches yet</p>
+                                </div>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <!-- C. EXP Growth Line Graph -->
+                        <div class="section-card lg:col-span-2">
+                            <div class="section-header">
+                                <div>
+                                    <p class="text-sm font-black text-indigo-900 uppercase tracking-tight">EXP Growth Over Time</p>
+                                    <p class="text-[10px] text-slate-400 font-bold mt-0.5">Gamification Progress — Weekly engagement momentum</p>
+                                </div>
+                                <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-full">Line Chart</span>
+                            </div>
+                            <div class="p-4">
+                                <% if (expGrowth && expGrowth.labels && expGrowth.labels.length > 0) { %>
+                                <canvas id="chartExpGrowth" height="120"></canvas>
+                                <% } else { %>
+                                <div class="flex flex-col items-center justify-center h-40 text-slate-300">
+                                    <i class="fas fa-chart-line text-3xl mb-2"></i>
+                                    <p class="text-xs font-bold italic">No leaderboard history snapshots yet</p>
+                                </div>
+                                <% } %>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- D. Topic Mastery Heatmap -->
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div>
+                                <p class="text-sm font-black text-indigo-900 uppercase tracking-tight">Topic Mastery Heatmap</p>
+                                <p class="text-[10px] text-slate-400 font-bold mt-0.5">Competency Analysis — Green = mastered, Red = needs attention</p>
+                            </div>
+                            <span class="text-[10px] font-black text-rose-500 bg-rose-50 border border-rose-100 px-2 py-1 rounded-full">Heatmap</span>
+                        </div>
+                        <div class="p-4 overflow-x-auto">
+                            <% if (heatmap && heatmap.topics && heatmap.topics.length > 0) { %>
+                            <div style="min-width: 600px;">
+                                <!-- Topic header row -->
+                                <div class="flex gap-2 mb-2 pl-28">
+                                    <% heatmap.topics.forEach(t => { %>
+                                    <div class="flex-1 text-center text-[9px] font-black text-slate-400 uppercase truncate" style="min-width:70px" title="<%= t %>"><%= t.substring(0,12) %></div>
+                                    <% }) %>
+                                </div>
+                                <!-- Student rows -->
+                                <% heatmap.rows.forEach(row => { %>
+                                <div class="flex gap-2 mb-1.5 items-center">
+                                    <div class="w-28 text-[10px] font-bold text-slate-600 truncate flex-shrink-0"><%= row.name %></div>
+                                    <% row.scores.forEach(score => {
+                                        const pct = score === null ? null : score;
+                                        const bg = pct === null ? '#f1f5f9' : pct >= 80 ? '#bbf7d0' : pct >= 60 ? '#fef08a' : pct >= 40 ? '#fed7aa' : '#fecaca';
+                                        const txt = pct === null ? '#cbd5e1' : pct >= 80 ? '#15803d' : pct >= 60 ? '#a16207' : pct >= 40 ? '#c2410c' : '#b91c1c';
+                                    %>
+                                    <div class="heat-cell flex-1" style="min-width:70px;background:<%= bg %>;color:<%= txt %>" title="<%= pct !== null ? pct + '%' : 'No data' %>">
+                                        <%= pct !== null ? pct + '%' : '—' %>
+                                    </div>
+                                    <% }) %>
+                                </div>
+                                <% }) %>
+                                <!-- Legend -->
+                                <div class="flex items-center gap-3 mt-4 pt-3 border-t border-slate-100">
+                                    <span class="text-[10px] font-black text-slate-400 uppercase">Legend:</span>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 rounded" style="background:#bbf7d0"></div><span class="text-[10px] font-bold text-slate-500">≥80%</span></div>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 rounded" style="background:#fef08a"></div><span class="text-[10px] font-bold text-slate-500">60–79%</span></div>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 rounded" style="background:#fed7aa"></div><span class="text-[10px] font-bold text-slate-500">40–59%</span></div>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 rounded" style="background:#fecaca"></div><span class="text-[10px] font-bold text-slate-500">&lt;40%</span></div>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 rounded" style="background:#f1f5f9"></div><span class="text-[10px] font-bold text-slate-500">No data</span></div>
+                                </div>
+                            </div>
+                            <% } else { %>
+                            <div class="flex flex-col items-center justify-center h-32 text-slate-300">
+                                <i class="fas fa-table-cells text-3xl mb-2"></i>
+                                <p class="text-xs font-bold italic">No topic + response data to display</p>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+                </div><!-- /tab-analytics -->
+
+
+                <!-- ══════════════════════════════════════════════ -->
+                <!-- TAB 3: DEEP-DIVE REPORTS                      -->
+                <!-- ══════════════════════════════════════════════ -->
+                <div id="tab-deepdive" class="tab-panel space-y-6">
+
+                    <!-- 1. Subject-Level Completion Rate -->
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div>
+                                <p class="text-sm font-black text-indigo-900 uppercase tracking-tight">Subject-Level Completion</p>
+                                <p class="text-[10px] text-slate-400 font-bold mt-0.5">Average progress percent per class across the syllabus</p>
+                            </div>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <% completionRates.forEach(cr => { %>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-xs font-black text-indigo-800"><%= cr.class_name %> — <span class="text-cyan-600"><%= cr.subject_name %></span></span>
+                                    <span class="text-xs font-black <%= cr.avg_progress >= 75 ? 'text-emerald-600' : cr.avg_progress >= 40 ? 'text-amber-600' : 'text-rose-600' %>"><%= Math.round(cr.avg_progress) %>% complete</span>
+                                </div>
+                                <div class="prog-track">
+                                    <div class="prog-fill" style="width:<%= Math.round(cr.avg_progress) %>%;background:<%= cr.avg_progress >= 75 ? '#10b981' : cr.avg_progress >= 40 ? '#f59e0b' : '#ef4444' %>"></div>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-0.5 font-bold"><%= cr.student_count %> students &nbsp;•&nbsp; SY <%= cr.sy_range %></p>
+                            </div>
+                            <% }) %>
+                            <% if (!completionRates.length) { %>
+                            <p class="text-center py-6 text-slate-300 text-xs font-bold italic">No progress data found.</p>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- 2. Item Analysis Report -->
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div>
+                                <p class="text-sm font-black text-indigo-900 uppercase tracking-tight">Item Analysis — Problematic Question Finder</p>
+                                <p class="text-[10px] text-slate-400 font-bold mt-0.5">Questions ranked by failure rate — highest failure first</p>
+                            </div>
+                            <span class="text-[10px] font-black text-rose-500 bg-rose-50 border border-rose-100 px-2 py-1 rounded-full"><%= itemAnalysis.length %> questions tracked</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead><tr class="bg-slate-50 border-b border-slate-100">
+                                    <th class="text-left px-4 py-2.5 font-black text-slate-500 uppercase text-[10px]">Rank</th>
+                                    <th class="text-left px-4 py-2.5 font-black text-slate-500 uppercase text-[10px]">Question</th>
+                                    <th class="text-left px-4 py-2.5 font-black text-slate-500 uppercase text-[10px]">Topic</th>
+                                    <th class="text-left px-4 py-2.5 font-black text-slate-500 uppercase text-[10px]">Difficulty</th>
+                                    <th class="text-left px-4 py-2.5 font-black text-slate-500 uppercase text-[10px]">Failure Rate</th>
+                                    <th class="text-left px-4 py-2.5 font-black text-slate-500 uppercase text-[10px]">Responses</th>
+                                </tr></thead>
+                                <tbody>
+                                <% itemAnalysis.forEach((item, idx) => {
+                                    const failRate = item.total > 0 ? Math.round((item.wrong / item.total) * 100) : 0;
+                                    const barColor = failRate >= 70 ? '#ef4444' : failRate >= 50 ? '#f97316' : '#f59e0b';
+                                %>
+                                <tr class="border-b border-slate-50 hover:bg-rose-50/30 transition">
+                                    <td class="px-4 py-3">
+                                        <span class="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black <%= idx===0?'rank-1':idx===1?'rank-2':idx===2?'rank-3':'rank-n' %>"><%= idx+1 %></span>
+                                    </td>
+                                    <td class="px-4 py-3 max-w-xs">
+                                        <p class="font-bold text-slate-700 truncate" title="<%= item.question_text %>"><%= item.question_text.substring(0,70) %><%= item.question_text.length > 70 ? '…' : '' %></p>
+                                    </td>
+                                    <td class="px-4 py-3 font-bold text-cyan-700"><%= item.topic_name %></td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                            <%= item.difficulty === 'Easy' ? 'bg-emerald-100 text-emerald-700' : item.difficulty === 'Average' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700' %>">
+                                            <%= item.difficulty %>
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-20 seq-bar"><div class="seq-bar-fill" style="width:<%= failRate %>%;background:<%= barColor %>"></div></div>
+                                            <span class="font-black" style="color:<%= barColor %>"><%= failRate %>%</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 font-bold text-slate-500"><%= item.total %></td>
+                                </tr>
+                                <% }) %>
+                                <% if (!itemAnalysis.length) { %>
+                                <tr><td colspan="6" class="text-center py-8 text-slate-300 text-xs font-bold italic">No response data available</td></tr>
+                                <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 3. Arcade Machine Utilization -->
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div>
+                                <p class="text-sm font-black text-indigo-900 uppercase tracking-tight">Arcade Machine Utilization</p>
+                                <p class="text-[10px] text-slate-400 font-bold mt-0.5">Single vs Duel mode usage — who plays the most</p>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div class="rounded-xl bg-violet-50 border border-violet-100 p-3 text-center">
+                                    <p class="text-[10px] font-black text-violet-400 uppercase">Total Sessions</p>
+                                    <p class="text-2xl font-black text-violet-700"><%= arcadeStats.total || 0 %></p>
+                                </div>
+                                <div class="rounded-xl bg-cyan-50 border border-cyan-100 p-3 text-center">
+                                    <p class="text-[10px] font-black text-cyan-400 uppercase">Single Player</p>
+                                    <p class="text-2xl font-black text-cyan-700"><%= arcadeStats.single || 0 %></p>
+                                </div>
+                                <div class="rounded-xl bg-rose-50 border border-rose-100 p-3 text-center">
+                                    <p class="text-[10px] font-black text-rose-400 uppercase">Duel Mode</p>
+                                    <p class="text-2xl font-black text-rose-700"><%= arcadeStats.duel || 0 %></p>
+                                </div>
+                            </div>
+                            <div class="rounded-xl border border-slate-100 overflow-hidden">
+                                <table class="w-full text-xs">
+                                    <thead><tr class="bg-slate-50 border-b border-slate-100">
+                                        <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Student</th>
+                                        <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Single</th>
+                                        <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Duel</th>
+                                        <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Total</th>
+                                        <th class="text-left px-3 py-2 font-black text-slate-500 uppercase text-[10px]">Usage</th>
+                                    </tr></thead>
+                                    <tbody>
+                                    <% arcadeByStudent.forEach(a => { %>
+                                    <tr class="border-b border-slate-50 hover:bg-violet-50/30 transition">
+                                        <td class="px-3 py-2 font-bold text-indigo-900"><%= a.last_name %>, <%= a.first_name %></td>
+                                        <td class="px-3 py-2 font-black text-cyan-600"><%= a.single_sessions %></td>
+                                        <td class="px-3 py-2 font-black text-rose-600"><%= a.duel_sessions %></td>
+                                        <td class="px-3 py-2 font-black text-slate-700"><%= a.total_sessions %></td>
+                                        <td class="px-3 py-2 w-32">
+                                            <div class="prog-track">
+                                                <div class="prog-fill" style="width:<%= arcadeStats.total > 0 ? Math.round((a.total_sessions/arcadeStats.total)*100) : 0 %>%;background:#7c3aed"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                    <% if (!arcadeByStudent.length) { %>
+                                    <tr><td colspan="5" class="text-center py-6 text-slate-300 text-xs font-bold italic">No session data available</td></tr>
+                                    <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Sequence Error Analysis -->
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div>
+                                <p class="text-sm font-black text-indigo-900 uppercase tracking-tight">Sequence Error Analysis — Misconception Report</p>
+                                <p class="text-[10px] text-slate-400 font-bold mt-0.5">Specific element symbols & subscripts students consistently get wrong in chemical formulas</p>
+                            </div>
+                            <span class="text-[10px] font-black text-amber-500 bg-amber-50 border border-amber-100 px-2 py-1 rounded-full">answer_sequences</span>
+                        </div>
+                        <div class="p-4 space-y-4">
+                            <% if (seqErrors && seqErrors.length > 0) { %>
+                            <% seqErrors.forEach(se => { %>
+                            <div class="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                <div class="flex flex-wrap gap-3 items-start justify-between mb-2">
+                                    <div>
+                                        <p class="text-xs font-black text-indigo-800"><%= se.question_text.substring(0,80) %><%= se.question_text.length > 80 ? '…' : '' %></p>
+                                        <p class="text-[10px] text-cyan-600 font-bold mt-0.5">Topic: <%= se.topic_name %></p>
+                                    </div>
+                                    <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-600"><%= se.total_wrong %> wrong attempts</span>
+                                </div>
+                                <!-- Per-element error breakdown -->
+                                <div class="space-y-1.5">
+                                    <% se.elements.forEach(el => { %>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex-shrink-0 w-20 text-center">
+                                            <span class="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-lg"><%= el.element_symbol %><% if (el.subscript > 1) { %><sub><%= el.subscript %></sub><% } %></span>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="seq-bar">
+                                                <div class="seq-bar-fill" style="width:<%= el.error_pct %>%"></div>
+                                            </div>
+                                        </div>
+                                        <div class="flex-shrink-0 text-right w-28">
+                                            <span class="text-[10px] font-black text-rose-600"><%= el.error_pct %>% error</span>
+                                            <span class="text-[10px] text-slate-400 ml-1">(<%= el.wrong_count %>/<%= el.total_count %>)</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10px] text-slate-400 pl-24 italic">
+                                        <% if (el.error_pct >= 70) { %>
+                                        <i class="fas fa-triangle-exclamation text-rose-400 mr-1"></i>High confusion — likely a Valency or symbol recognition issue
+                                        <% } else if (el.error_pct >= 40) { %>
+                                        <i class="fas fa-circle-exclamation text-amber-400 mr-1"></i>Moderate confusion — may need subscript clarification
+                                        <% } else { %>
+                                        <i class="fas fa-circle-check text-emerald-400 mr-1"></i>Low error rate — minimal intervention needed
+                                        <% } %>
+                                    </p>
+                                    <% }) %>
+                                </div>
+                            </div>
+                            <% }) %>
+                            <% } else { %>
+                            <div class="flex flex-col items-center justify-center h-32 text-slate-300">
+                                <i class="fas fa-flask text-3xl mb-2"></i>
+                                <p class="text-xs font-bold italic">No sequence-type questions answered yet</p>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+                </div><!-- /tab-deepdive -->
+
+                <div class="h-4"></div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="bg-white border-t border-cyan-100 py-6 px-8 w-full">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-2 max-w-[1600px] mx-auto">
+                    <p class="text-[11px] text-indigo-400 font-black uppercase tracking-tight">
+                        &copy; 2026 <span class="text-cyan-600">Chemistry Arcade</span> - Mabini College v2.5.0
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest">Support Lab</a>
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest border-l pl-4 border-indigo-100">Atomic Logs</a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+</div>
+
+
+<!-- ══ STUDENT PICKER MODAL ══ -->
+<div id="studentPickerModal" class="modal-backdrop">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 class="text-sm font-black text-indigo-900">Select Student</h3>
+            <button onclick="closeModal('studentPickerModal')" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-red-50 hover:text-red-500 flex items-center justify-center text-slate-500 transition">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <input type="text" placeholder="Search student..." id="studentSearchInput" oninput="filterStudentPicker()"
+                   class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-400">
+            <div id="studentPickerList" class="space-y-1.5 max-h-64 overflow-y-auto">
+                <% students.forEach(s => { %>
+                <div class="student-pick-row flex items-center justify-between p-2.5 rounded-xl hover:bg-indigo-50 cursor-pointer border border-transparent hover:border-indigo-200 transition"
+                     data-name="<%= s.first_name %> <%= s.last_name %>"
+                     onclick="exportStudentReportCard(<%= s.user_id %>)">
+                    <div class="flex items-center gap-2">
+                        <img src="/profile_uploads/<%= s.profile_pic || 'default_avatar.png' %>" class="w-8 h-8 rounded-lg object-cover" onerror="this.src='/profile_uploads/default_avatar.png'">
+                        <span class="text-sm font-bold text-indigo-900"><%= s.last_name %>, <%= s.first_name %></span>
+                    </div>
+                    <i class="fas fa-file-pdf text-rose-400 text-xs"></i>
+                </div>
+                <% }) %>
+                <% if (!students.length) { %>
+                <p class="text-center py-4 text-slate-300 text-xs italic font-bold">No students. Select a class first.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- EXPORT FILTER MODAL                            -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- EXPORT FILTER MODAL                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="exportFilterModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:480px">
+        <div class="modal-header">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
+                    <i class="fas fa-sliders text-indigo-600 text-sm"></i>
+                </div>
+                <div>
+                    <p id="exportModalTitle" class="text-sm font-black text-indigo-900">Export Document</p>
+                    <p class="text-[10px] text-slate-400 font-bold">Apply filters before exporting</p>
+                </div>
+            </div>
+            <button onclick="closeModal('exportFilterModal')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-rose-100 hover:text-rose-500 flex items-center justify-center transition text-slate-500">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+
+        <input type="hidden" id="exportModalType">
+        <input type="hidden" id="exportModalFormat">
+
+        <div class="modal-body">
+
+            <!-- Info banner -->
+            <div class="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3">
+                <i class="fas fa-circle-info text-indigo-400 mt-0.5 text-sm flex-shrink-0"></i>
+                <p class="text-[11px] text-indigo-700 font-bold leading-relaxed">
+                    The class filter on the main page is already applied. Use the options below to narrow the export further. Leave blank to include all.
+                </p>
+            </div>
+
+            <!-- Quarter — shown for report-card and remediation -->
+            <div id="filterGroupQuarter" style="display:none" class="flex flex-col gap-1.5">
+                <label class="form-label"><i class="fas fa-layer-group text-indigo-400 mr-1"></i> Quarter</label>
+                <select id="filterQuarter" class="form-select">
+                    <option value="">All Quarters</option>
+                    <option value="1">Quarter 1</option>
+                    <option value="2">Quarter 2</option>
+                    <option value="3">Quarter 3</option>
+                    <option value="4">Quarter 4</option>
+                </select>
+                <p class="text-[10px] text-slate-400 font-bold">Filters by <code>quarters.quarter_number</code></p>
+            </div>
+
+            <!-- Assessment Type — report-card only -->
+            <div id="filterGroupType" style="display:none" class="flex flex-col gap-1.5">
+                <label class="form-label"><i class="fas fa-tag text-cyan-500 mr-1"></i> Assessment Type</label>
+                <select id="filterAssessType" class="form-select">
+                    <option value="">All Types</option>
+                    <option value="Pre-Test">Pre-Test</option>
+                    <option value="Post-Test">Post-Test</option>
+                    <option value="Quiz">Quiz</option>
+                    <option value="Competitive">Competitive</option>
+                </select>
+                <p class="text-[10px] text-slate-400 font-bold">Filters by <code>assessments.assessment_type</code></p>
+            </div>
+
+            <!-- Risk Level — remediation only (JS-side filter after aggregation) -->
+            <div id="filterGroupRisk" style="display:none" class="flex flex-col gap-1.5">
+                <label class="form-label"><i class="fas fa-triangle-exclamation text-amber-500 mr-1"></i> Risk Level</label>
+                <select id="filterRisk" class="form-select">
+                    <option value="">All Risk Levels</option>
+                    <option value="high">High Risk (5+ wrong answers)</option>
+                    <option value="moderate">Moderate (3–4 wrong answers)</option>
+                    <option value="low">Low (1–2 wrong answers)</option>
+                </select>
+                <p class="text-[10px] text-slate-400 font-bold">Based on <code>COUNT(wrong responses)</code> per student per topic</p>
+            </div>
+
+            <!-- Sex — class-list only -->
+            <div id="filterGroupSex" style="display:none" class="flex flex-col gap-1.5">
+                <label class="form-label"><i class="fas fa-venus-mars text-pink-500 mr-1"></i> Sex</label>
+                <select id="filterSex" class="form-select">
+                    <option value="">All</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+                <p class="text-[10px] text-slate-400 font-bold">Filters by <code>users.sex</code></p>
+            </div>
+
+            <!-- Grade Level — class-list only -->
+            <div id="filterGroupGrade" style="display:none" class="flex flex-col gap-1.5">
+                <label class="form-label"><i class="fas fa-school text-rose-500 mr-1"></i> Grade Level</label>
+                <select id="filterGrade" class="form-select">
+                    <option value="">All Grade Levels</option>
+                    <option value="Grade 11">Grade 11</option>
+                    <option value="Grade 12">Grade 12</option>
+                </select>
+                <p class="text-[10px] text-slate-400 font-bold">Filters by <code>users.grade_level</code></p>
+            </div>
+
+            <!-- Section — class-list only (free text, matches users.section) -->
+            <div id="filterGroupSection" style="display:none" class="flex flex-col gap-1.5">
+                <label class="form-label"><i class="fas fa-users text-violet-500 mr-1"></i> Section</label>
+                <input id="filterSection" type="text" class="form-select" placeholder="e.g. STEM-A, Block 1 (leave blank for all)">
+                <p class="text-[10px] text-slate-400 font-bold">Filters by <code>users.section</code> (exact match)</p>
+            </div>
+
+        </div>
+
+        <div class="modal-footer">
+            <button onclick="closeModal('exportFilterModal')" class="btn btn-outline">Cancel</button>
+            <button onclick="doExport()" class="btn btn-primary">
+                <i class="fas fa-file-export"></i> Generate Export
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ════════════════════════════════════ SCRIPTS ════════════════════════════════════ -->
+<script>
+/* ── Server-injected data for charts ── */
+const SCORE_DIST  = <%- JSON.stringify(scoreDistribution || []) %>;
+const WIN_LOSS    = <%- JSON.stringify(winLoss || []) %>;
+const EXP_GROWTH  = <%- JSON.stringify(expGrowth || {labels:[], datasets:[]}) %>;
+const SELECTED_CLASS = '<%= selectedClassId || "" %>';
+
+/* ── Sidebar ── */
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    const open = !sb.classList.contains('-translate-x-full');
+    sb.classList.toggle('-translate-x-full', open);
+    ov.classList.toggle('hidden', open);
+}
+
+/* ── Toast ── */
+function rpToast(msg, type = 'success') {
+    const el = document.getElementById('rp-toast');
+    el.textContent = (type === 'success' ? '✓  ' : '✕  ') + msg;
+    el.className = 'show ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = ''; }, 3400);
+}
+
+/* ── Tab switching ── */
+function switchTab(id, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    btn.classList.add('active');
+    if (id === 'analytics') initCharts();
+}
+
+/* ── Class filter ── */
+function applyClassFilter() {
+    const classId = document.getElementById('classFilter').value;
+    const url = new URL(window.location.href);
+    if (classId) url.searchParams.set('class_id', classId);
+    else url.searchParams.delete('class_id');
+    window.location.href = url.toString();
+}
+
+/* ── Export document — opens filter modal first ── */
+function exportDoc(type, format) {
+    document.getElementById('exportModalType').value   = type;
+    document.getElementById('exportModalFormat').value = format;
+
+    // Reset all filter groups
+    ['filterGroupQuarter','filterGroupType','filterGroupRisk',
+     'filterGroupSex','filterGroupGrade','filterGroupSection']
+        .forEach(id => document.getElementById(id).style.display = 'none');
+
+    // Reset all filter values
+    document.getElementById('filterQuarter').value    = '';
+    document.getElementById('filterAssessType').value = '';
+    document.getElementById('filterRisk').value       = '';
+    document.getElementById('filterSex').value        = '';
+    document.getElementById('filterGrade').value      = '';
+    document.getElementById('filterSection').value    = '';
+
+    // Show relevant filters per export type
+    if (type === 'class-list') {
+        // class-list: filter by users.sex, users.grade_level, users.section
+        document.getElementById('filterGroupSex').style.display     = 'flex';
+        document.getElementById('filterGroupGrade').style.display   = 'flex';
+        document.getElementById('filterGroupSection').style.display = 'flex';
+    } else if (type === 'report-card' || type === 'report-card-student') {
+        // report-card: filter by quarters.quarter_number, assessments.assessment_type
+        document.getElementById('filterGroupQuarter').style.display = 'flex';
+        document.getElementById('filterGroupType').style.display    = 'flex';
+    } else if (type === 'remediation') {
+        // remediation: filter by quarters.quarter_number, risk level (aggregated wrong count)
+        document.getElementById('filterGroupQuarter').style.display = 'flex';
+        document.getElementById('filterGroupRisk').style.display    = 'flex';
+    }
+
+    const labels = {
+        'class-list'  : 'Class List',
+        'remediation' : 'Remediation List',
+        'report-card' : 'Report Card',
+    };
+    document.getElementById('exportModalTitle').textContent =
+        `Export ${labels[type] || 'Document'} — ${format.toUpperCase()}`;
+
+    document.getElementById('exportFilterModal').classList.add('open');
+}
+
+function doExport() {
+    const type    = document.getElementById('exportModalType').value;
+    const format  = document.getElementById('exportModalFormat').value;
+    const classId = document.getElementById('classFilter').value;
+
+    const params = new URLSearchParams();
+    if (classId)                                            params.set('class_id', classId);
+
+    // Only append params that are visible and have a value
+    const quarter = document.getElementById('filterQuarter').value;
+    const atype   = document.getElementById('filterAssessType').value;
+    const risk    = document.getElementById('filterRisk').value;
+    const sex     = document.getElementById('filterSex').value;
+    const grade   = document.getElementById('filterGrade').value;
+    const section = document.getElementById('filterSection').value.trim();
+
+    if (quarter) params.set('quarter',     quarter);
+    if (atype)   params.set('type',        atype);
+    if (risk)    params.set('risk',        risk);
+    if (sex)     params.set('sex',         sex);
+    if (grade)   params.set('grade_level', grade);
+    if (section) params.set('section',     section);
+
+    let url;
+    if (type === 'report-card-student' && _pendingReportStudentId) {
+        url = `/teacher/reports/export/report-card/${_pendingReportStudentId}?${params.toString()}`;
+        _pendingReportStudentId = null;
+    } else {
+        url = `/teacher/reports/export/${type}/${format}?${params.toString()}`;
+    }
+
+    closeModal('exportFilterModal');
+    rpToast('Generating ' + format.toUpperCase() + '…');
+    window.open(url, '_blank');
+}
+
+function doExport() {
+    const type    = document.getElementById('exportModalType').value;
+    const format  = document.getElementById('exportModalFormat').value;
+    const classId = document.getElementById('classFilter').value;
+
+    const params = new URLSearchParams();
+    if (classId)                                               params.set('class_id',    classId);
+    if (document.getElementById('filterQuarter').value)        params.set('quarter',      document.getElementById('filterQuarter').value);
+    if (document.getElementById('filterAssessType').value)     params.set('type',         document.getElementById('filterAssessType').value);
+    if (document.getElementById('filterRisk').value)           params.set('risk',         document.getElementById('filterRisk').value);
+    if (document.getElementById('filterStrand').value)         params.set('strand',       document.getElementById('filterStrand').value);
+    if (document.getElementById('filterSection').value)        params.set('section',      document.getElementById('filterSection').value);
+    if (document.getElementById('filterGrade').value)          params.set('grade_level',  document.getElementById('filterGrade').value);
+
+    const url = `/teacher/reports/export/${type}/${format}?${params.toString()}`;
+    closeModal('exportFilterModal');
+    rpToast('Generating ' + format.toUpperCase() + '…');
+    window.open(url, '_blank');
+}
+
+/* ── Student report card export — opens filter modal first ── */
+let _pendingReportStudentId = null;
+function exportStudentReportCard(studentId) {
+    _pendingReportStudentId = studentId;
+    closeModal('studentPickerModal');
+
+    document.getElementById('exportModalType').value   = 'report-card-student';
+    document.getElementById('exportModalFormat').value = 'pdf';
+    document.getElementById('exportModalTitle').textContent = 'Export Report Card — PDF';
+
+    document.getElementById('filterGroupQuarter').style.display = 'flex';
+    document.getElementById('filterGroupType').style.display    = 'flex';
+    document.getElementById('filterGroupRisk').style.display    = 'none';
+    document.getElementById('filterGroupStrand').style.display  = 'none';
+    document.getElementById('filterGroupSection').style.display = 'none';
+    document.getElementById('filterGroupGrade').style.display   = 'none';
+
+    document.getElementById('exportFilterModal').classList.add('open');
+}
+
+function doExport() {
+    const type    = document.getElementById('exportModalType').value;
+    const format  = document.getElementById('exportModalFormat').value;
+    const classId = document.getElementById('classFilter').value;
+
+    const params = new URLSearchParams();
+    if (classId)                                               params.set('class_id',    classId);
+    if (document.getElementById('filterQuarter').value)        params.set('quarter',      document.getElementById('filterQuarter').value);
+    if (document.getElementById('filterAssessType').value)     params.set('type',         document.getElementById('filterAssessType').value);
+    if (document.getElementById('filterRisk').value)           params.set('risk',         document.getElementById('filterRisk').value);
+    if (document.getElementById('filterStrand').value)         params.set('strand',       document.getElementById('filterStrand').value);
+    if (document.getElementById('filterSection').value)        params.set('section',      document.getElementById('filterSection').value);
+    if (document.getElementById('filterGrade').value)          params.set('grade_level',  document.getElementById('filterGrade').value);
+
+    let url;
+    if (type === 'report-card-student' && _pendingReportStudentId) {
+        url = `/teacher/reports/export/report-card/${_pendingReportStudentId}?${params.toString()}`;
+        _pendingReportStudentId = null;
+    } else {
+        url = `/teacher/reports/export/${type}/${format}?${params.toString()}`;
+    }
+
+    closeModal('exportFilterModal');
+    rpToast('Generating ' + format.toUpperCase() + '…');
+    window.open(url, '_blank');
+}
+
+/* ── Modal ── */
+function openStudentPickerModal() { document.getElementById('studentPickerModal').classList.add('open'); }
+function closeModal(id)           { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(mb => {
+    mb.addEventListener('click', e => { if (e.target === mb) mb.classList.remove('open'); });
+});
+
+/* ── Student picker search ── */
+function filterStudentPicker() {
+    const q = document.getElementById('studentSearchInput').value.toLowerCase();
+    document.querySelectorAll('.student-pick-row').forEach(row => {
+        row.style.display = row.dataset.name.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+/* ── Charts (lazy init on tab switch) ── */
+let chartsInitialized = false;
+function initCharts() {
+    if (chartsInitialized) return;
+    chartsInitialized = true;
+
+    const fontSettings = { family: "'Plus Jakarta Sans', sans-serif", size: 11 };
+    Chart.defaults.font = fontSettings;
+
+    /* Score Distribution Bar Chart */
+    const sdCtx = document.getElementById('chartScoreDist');
+    if (sdCtx && SCORE_DIST.length) {
+        new Chart(sdCtx, {
+            type: 'bar',
+            data: {
+                labels: SCORE_DIST.map(b => b.label),
+                datasets: [{
+                    label: 'Students',
+                    data: SCORE_DIST.map(b => b.count),
+                    backgroundColor: SCORE_DIST.map(b => {
+                        const mid = parseInt(b.label);
+                        return mid >= 90 ? '#6ee7b7' : mid >= 75 ? '#a5b4fc' : mid >= 60 ? '#fde68a' : '#fca5a5';
+                    }),
+                    borderRadius: 6, borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true, plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    }
+
+    /* Win/Loss Pie Chart */
+    const wlCtx = document.getElementById('chartWinLoss');
+    if (wlCtx && WIN_LOSS.length) {
+        const colors = ['#6366f1','#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+        new Chart(wlCtx, {
+            type: 'doughnut',
+            data: {
+                labels: WIN_LOSS.map(w => w.first_name + ' ' + w.last_name),
+                datasets: [{
+                    data: WIN_LOSS.map(w => w.wins),
+                    backgroundColor: WIN_LOSS.map((_, i) => colors[i % colors.length]),
+                    borderWidth: 2, borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true, cutout: '60%',
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    /* EXP Growth Line Chart */
+    const egCtx = document.getElementById('chartExpGrowth');
+    if (egCtx && EXP_GROWTH.labels && EXP_GROWTH.labels.length) {
+        const colors = ['#6366f1','#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6'];
+        new Chart(egCtx, {
+            type: 'line',
+            data: {
+                labels: EXP_GROWTH.labels,
+                datasets: EXP_GROWTH.datasets.map((ds, i) => ({
+                    ...ds,
+                    borderColor: colors[i % colors.length],
+                    backgroundColor: colors[i % colors.length] + '15',
+                    borderWidth: 2, tension: 0.4, pointRadius: 3, fill: true
+                }))
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+}
+</script>
+
+<!-- =============================================
+     NOTIFICATION PANEL
+============================================= -->
+<div id="notifPanel" class="fixed top-0 right-0 h-full w-full max-w-sm z-[200] translate-x-full transition-transform duration-300 ease-in-out flex flex-col"
+     style="background: linear-gradient(180deg, #0d1a2e 0%, #0f1f38 100%); box-shadow: -8px 0 40px rgba(6,182,212,0.15);">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-5 border-b border-white/10 flex-shrink-0">
+        <div>
+            <h3 class="text-white font-black text-base tracking-tight uppercase italic flex items-center gap-2">
+                <i class="fas fa-bell text-cyan-400 text-sm"></i> Notifications
+            </h3>
+            <p class="text-indigo-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
+                <%= notifications ? notifications.length : 0 %> updates
+            </p>
+        </div>
+        <button onclick="toggleNotifPanel()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-rose-500/20 text-indigo-300 hover:text-rose-400 transition">
+            <i class="fas fa-times text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Scrollable List -->
+    <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-2">
+        <% if (notifications && notifications.length > 0) { %>
+            <% notifications.forEach(notif => { %>
+                <%
+                    let href = '#';
+                    let iconClass = 'fas fa-bell text-cyan-400';
+                    let badgeClass = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+                    let badgeLabel = 'Update';
+
+                    if (notif.notif_type === 'forum_reply') {
+                        href = '/teacher/forums#forum-' + notif.link_id;
+                        iconClass = 'fas fa-comments text-amber-400';
+                        badgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+                        badgeLabel = 'Forum Reply';
+                    } else if (notif.notif_type === 'private_message') {
+                        href = '/teacher/messages/' + notif.link_id;
+                        iconClass = 'fas fa-envelope text-indigo-400';
+                        badgeClass = 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+                        badgeLabel = 'Message';
+                    } else if (notif.notif_type === 'struggling_student') {
+                        href = '/teacher/class/' + notif.link_id + '#students';
+                        iconClass = 'fas fa-triangle-exclamation text-rose-400';
+                        badgeClass = 'bg-rose-500/20 text-rose-300 border-rose-500/30';
+                        badgeLabel = 'Needs Help';
+                    } else if (notif.notif_type === 'pending_question') {
+                        href = '/teacher/question-bank?q=' + notif.link_id;
+                        iconClass = 'fas fa-database text-fuchsia-400';
+                        badgeClass = 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30';
+                        badgeLabel = 'Review Question';
+                    } else if (notif.notif_type === 'upcoming_deadline') {
+                        href = '/teacher/class/' + notif.link_id;
+                        iconClass = 'fas fa-hourglass-half text-emerald-400';
+                        badgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+                        badgeLabel = 'Deadline Soon';
+                    }
+                %>
+                <a href="<%= href %>"
+                   class="flex items-start gap-3 p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-cyan-500/30 transition group cursor-pointer">
+
+                    <div class="flex-shrink-0 mt-0.5">
+                        <% if (notif.actor_pic && notif.notif_type !== 'upcoming_deadline') { %>
+                            <img src="/profile_uploads/<%= notif.actor_pic %>" class="w-9 h-9 rounded-xl object-cover ring-1 ring-white/10 group-hover:ring-cyan-400/40 transition">
+                        <% } else { %>
+                            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                                <i class="<%= iconClass %> text-sm"></i>
+                            </div>
+                        <% } %>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border <%= badgeClass %>"><%= badgeLabel %></span>
+                        </div>
+                        <p class="text-white text-[11px] font-bold leading-snug group-hover:text-cyan-300 transition line-clamp-2">
+                            <% if (notif.notif_type !== 'upcoming_deadline') { %>
+                                <span class="text-cyan-400"><%= notif.actor_name %></span>
+                            <% } %>
+                            <%= notif.message %>
+                        </p>
+                        <p class="text-indigo-500 text-[9px] font-bold mt-1 uppercase tracking-widest">
+                            <% if (notif.notif_time) { %>
+                                <%= new Date(notif.notif_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                            <% } else { %>
+                                —
+                            <% } %>
+                        </p>
+                    </div>
+
+                    <div class="flex-shrink-0 self-center text-indigo-600 group-hover:text-cyan-400 transition">
+                        <i class="fas fa-chevron-right text-[10px]"></i>
+                    </div>
+                </a>
+            <% }) %>
+        <% } else { %>
+            <div class="flex flex-col items-center justify-center h-full py-20 text-center">
+                <div class="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center mb-4">
+                    <i class="fas fa-bell-slash text-indigo-500 text-2xl"></i>
+                </div>
+                <p class="text-indigo-400 text-xs font-black uppercase tracking-widest">You're all caught up!</p>
+                <p class="text-indigo-600 text-[10px] font-bold mt-1">No new notifications</p>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- Backdrop -->
+<div id="notifBackdrop" class="fixed inset-0 bg-indigo-950/50 backdrop-blur-sm z-[199] hidden" onclick="toggleNotifPanel()"></div>
+
+<script>
+    function toggleNotifPanel() {
+        const panel    = document.getElementById('notifPanel');
+        const backdrop = document.getElementById('notifBackdrop');
+        const isOpen   = !panel.classList.contains('translate-x-full');
+        if (isOpen) {
+            panel.classList.add('translate-x-full');
+            backdrop.classList.add('hidden');
+        } else {
+            panel.classList.remove('translate-x-full');
+            backdrop.classList.remove('hidden');
+        }
+    }
+
+    // ── Profile dropdown ──────────────────────────────────
+        function toggleProfileDropdown() {
+            document.getElementById('profileDropdown').classList.toggle('open');
+        }
+        // Close when clicking outside
+        document.addEventListener('click', function(e) {
+            const wrap = document.getElementById('profileDropdownWrap');
+            if (wrap && !wrap.contains(e.target)) {
+                document.getElementById('profileDropdown').classList.remove('open');
+            }
+        });
+</script>
+</body>
+</html>

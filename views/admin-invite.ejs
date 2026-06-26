@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Invite User</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-6">
+
+    <div class="max-w-2xl w-full bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">User Invitation</h2>
+            <p class="text-slate-500 mt-2">Chemistry Arcade LMS • Secure Provisioning</p>
+        </div>
+
+        <form action="/admin/invite" method="POST" class="space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Account Role</label>
+                    <select name="role" id="roleSelect" onchange="toggleFields()" class="w-full bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all cursor-pointer">
+                        <option value="Student">Student</option>
+                        <option value="Teacher">Teacher</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Gmail Address</label>
+                    <input type="email" name="email" required placeholder="example@gmail.com" class="w-full bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+                </div>
+            </div>
+
+            <hr class="border-slate-100">
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Legal Name</label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <input type="text" name="first_name" required placeholder="First" class="bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all text-sm">
+                    <input type="text" name="middle_name" placeholder="Middle" class="bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all text-sm">
+                    <input type="text" name="last_name" required placeholder="Last" class="bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all text-sm">
+                    <input type="text" name="suffix" placeholder="Suffix" class="bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all text-sm">
+                </div>
+            </div>
+
+            <div id="dynamicIdentityRow" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label id="idLabel" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">LRN Number (12 Digits)</label>
+                    <input type="text" name="id_number" id="idInput" required maxlength="12" placeholder="Enter 12-digit LRN" class="w-full bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+                </div>
+
+                <div id="affiliationContainer">
+                    <label id="affiliationLabel" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Section</label>
+                    <select name="affiliation" id="affiliationSelect" class="w-full bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+                        </select>
+                </div>
+            </div>
+
+            <div id="demographicFields" class="grid grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sex</label>
+                    <select name="sex" class="w-full bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Birthdate</label>
+                    <input type="date" name="birthdate" class="w-full bg-slate-50 border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+                </div>
+            </div>
+
+            <div class="pt-4">
+                <button type="submit" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-[0.96]">
+                    Send Invitation Link
+                </button>
+                <p class="text-center text-[10px] text-slate-400 mt-6 uppercase tracking-[0.2em]">Chemistry Arcade LMS • Admin Portal</p>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const studentSections = ["Atom", "Molecule", "Electron", "Proton"];
+        const teacherDepts = ["Natural Sciences", "Mathematics", "Physical Education", "Technical-Vocational"];
+
+        function toggleFields() {
+            const role = document.getElementById('roleSelect').value;
+            const idLabel = document.getElementById('idLabel');
+            const idInput = document.getElementById('idInput');
+            const affLabel = document.getElementById('affiliationLabel');
+            const affSelect = document.getElementById('affiliationSelect');
+            const affContainer = document.getElementById('affiliationContainer');
+            const demoFields = document.getElementById('demographicFields');
+            const identityRow = document.getElementById('dynamicIdentityRow');
+
+            // Clear existing options
+            affSelect.innerHTML = "";
+
+            if (role === 'Student') {
+                identityRow.classList.remove('hidden');
+                demoFields.classList.remove('hidden');
+                
+                idLabel.innerText = "LRN Number (12 Digits)";
+                idInput.placeholder = "Enter 12-digit LRN";
+                idInput.maxLength = 12;
+
+                affLabel.innerText = "Section";
+                studentSections.forEach(s => affSelect.add(new Option(s, s)));
+                affContainer.classList.remove('hidden');
+
+            } else if (role === 'Teacher') {
+                identityRow.classList.remove('hidden');
+                demoFields.classList.remove('hidden'); // Sex and Birthdate stay!
+
+                idLabel.innerText = "Faculty ID Number";
+                idInput.placeholder = "FAC-2026-XXXX";
+                idInput.maxLength = 20;
+
+                affLabel.innerText = "Department";
+                teacherDepts.forEach(d => affSelect.add(new Option(d, d)));
+                affContainer.classList.remove('hidden');
+
+            } else if (role === 'Admin') {
+                // Admins typically don't need section/department or personal info in the invitation
+                idLabel.innerText = "Admin Employee ID";
+                idInput.placeholder = "ADM-XXXX";
+                
+                affContainer.classList.add('hidden');
+                demoFields.classList.add('hidden');
+            }
+        }
+
+        // Initialize view
+        window.onload = toggleFields;
+    </script>
+</body>
+</html>

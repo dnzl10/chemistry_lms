@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .card-base { @apply bg-white rounded-[2rem] border border-slate-100 shadow-sm transition-all duration-300; }
+        .label-style { @apply text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.15em] mb-1.5 block; }
+        .input-style { @apply w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all; }
+        .icon-box { @apply w-10 h-10 rounded-xl flex items-center justify-center text-lg; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-[#fcfdfe] text-slate-900 overflow-x-hidden">
+
+    <aside class="fixed top-0 left-0 h-screen w-64 bg-slate-900 border-r border-slate-100 z-50 flex flex-col p-6">
+        <div class="mb-10 px-2">
+            <span class="text-xl font-extrabold tracking-tighter text-white">ELEM<span class="text-blue-500">ENTA</span></span>
+        </div>
+
+        <nav class="flex-1 space-y-2">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 px-2">User Menu</p>
+            <a href="/profile" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-white/5 rounded-2xl font-bold text-sm transition-all">
+                <i class="fa-solid fa-user-circle"></i> View Profile
+            </a>
+            <a href="/settings" class="flex items-center gap-3 px-4 py-3 bg-blue-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20">
+                <i class="fa-solid fa-gear"></i> Account Settings
+            </a>
+            <a href="/inbox" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-white/5 rounded-2xl font-bold text-sm transition-all">
+                <i class="fa-solid fa-envelope"></i> Inbox
+            </a>
+            <a href="/progress" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-white/5 rounded-2xl font-bold text-sm transition-all">
+                <i class="fa-solid fa-chart-line"></i> Scores/Progress
+            </a>
+        </nav>
+
+        <div class="p-3 border-t border-slate-800">
+            <a href="/logout" class="flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-400/10 rounded-2xl font-bold text-sm transition-all">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <header class="fixed top-0 left-64 right-0 h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 z-40 px-8 flex items-center">
+        <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
+            <a href="/home" class="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-colors">Home</a>
+            <a href="/dashboard" class="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-colors">Dashboard</a>
+            <a href="/subjects" class="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-colors">Subjects</a>
+            <a href="/leaderboards" class="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-colors">Ranks</a>
+        </div>
+    </header>
+
+    <main class="ml-64 pt-20">
+        <form action="/update-profile" method="POST" enctype="multipart/form-data" class="max-w-6xl mx-auto px-8 pt-10 pb-32">
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+                <div>
+                    <nav class="flex items-center gap-2 text-xs font-bold text-blue-600 uppercase tracking-widest mb-2">
+                        <a href="/profile" class="hover:underline">My Profile</a>
+                        <i class="fa-solid fa-chevron-right text-[8px] text-slate-300"></i>
+                        <span class="text-slate-400">Edit Mode</span>
+                    </nav>
+                    <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">Edit <span class="text-blue-600">Profile.</span></h1>
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95 flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <div class="lg:col-span-4 space-y-8">
+                    <div class="card-base p-8 text-center relative overflow-hidden group">
+                        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                        
+                        <div class="relative inline-block mb-6 cursor-pointer" onclick="document.getElementById('profile_pic').click()">
+                            <div class="w-44 h-44 rounded-[3rem] overflow-hidden ring-[12px] ring-slate-50 shadow-inner group-hover:opacity-80 transition-all duration-500">
+                                <img id="preview" src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>" class="w-full h-full object-cover" alt="Profile">
+                            </div>
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div class="bg-white/90 p-3 rounded-2xl shadow-xl">
+                                    <i class="fa-solid fa-camera text-blue-600"></i>
+                                </div>
+                            </div>
+                            <input type="file" id="profile_pic" name="profile_pic" class="hidden" accept="image/*" onchange="previewImage(event)">
+                        </div>
+
+                        <div>
+                            <span class="label-style">Tagline / Status</span>
+                            <input type="text" name="pic_description" value="<%= user.pic_description %>" placeholder="Short and sweet..." class="input-style text-center italic">
+                        </div>
+                    </div>
+
+                    <div class="card-base p-8 bg-slate-900 text-white">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-blue-400"></i> Profile Tips
+                        </h3>
+                        <p class="text-slate-400 text-xs leading-relaxed">
+                            A complete profile helps mentors and peers find you more easily in the Elementa community. Make sure your phonetic name is correct for the graduation ceremonies!
+                        </p>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 space-y-8">
+                    
+                    <section class="card-base p-8">
+                        <div class="flex items-center gap-4 mb-8 pb-6 border-b border-slate-50">
+                            <div class="icon-box bg-blue-50 text-blue-600"><i class="fa-solid fa-address-card"></i></div>
+                            <h3 class="text-lg font-extrabold text-slate-800">General Information</h3>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <span class="label-style">First Name</span>
+                                <input type="text" name="first_name" value="<%= user.first_name %>" class="input-style">
+                            </div>
+                            <div>
+                                <span class="label-style">Middle Name</span>
+                                <input type="text" name="middle_name" value="<%= user.middle_name %>" class="input-style">
+                            </div>
+                            <div>
+                                <span class="label-style">Last Name</span>
+                                <input type="text" name="last_name" value="<%= user.last_name %>" class="input-style">
+                            </div>
+                            <div>
+                                <span class="label-style">Suffix (e.g. Jr, III)</span>
+                                <input type="text" name="suffix" value="<%= user.suffix %>" class="input-style">
+                            </div>
+                            <div class="md:col-span-2">
+                                <span class="label-style">City / Town</span>
+                                <input type="text" name="city_town" value="<%= user.city_town %>" class="input-style">
+                            </div>
+                            <div class="md:col-span-2">
+                                <span class="label-style">Self Description / Bio</span>
+                                <textarea name="self_description" rows="4" class="input-style resize-none" placeholder="Tell the world about yourself..."><%= user.self_description %></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="card-base p-8">
+                        <div class="flex items-center gap-4 mb-8 pb-6 border-b border-slate-50">
+                            <div class="icon-box bg-purple-50 text-purple-600"><i class="fa-solid fa-fingerprint"></i></div>
+                            <h3 class="text-lg font-extrabold text-slate-800">Other Details</h3>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <span class="label-style">First (Phonetic)</span>
+                                    <input type="text" name="first_name_phonetic" value="<%= user.first_name_phonetic %>" class="input-style" placeholder="How to say it?">
+                                </div>
+                                <div>
+                                    <span class="label-style">Middle (Phonetic)</span>
+                                    <input type="text" name="middle_name_phonetic" value="<%= user.middle_name_phonetic %>" class="input-style">
+                                </div>
+                                <div>
+                                    <span class="label-style">Last (Phonetic)</span>
+                                    <input type="text" name="last_name_phonetic" value="<%= user.last_name_phonetic %>" class="input-style">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <span class="label-style">Field Interests (Comma Separated)</span>
+                                <input type="text" name="interests" value="<%= user.interests %>" placeholder="CHEMISTRY, PHYSICS, REACT, UI DESIGN" class="input-style">
+                                <p class="text-[10px] text-slate-400 mt-2 font-medium">Add tags like: Organic Chemistry, Quantum Mechanics, etc.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="card-base p-8">
+                        <div class="flex items-center gap-4 mb-8 pb-6 border-b border-slate-50">
+                            <div class="icon-box bg-orange-50 text-orange-600"><i class="fa-solid fa-building-columns"></i></div>
+                            <h3 class="text-lg font-extrabold text-slate-800">Institutional Data</h3>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <span class="label-style">Mobile Number</span>
+                                <input type="text" name="mobile_number" value="<%= user.mobile_number %>" class="input-style">
+                            </div>
+                            <div class="md:col-span-2">
+                                <span class="label-style">Residential Address</span>
+                                <input type="text" name="home_address" value="<%= user.home_address %>" class="input-style">
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </form>
+    </main>
+
+    <div class="fixed bottom-8 right-8 z-50 lg:hidden">
+        <button onclick="document.querySelector('form').submit()" class="bg-blue-600 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all">
+            <i class="fa-solid fa-floppy-disk text-xl"></i>
+        </button>
+    </div>
+
+    <script>
+        // Image preview logic
+        function previewImage(event) {
+            const reader = new FileReader();
+            reader.onload = function(){
+                const output = document.getElementById('preview');
+                output.src = reader.result;
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+    </script>
+</body>
+</html>

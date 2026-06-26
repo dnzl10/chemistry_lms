@@ -1,0 +1,1355 @@
+<%#
+  ============================================================
+  FILE: views/admin/reports_monitoring.ejs
+  TITLE: Reports & Monitoring — Ultimate Analytical Command Center
+  EJS VARIABLES EXPECTED FROM ROUTER:
+    user            : logged-in admin
+    rmStats         : { totalStudents, totalAssessments, totalQuestions, totalMaterials }
+    curriculumData  : array [ { quarter_number, subject_name, topics: [ { topic_name, materialCount, assessmentCount, coveredPct } ] } ]
+    classMapping    : array [ { class_name, teacher_name, subject_name, studentCount, avgScore } ]
+    students        : array (for individual export / dossier)
+    itemAnalysis    : array [ { question_id, question_text, correct_answer, totalAttempts, correctCount, distractors: {A,B,C,D} } ]
+    remediationAudit: array [ { student_name, score, total_items, hasMaterialView } ]
+    activityLogs    : array (latest 20 from activity_logs)
+    subjects        : array for filter dropdowns
+    quarters        : array for filter dropdowns
+    topics          : array for test-paper builder
+    questionBank    : array (full question list for test-paper selection)
+  ============================================================
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Monitoring | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdfa;
+            background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-card { background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); }
+
+        .stat-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.10); }
+
+        .pulse-badge { animation: pulseRing 2s infinite; }
+        @keyframes pulseRing { 0%,100% { opacity:1; } 50% { opacity:0.45; } }
+
+        .table-scroll { max-height: 300px; overflow-y: auto; }
+        .table-scroll::-webkit-scrollbar { width: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius:2px; }
+
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4, #6366f1) !important;
+            color: white !important; font-weight: 700;
+            box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+
+        .fade-in { animation: fadeUp 0.35s ease both; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        .live-dot {
+            width:8px; height:8px; border-radius:50%; background:#22c55e;
+            box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+            animation: livePulse 1.6s infinite; display:inline-block;
+        }
+        @keyframes livePulse {
+            0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+            70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+
+        /* ── TABS ── */
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-btn.active {
+            background: linear-gradient(135deg,#06b6d4,#6366f1);
+            color: white; box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ── DATA TABLE ── */
+        .data-table th {
+            background: #f8fafc; font-size:11px; text-transform:uppercase;
+            letter-spacing:.05em; color:#64748b; font-weight:700;
+        }
+        .data-table tr { transition: background 0.12s; }
+        .data-table tbody tr:hover { background: #f0f9ff; }
+        .data-table td { vertical-align: middle; }
+        .tbl-wrap { overflow-x: auto; }
+        .tbl-wrap::-webkit-scrollbar { height: 3px; }
+        .tbl-wrap::-webkit-scrollbar-thumb { background:#c7d2fe; border-radius:2px; }
+
+        /* ── BADGES ── */
+        .badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; text-transform:uppercase; letter-spacing:.04em; }
+        .badge-pass   { background:#d1fae5; color:#065f46; }
+        .badge-fail   { background:#fee2e2; color:#991b1b; }
+        .badge-viewed { background:#dbeafe; color:#1e40af; }
+        .badge-not    { background:#fef3c7; color:#92400e; }
+
+        /* ── FORM INPUTS ── */
+        .fi {
+            width:100%; padding:9px 13px; border-radius:11px;
+            border:1.5px solid #e2e8f0; font-size:13px;
+            background:white; font-family:inherit;
+            transition: box-shadow 0.18s, border-color 0.18s;
+        }
+        .fi:focus { box-shadow:0 0 0 3px rgba(6,182,212,0.18); border-color:#06b6d4; outline:none; }
+
+        /* ── MODALS ── */
+        .modal-overlay {
+            position:fixed; inset:0; background:rgba(15,23,42,0.6);
+            backdrop-filter:blur(5px); z-index:9000;
+            display:flex; align-items:center; justify-content:center;
+            opacity:0; pointer-events:none; transition:opacity 0.22s ease;
+            padding:16px;
+        }
+        .modal-overlay.open { opacity:1; pointer-events:all; }
+        .modal-box {
+            background:white; border-radius:20px;
+            box-shadow:0 32px 80px rgba(0,0,0,0.22);
+            width:95%; max-width:740px; max-height:92vh;
+            overflow-y:auto; transform:scale(0.96) translateY(12px);
+            transition:transform 0.22s ease;
+            scrollbar-width:thin; scrollbar-color:#c7d2fe transparent;
+        }
+        .modal-overlay.open .modal-box { transform:scale(1) translateY(0); }
+        .modal-box::-webkit-scrollbar { width:4px; }
+        .modal-box::-webkit-scrollbar-thumb { background:#c7d2fe; border-radius:4px; }
+        .modal-box-sm { max-width:460px; }
+        .modal-box-lg { max-width:880px; }
+
+        /* ── PROGRESS BAR ── */
+        .progress-bar  { height:6px; border-radius:3px; background:#e2e8f0; }
+        .progress-fill { height:100%; border-radius:3px; transition:width 0.6s ease; }
+
+        /* ── TOAST ── */
+        #toast {
+            position:fixed; bottom:28px; right:28px; z-index:99999;
+            padding:14px 22px; border-radius:14px; font-weight:700; font-size:14px;
+            display:flex; align-items:center; gap:10px;
+            box-shadow:0 8px 30px rgba(0,0,0,.18);
+            transform:translateY(80px); opacity:0; pointer-events:none;
+            transition:all .3s cubic-bezier(.34,1.56,.64,1); min-width:240px;
+        }
+        #toast.show    { transform:translateY(0); opacity:1; }
+        #toast.success { background:#10b981; color:white; }
+        #toast.error   { background:#ef4444; color:white; }
+        #toast.info    { background:#6366f1; color:white; }
+        #toast.warning { background:#f59e0b; color:white; }
+
+        /* ── STAT CARD COLOR STRIPS ── */
+        .strip-blue   { background:linear-gradient(90deg,#06b6d4,#6366f1); }
+        .strip-green  { background:linear-gradient(90deg,#10b981,#34d399); }
+        .strip-amber  { background:linear-gradient(90deg,#f59e0b,#fbbf24); }
+        .strip-rose   { background:linear-gradient(90deg,#f43f5e,#fb7185); }
+
+        /* ── CURRICULUM ACCORDION ── */
+        .accordion-body { display:none; }
+        .accordion-body.open { display:block; }
+        .accordion-trigger { cursor:pointer; }
+
+        /* ── TEST PAPER QUESTION CARD ── */
+        .q-card { transition: all 0.15s ease; }
+        .q-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+        .q-card.selected { background:#eef2ff; border-color:#6366f1; }
+
+        /* ── FILTER PILLS ── */
+        .filter-pill { cursor:pointer; padding:5px 12px; border-radius:8px; font-size:11px; font-weight:700; transition:all .15s; border:1.5px solid #e2e8f0; color:#64748b; }
+        .filter-pill:hover { border-color:#c7d2fe; }
+        .filter-pill.fp-active { border-color:#6366f1; background:#eef2ff; color:#4338ca; }
+
+        /* ── AUDIT FEED ── */
+        .audit-item { transition: background 0.12s; }
+        .audit-item:hover { background:#f8fafc; }
+
+        /* ── DISTRACTOR BAR ── */
+        .distractor-bar { height:8px; border-radius:4px; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <!-- Mobile overlay -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+    <!-- ═══════════════ SIDEBAR ═══════════════ -->
+    <aside id="sidebar" class="bg-indigo-950 text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-800/50">
+        <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+            <!-- Mobile close button -->
+            <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <!-- Logo -->
+            <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+
+            <!-- Brand name -->
+            <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                Elem<span class="text-white">enta</span>
+            </h1>
+            <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Admin Console</p>
+
+            <!-- Divider -->
+            <!-- <div class="w-full mt-5 border-t border-indigo-800/60"></div> -->
+        </div>
+        <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Main Interface</p>
+                <a href="/admin/dashboard" class="flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white hover:bg-white/10 group">
+                    <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold tracking-tight text-sm">Main Dashboard</span>
+                </a>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Administrative</p>
+                <div class="space-y-1">
+                    <a href="/admin/user_access_control" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-users w-5 text-sky-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">User & Access Control</span>
+                    </a>
+                    <a href="/admin/academic_management" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-graduation-cap w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Academic Management</span>
+                    </a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Learning Assets</p>
+                <div class="space-y-1">
+                    <a href="/admin/gaming_question_bank" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-gamepad w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Gaming & Q-Bank</span>
+                    </a>
+                    <a href="/admin/resources_engagement" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-lightbulb w-5 text-lime-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Resources & Engagement</span>
+                    </a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">System Health</p>
+                <div class="space-y-1">
+                    <a href="/admin/reports_monitoring" class="nav-active flex items-center gap-3 p-3 rounded-xl transition group">
+                        <i class="fas fa-chart-line w-5 text-blue-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Reports & Monitoring</span>
+                    </a>
+                    <a href="/admin/system_audit" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-fingerprint w-5 text-indigo-300 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">System Audit</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        <div class="p-4 border-t border-indigo-800">
+            <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition font-bold">
+                <i class="fas fa-right-from-bracket w-5"></i> Log Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+    <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- TOP HEADER -->
+        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden"><i class="fas fa-bars text-xl"></i></button>
+                <div>
+                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight flex items-center gap-2">
+                        <i class="fas fa-chart-line text-blue-500"></i> Reports &amp; Monitoring
+                    </h2>
+                    <p class="text-xs text-slate-400 hidden sm:block">
+                        <span class="live-dot mr-1"></span>
+                        Analytical Command Center &nbsp;·&nbsp;
+                        <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 md:gap-6">
+                <!-- Notification bell -->
+                <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
+                    <i class="far fa-bell text-xl text-cyan-600"></i>
+                    <span id="notifDot" class="absolute top-2 right-2 flex h-2.5 w-2.5 hidden">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <span id="notifCount" class="absolute -top-0.5 -right-0.5 hidden bg-rose-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center"></span>
+                </div>
+
+                <!-- Admin profile -->
+                <div class="flex items-center gap-3 pl-4 border-l border-cyan-100">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-[10px] uppercase font-black text-rose-500 tracking-widest">Administrator</p>
+                    </div>
+                    <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                         class="w-10 h-10 rounded-xl object-cover ring-2 ring-rose-400 shadow-sm">
+                </div>
+            </div>
+        </header>
+
+        <!-- SCROLLABLE CONTENT -->
+        <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
+            <div class="p-4 md:p-8 flex-1 fade-in">
+
+                <!-- ── KPI STAT CARDS ── -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-sky-100 shadow-sm">
+                        <div class="h-1 strip-blue rounded-full mb-4"></div>
+                        <p class="text-3xl font-black text-indigo-900"><%= rmStats.totalStudents %></p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total Students</p>
+                    </div>
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-emerald-100 shadow-sm">
+                        <div class="h-1 strip-green rounded-full mb-4"></div>
+                        <p class="text-3xl font-black text-indigo-900"><%= rmStats.totalAssessments %></p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Assessments</p>
+                    </div>
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-amber-100 shadow-sm">
+                        <div class="h-1 strip-amber rounded-full mb-4"></div>
+                        <p class="text-3xl font-black text-indigo-900"><%= rmStats.totalQuestions %></p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Questions</p>
+                    </div>
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-rose-100 shadow-sm">
+                        <div class="h-1 strip-rose rounded-full mb-4"></div>
+                        <p class="text-3xl font-black text-indigo-900"><%= rmStats.totalMaterials %></p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Materials</p>
+                    </div>
+                </div>
+
+                <!-- ── MAIN LAYOUT: TABS + AUDIT SIDEBAR ── -->
+                <div class="flex flex-col xl:flex-row gap-6">
+
+                    <!-- TABS COLUMN -->
+                    <div class="flex-1 min-w-0">
+                        <div class="glass-card rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+                            <!-- Tab bar -->
+                            <div class="flex items-center gap-2 p-4 border-b border-slate-100 flex-wrap">
+                                <button class="tab-btn active flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600"
+                                        onclick="switchTab('tab-curriculum', this)">
+                                    <i class="fas fa-sitemap text-indigo-400"></i> Curriculum
+                                </button>
+                                <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600"
+                                        onclick="switchTab('tab-class', this)">
+                                    <i class="fas fa-chalkboard-user text-emerald-400"></i> Class Mapping
+                                </button>
+                                <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600"
+                                        onclick="switchTab('tab-dossier', this)">
+                                    <i class="fas fa-id-card text-sky-400"></i> Student Dossier
+                                </button>
+                                <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600"
+                                        onclick="switchTab('tab-testpaper', this)">
+                                    <i class="fas fa-file-lines text-amber-400"></i> Test Paper
+                                </button>
+                                <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600"
+                                        onclick="switchTab('tab-analysis', this)">
+                                    <i class="fas fa-magnifying-glass-chart text-rose-400"></i> Item Analysis
+                                </button>
+                            </div>
+
+                            <!-- ══════════════════════════════
+                                 TAB 1 — CURRICULUM PROGRESS
+                            ══════════════════════════════ -->
+                            <div id="tab-curriculum" class="tab-content active p-5">
+                                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                                    <div>
+                                        <h3 class="font-black text-indigo-900 text-base">Curriculum Progress Monitor</h3>
+                                        <p class="text-xs text-slate-400 mt-0.5">Coverage tracked by Quarter → Topic → Materials & Assessments.</p>
+                                    </div>
+                                    <button onclick="exportCurriculum()"
+                                        class="flex items-center gap-2 text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition shadow-md">
+                                        <i class="fas fa-download"></i> Export Excel
+                                    </button>
+                                </div>
+
+                                <% if (curriculumData && curriculumData.length > 0) { %>
+                                <div class="space-y-3">
+                                <% curriculumData.forEach(function(qtr) { %>
+                                    <div class="border border-slate-100 rounded-xl overflow-hidden">
+                                        <div class="accordion-trigger flex items-center justify-between p-4 bg-indigo-50 hover:bg-indigo-100 transition"
+                                             onclick="toggleAccordion(this)">
+                                            <div class="flex items-center gap-3">
+                                                <span class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-sm">
+                                                    Q<%= qtr.quarter_number %>
+                                                </span>
+                                                <div>
+                                                    <p class="font-bold text-indigo-900 text-sm"><%= qtr.subject_name %> — Quarter <%= qtr.quarter_number %></p>
+                                                    <p class="text-xs text-slate-400"><%= qtr.topics ? qtr.topics.length : 0 %> topic(s)</p>
+                                                </div>
+                                            </div>
+                                            <i class="fas fa-chevron-down text-indigo-400 transition-transform"></i>
+                                        </div>
+                                        <div class="accordion-body">
+                                            <div class="p-4 space-y-3">
+                                            <% if (qtr.topics && qtr.topics.length > 0) { %>
+                                            <% qtr.topics.forEach(function(t) { %>
+                                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                    <div class="flex items-center justify-between mb-2">
+                                                        <p class="font-bold text-slate-700 text-sm"><%= t.topic_name %></p>
+                                                        <span class="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                                                            <%= t.coveredPct %>% covered
+                                                        </span>
+                                                    </div>
+                                                    <div class="progress-bar mb-2">
+                                                        <div class="progress-fill <%= t.coveredPct >= 75 ? 'bg-emerald-500' : t.coveredPct >= 40 ? 'bg-amber-400' : 'bg-rose-400' %>"
+                                                             style="width:<%= t.coveredPct %>%"></div>
+                                                    </div>
+                                                    <div class="flex gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                        <span><i class="fas fa-book mr-1 text-blue-400"></i><%= t.materialCount %> Materials</span>
+                                                        <span><i class="fas fa-clipboard-list mr-1 text-amber-400"></i><%= t.assessmentCount %> Assessments</span>
+                                                    </div>
+                                                </div>
+                                            <% }) %>
+                                            <% } else { %>
+                                            <p class="text-xs text-slate-400 text-center py-4">No topics in this quarter.</p>
+                                            <% } %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                                </div>
+                                <% } else { %>
+                                <div class="py-14 text-center text-slate-400">
+                                    <i class="fas fa-sitemap text-4xl mb-3 block opacity-20"></i>
+                                    <p class="font-bold">No curriculum data available.</p>
+                                </div>
+                                <% } %>
+                            </div><!-- /tab-curriculum -->
+
+                            <!-- ══════════════════════════════
+                                 TAB 2 — CLASS MAPPING
+                            ══════════════════════════════ -->
+                            <div id="tab-class" class="tab-content p-5">
+                                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                                    <div>
+                                        <h3 class="font-black text-indigo-900 text-base">Class &amp; Teacher Mapping</h3>
+                                        <p class="text-xs text-slate-400 mt-0.5">Section overview: teacher assignment, enrolment, and average performance.</p>
+                                    </div>
+                                    <button onclick="exportClassSummary()"
+                                        class="flex items-center gap-2 text-xs font-bold bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition shadow-md">
+                                        <i class="fas fa-file-pdf"></i> Export Class PDF
+                                    </button>
+                                </div>
+
+                                <div class="tbl-wrap rounded-xl border border-slate-100">
+                                    <table class="data-table w-full text-sm">
+                                        <thead>
+                                            <tr class="border-b border-slate-100">
+                                                <th class="p-3 text-left">Class / Section</th>
+                                                <th class="p-3 text-left hidden md:table-cell">Teacher</th>
+                                                <th class="p-3 text-left hidden md:table-cell">Subject</th>
+                                                <th class="p-3 text-left hidden lg:table-cell">Students</th>
+                                                <th class="p-3 text-left hidden lg:table-cell">Avg Score</th>
+                                                <th class="p-3 text-center">Export</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        <% if (classMapping && classMapping.length > 0) { %>
+                                        <% classMapping.forEach(function(cm) { %>
+                                        <tr class="border-b border-slate-50">
+                                            <td class="p-3 font-bold text-slate-700"><%= cm.class_name %></td>
+                                            <td class="p-3 hidden md:table-cell text-xs text-slate-500"><%= cm.teacher_name || '—' %></td>
+                                            <td class="p-3 hidden md:table-cell text-xs text-slate-500"><%= cm.subject_name || '—' %></td>
+                                            <td class="p-3 hidden lg:table-cell text-xs font-bold text-indigo-700"><%= cm.studentCount %></td>
+                                            <td class="p-3 hidden lg:table-cell">
+                                                <% var avg = parseFloat(cm.avgScore) || 0; %>
+                                                <span class="font-bold text-sm <%= avg >= 75 ? 'text-emerald-600' : 'text-rose-500' %>">
+                                                    <%= avg.toFixed(1) %>%
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <button onclick="exportClassDetail(<%= cm.class_id %>, '<%= cm.class_name.replace(/'/g, '') %>')"
+                                                    class="text-xs font-bold text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition">
+                                                    <i class="fas fa-download mr-1"></i>PDF
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                                        <% } else { %>
+                                        <tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">No class data available.</td></tr>
+                                        <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div><!-- /tab-class -->
+
+                            <!-- ══════════════════════════════
+                                 TAB 3 — STUDENT DOSSIER
+                            ══════════════════════════════ -->
+                            <div id="tab-dossier" class="tab-content p-5">
+                                <div class="flex flex-col md:flex-row gap-3 mb-4 justify-between items-start md:items-center">
+                                    <div>
+                                        <h3 class="font-black text-indigo-900 text-base">Individual Student Dossier</h3>
+                                        <p class="text-xs text-slate-400 mt-0.5">Detailed profile export per student. Sensitive fields excluded.</p>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <div class="relative">
+                                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                            <input id="dossierSearch" type="text" placeholder="Search student…"
+                                                class="fi pl-8 w-48 text-sm" oninput="filterDossier()">
+                                        </div>
+                                        <button onclick="exportAllStudentsPDF()"
+                                            class="flex items-center gap-2 text-xs font-bold bg-sky-600 text-white px-4 py-2 rounded-xl hover:bg-sky-700 transition shadow-md whitespace-nowrap">
+                                            <i class="fas fa-file-pdf"></i> Export All (PDF)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Passing filter -->
+                                <div class="flex items-center gap-2 mb-4 flex-wrap">
+                                    <span onclick="setDossierFilter('all', this)"   class="filter-pill fp-active">All</span>
+                                    <span onclick="setDossierFilter('pass', this)"  class="filter-pill">Passing (≥75%)</span>
+                                    <span onclick="setDossierFilter('fail', this)"  class="filter-pill">Failing (&lt;75%)</span>
+                                </div>
+
+                                <div class="tbl-wrap rounded-xl border border-slate-100">
+                                    <table class="data-table w-full text-sm">
+                                        <thead>
+                                            <tr class="border-b border-slate-100">
+                                                <th class="p-3 text-left">Student</th>
+                                                <th class="p-3 text-left hidden md:table-cell">Email</th>
+                                                <th class="p-3 text-left hidden lg:table-cell">Level / EXP</th>
+                                                <th class="p-3 text-left hidden lg:table-cell">Avg Score</th>
+                                                <th class="p-3 text-left hidden xl:table-cell">Interactions</th>
+                                                <th class="p-3 text-left hidden md:table-cell">Status</th>
+                                                <th class="p-3 text-center">Export</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="dossierTableBody">
+                                        <% if (students && students.length > 0) { %>
+                                        <% students.forEach(function(s) { %>
+                                        <%
+                                            var avgPct = s.avgScore != null ? parseFloat(s.avgScore) : null;
+                                            var isPassing = avgPct != null ? (avgPct >= 75) : null;
+                                            var statusClass = isPassing == null ? '' : (isPassing ? 'pass' : 'fail');
+                                        %>
+                                        <tr class="border-b border-slate-50 dossier-row" data-status="<%= statusClass %>"
+                                            data-search="<%= (s.first_name + ' ' + s.last_name + ' ' + (s.email || '')).toLowerCase() %>">
+                                            <td class="p-3">
+                                                <div class="flex items-center gap-2">
+                                                    <img src="/profile_uploads/<%= s.profile_pic || 'default_avatar.png' %>"
+                                                         class="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                                                         onerror="this.src='/profile_uploads/default_avatar.png'">
+                                                    <div>
+                                                        <p class="font-bold text-slate-800 text-sm leading-tight">
+                                                            <%= s.first_name %> <%= s.last_name %>
+                                                        </p>
+                                                        <p class="text-[10px] text-slate-400"><%= s.grade_level %> · <%= s.section || '—' %></p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="p-3 hidden md:table-cell text-xs text-slate-500"><%= s.email %></td>
+                                            <td class="p-3 hidden lg:table-cell text-xs">
+                                                <span class="font-bold text-indigo-700">Lv.<%= s.current_level %></span>
+                                                <span class="text-slate-400 ml-1"><%= (s.total_exp || 0).toLocaleString() %> EXP</span>
+                                            </td>
+                                            <td class="p-3 hidden lg:table-cell">
+                                                <% if (avgPct != null) { %>
+                                                <span class="font-black text-sm <%= isPassing ? 'text-emerald-600' : 'text-rose-500' %>">
+                                                    <%= avgPct.toFixed(1) %>%
+                                                </span>
+                                                <% } else { %>
+                                                <span class="text-xs text-slate-300">No scores</span>
+                                                <% } %>
+                                            </td>
+                                            <td class="p-3 hidden xl:table-cell text-xs font-bold text-blue-600">
+                                                <i class="fas fa-eye mr-1 text-slate-400"></i><%= s.interactionCount || 0 %>
+                                            </td>
+                                            <td class="p-3 hidden md:table-cell">
+                                                <% if (isPassing == null) { %>
+                                                <span class="badge bg-slate-100 text-slate-400">N/A</span>
+                                                <% } else if (isPassing) { %>
+                                                <span class="badge badge-pass">Passing</span>
+                                                <% } else { %>
+                                                <span class="badge badge-fail">Failing</span>
+                                                <% } %>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <button onclick="exportStudentDossier(<%= s.user_id %>, '<%= (s.first_name + ' ' + s.last_name).replace(/'/g, '') %>')"
+                                                    class="text-xs font-bold text-sky-600 border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-50 transition">
+                                                    <i class="fas fa-file-pdf mr-1"></i>PDF
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                                        <% } else { %>
+                                        <tr><td colspan="7" class="p-8 text-center text-slate-400 text-sm">No student data available.</td></tr>
+                                        <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="mt-2 text-xs text-slate-400 px-1">
+                                    <span id="dossierCountLabel">Showing <%= students ? students.length : 0 %> student(s)</span>
+                                </div>
+                            </div><!-- /tab-dossier -->
+
+                            <!-- ══════════════════════════════
+                                 TAB 4 — TEST PAPER GENERATOR
+                            ══════════════════════════════ -->
+                            <div id="tab-testpaper" class="tab-content p-5">
+                                <div class="mb-4">
+                                    <h3 class="font-black text-indigo-900 text-base">Smart Test Paper Generator</h3>
+                                    <p class="text-xs text-slate-400 mt-0.5">Select questions, generate a branded printable PDF with an auto answer key.</p>
+                                </div>
+
+                                <!-- Filters row -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Subject</label>
+                                        <select id="tpSubjectFilter" class="fi text-sm" onchange="filterTestPaperQuestions()">
+                                            <option value="">All Subjects</option>
+                                            <% if (subjects && subjects.length > 0) { %>
+                                            <% subjects.forEach(function(sub) { %>
+                                            <option value="<%= sub.subject_id %>"><%= sub.subject_name %></option>
+                                            <% }) %>
+                                            <% } %>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Quarter</label>
+                                        <select id="tpQuarterFilter" class="fi text-sm" onchange="filterTestPaperQuestions()">
+                                            <option value="">All Quarters</option>
+                                            <% if (quarters && quarters.length > 0) { %>
+                                            <% quarters.forEach(function(q) { %>
+                                            <option value="<%= q.quarter_id %>">Quarter <%= q.quarter_number %></option>
+                                            <% }) %>
+                                            <% } %>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Topic</label>
+                                        <select id="tpTopicFilter" class="fi text-sm" onchange="filterTestPaperQuestions()">
+                                            <option value="">All Topics</option>
+                                            <% if (topics && topics.length > 0) { %>
+                                            <% topics.forEach(function(t) { %>
+                                            <option value="<%= t.topic_id %>"><%= t.topic_name %></option>
+                                            <% }) %>
+                                            <% } %>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Question selection workspace -->
+                                <div class="mb-3 flex items-center justify-between flex-wrap gap-2">
+                                    <p class="text-sm font-bold text-slate-600">
+                                        <span id="tpSelectedCount">0</span> question(s) selected
+                                        <button onclick="clearTpSelection()" class="ml-2 text-xs text-rose-400 hover:text-rose-600 font-bold">Clear</button>
+                                    </p>
+                                    <div class="flex items-center gap-2">
+                                        <input id="tpExamTitle" type="text" placeholder="Exam Title (e.g. Q1 Pre-Test)" class="fi text-sm w-52">
+                                        <button onclick="generateTestPaper()"
+                                            class="flex items-center gap-2 text-xs font-bold bg-amber-500 text-white px-4 py-2 rounded-xl hover:bg-amber-600 transition shadow-md whitespace-nowrap">
+                                            <i class="fas fa-print"></i> Generate PDF
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="tpQuestionList" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                                <% if (questionBank && questionBank.length > 0) { %>
+                                <% questionBank.forEach(function(q, idx) { %>
+                                <div class="q-card border border-slate-100 rounded-xl p-3 cursor-pointer select-none"
+                                     data-qid="<%= q.question_id %>"
+                                     data-subject="<%= q.subject_id || '' %>"
+                                     data-quarter="<%= q.quarter_id || '' %>"
+                                     data-topic="<%= q.topic_id || '' %>"
+                                     data-mode="<%= q.input_mode %>"
+                                     onclick="toggleTpQuestion(this)">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-6 h-6 rounded-md border-2 border-slate-200 flex items-center justify-center flex-shrink-0 mt-0.5 transition" id="tpCheck_<%= q.question_id %>">
+                                            <i class="fas fa-check text-[10px] text-indigo-600 hidden"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="text-sm text-slate-700 font-medium leading-snug"><%= q.question_text %></p>
+                                            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md
+                                                    <%= q.input_mode === 'Standard' ? 'bg-indigo-50 text-indigo-600' : q.input_mode === 'Numeric' ? 'bg-amber-50 text-amber-600' : 'bg-cyan-50 text-cyan-600' %>">
+                                                    <%= q.input_mode.replace('_', ' ') %>
+                                                </span>
+                                                <span class="text-[10px] text-slate-400 font-bold"><%= q.difficulty %></span>
+                                                <span class="text-[10px] text-slate-400"><%= q.topic_name || '' %></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <% }) %>
+                                <% } else { %>
+                                <div class="py-12 text-center text-slate-400 text-sm">
+                                    <i class="fas fa-database text-3xl mb-2 block opacity-20"></i>
+                                    No questions available.
+                                </div>
+                                <% } %>
+                                </div>
+                            </div><!-- /tab-testpaper -->
+
+                            <!-- ══════════════════════════════
+                                 TAB 5 — ITEM ANALYSIS
+                            ══════════════════════════════ -->
+                            <div id="tab-analysis" class="tab-content p-6">
+                                <!-- Header Section -->
+                                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                                    <div>
+                                        <h3 class="font-black text-indigo-900 text-lg flex items-center gap-2">
+                                            <i class="fas fa-chart-pie text-indigo-500"></i> Item Analysis & Remediation Audit
+                                        </h3>
+                                        <p class="text-xs text-slate-400 mt-0.5">Tracking distractor patterns and 75%-rule compliance across the cohort.</p>
+                                    </div>
+                                    <!-- Quick Stats to fill top space -->
+                                    <div class="flex gap-2">
+                                        <div class="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 text-center">
+                                            <p class="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">Avg Score</p>
+                                            <p class="text-sm font-black text-emerald-700">82%</p>
+                                        </div>
+                                        <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 text-center">
+                                            <p class="text-[9px] font-black text-amber-600 uppercase tracking-tighter">Needs Audit</p>
+                                            <p class="text-sm font-black text-amber-700">
+                                                <%= remediationAudit.filter(r => (r.score/r.total_items) < 0.75).length %>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+
+                                    <!-- Column 1: Distractor Tracking -->
+                                    <div class="glass-card rounded-2xl border border-slate-100 p-5 flex flex-col">
+                                        <h4 class="font-black text-slate-700 text-sm mb-4 flex items-center justify-between">
+                                            <span class="flex items-center gap-2">
+                                                <i class="fas fa-crosshairs text-rose-400"></i> Distractor Tracking
+                                            </span>
+                                            <span class="text-[9px] font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full uppercase">Top Wrong Answers</span>
+                                        </h4>
+
+                                        <div class="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1" style="max-height: 500px;">
+                                            <% if (itemAnalysis && itemAnalysis.length > 0) { %>
+                                                <% itemAnalysis.forEach(function(ia) { %>
+                                                    <div class="bg-slate-50/50 border border-slate-100 rounded-xl p-3 hover:border-indigo-200 transition-colors">
+                                                        <p class="text-xs font-bold text-slate-700 leading-snug mb-3 italic">"<%= ia.question_text %>"</p>
+                                                        
+                                                        <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                                                            <% var opts = ['A','B','C','D']; %>
+                                                            <% opts.forEach(function(opt) { %>
+                                                                <% 
+                                                                    var cnt = ia.distractors ? (ia.distractors[opt] || 0) : 0;
+                                                                    var pct = ia.totalAttempts > 0 ? ((cnt / ia.totalAttempts) * 100).toFixed(0) : 0;
+                                                                    var isCorrect = opt === ia.correct_answer;
+                                                                %>
+                                                                <div class="flex items-center gap-2">
+                                                                    <span class="text-[10px] font-black w-3 <%= isCorrect ? 'text-emerald-500' : 'text-slate-400' %>"><%= opt %></span>
+                                                                    <div class="flex-1 h-1.5 bg-white rounded-full overflow-hidden border border-slate-100">
+                                                                        <div class="h-full rounded-full <%= isCorrect ? 'bg-emerald-500' : 'bg-rose-400/60' %>" style="width:<%= pct %>%"></div>
+                                                                    </div>
+                                                                    <span class="text-[9px] font-bold text-slate-500 w-6 text-right"><%= pct %>%</span>
+                                                                </div>
+                                                            <% }) %>
+                                                        </div>
+                                                    </div>
+                                                <% }) %>
+                                            <% } else { %>
+                                                <div class="h-full flex flex-col items-center justify-center py-10 opacity-50">
+                                                    <i class="fas fa-chart-bar text-3xl mb-2"></i>
+                                                    <p class="text-xs italic">No data available</p>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                    </div>
+
+                                    <!-- Column 2: Remediation Audit -->
+                                    <div class="glass-card rounded-2xl border border-slate-100 p-5 flex flex-col">
+                                        <h4 class="font-black text-slate-700 text-sm mb-4 flex items-center gap-2">
+                                            <i class="fas fa-stethoscope text-amber-400"></i> Remediation Status (75% Rule)
+                                        </h4>
+
+                                        <div class="overflow-y-auto pr-2 custom-scrollbar flex-1" style="max-height: 500px;">
+                                            <% if (remediationAudit && remediationAudit.length > 0) { %>
+                                                <div class="space-y-2">
+                                                    <% remediationAudit.forEach(function(ra) { 
+                                                        var rPct = ra.total_items > 0 ? ((ra.score / ra.total_items) * 100) : 0;
+                                                        var rPass = rPct >= 75;
+                                                    %>
+                                                        <div class="flex items-center justify-between p-3 rounded-xl border <%= rPass ? 'border-slate-50 bg-slate-50/30' : 'border-rose-100 bg-rose-50/30' %>">
+                                                            <div class="flex-1">
+                                                                <p class="text-xs font-black text-slate-700"><%= ra.student_name %></p>
+                                                                <div class="flex items-center gap-2 mt-1">
+                                                                    <span class="text-[10px] font-bold <%= rPass ? 'text-emerald-600' : 'text-rose-600' %>">
+                                                                        <%= ra.score %>/<%= ra.total_items %> (<%= rPct.toFixed(0) %>%)
+                                                                    </span>
+                                                                    <span class="text-[10px] text-slate-300">|</span>
+                                                                    <% if (ra.hasMaterialView) { %>
+                                                                        <span class="text-[9px] text-indigo-500 font-bold uppercase"><i class="fas fa-eye mr-1"></i>Material Viewed</span>
+                                                                    <% } else { %>
+                                                                        <span class="text-[9px] text-slate-400 font-bold uppercase">Not Viewed</span>
+                                                                    <% } %>
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <span class="text-[9px] font-black uppercase px-2 py-1 rounded-md <%= rPass ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600' %>">
+                                                                    <%= rPass ? 'Passed' : 'Needs Action' %>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    <% }) %>
+                                                </div>
+                                            <% } else { %>
+                                                <div class="h-full flex flex-col items-center justify-center py-10 opacity-50">
+                                                    <i class="fas fa-user-shield text-3xl mb-2"></i>
+                                                    <p class="text-xs italic">No remediation logs</p>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div><!-- /glass-card tabs -->
+                    </div><!-- /tabs column -->
+
+                    <!-- ══════════════════════════════
+                         AUDIT TRAIL SIDEBAR
+                    ══════════════════════════════ -->
+                    <div class="w-full xl:w-80 flex-shrink-0">
+                        <div class="glass-card rounded-2xl border border-slate-100 shadow-sm p-5 sticky top-4">
+                            <h3 class="font-black text-slate-800 text-sm mb-4 flex items-center gap-2">
+                                <i class="fas fa-shield-halved text-indigo-400"></i>
+                                Activity Audit Feed
+                                <span class="live-dot ml-auto"></span>
+                            </h3>
+                            <div class="space-y-1 max-h-[520px] overflow-y-auto no-scrollbar">
+                            <% if (activityLogs && activityLogs.length > 0) { %>
+                            <% activityLogs.forEach(function(log) { %>
+                            <div class="audit-item p-3 rounded-xl">
+                                <div class="flex items-start gap-2">
+                                    <div class="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center
+                                        <%= log.actor_role === 'Admin' ? 'bg-rose-50 text-rose-500' : log.actor_role === 'Teacher' ? 'bg-emerald-50 text-emerald-600' : 'bg-sky-50 text-sky-500' %>">
+                                        <i class="fas <%= log.actor_role === 'Admin' ? 'fa-shield-halved' : log.actor_role === 'Teacher' ? 'fa-chalkboard-user' : 'fa-user-graduate' %> text-[10px]"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-slate-700 truncate"><%= log.actor_name || log.actor_role %></p>
+                                        <p class="text-[10px] text-slate-400 leading-snug mt-0.5"><%= log.description || log.action %></p>
+                                        <p class="text-[9px] text-slate-300 mt-1 font-mono">
+                                            <%= new Date(log.created_at).toLocaleString('en-PH', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) %>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }) %>
+                            <% } else { %>
+                            <div class="py-8 text-center text-slate-400 text-sm">
+                                <i class="fas fa-shield-halved text-3xl mb-2 block opacity-20"></i>
+                                No recent activity.
+                            </div>
+                            <% } %>
+                            </div>
+                        </div>
+                    </div><!-- /audit sidebar -->
+
+                </div><!-- /main layout -->
+
+            </div><!-- /p-8 -->
+
+            <!-- FOOTER -->
+            <footer class="bg-white border-t border-cyan-100 py-6 px-8 mt-auto w-full">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-2 max-w-[1600px] mx-auto">
+                    <p class="text-[11px] text-indigo-400 font-black uppercase tracking-tight">
+                        &copy; 2026 <span class="text-cyan-600">Chemistry Arcade</span> — Mabini College v2.5.0
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest">Support Lab</a>
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest border-l pl-4 border-indigo-100">Atomic Logs</a>
+                    </div>
+                </div>
+            </footer>
+        </div><!-- /overflow-y-auto -->
+    </main>
+</div><!-- /flex wrapper -->
+
+<!-- Toast -->
+<div id="toast"><i id="toastIcon" class="fas"></i> <span id="toastMsg"></span></div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script>
+// ─────────────────────────────────
+// SIDEBAR
+// ─────────────────────────────────
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    document.getElementById('sidebarOverlay').classList.toggle('hidden');
+}
+
+// ─────────────────────────────────
+// TABS
+// ─────────────────────────────────
+function switchTab(id, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+}
+
+// ─────────────────────────────────
+// TOAST
+// ─────────────────────────────────
+function showToast(msg, type) {
+    type = type || 'info';
+    var t = document.getElementById('toast');
+    var i = document.getElementById('toastIcon');
+    document.getElementById('toastMsg').textContent = msg;
+    i.className = 'fas ' + (type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-circle-xmark' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-info');
+    t.className = 'show ' + type;
+    setTimeout(function() { t.className = ''; }, 3600);
+}
+
+// ─────────────────────────────────
+// CURRICULUM ACCORDION
+// ─────────────────────────────────
+function toggleAccordion(trigger) {
+    var body = trigger.nextElementSibling;
+    var icon = trigger.querySelector('i.fa-chevron-down');
+    body.classList.toggle('open');
+    if (icon) icon.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+// ─────────────────────────────────
+// DOSSIER SEARCH + FILTER
+// ─────────────────────────────────
+var _dossierFilter = 'all';
+
+function setDossierFilter(filter, el) {
+    _dossierFilter = filter;
+    document.querySelectorAll('.filter-pill').forEach(function(p) { p.classList.remove('fp-active'); });
+    el.classList.add('fp-active');
+    applyDossierFilters();
+}
+
+function filterDossier() {
+    applyDossierFilters();
+}
+
+function applyDossierFilters() {
+    var q = document.getElementById('dossierSearch').value.toLowerCase().trim();
+    var n = 0;
+    document.querySelectorAll('.dossier-row').forEach(function(r) {
+        var matchSearch = !q || r.dataset.search.includes(q);
+        var matchStatus = _dossierFilter === 'all' ||
+            (_dossierFilter === 'pass' && r.dataset.status === 'pass') ||
+            (_dossierFilter === 'fail' && r.dataset.status === 'fail');
+        var show = matchSearch && matchStatus;
+        r.style.display = show ? '' : 'none';
+        if (show) n++;
+    });
+    document.getElementById('dossierCountLabel').textContent = 'Showing ' + n + ' student(s)';
+}
+
+// ─────────────────────────────────
+// TEST PAPER — QUESTION SELECTION
+// ─────────────────────────────────
+var _tpSelected = {};
+
+function toggleTpQuestion(card) {
+    var qid = card.dataset.qid;
+    var checkIcon = document.getElementById('tpCheck_' + qid);
+    if (_tpSelected[qid]) {
+        delete _tpSelected[qid];
+        card.classList.remove('selected');
+        card.style.borderColor = '';
+        card.style.background  = '';
+        if (checkIcon) checkIcon.querySelector('i').classList.add('hidden');
+        checkIcon.style.borderColor = '';
+    } else {
+        _tpSelected[qid] = true;
+        card.classList.add('selected');
+        if (checkIcon) {
+            checkIcon.querySelector('i').classList.remove('hidden');
+            checkIcon.style.borderColor = '#6366f1';
+        }
+    }
+    document.getElementById('tpSelectedCount').textContent = Object.keys(_tpSelected).length;
+}
+
+function clearTpSelection() {
+    _tpSelected = {};
+    document.querySelectorAll('.q-card').forEach(function(c) {
+        c.classList.remove('selected');
+        var qid = c.dataset.qid;
+        var chk = document.getElementById('tpCheck_' + qid);
+        if (chk) { chk.querySelector('i').classList.add('hidden'); chk.style.borderColor = ''; }
+    });
+    document.getElementById('tpSelectedCount').textContent = '0';
+}
+
+function filterTestPaperQuestions() {
+    var subj    = document.getElementById('tpSubjectFilter').value;
+    var quarter = document.getElementById('tpQuarterFilter').value;
+    var topic   = document.getElementById('tpTopicFilter').value;
+    document.querySelectorAll('.q-card').forEach(function(c) {
+        var matchSubj    = !subj    || c.dataset.subject  === subj;
+        var matchQuarter = !quarter || c.dataset.quarter  === quarter;
+        var matchTopic   = !topic   || c.dataset.topic    === topic;
+        c.style.display  = (matchSubj && matchQuarter && matchTopic) ? '' : 'none';
+    });
+}
+
+function generateTestPaper() {
+    var ids = Object.keys(_tpSelected);
+    if (ids.length === 0) { showToast('Select at least one question.', 'warning'); return; }
+    var title = document.getElementById('tpExamTitle').value.trim() || 'Exam';
+    var url   = '/admin/rm/test-paper?ids=' + ids.join(',') + '&title=' + encodeURIComponent(title);
+    window.open(url, '_blank');
+}
+
+// ─────────────────────────────────
+// EXPORT ACTIONS
+// ─────────────────────────────────
+function exportCurriculum() {
+    window.location.href = '/admin/rm/export/curriculum';
+}
+
+function exportClassSummary() {
+    window.location.href = '/admin/rm/export/class-summary';
+}
+
+function exportClassDetail(classId, className) {
+    window.open('/admin/rm/export/class/' + classId + '?name=' + encodeURIComponent(className), '_blank');
+}
+
+function exportStudentDossier(userId, name) {
+    window.open('/admin/rm/export/student/' + userId + '?name=' + encodeURIComponent(name), '_blank');
+}
+
+function exportAllStudentsPDF() {
+    var filter = _dossierFilter;
+    window.open('/admin/rm/export/students-all?status=' + filter, '_blank');
+}
+</script>
+<!-- ═══════════════════════════════════════════════════════
+     NOTIFICATION PANEL — Reusable across all admin pages
+     Fetches from GET /admin/notifications on open.
+═══════════════════════════════════════════════════════ -->
+
+<!-- Backdrop -->
+<div id="notifBackdrop" class="fixed inset-0 z-[998] hidden" onclick="closeNotifPanel()"></div>
+
+<!-- Slide-in Panel -->
+<div id="notifPanel"
+     class="fixed top-0 right-0 h-full w-full max-w-sm z-[999] flex flex-col
+            bg-white border-l border-cyan-100 shadow-2xl
+            transform translate-x-full transition-transform duration-300 ease-in-out">
+
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-cyan-100 bg-gradient-to-r from-indigo-950 to-indigo-900 flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                <i class="fas fa-bell text-cyan-400"></i>
+            </div>
+            <div>
+                <p class="text-sm font-black text-white tracking-tight">Notifications</p>
+                <p class="text-[10px] text-indigo-400 font-semibold" id="notifSubtitle">Loading…</p>
+            </div>
+        </div>
+        <button onclick="closeNotifPanel()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+            <i class="fas fa-times text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="flex gap-0 border-b border-cyan-100 overflow-x-auto flex-shrink-0 bg-slate-50" id="notifTabs">
+        <button class="notif-tab active px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-cyan-500 text-cyan-600 transition" data-tab="all">All</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="alerts">Alerts</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="activity">Activity</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="live">Live</button>
+    </div>
+
+    <!-- Scrollable Body -->
+    <div id="notifBody" class="flex-1 overflow-y-auto p-4 space-y-3" style="scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent;">
+        <!-- Skeleton loader -->
+        <div id="notifSkeleton" class="space-y-3">
+            <% for(let i=0;i<5;i++) { %>
+            <div class="animate-pulse flex gap-3 items-start">
+                <div class="w-8 h-8 rounded-lg bg-slate-200 flex-shrink-0"></div>
+                <div class="flex-1 space-y-1.5">
+                    <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <!-- Actual content injected by JS -->
+        <div id="notifContent" class="hidden space-y-3"></div>
+    </div>
+
+    <!-- Panel Footer -->
+    <div class="px-5 py-3 border-t border-cyan-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
+        <p class="text-[10px] text-slate-400 font-semibold">Auto-refreshes every 60s</p>
+        <button onclick="loadNotifications()" class="text-[11px] font-black text-cyan-600 hover:text-cyan-800 flex items-center gap-1 transition">
+            <i class="fas fa-rotate-right text-[10px]"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<style>
+    .notif-tab.active { border-bottom-color: #06b6d4 !important; color: #0891b2 !important; }
+    .notif-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; transition: border-color 0.15s, box-shadow 0.15s; }
+    .notif-item:hover { border-color: #06b6d4; box-shadow: 0 4px 12px rgba(6,182,212,0.08); }
+    .notif-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+    .notif-title { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.35; }
+    .notif-sub { font-size: 10.5px; color: #64748b; margin-top: 1px; }
+    .notif-time { font-size: 10px; color: #94a3b8; white-space: nowrap; margin-left: auto; padding-left: 6px; flex-shrink: 0; }
+    .notif-section-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; padding: 4px 0 6px; }
+    .notif-link { font-size: 10.5px; color: #06b6d4; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .notif-link:hover { color: #0891b2; }
+</style>
+
+<script>
+(function() {
+    let _notifData   = null;
+    let _activeTab   = 'all';
+    let _refreshTimer = null;
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return '';
+        const diff = (Date.now() - new Date(dateStr)) / 1000;
+        if (diff < 60)   return 'just now';
+        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+        return Math.floor(diff/86400) + 'd ago';
+    }
+
+    function fmtDate(dateStr) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    window.toggleNotifPanel = function() {
+        const panel    = document.getElementById('notifPanel');
+        const backdrop = document.getElementById('notifBackdrop');
+        const isOpen   = !panel.classList.contains('translate-x-full');
+        if (isOpen) { closeNotifPanel(); return; }
+        panel.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        loadNotifications();
+        _refreshTimer = setInterval(loadNotifications, 60000);
+    };
+
+    window.closeNotifPanel = function() {
+        document.getElementById('notifPanel').classList.add('translate-x-full');
+        document.getElementById('notifBackdrop').classList.add('hidden');
+        document.body.style.overflow = '';
+        clearInterval(_refreshTimer);
+    };
+
+    window.loadNotifications = async function() {
+        document.getElementById('notifSkeleton').classList.remove('hidden');
+        document.getElementById('notifContent').classList.add('hidden');
+        try {
+            const res  = await fetch('/admin/notifications');
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            _notifData = data;
+            updateBell(data.total);
+            renderTab(_activeTab);
+        } catch(e) {
+            document.getElementById('notifContent').innerHTML =
+                '<div class="py-10 text-center text-slate-400 text-xs">Failed to load notifications.</div>';
+            document.getElementById('notifContent').classList.remove('hidden');
+            document.getElementById('notifSkeleton').classList.add('hidden');
+        }
+    };
+
+    function updateBell(count) {
+        const dot   = document.getElementById('notifDot');
+        const badge = document.getElementById('notifCount');
+        if (count > 0) {
+            dot.classList.remove('hidden');
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.classList.remove('hidden');
+        } else {
+            dot.classList.add('hidden');
+            badge.classList.add('hidden');
+        }
+        document.getElementById('notifSubtitle').textContent =
+            count > 0 ? count + ' item' + (count !== 1 ? 's' : '') + ' need attention' : 'All clear';
+    }
+
+    function renderTab(tab) {
+        _activeTab = tab;
+        const d = _notifData;
+        if (!d) return;
+
+        let html = '';
+
+        // ── ALL tab ──
+        if (tab === 'all' || tab === 'alerts') {
+            const alertItems = [
+                ...d.expiredInvites.map(i => ({
+                    icon: 'fas fa-envelope-circle-check', iconBg: 'bg-rose-50', iconColor: 'text-rose-500',
+                    title: 'Expired Invitation',
+                    sub: i.email + ' · ' + (i.role || 'Unknown role'),
+                    time: fmtDate(i.expires_at),
+                    link: '/admin/user_access_control', linkLabel: 'View UAC'
+                })),
+                ...d.flaggedStudents.map(s => ({
+                    icon: 'fas fa-flag', iconBg: 'bg-amber-50', iconColor: 'text-amber-500',
+                    title: 'Flagged Student',
+                    sub: s.full_name + (s.assessment_name ? ' · ' + s.assessment_name : ''),
+                    time: '',
+                    link: '/admin/user_access_control', linkLabel: 'View Student'
+                })),
+                ...d.lockedPastDue.map(a => ({
+                    icon: 'fas fa-lock', iconBg: 'bg-orange-50', iconColor: 'text-orange-500',
+                    title: 'Assessment Past Due & Locked',
+                    sub: a.assessment_name + ' · ' + (a.subject_name || ''),
+                    time: fmtDate(a.due_date),
+                    link: '/admin/gaming_question_bank', linkLabel: 'Manage'
+                })),
+                ...d.overdueDeadlines.map(e => ({
+                    icon: 'fas fa-calendar-xmark', iconBg: 'bg-red-50', iconColor: 'text-red-500',
+                    title: 'Overdue Deadline',
+                    sub: e.event_title + (e.subject_name ? ' · ' + e.subject_name : ''),
+                    time: fmtDate(e.event_date),
+                    link: '/admin/academic_management', linkLabel: 'View'
+                })),
+                ...d.pendingQuestions.map(q => ({
+                    icon: 'fas fa-robot', iconBg: 'bg-indigo-50', iconColor: 'text-indigo-500',
+                    title: 'AI Question Awaiting Approval',
+                    sub: q.question_text.substring(0, 55) + (q.question_text.length > 55 ? '…' : ''),
+                    time: timeAgo(q.created_at),
+                    link: '/admin/gaming_question_bank', linkLabel: 'Review'
+                })),
+            ];
+
+            if (tab === 'alerts' || tab === 'all') {
+                if (alertItems.length === 0) {
+                    if (tab === 'alerts') html += emptyState('fa-shield-halved', 'No alerts', 'Everything looks good!');
+                } else {
+                    if (tab === 'all') html += '<div class="notif-section-label"><i class="fas fa-triangle-exclamation mr-1 text-rose-400"></i>Alerts Requiring Action</div>';
+                    alertItems.forEach(item => { html += notifItem(item); });
+                }
+            }
+        }
+
+        // ── ACTIVITY tab (pending & new users) ──
+        if (tab === 'activity' || tab === 'all') {
+            const actItems = [
+                ...d.pendingInvites.map(i => ({
+                    icon: 'fas fa-paper-plane', iconBg: 'bg-cyan-50', iconColor: 'text-cyan-500',
+                    title: 'Pending Invitation',
+                    sub: i.email + ' · ' + (i.role || ''),
+                    time: timeAgo(i.created_at),
+                    link: '/admin/user_access_control', linkLabel: 'View'
+                })),
+                ...d.newUsers.map(u => ({
+                    icon: 'fas fa-user-plus', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500',
+                    title: 'New ' + u.role + ' Registered',
+                    sub: u.full_name,
+                    time: timeAgo(u.created_at),
+                    link: '/admin/user_access_control', linkLabel: 'View Profile'
+                })),
+            ];
+
+            if (tab === 'activity') {
+                if (actItems.length === 0) html += emptyState('fa-clock-rotate-left', 'No recent activity', 'No new users or pending invites.');
+                else actItems.forEach(item => { html += notifItem(item); });
+            } else if (tab === 'all' && actItems.length > 0) {
+                html += '<div class="notif-section-label mt-2"><i class="fas fa-bolt mr-1 text-cyan-400"></i>Recent Activity</div>';
+                actItems.forEach(item => { html += notifItem(item); });
+            }
+        }
+
+        // ── LIVE tab (active sessions) ──
+        if (tab === 'live' || tab === 'all') {
+            if (tab === 'live') {
+                if (d.activeSessions.length === 0) {
+                    html += emptyState('fa-gamepad', 'No live sessions', 'No students are playing right now.');
+                } else {
+                    d.activeSessions.forEach(s => {
+                        html += notifItem({
+                            icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
+                            title: s.student_name + ' is playing',
+                            sub: s.assessment_name + ' · ' + s.player_mode,
+                            time: timeAgo(s.start_time),
+                            link: null
+                        });
+                    });
+                }
+            } else if (tab === 'all' && d.activeSessions.length > 0) {
+                html += '<div class="notif-section-label mt-2"><i class="fas fa-circle text-green-400 mr-1"></i>Live Sessions (' + d.activeSessions.length + ')</div>';
+                d.activeSessions.slice(0, 3).forEach(s => {
+                    html += notifItem({
+                        icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
+                        title: s.student_name + ' is playing',
+                        sub: s.assessment_name + ' · ' + s.player_mode,
+                        time: timeAgo(s.start_time),
+                        link: null
+                    });
+                });
+            }
+        }
+
+        if (tab === 'all' && html === '') {
+            html = emptyState('fa-bell-slash', 'All clear!', 'No alerts or pending items.');
+        }
+
+        document.getElementById('notifContent').innerHTML = html;
+        document.getElementById('notifContent').classList.remove('hidden');
+        document.getElementById('notifSkeleton').classList.add('hidden');
+    }
+
+    function notifItem(item) {
+        return '<div class="notif-item">' +
+            '<div class="notif-icon ' + item.iconBg + ' ' + item.iconColor + '">' +
+                '<i class="' + item.icon + '"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<p class="notif-title">' + item.title + '</p>' +
+                '<p class="notif-sub truncate">' + item.sub + '</p>' +
+                (item.link ? '<a href="' + item.link + '" class="notif-link">' + item.linkLabel + ' →</a>' : '') +
+            '</div>' +
+            (item.time ? '<span class="notif-time">' + item.time + '</span>' : '') +
+        '</div>';
+    }
+
+    function emptyState(icon, title, sub) {
+        return '<div class="py-10 text-center">' +
+            '<i class="fas ' + icon + ' text-3xl text-slate-200 mb-3 block"></i>' +
+            '<p class="text-sm font-bold text-slate-400">' + title + '</p>' +
+            '<p class="text-xs text-slate-300 mt-1">' + sub + '</p>' +
+        '</div>';
+    }
+
+    // Tab switching
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.notif-tab').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.notif-tab').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                renderTab(btn.dataset.tab);
+            });
+        });
+
+        // Auto-poll bell count every 2 minutes even when panel is closed
+        setInterval(async function() {
+            try {
+                const res  = await fetch('/admin/notifications');
+                const data = await res.json();
+                if (data.success) updateBell(data.total);
+            } catch(_) {}
+        }, 120000);
+    });
+})();
+</script>
+
+</body>
+</html>

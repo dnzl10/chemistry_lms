@@ -1,0 +1,2400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Bank | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdfa;
+            background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+        #sidebar {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        #mainScroll { overflow-y: auto; }
+        #mainScroll::-webkit-scrollbar { width: 5px; }
+        #mainScroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+
+        /* ── Card base ── */
+        .section-card { background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; overflow: hidden; }
+        .section-header { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+        /* ── Question card ── */
+        .q-card { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 14px 16px; transition: box-shadow .2s, border-color .2s; }
+        .q-card:hover { box-shadow: 0 4px 16px rgba(99,102,241,.1); border-color: #c7d2fe; }
+        .q-card.selected { border-color: #6366f1; background: #faf5ff; }
+        .q-card.ai-generated { border-left: 3px solid #8b5cf6; }
+
+        /* ── Difficulty badges ── */
+        .diff-easy   { background: #dcfce7; color: #15803d; }
+        .diff-average{ background: #fef9c3; color: #a16207; }
+        .diff-difficult{ background: #fee2e2; color: #b91c1c; }
+
+        /* ── Mechanic badge ── */
+        .mech-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 700; background: #ede9fe; color: #5b21b6; }
+
+        /* ── Input / select ── */
+        .form-input, .form-select, .form-textarea {
+            width: 100%; padding: 8px 11px; border: 1px solid #e2e8f0; border-radius: 9px;
+            font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b;
+            outline: none; transition: border-color .2s, box-shadow .2s; background: white;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+        .form-textarea { resize: vertical; min-height: 72px; }
+        .form-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; display: block; }
+
+        /* ── Buttons ── */
+        .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; border: 1px solid transparent; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .btn-primary  { background: #6366f1; color: white; border-color: #4f46e5; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-ai       { background: linear-gradient(90deg,#7c3aed,#6366f1); color: white; border: none; }
+        .btn-ai:hover { opacity: .9; }
+        .btn-outline  { background: white; color: #475569; border-color: #e2e8f0; }
+        .btn-outline:hover { border-color: #6366f1; color: #6366f1; background: #faf5ff; }
+        .btn-danger   { background: white; color: #dc2626; border-color: #fca5a5; }
+        .btn-danger:hover { background: #fff1f2; }
+        .btn-success  { background: #059669; color: white; border-color: #047857; }
+        .btn-success:hover { background: #047857; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+        /* ── Modal ── */
+        .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(15,23,42,.55); align-items: center; justify-content: center; padding: 16px; }
+        .modal-backdrop.open { display: flex; }
+        .modal-card { background: white; border-radius: 1.25rem; width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(15,23,42,.2); animation: mIn .2s ease; }
+        .modal-card::-webkit-scrollbar { width: 4px; }
+        .modal-card::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 9999px; }
+        @keyframes mIn { from { opacity:0; transform:scale(.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; position: sticky; top: 0; background: white; z-index: 5; }
+        .modal-body   { padding: 18px 20px; display: flex; flex-direction: column; gap: 13px; }
+        .modal-footer { padding: 14px 20px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; }
+
+        /* ── Option row ── */
+        .option-row { display: flex; align-items: center; gap: 8px; }
+        .option-letter { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+        .opt-a { background: #e0f2fe; color: #0369a1; }
+        .opt-b { background: #dcfce7; color: #15803d; }
+        .opt-c { background: #fef3c7; color: #a16207; }
+        .opt-d { background: #ffe4e6; color: #be123c; }
+        .correct-radio { display: none; }
+        .correct-label { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #e2e8f0; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
+        .correct-radio:checked + .correct-label { border-color: #059669; background: #059669; }
+        .correct-radio:checked + .correct-label::after { content: '✓'; font-size: 11px; color: white; font-weight: 800; }
+
+        /* ── Sequence element row ── */
+        .seq-element-input { width: 70px; text-align: center; font-weight: 700; }
+        .seq-subscript-input { width: 52px; text-align: center; }
+
+        /* ── AI arcade loader ── */
+        .arcade-loader { display: none; flex-direction: column; align-items: center; gap: 14px; padding: 32px 0; }
+        .arcade-loader.active { display: flex; }
+        .pixel-bar { height: 12px; background: linear-gradient(90deg,#7c3aed,#06b6d4,#10b981); border-radius: 6px; animation: pixelFill 1.8s ease-in-out infinite; }
+        @keyframes pixelFill { 0% { width:0% } 60% { width:85% } 85% { width:92% } 100% { width:92% } }
+        .glitch-text { font-size: 13px; font-weight: 800; color: #6366f1; letter-spacing: .08em; animation: glitch 1.2s infinite; }
+        @keyframes glitch { 0%,100%{text-shadow:none;color:#6366f1} 33%{text-shadow:2px 0 #06b6d4,-2px 0 #ec4899;color:#8b5cf6} 66%{text-shadow:-2px 0 #06b6d4,2px 0 #10b981;color:#7c3aed} }
+
+        /* ── Filter pill ── */
+        .filter-pill { padding: 5px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; border: 1px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; transition: all .15s; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .filter-pill:hover, .filter-pill.active { background: #ede9fe; border-color: #a5b4fc; color: #4f46e5; }
+
+        /* ── Toast ── */
+        #qb-toast { position: fixed; bottom: 24px; right: 24px; z-index: 999; background: #1e293b; color: white; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(15,23,42,.2); transform: translateY(80px); opacity: 0; transition: all .3s ease; pointer-events: none; display: flex; align-items: center; gap: 8px; max-width: 320px; }
+        #qb-toast.show { transform: translateY(0); opacity: 1; }
+        #qb-toast.success { background: #064e3b; }
+        #qb-toast.error   { background: #7f1d1d; }
+
+        /* ── Checkbox ── */
+        .q-checkbox { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; flex-shrink: 0; }
+
+        /* ── Fade in ── */
+        @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .fade-in { animation: fadeUp .2s ease forwards; }
+
+        /* ── Right panel tabs ── */
+        .rpanel-tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; color: #64748b; cursor: pointer; border: none; background: transparent; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; gap: 4px; transition: all .15s; }
+        .rpanel-tab:hover  { background: white; color: #334155; }
+        .rpanel-tab.active { background: white; color: #6366f1; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+        .rpanel-panel { display: none; }
+        .rpanel-panel.active { display: block; }
+
+        /* ── Mechanic preview box ── */
+        .mech-preview { border: 1.5px dashed #a5b4fc; border-radius: 10px; padding: 12px; background: #faf5ff; font-size: 11px; color: #6d28d9; text-align: center; }
+
+        /* ── Search input ── */
+        .search-input { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 14px 8px 34px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif; outline: none; transition: border-color .2s, box-shadow .2s; background: white; width: 220px; }
+        .search-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+        /* ── 3-column layout ── */
+        .qb-layout { display: grid; grid-template-columns: 1fr 2fr 320px; gap: 16px; align-items: start; }
+        @media (max-width: 1200px) { .qb-layout { grid-template-columns: 1fr 2fr; } .right-panel { display: none; } }
+        @media (max-width: 768px)  { .qb-layout { grid-template-columns: 1fr; } .right-panel { display: none; } }
+
+        /* Nav active state */
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 4px 16px rgba(6,182,212,0.3), 0 2px 8px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ── Page-level tabs (Question Bank / Verification / Performance) ── */
+        .page-tab { padding: 9px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer; border: none; background: transparent; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; gap: 6px; transition: all .15s; }
+        .page-tab:hover  { background: white; color: #334155; }
+        .page-tab.active { background: white; color: #6366f1; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+
+        /* ── Verification status badges ── */
+        .vs-pending  { background: #fef3c7; color: #92400e; }
+        .vs-approved { background: #dcfce7; color: #14532d; }
+        .vs-rejected { background: #fee2e2; color: #991b1b; }
+
+        /* ── Performance gap table ── */
+        .perf-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .perf-table th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid #f1f5f9; }
+        .perf-table td { padding: 9px 12px; border-bottom: 1px solid #f8fafc; color: #334155; vertical-align: top; }
+        .perf-table tr:hover td { background: #fafbff; }
+        .error-bar-wrap { background: #f1f5f9; border-radius: 999px; height: 6px; width: 100px; overflow: hidden; }
+        .error-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f43f5e, #e11d48); }
+
+        /* ── Remediation panel ── */
+        .rem-card { background: #f8faff; border: 1px solid #e0e7ff; border-radius: 10px; padding: 12px 14px; }
+
+        /* ── Student tracking accordion ── */
+        .class-group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8faff; border: 1px solid #e0e7ff; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; color: #3730a3; }
+        .class-group-body { display: none; padding: 10px 0 4px 0; }
+        .class-group-body.open { display: block; }
+
+        /* ── Points field highlight ── */
+        .points-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 700; background: #fef3c7; color: #b45309; }
+    </style>
+    </style>
+</head>
+<body class="text-slate-900">
+
+<div id="qb-toast"></div>
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+        <aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60" style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
+            <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+                <!-- Mobile close button -->
+                <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+
+                <!-- Logo -->
+                <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+
+                <!-- Brand name -->
+                <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                    Elem<span class="text-white">enta</span>
+                </h1>
+                <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Teacher Portal</p>
+
+                <!-- Divider -->
+                <!-- <div class="w-full mt-5 border-t border-indigo-800/60"></div> -->
+            </div>
+
+            <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/classes" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-chalkboard-user w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">My Classes</span>
+                        </a>
+                    </div>
+
+                    <div class="space-y-1">
+                        <a href="/teacher/question-bank" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-database w-5 text-rose-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Question Bank</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Engagement and Communication</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/forums" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-comments w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Forums</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Reports and Analytics</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/reports" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-file-export w-5 text-fuchsia-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Reports</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
+                <a href="/logout"
+                class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+                    <i class="fas fa-right-from-bracket w-5"></i> Log Out
+                </a>
+            </div>
+        </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- Header -->
+        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="hidden sm:block">
+                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">Question Bank</h2>
+                    <p class="text-xs text-slate-400">Manage, create & AI-generate questions</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 md:gap-6">
+                <div class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition">
+                    <i class="far fa-bell text-xl text-cyan-600"></i>
+                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                </div>
+                <div class="flex items-center gap-3 pl-4 border-l border-cyan-100">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-[10px] uppercase font-black text-cyan-500 tracking-widest">Instructor</p>
+                    </div>
+                    <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                         class="w-10 h-10 rounded-xl object-cover ring-2 ring-cyan-400 shadow-sm shadow-cyan-200"
+                         onerror="this.src='/profile_uploads/default_avatar.png'">
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== SCROLLABLE BODY ===== -->
+        <div id="mainScroll" class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
+            <div class="p-4 md:p-8 flex-1">
+
+                <!-- ── PAGE TABS ── -->
+                <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:14px;padding:4px;margin-bottom:24px;width:fit-content">
+                    <button class="page-tab active" onclick="switchPageTab('main', this)">
+                        <i class="fas fa-database text-xs"></i> Question Bank
+                    </button>
+                    <button class="page-tab" onclick="switchPageTab('verification', this)">
+                        <i class="fas fa-shield-check text-xs"></i> Verification
+                        <% const pendingCount = questions.filter(q => q.verification_status === 'Pending').length; %>
+                        <% if (pendingCount > 0) { %>
+                        <span style="background:#f43f5e;color:white;border-radius:9999px;padding:1px 6px;font-size:10px;font-weight:800;"><%= pendingCount %></span>
+                        <% } %>
+                    </button>
+                    <button class="page-tab" onclick="switchPageTab('performance', this)">
+                        <i class="fas fa-chart-bar text-xs"></i> Performance Gaps
+                    </button>
+                </div>
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- MAIN SECTION (Question Bank — existing) -->
+                <!-- ═══════════════════════════════════════ -->
+                <div id="page-section-main" class="page-section active">
+
+                <!-- ── SUMMARY STRIP ── -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center shadow-sm">
+                        <p class="text-3xl font-black text-indigo-700"><%= totalQuestions %></p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Total Questions</p>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center shadow-sm">
+                        <p class="text-3xl font-black text-violet-600"><%= aiGenCount %></p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">AI-Generated</p>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center shadow-sm">
+                        <p class="text-3xl font-black text-emerald-600"><%= topicCount %></p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Topics Covered</p>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center shadow-sm">
+                        <p class="text-3xl font-black text-amber-500"><%= mechanicCount %></p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Mechanics Used</p>
+                    </div>
+                </div>
+
+                <!-- ── AI GENERATION PANEL ── -->
+                <div class="section-card mb-6">
+                    <div class="section-header">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md flex-shrink-0">
+                                <i class="fas fa-wand-magic-sparkles text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-slate-800">AI Question Generator</h2>
+                                <p class="text-xs text-slate-400">Generate questions from your learning materials using Claude AI</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-ai" onclick="toggleAiPanel()">
+                            <i class="fas fa-chevron-down text-xs" id="aiChevron"></i> Configure & Generate
+                        </button>
+                    </div>
+
+                    <div id="aiPanel" style="display:none">
+                        <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5 border-b border-slate-50">
+
+                            <!-- Source -->
+                            <div>
+                                <label class="form-label">Source Material</label>
+                                <select id="aiSourceMaterial" class="form-select">
+                                    <option value="">— Select a learning material —</option>
+                                    <% materials.forEach(function(m){ %>
+                                    <option value="<%= m.material_id %>"
+                                            data-title="<%= m.title.replace(/"/g,'&quot;') %>"
+                                            data-type="<%= m.material_type %>"
+                                            data-url="<%= m.file_path_or_url.replace(/"/g,'&quot;') %>">
+                                        [<%= m.material_type.toUpperCase() %>] <%= m.title %> — <%= m.topic_name %>
+                                    </option>
+                                    <% }); %>
+                                </select>
+                                <p class="text-xs text-slate-400 mt-1">AI will use this material as context for generation.</p>
+                            </div>
+
+                            <!-- Topic + Quarter -->
+                            <div>
+                                <label class="form-label">Assign to Topic</label>
+                                <select id="aiTopicId" class="form-select">
+                                    <option value="">— Select topic —</option>
+                                    <% quarters.forEach(function(qt){ %>
+                                    <optgroup label="Quarter <%= qt.quarter_number %>">
+                                        <% (qt.topics || []).forEach(function(tp){ %>
+                                        <option value="<%= tp.topic_id %>"><%= tp.topic_name %></option>
+                                        <% }); %>
+                                    </optgroup>
+                                    <% }); %>
+                                </select>
+                            </div>
+
+                            <!-- Count -->
+                            <div>
+                                <label class="form-label">Number of Questions</label>
+                                <input type="number" id="aiCount" class="form-input" min="1" max="20" value="5" placeholder="5">
+                                <p class="text-xs text-slate-400 mt-1">Max 20 per generation.</p>
+                            </div>
+
+                            <!-- Difficulty -->
+                            <div>
+                                <label class="form-label">Difficulty Level</label>
+                                <select id="aiDifficulty" class="form-select">
+                                    <option value="Easy">Easy</option>
+                                    <option value="Average" selected>Average</option>
+                                    <option value="Difficult">Difficult</option>
+                                </select>
+                            </div>
+
+                            <!-- Mechanic -->
+                            <div>
+                                <label class="form-label">Mechanic Type</label>
+                                <select id="aiMechanic" class="form-select">
+                                    <option value="standard_mcq">Standard MCQ</option>
+                                    <option value="conveyor_belt">Conveyor Belt</option>
+                                    <option value="weight_scale">Weight Scale</option>
+                                    <option value="radar_scan">Radar Scan</option>
+                                    <option value="flick_sort">Flick Sort</option>
+                                    <option value="shield_calibrate">Shield Calibrate</option>
+                                    <option value="electric_link">Electric Link</option>
+                                    <option value="cipher_crack">Cipher Crack</option>
+                                </select>
+                            </div>
+
+                            <!-- Input mode -->
+                            <div>
+                                <label class="form-label">Input Mode</label>
+                                <select id="aiInputMode" class="form-select">
+                                    <option value="Standard">Standard</option>
+                                    <option value="Numeric">Numeric</option>
+                                    <option value="Periodic_Single">Periodic — Single Element</option>
+                                    <option value="Periodic_Sequence">Periodic — Sequence</option>
+                                </select>
+                            </div>
+
+                            <!-- Base EXP + Time -->
+                            <div>
+                                <label class="form-label">Base EXP per Question</label>
+                                <input type="number" id="aiBaseExp" class="form-input" min="10" max="500" value="100">
+                            </div>
+                            <div>
+                                <label class="form-label">Time Limit (seconds)</label>
+                                <input type="number" id="aiTimeLimit" class="form-input" min="5" max="300" value="30">
+                            </div>
+                        </div>
+
+                        <!-- Arcade loader -->
+                        <div class="arcade-loader" id="aiLoader">
+                            <div style="width:260px">
+                                <div class="pixel-bar" style="width:0%"></div>
+                            </div>
+                            <p class="glitch-text">GENERATING QUESTIONS...</p>
+                            <p class="text-xs text-slate-400">Claude AI is reading the material and crafting questions.</p>
+                        </div>
+
+                        <div class="p-5 flex items-center gap-3 border-t border-slate-50" id="aiActionRow">
+                            <button class="btn btn-ai" onclick="runAiGenerate()">
+                                <i class="fas fa-bolt text-xs"></i> Generate Now
+                            </button>
+                            <p class="text-xs text-slate-400">Generated questions will appear in the review queue below.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── 3-COLUMN MAIN LAYOUT ── -->
+                <div class="qb-layout">
+
+                    <!-- ════ LEFT: FILTER PANEL ════ -->
+                    <div class="section-card sticky" style="top: 88px">
+                        <div class="section-header">
+                            <span class="text-sm font-bold text-slate-800">Filters</span>
+                            <button class="text-xs text-indigo-500 font-bold" onclick="clearFilters()">Clear all</button>
+                        </div>
+                        <div class="p-4 space-y-4">
+
+                            <!-- Search -->
+                            <div>
+                                <label class="form-label">Search</label>
+                                <div class="relative">
+                                    <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                                    <input type="text" id="qSearch" class="form-input" style="padding-left:30px"
+                                           placeholder="Search question text…" oninput="applyFilters()">
+                                </div>
+                            </div>
+
+                            <!-- Topic -->
+                            <div>
+                                <label class="form-label">Topic</label>
+                                <select id="filterTopic" class="form-select" onchange="applyFilters()">
+                                    <option value="">All Topics</option>
+                                    <% quarters.forEach(function(qt){ %>
+                                    <optgroup label="Quarter <%= qt.quarter_number %>">
+                                        <% (qt.topics || []).forEach(function(tp){ %>
+                                        <option value="<%= tp.topic_id %>"><%= tp.topic_name %></option>
+                                        <% }); %>
+                                    </optgroup>
+                                    <% }); %>
+                                </select>
+                            </div>
+
+                            <!-- Difficulty -->
+                            <div>
+                                <label class="form-label">Difficulty</label>
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    <button class="filter-pill active" data-diff="" onclick="setDiffFilter(this)">All</button>
+                                    <button class="filter-pill" data-diff="Easy" onclick="setDiffFilter(this)">Easy</button>
+                                    <button class="filter-pill" data-diff="Average" onclick="setDiffFilter(this)">Average</button>
+                                    <button class="filter-pill" data-diff="Difficult" onclick="setDiffFilter(this)">Hard</button>
+                                </div>
+                            </div>
+
+                            <!-- Mechanic -->
+                            <div>
+                                <label class="form-label">Mechanic</label>
+                                <select id="filterMechanic" class="form-select" onchange="applyFilters()">
+                                    <option value="">All Mechanics</option>
+                                    <option value="standard_mcq">Standard MCQ</option>
+                                    <option value="conveyor_belt">Conveyor Belt</option>
+                                    <option value="weight_scale">Weight Scale</option>
+                                    <option value="radar_scan">Radar Scan</option>
+                                    <option value="flick_sort">Flick Sort</option>
+                                    <option value="shield_calibrate">Shield Calibrate</option>
+                                    <option value="electric_link">Electric Link</option>
+                                    <option value="cipher_crack">Cipher Crack</option>
+                                </select>
+                            </div>
+
+                            <!-- AI filter -->
+                            <div>
+                                <label class="form-label">Source</label>
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    <button class="filter-pill active" data-ai="" onclick="setAiFilter(this)">All</button>
+                                    <button class="filter-pill" data-ai="1" onclick="setAiFilter(this)">
+                                        <i class="fas fa-wand-magic-sparkles" style="font-size:9px"></i> AI-Generated
+                                    </button>
+                                    <button class="filter-pill" data-ai="0" onclick="setAiFilter(this)">Manual</button>
+                                </div>
+                            </div>
+
+                            <!-- Stats -->
+                            <div class="pt-2 border-t border-slate-100">
+                                <p class="text-xs text-slate-400" id="filterCount">Showing all questions</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ════ CENTRE: QUESTION LIST ════ -->
+                    <div class="space-y-3">
+
+                        <!-- Bulk action bar (hidden until checkbox selected) -->
+                        <div id="bulkBar" style="display:none"
+                             class="section-card flex items-center gap-3 px-4 py-3">
+                            <span class="text-sm font-bold text-indigo-700" id="bulkCount">0 selected</span>
+                            <div class="flex gap-2 ml-auto">
+                                <button class="btn btn-success btn-sm" onclick="bulkApprove()">
+                                    <i class="fas fa-check text-xs"></i> Approve Selected
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="bulkDelete()">
+                                    <i class="fas fa-trash text-xs"></i> Delete Selected
+                                </button>
+                                <button class="btn btn-outline btn-sm" onclick="clearSelection()">
+                                    <i class="fas fa-times text-xs"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Add manually button -->
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-bold text-slate-600" id="listHeading">All Questions</p>
+                            <button class="btn btn-primary btn-sm" onclick="openQModal(null)">
+                                <i class="fas fa-plus text-xs"></i> Add Question
+                            </button>
+                        </div>
+
+                        <!-- Question cards -->
+                        <div id="questionList" class="space-y-3">
+                        <% if (questions.length === 0) { %>
+                            <div class="section-card p-10 text-center text-slate-400">
+                                <i class="fas fa-inbox text-3xl mb-3 block"></i>
+                                <p class="font-semibold">No questions yet. Add one manually or use the AI generator above.</p>
+                            </div>
+                        <% } %>
+                        <% questions.forEach(function(q, qi){ %>
+                        <%
+                            var diffClass = q.difficulty === 'Easy' ? 'diff-easy' : q.difficulty === 'Average' ? 'diff-average' : 'diff-difficult';
+                            var qTextSafe = q.question_text.replace(/'/g, "\\'").replace(/\n/g, ' ');
+                            var qMediaPath = (q.media_path || '').replace(/'/g, "\\'");
+                            var qMediaType = q.media_type || '';
+                            var qOptA = (q.option_a || '').replace(/'/g, "\\'");
+                            var qOptB = (q.option_b || '').replace(/'/g, "\\'");
+                            var qOptC = (q.option_c || '').replace(/'/g, "\\'");
+                            var qOptD = (q.option_d || '').replace(/'/g, "\\'");
+                            var qCorrect = (q.correct_answer || '').replace(/'/g, "\\'");
+                            var qInstruct = (q.instruction_override || '').replace(/'/g, "\\'");
+                        %>
+                        <div class="q-card fade-in <%= q.is_ai_generated ? 'ai-generated' : '' %>"
+                             style="animation-delay: <%= qi * 30 %>ms"
+                             id="qcard-<%= q.question_id %>"
+                             data-qid="<%= q.question_id %>"
+                             data-topic="<%= q.topic_id %>"
+                             data-diff="<%= q.difficulty %>"
+                             data-mechanic="<%= q.mechanic_type %>"
+                             data-ai="<%= q.is_ai_generated ? '1' : '0' %>"
+                             data-text="<%= q.question_text.replace(/"/g,'&quot;').toLowerCase() %>">
+
+                            <div class="flex items-start gap-3">
+                                <!-- Checkbox -->
+                                <input type="checkbox" class="q-checkbox mt-1" data-qid="<%= q.question_id %>"
+                                       onchange="updateBulkBar()">
+
+                                <!-- Content -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-start justify-between gap-2 flex-wrap">
+                                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                                            <span class="text-xs font-bold text-slate-400">#<%= q.question_id %></span>
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full <%= diffClass %>"><%= q.difficulty %></span>
+                                            <span class="mech-badge"><i class="fas fa-gamepad text-[9px]"></i> <%= q.mechanic_type.replace(/_/g,' ') %></span>
+                                            <% if (q.is_ai_generated) { %>
+                                            <span style="background:#ede9fe;color:#5b21b6;padding:2px 7px;border-radius:9999px;font-size:10px;font-weight:700">
+                                                <i class="fas fa-wand-magic-sparkles text-[9px]"></i> AI
+                                            </span>
+                                            <% } %>
+                                            <% if (q.topic_name) { %>
+                                            <span style="background:#f0fdf4;color:#15803d;padding:2px 7px;border-radius:9999px;font-size:10px;font-weight:700"><%= q.topic_name %></span>
+                                            <% } %>
+                                        </div>
+
+                                        <!-- Action buttons -->
+                                        <div class="flex items-center gap-1 flex-shrink-0">
+                                            <button class="btn btn-outline btn-sm" style="padding:4px 8px"
+                                                    onclick="openQModal(<%= q.question_id %>, '<%= qTextSafe %>', '<%= q.difficulty %>', '<%= q.mechanic_type %>', '<%= q.input_mode %>', '<%= qOptA %>', '<%= qOptB %>', '<%= qOptC %>', '<%= qOptD %>', '<%= qCorrect %>', '<%= qInstruct %>', <%= q.base_exp %>, <%= q.time_limit %>, <%= q.topic_id %>, <%= q.is_multiple_answer ? 1 : 0 %>, <%= q.points || 1 %>, <%= q.numeric_tolerance || 0 %>, '<%= (q.media_path||'').replace(/'/g,"\\'") %>', '<%= q.media_type||'' %>')"
+                                                    title="Edit">
+                                                <i class="fas fa-pen text-xs"></i>
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" style="padding:4px 8px"
+                                                    onclick="deleteQuestion(<%= q.question_id %>)"
+                                                    title="Delete">
+                                                <i class="fas fa-trash text-xs"></i>
+                                            </button>
+                                            <button class="btn btn-outline btn-sm" style="padding:4px 8px"
+                                                    onclick="openArcadePanel(<%= q.question_id %>, <%= q.base_exp %>, <%= q.time_limit %>, '<%= q.mechanic_type %>', '<%= q.input_mode %>')"
+                                                    title="Arcade settings">
+                                                <i class="fas fa-gamepad text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Question text (editable inline) -->
+                                    <p class="text-sm font-semibold text-slate-700 leading-relaxed mt-1" id="qtext-<%= q.question_id %>">
+                                        <%= q.question_text %>
+                                    </p>
+
+                                    <!-- Options / Correct answer preview -->
+                                    <% if (q.input_mode === 'Periodic_Sequence') { %>
+                                    <div class="mt-2 flex items-center gap-2 flex-wrap">
+                                        <span class="text-xs font-black text-slate-400 uppercase tracking-wider">Sequence:</span>
+                                        <% if (q.answer_sequences && q.answer_sequences.length) { %>
+                                            <% q.answer_sequences.forEach(function(seq, si){ %>
+                                            <span style="display:inline-flex;align-items:baseline;gap:1px;background:#ede9fe;color:#5b21b6;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:800">
+                                                <%= seq.element_symbol %><% if (seq.subscript > 1){ %><sub style="font-size:8px"><%= seq.subscript %></sub><% } %>
+                                            </span>
+                                            <% if (si < q.answer_sequences.length - 1){ %><span class="text-slate-300 text-xs">→</span><% } %>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <span class="text-xs text-rose-400 font-semibold">No sequence defined yet</span>
+                                        <% } %>
+                                    </div>
+                                    <% } else if (q.input_mode === 'Periodic_Single') { %>
+                                    <div class="mt-2 flex items-center gap-2">
+                                        <span class="text-xs font-black text-slate-400 uppercase tracking-wider">Correct element:</span>
+                                        <span style="background:#ede9fe;color:#5b21b6;padding:2px 10px;border-radius:6px;font-size:13px;font-weight:800"><%= q.correct_answer || '?' %></span>
+                                    </div>
+                                    <% } else if (q.input_mode === 'Numeric') { %>
+                                    <div class="mt-2 flex items-center gap-2">
+                                        <span class="text-xs font-black text-slate-400 uppercase tracking-wider">Correct value:</span>
+                                        <span style="background:#ecfdf5;color:#065f46;padding:2px 10px;border-radius:6px;font-size:13px;font-weight:800"><%= q.correct_answer || '?' %></span>
+                                    </div>
+                                    <% } else if (q.option_a) { %>
+                                    <div class="mt-2 grid grid-cols-2 gap-1">
+                                        <% var opts2 = [['A', q.option_a, 'opt-a'], ['B', q.option_b, 'opt-b'], ['C', q.option_c, 'opt-c'], ['D', q.option_d, 'opt-d']]; %>
+                                        <% opts2.forEach(function(ov){ %>
+                                        <% if (ov[1]) { %>
+                                        <div class="flex items-center gap-2 text-xs <%= q.correct_answer === ov[0] ? 'text-emerald-700 font-bold' : 'text-slate-500' %>">
+                                            <span class="option-letter <%= ov[2] %>" style="width:20px;height:20px;font-size:9px"><%= ov[0] %></span>
+                                            <span class="truncate"><%= ov[1] %></span>
+                                            <% if (q.correct_answer === ov[0]) { %><i class="fas fa-check text-emerald-500 text-[10px]"></i><% } %>
+                                        </div>
+                                        <% } %>
+                                        <% }); %>
+                                    </div>
+                                    <% } %>
+
+                                    <!-- Footer stats -->
+                                    <div class="flex items-center gap-4 mt-2 pt-2 border-t border-slate-50">
+                                        <span class="text-xs text-slate-400">
+                                            <i class="fas fa-star text-amber-400 text-[10px] mr-1"></i><%= q.base_exp %> EXP
+                                        </span>
+                                        <span class="text-xs text-slate-400">
+                                            <i class="fas fa-clock text-indigo-400 text-[10px] mr-1"></i><%= q.time_limit %>s
+                                        </span>
+                                        <span class="text-xs text-slate-400">
+                                            <i class="fas fa-keyboard text-slate-300 text-[10px] mr-1"></i><%= q.input_mode %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <% }); %>
+                        </div>
+                    </div>
+
+                    <!-- ════ RIGHT: ARCADE SETTINGS PANEL ════ -->
+                    <div class="right-panel section-card sticky" style="top: 88px" id="rightPanel">
+                        <div class="section-header">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-gamepad text-violet-500 text-sm"></i>
+                                <span class="text-sm font-bold text-slate-800">Arcade Settings</span>
+                            </div>
+                        </div>
+                        <div id="rightPanelEmpty" class="p-6 text-center text-slate-400 text-xs">
+                            <i class="fas fa-gamepad text-2xl block mb-2 text-slate-300"></i>
+                            Click the <strong class="text-violet-500"><i class="fas fa-gamepad text-[10px]"></i></strong> icon on any question to configure its arcade settings here.
+                        </div>
+                        <div id="rightPanelContent" style="display:none">
+                            <div class="p-4 space-y-4">
+                                <p class="text-xs font-bold text-slate-500 uppercase">Question <span id="rpQid">#–</span></p>
+
+                                <!-- Tabs -->
+                                <div style="display:flex;gap:2px;background:#f1f5f9;border-radius:10px;padding:3px">
+                                    <button class="rpanel-tab active" onclick="switchRPanel('config', this)">
+                                        <i class="fas fa-sliders text-[10px]"></i> Config
+                                    </button>
+                                    <button class="rpanel-tab" onclick="switchRPanel('preview', this)">
+                                        <i class="fas fa-eye text-[10px]"></i> Preview
+                                    </button>
+                                    <button class="rpanel-tab" onclick="switchRPanel('link', this)">
+                                        <i class="fas fa-link text-[10px]"></i> Link
+                                    </button>
+                                </div>
+
+                                <!-- Config tab -->
+                                <div class="rpanel-panel active" id="rpanel-config">
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="form-label">Base EXP</label>
+                                            <input type="number" id="rpBaseExp" class="form-input" min="10" max="500" placeholder="100"
+                                                   onchange="saveArcadeSettings()">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Time Limit (seconds)</label>
+                                            <input type="number" id="rpTimeLimit" class="form-input" min="5" max="300" placeholder="30"
+                                                   onchange="saveArcadeSettings()">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Mechanic Type</label>
+                                            <select id="rpMechanic" class="form-select" onchange="updateMechPreview(); saveArcadeSettings()">
+                                                <option value="standard_mcq">Standard MCQ</option>
+                                                <option value="conveyor_belt">Conveyor Belt</option>
+                                                <option value="weight_scale">Weight Scale</option>
+                                                <option value="radar_scan">Radar Scan</option>
+                                                <option value="flick_sort">Flick Sort</option>
+                                                <option value="shield_calibrate">Shield Calibrate</option>
+                                                <option value="electric_link">Electric Link</option>
+                                                <option value="cipher_crack">Cipher Crack</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Input Mode</label>
+                                            <select id="rpInputMode" class="form-select" onchange="saveArcadeSettings()">
+                                                <option value="Standard">Standard</option>
+                                                <option value="Numeric">Numeric</option>
+                                                <option value="Periodic_Single">Periodic — Single</option>
+                                                <option value="Periodic_Sequence">Periodic — Sequence</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Multiple Answer</label>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <input type="checkbox" id="rpMultiAnswer" class="w-4 h-4 accent-violet-600"
+                                                       onchange="saveArcadeSettings()">
+                                                <label for="rpMultiAnswer" class="text-xs text-slate-600">Allow multiple correct answers</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Preview tab -->
+                                <div class="rpanel-panel" id="rpanel-preview">
+                                    <div id="mechPreviewBox" class="mech-preview">
+                                        Select a mechanic to see its description.
+                                    </div>
+                                </div>
+
+                                <!-- Link tab -->
+                                <div class="rpanel-panel" id="rpanel-link">
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="form-label">Add to Assessment</label>
+                                            <select id="rpAssessment" class="form-select">
+                                                <option value="">— Select assessment —</option>
+                                                <% assessments.forEach(function(asmt){ %>
+                                                <option value="<%= asmt.assessment_id %>">
+                                                    [<%= asmt.assessment_type %>] <%= asmt.assessment_name %>
+                                                </option>
+                                                <% }); %>
+                                            </select>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm w-full justify-center" onclick="linkToAssessment()">
+                                            <i class="fas fa-link text-xs"></i> Link Question
+                                        </button>
+                                        <p class="text-xs text-slate-400 text-center" id="linkStatus"></p>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- /qb-layout -->
+                
+            <div class="h-4"></div>
+                </div><!-- /page-section-main -->
+
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- VERIFICATION SECTION -->
+                <!-- ═══════════════════════════════════════ -->
+                <div id="page-section-verification" class="page-section">
+
+                    <!-- Sub-tabs: Pending / Approved / Rejected -->
+                    <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px">
+                        <button class="page-tab active" id="vtab-pending"   onclick="switchVTab('pending',   this)"><i class="fas fa-clock text-xs text-amber-500"></i> Pending</button>
+                        <button class="page-tab"         id="vtab-approved" onclick="switchVTab('approved',  this)"><i class="fas fa-check text-xs text-emerald-500"></i> Approved</button>
+                        <button class="page-tab"         id="vtab-rejected" onclick="switchVTab('rejected',  this)"><i class="fas fa-times text-xs text-rose-500"></i> Rejected</button>
+                    </div>
+
+                    <!-- PENDING -->
+                    <div id="vsection-pending" class="page-section active space-y-3">
+                        <% var pendingQs = questions.filter(function(q){ return q.verification_status === 'Pending'; }); %>
+                        <% if (!pendingQs.length) { %>
+                        <div class="section-card p-10 text-center text-slate-400">
+                            <i class="fas fa-check-circle text-3xl mb-3 block text-emerald-400"></i>
+                            <p class="font-semibold">No questions pending review.</p>
+                        </div>
+                        <% } %>
+                        <% pendingQs.forEach(function(q){ %>
+                        <%   var diffClass = q.difficulty === 'Easy' ? 'diff-easy' : q.difficulty === 'Average' ? 'diff-average' : 'diff-difficult'; %>
+                        <div class="q-card" id="vcard-<%= q.question_id %>">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-start justify-between gap-2 flex-wrap">
+                                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                                            <span class="text-xs font-bold text-slate-400">#<%= q.question_id %></span>
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full <%= diffClass %>"><%= q.difficulty %></span>
+                                            <span class="mech-badge"><i class="fas fa-gamepad text-[9px]"></i> <%= q.mechanic_type.replace(/_/g,' ') %></span>
+                                            <span class="text-xs px-2 py-0.5 rounded-full vs-pending font-bold">⏳ Pending Admin Review</span>
+                                            <% if (q.topic_name) { %><span style="background:#f0fdf4;color:#15803d;padding:2px 7px;border-radius:9999px;font-size:10px;font-weight:700"><%= q.topic_name %></span><% } %>
+                                        </div>
+                                        <button class="btn btn-danger btn-sm"
+                                                onclick="cancelPendingQuestion(<%= q.question_id %>)"
+                                                title="Cancel submission — returns to draft">
+                                            <i class="fas fa-ban text-xs"></i> Cancel
+                                        </button>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-700 leading-relaxed mt-1"><%= q.question_text %></p>
+                                </div>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+
+                    <!-- APPROVED -->
+                    <div id="vsection-approved" class="page-section space-y-3">
+                        <% var approvedQs = questions.filter(function(q){ return q.verification_status === 'Approved'; }); %>
+                        <% if (!approvedQs.length) { %>
+                        <div class="section-card p-10 text-center text-slate-400">
+                            <i class="fas fa-inbox text-3xl mb-3 block"></i>
+                            <p class="font-semibold">No approved questions yet.</p>
+                        </div>
+                        <% } %>
+                        <% approvedQs.forEach(function(q){ %>
+                        <%   var diffClass = q.difficulty === 'Easy' ? 'diff-easy' : q.difficulty === 'Average' ? 'diff-average' : 'diff-difficult'; %>
+                        <div class="q-card">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                                        <span class="text-xs font-bold text-slate-400">#<%= q.question_id %></span>
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full <%= diffClass %>"><%= q.difficulty %></span>
+                                        <span class="mech-badge"><i class="fas fa-gamepad text-[9px]"></i> <%= q.mechanic_type.replace(/_/g,' ') %></span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full vs-approved font-bold">✓ Approved</span>
+                                        <% if (q.topic_name) { %><span style="background:#f0fdf4;color:#15803d;padding:2px 7px;border-radius:9999px;font-size:10px;font-weight:700"><%= q.topic_name %></span><% } %>
+                                        <% if (q.verified_by_name) { %><span class="text-xs text-slate-400">Verified by: <strong><%= q.verified_by_name %></strong></span><% } %>
+                                        <% if (q.verified_at) { %><span class="text-xs text-slate-400">on <%= new Date(q.verified_at).toLocaleDateString('en-PH', {year:'numeric',month:'short',day:'numeric'}) %></span><% } %>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-700 leading-relaxed mt-1"><%= q.question_text %></p>
+                                    <div class="flex items-center gap-4 mt-2 pt-2 border-t border-slate-50">
+                                        <span class="text-xs text-slate-400"><i class="fas fa-star text-amber-400 text-[10px] mr-1"></i><%= q.base_exp %> EXP</span>
+                                        <span class="text-xs text-slate-400"><i class="fas fa-circle-dot text-indigo-400 text-[10px] mr-1"></i><%= q.points %> pt<%= q.points !== 1 ? 's' : '' %></span>
+                                        <span class="text-xs text-slate-400"><i class="fas fa-clock text-slate-300 text-[10px] mr-1"></i><%= q.time_limit %>s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+
+                    <!-- REJECTED -->
+                    <div id="vsection-rejected" class="page-section space-y-3">
+                        <% var rejectedQs = questions.filter(function(q){ return q.verification_status === 'Rejected'; }); %>
+                        <% if (!rejectedQs.length) { %>
+                        <div class="section-card p-10 text-center text-slate-400">
+                            <i class="fas fa-thumbs-up text-3xl mb-3 block text-emerald-400"></i>
+                            <p class="font-semibold">No rejected questions — great work!</p>
+                        </div>
+                        <% } %>
+                        <% rejectedQs.forEach(function(q){ %>
+                        <%
+                            var qTextSafeR  = q.question_text.replace(/'/g, "\\'").replace(/\n/g, ' ');
+                            var qOptAR  = (q.option_a || '').replace(/'/g, "\\'");
+                            var qOptBR  = (q.option_b || '').replace(/'/g, "\\'");
+                            var qOptCR  = (q.option_c || '').replace(/'/g, "\\'");
+                            var qOptDR  = (q.option_d || '').replace(/'/g, "\\'");
+                            var qCorrectR   = (q.correct_answer || '').replace(/'/g, "\\'");
+                            var qInstructR  = (q.instruction_override || '').replace(/'/g, "\\'");
+                            var diffClass   = q.difficulty === 'Easy' ? 'diff-easy' : q.difficulty === 'Average' ? 'diff-average' : 'diff-difficult';
+                        %>
+                        <div class="q-card" style="border-left: 3px solid #f43f5e;">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-start justify-between gap-2 flex-wrap">
+                                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                                            <span class="text-xs font-bold text-slate-400">#<%= q.question_id %></span>
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full <%= diffClass %>"><%= q.difficulty %></span>
+                                            <span class="mech-badge"><i class="fas fa-gamepad text-[9px]"></i> <%= q.mechanic_type.replace(/_/g,' ') %></span>
+                                            <span class="text-xs px-2 py-0.5 rounded-full vs-rejected font-bold">✕ Rejected</span>
+                                            <% if (q.topic_name) { %><span style="background:#f0fdf4;color:#15803d;padding:2px 7px;border-radius:9999px;font-size:10px;font-weight:700"><%= q.topic_name %></span><% } %>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm"
+                                                onclick="openReviseModal(<%= q.question_id %>, '<%= qTextSafeR %>', '<%= q.difficulty %>', '<%= q.mechanic_type %>', '<%= q.input_mode %>', '<%= qOptAR %>', '<%= qOptBR %>', '<%= qOptCR %>', '<%= qOptDR %>', '<%= qCorrectR %>', '<%= qInstructR %>', <%= q.base_exp %>, <%= q.time_limit %>, <%= q.topic_id %>, <%= q.is_multiple_answer ? 1 : 0 %>)">
+                                            <i class="fas fa-pen-to-square text-xs"></i> Revise
+                                        </button>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-700 leading-relaxed mt-1"><%= q.question_text %></p>
+                                    <% if (q.rejection_reason) { %>
+                                    <div style="margin-top:8px;padding:8px 12px;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;">
+                                        <p class="text-xs font-bold text-rose-600 mb-1"><i class="fas fa-triangle-exclamation mr-1"></i>Rejection Reason:</p>
+                                        <p class="text-xs text-rose-700"><%= q.rejection_reason %></p>
+                                    </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+
+                </div><!-- /page-section-verification -->
+                <!-- ═══════════════════════════════════════ -->
+                <!-- PERFORMANCE GAPS SECTION -->
+                <!-- ═══════════════════════════════════════ -->
+                <div id="page-section-performance" class="page-section">
+
+                    <div class="qb-layout">
+
+                        <!-- LEFT: Question error ranking -->
+                        <div class="section-card sticky" style="top:88px; grid-column: span 1">
+                            <div class="section-header">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-chart-bar text-rose-500 text-sm"></i>
+                                    <span class="text-sm font-bold text-slate-800">Error Rate Ranking</span>
+                                </div>
+                                <span class="text-xs text-slate-400">Highest → Lowest</span>
+                            </div>
+                            <div class="p-3 space-y-2" id="errorRankList">
+                                <p class="text-xs text-slate-400 text-center py-4">Loading analytics…</p>
+                            </div>
+                        </div>
+
+                        <!-- CENTER + RIGHT: Student tracking + remediation -->
+                        <div class="space-y-4" style="grid-column: span 2">
+
+                            <!-- Student tracking panel -->
+                            <div class="section-card" id="perfDetailPanel">
+                                <div class="section-header">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-users text-indigo-500 text-sm"></i>
+                                        <span class="text-sm font-bold text-slate-800" id="perfDetailTitle">Select a question to view student performance</span>
+                                    </div>
+                                </div>
+                                <div id="perfDetailBody" class="p-4">
+                                    <p class="text-xs text-slate-400 text-center py-6"><i class="fas fa-arrow-left mr-2"></i>Pick a question from the left panel.</p>
+                                </div>
+                            </div>
+
+                            <!-- Remediation / Teacher Intervention panel -->
+                            <div class="section-card" id="remPanel" style="display:none">
+                                <div class="section-header">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-hand-holding-heart text-violet-500 text-sm"></i>
+                                        <span class="text-sm font-bold text-slate-800">Teacher Intervention</span>
+                                    </div>
+                                    <span class="text-xs text-slate-400" id="remQidLabel"></span>
+                                </div>
+                                <div class="p-4 space-y-4">
+
+                                    <!-- Existing remediations list -->
+                                    <div id="remList" class="space-y-2"></div>
+
+                                    <!-- Add new intervention -->
+                                    <div style="border-top:1px solid #f1f5f9;padding-top:14px">
+                                        <p class="form-label mb-3">Add / Update Intervention</p>
+                                        <div class="space-y-3">
+                                            <div>
+                                                <label class="form-label">Advice / Tip for Students</label>
+                                                <textarea id="remAdvice" class="form-textarea" placeholder="Write a tip or explanation that will help students who got this question wrong…" rows="3"></textarea>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="form-label">Link to Learning Material</label>
+                                                    <select id="remMaterial" class="form-select">
+                                                        <option value="">— None —</option>
+                                                        <% materials.forEach(function(m){ %>
+                                                        <option value="<%= m.material_id %>">[<%= m.material_type.toUpperCase() %>] <%= m.title %> — <%= m.topic_name %></option>
+                                                        <% }); %>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="form-label">External URL <span class="text-slate-400 font-normal">(optional)</span></label>
+                                                    <input type="url" id="remLinkUrl" class="form-input" placeholder="https://…" oninput="previewRemLink(this.value)">
+                                                </div>
+                                            </div>
+
+                                            <!-- Link preview -->
+                                            <div id="remLinkPreview" style="display:none" class="rem-card">
+                                                <p class="text-xs font-bold text-slate-500 mb-2"><i class="fas fa-globe text-indigo-400 mr-1"></i>Link Preview</p>
+                                                <div class="flex items-center gap-3">
+                                                    <img id="remLinkThumb" src="" alt="preview" style="width:64px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;flex-shrink:0" onerror="this.style.display='none'">
+                                                    <div>
+                                                        <p class="text-xs font-semibold text-slate-700 truncate" id="remLinkTitle">Loading…</p>
+                                                        <p class="text-xs text-slate-400 truncate" id="remLinkUrl2"></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Material preview -->
+                                            <div id="remMatPreview" style="display:none" class="rem-card">
+                                                <p class="text-xs font-bold text-slate-500 mb-2"><i class="fas fa-file text-emerald-400 mr-1"></i>Material Preview</p>
+                                                <p class="text-xs text-slate-600" id="remMatPreviewText"></p>
+                                            </div>
+
+                                            <button class="btn btn-primary btn-sm" onclick="saveRemediation()">
+                                                <i class="fas fa-save text-xs"></i> Save Intervention
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div><!-- /page-section-performance -->
+                <div class="h-4"></div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="bg-white border-t border-cyan-100 py-6 px-8 w-full">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-2 max-w-[1600px] mx-auto">
+                    <p class="text-[11px] text-indigo-400 font-black uppercase tracking-tight">
+                        &copy; 2026 <span class="text-cyan-600">Chemistry Arcade</span> - Mabini College v2.5.0
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest">Support Lab</a>
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest border-l pl-4 border-indigo-100">Atomic Logs</a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+</div>
+
+
+<!-- ================================================================
+     QUESTION ADD/EDIT MODAL
+================================================================ -->
+<div class="modal-backdrop" id="qModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    <i class="fas fa-question text-indigo-600 text-sm"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm" id="qModalTitle">Add Question</h3>
+            </div>
+            <button onclick="closeQModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+
+        <form id="qForm" onsubmit="submitQForm(event)">
+            <input type="hidden" id="qId" name="question_id">
+            <div class="modal-body">
+
+                <!-- Topic -->
+                <div>
+                    <label class="form-label">Topic <span class="text-rose-500">*</span></label>
+                    <select id="qTopicId" name="topic_id" class="form-select" required>
+                        <option value="">— Select topic —</option>
+                        <% quarters.forEach(function(qt){ %>
+                        <optgroup label="Quarter <%= qt.quarter_number %>">
+                            <% (qt.topics || []).forEach(function(tp){ %>
+                            <option value="<%= tp.topic_id %>"><%= tp.topic_name %></option>
+                            <% }); %>
+                        </optgroup>
+                        <% }); %>
+                    </select>
+                </div>
+
+                <!-- Question text -->
+                <div>
+                    <label class="form-label">Question Text <span class="text-rose-500">*</span></label>
+                    <textarea id="qText" name="question_text" class="form-textarea" placeholder="Enter the question here…" required></textarea>
+                </div>
+
+                <!-- Instruction override -->
+                <div>
+                    <label class="form-label">Instruction Override <span class="text-slate-400 font-normal">(optional)</span></label>
+                    <input type="text" id="qInstruct" name="instruction_override" class="form-input" placeholder="Custom instruction for this question">
+                </div>
+
+                <!-- Difficulty + Mechanic + Input mode -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="form-label">Difficulty <span class="text-rose-500">*</span></label>
+                        <select id="qDifficulty" name="difficulty" class="form-select" required>
+                            <option value="Easy">Easy</option>
+                            <option value="Average">Average</option>
+                            <option value="Difficult">Difficult</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Mechanic <span class="text-rose-500">*</span></label>
+                        <select id="qMechanic" name="mechanic_type" class="form-select" required>
+                            <option value="standard_mcq">standard_mcq</option>
+                            <option value="conveyor_belt">conveyor_belt</option>
+                            <option value="weight_scale">weight_scale</option>
+                            <option value="radar_scan">radar_scan</option>
+                            <option value="flick_sort">flick_sort</option>
+                            <option value="shield_calibrate">shield_calibrate</option>
+                            <option value="electric_link">electric_link</option>
+                            <option value="cipher_crack">cipher_crack</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Input Mode <span class="text-rose-500">*</span></label>
+                        <select id="qInputMode" name="input_mode" class="form-select" required>
+                            <option value="Standard">Standard</option>
+                            <option value="Numeric">Numeric</option>
+                            <option value="Periodic_Single">Periodic_Single</option>
+                            <option value="Periodic_Sequence">Periodic_Sequence</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Options A-D -->
+                <!-- ══ DYNAMIC ANSWER SECTION — changes based on input_mode ══ -->
+                <!-- input_mode: Standard / Numeric → MCQ options + radio -->
+                <div id="answerSection_mcq">
+                    <label class="form-label">
+                        Answer Options
+                        <span class="text-xs text-slate-400 font-normal normal-case">— Click the ✓ circle to mark the correct answer</span>
+                    </label>
+                    <div class="space-y-2 mt-1">
+                        <% [['A','opt-a'],['B','opt-b'],['C','opt-c'],['D','opt-d']].forEach(function(ov){ %>
+                        <div class="option-row">
+                            <span class="option-letter <%= ov[1] %>"><%= ov[0] %></span>
+                            <input type="text" name="option_<%= ov[0].toLowerCase() %>" id="qOpt<%= ov[0] %>"
+                                   class="form-input" style="flex:1" placeholder="Option <%= ov[0] %>">
+                            <input type="radio" name="correct_answer" value="<%= ov[0] %>" id="correctRadio<%= ov[0] %>" class="correct-radio">
+                            <label for="correctRadio<%= ov[0] %>" class="correct-label" title="Mark as correct"></label>
+                        </div>
+                        <% }); %>
+                    </div>
+                    <!-- Multiple answer toggle — only relevant for MCQ -->
+                    <div class="flex items-center gap-3 mt-3">
+                        <input type="checkbox" id="qMultiAnswer" name="is_multiple_answer" value="1" class="w-4 h-4 accent-violet-600">
+                        <label for="qMultiAnswer" class="form-label mb-0">Allow multiple correct answers</label>
+                    </div>
+                </div>
+ 
+                <!-- input_mode: Periodic_Single → single element symbol correct answer -->
+                <div id="answerSection_periodic_single" style="display:none">
+                    <label class="form-label">
+                        Correct Element Symbol
+                        <span class="text-xs text-slate-400 font-normal normal-case">— Type the element symbol (e.g. Na, Fe, O)</span>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+                        <div style="width:52px;height:52px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#5b21b6;border:2px solid #a5b4fc;flex-shrink:0" id="elementPreview">?</div>
+                        <input type="text" id="qCorrectSymbol" maxlength="3"
+                               class="form-input" style="width:120px;font-size:20px;font-weight:800;text-align:center;letter-spacing:.1em"
+                               placeholder="e.g. Na"
+                               oninput="document.getElementById('elementPreview').textContent = this.value || '?'">
+                        <p class="text-xs text-slate-400">Use the standard periodic table symbol. Case-sensitive: <strong>Na</strong> not <strong>NA</strong>.</p>
+                    </div>
+                    <p style="margin-top:8px;font-size:11px;color:#6d28d9;background:#f5f3ff;padding:8px 10px;border-radius:8px;border:1px solid #ddd6fe">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        For this input mode, options A–D are not used. The student will press a physical/on-screen button mapped to this element symbol.
+                    </p>
+                </div>
+ 
+                <!-- input_mode: Periodic_Sequence → ordered list of element+subscript pairs -->
+                <div id="answerSection_periodic_sequence" style="display:none">
+                    <label class="form-label">
+                        Correct Chemical Formula Sequence
+                        <span class="text-xs text-slate-400 font-normal normal-case">— Build the formula element by element, in order</span>
+                    </label>
+                    <div id="seqRows" class="space-y-2 mt-2"></div>
+                    <button type="button" onclick="addSeqRow()" class="btn btn-outline btn-sm mt-2">
+                        <i class="fas fa-plus text-xs"></i> Add Element
+                    </button>
+                    <div id="seqPreview" style="margin-top:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px;font-weight:700;color:#15803d;min-height:36px"></div>
+                    <p style="margin-top:6px;font-size:11px;color:#6d28d9;background:#f5f3ff;padding:8px 10px;border-radius:8px;border:1px solid #ddd6fe">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Each row = one element button press in sequence. Subscript = number of atoms (default 1).
+                        Example: H₂O → Row 1: symbol=H, subscript=2 &nbsp;|&nbsp; Row 2: symbol=O, subscript=1
+                    </p>
+                </div>
+ 
+                <!-- input_mode: Numeric → free-text numeric correct answer -->
+                <div id="answerSection_numeric" style="display:none">
+                    <label class="form-label">
+                        Correct Numeric Answer
+                        <span class="text-xs text-slate-400 font-normal normal-case">— Student will type or dial in this number</span>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+                        <input type="text" id="qCorrectNumeric"
+                               class="form-input" style="width:180px;font-size:18px;font-weight:800;text-align:center"
+                               placeholder="e.g. 6.022 or 18">
+                        <p class="text-xs text-slate-400">Enter the exact value. Decimals are allowed. Options A–D are not used for numeric questions.</p>
+                    </div>
+                </div>
+                <!-- ══ END DYNAMIC ANSWER SECTION ══ -->
+
+                <!-- EXP + Time + Points -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="form-label">Base EXP</label>
+                        <input type="number" id="qBaseExp" name="base_exp" class="form-input" min="10" max="500" value="100">
+                    </div>
+                    <div>
+                        <label class="form-label">Time Limit (seconds)</label>
+                        <input type="number" id="qTimeLimit" name="time_limit" class="form-input" min="5" max="300" value="30">
+                    </div>
+                    <div>
+                        <label class="form-label">Points <span class="text-slate-400 font-normal">(score weight)</span></label>
+                        <input type="number" id="qPoints" name="points" class="form-input" min="1" max="100" value="1">
+                    </div>
+                </div>
+
+                <!-- Numeric tolerance (only shown for Numeric input mode) -->
+                <div id="numericToleranceRow" style="display:none">
+                    <label class="form-label">Numeric Tolerance <span class="text-slate-400 font-normal">(±acceptable range)</span></label>
+                    <div class="flex items-center gap-3">
+                        <input type="number" id="qNumericTolerance" name="numeric_tolerance" class="form-input" style="width:160px" min="0" step="0.0001" value="0" placeholder="0.0000">
+                        <p class="text-xs text-slate-400">e.g. 0.5 means answers within ±0.5 of the correct value are accepted.</p>
+                    </div>
+                </div>
+
+                <!-- Media attachment -->
+                <div>
+                    <label class="form-label">Media Attachment <span class="text-slate-400 font-normal">(optional — image or video)</span></label>
+                    <div id="mediaPreviewRow" style="display:none; margin-bottom:8px; align-items:center; gap:10px;">
+                        <img id="mediaPreviewImg" src="" style="height:60px;border-radius:8px;border:1px solid #e2e8f0;display:none;">
+                        <video id="mediaPreviewVid" src="" controls style="height:60px;border-radius:8px;display:none;"></video>
+                        <button type="button" onclick="clearMediaAttachment()" class="btn btn-danger btn-sm">
+                            <i class="fas fa-times text-xs"></i> Remove
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="hidden" id="qMediaPath" name="media_path">
+                        <input type="hidden" id="qMediaType" name="media_type">
+                        <input type="text" id="qMediaUrl" class="form-input" placeholder="Paste an image or video URL…" oninput="handleMediaUrlInput(this.value)" style="flex:1">
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1">Paste a direct URL to an image (.jpg, .png, .webp, .gif) or video (.mp4, .webm). Leave blank for text-only questions.</p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" onclick="closeQModal()" class="btn btn-outline">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save text-xs"></i> Save Question
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ================================================================
+     REVISE QUESTION MODAL (for Rejected questions)
+================================================================ -->
+<div class="modal-backdrop" id="reviseModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                    <i class="fas fa-pen-to-square text-amber-600 text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-sm">Revise Question <span id="reviseQidLabel" class="text-slate-400"></span></h3>
+                    <p class="text-xs text-slate-400">Make your corrections, then submit for re-review.</p>
+                </div>
+            </div>
+            <button onclick="closeReviseModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+
+        <form id="reviseForm" onsubmit="submitRevision(event)">
+            <input type="hidden" id="reviseQid" name="question_id">
+            <div class="modal-body">
+
+                <!-- Rejection reason display -->
+                <div id="reviseRejectionBox" style="display:none;padding:10px 14px;background:#fff1f2;border:1px solid #fecdd3;border-radius:10px">
+                    <p class="text-xs font-bold text-rose-600 mb-1"><i class="fas fa-triangle-exclamation mr-1"></i>Rejection Reason</p>
+                    <p class="text-xs text-rose-700" id="reviseRejectionText"></p>
+                </div>
+
+                <!-- Topic -->
+                <div>
+                    <label class="form-label">Topic <span class="text-rose-500">*</span></label>
+                    <select id="reviseTopicId" name="topic_id" class="form-select" required>
+                        <option value="">— Select topic —</option>
+                        <% quarters.forEach(function(qt){ %>
+                        <optgroup label="Quarter <%= qt.quarter_number %>">
+                            <% (qt.topics || []).forEach(function(tp){ %>
+                            <option value="<%= tp.topic_id %>"><%= tp.topic_name %></option>
+                            <% }); %>
+                        </optgroup>
+                        <% }); %>
+                    </select>
+                </div>
+
+                <!-- Question text -->
+                <div>
+                    <label class="form-label">Question Text <span class="text-rose-500">*</span></label>
+                    <textarea id="reviseText" name="question_text" class="form-textarea" placeholder="Enter the question here…" required></textarea>
+                </div>
+
+                <!-- Instruction override -->
+                <div>
+                    <label class="form-label">Instruction Override <span class="text-slate-400 font-normal">(optional)</span></label>
+                    <input type="text" id="reviseInstruct" name="instruction_override" class="form-input" placeholder="Custom instruction for this question">
+                </div>
+
+                <!-- Difficulty + Mechanic + Input mode -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="form-label">Difficulty <span class="text-rose-500">*</span></label>
+                        <select id="reviseDifficulty" name="difficulty" class="form-select" required>
+                            <option value="Easy">Easy</option>
+                            <option value="Average">Average</option>
+                            <option value="Difficult">Difficult</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Mechanic <span class="text-rose-500">*</span></label>
+                        <select id="reviseMechanic" name="mechanic_type" class="form-select" required>
+                            <option value="standard_mcq">standard_mcq</option>
+                            <option value="conveyor_belt">conveyor_belt</option>
+                            <option value="weight_scale">weight_scale</option>
+                            <option value="radar_scan">radar_scan</option>
+                            <option value="flick_sort">flick_sort</option>
+                            <option value="shield_calibrate">shield_calibrate</option>
+                            <option value="electric_link">electric_link</option>
+                            <option value="cipher_crack">cipher_crack</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Input Mode <span class="text-rose-500">*</span></label>
+                        <select id="reviseInputMode" name="input_mode" class="form-select" required onchange="updateReviseAnswerSection()">
+                            <option value="Standard">Standard</option>
+                            <option value="Numeric">Numeric</option>
+                            <option value="Periodic_Single">Periodic_Single</option>
+                            <option value="Periodic_Sequence">Periodic_Sequence</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- MCQ Options -->
+                <div id="reviseAnswerSection_mcq">
+                    <label class="form-label">Answer Options</label>
+                    <div class="space-y-2 mt-1">
+                        <% [['A','opt-a'],['B','opt-b'],['C','opt-c'],['D','opt-d']].forEach(function(ov){ %>
+                        <div class="option-row">
+                            <span class="option-letter <%= ov[1] %>"><%= ov[0] %></span>
+                            <input type="text" name="option_<%= ov[0].toLowerCase() %>" id="reviseOpt<%= ov[0] %>"
+                                   class="form-input" style="flex:1" placeholder="Option <%= ov[0] %>">
+                            <input type="radio" name="revise_correct_answer" value="<%= ov[0] %>" id="reviseCorrectRadio<%= ov[0] %>" class="correct-radio">
+                            <label for="reviseCorrectRadio<%= ov[0] %>" class="correct-label" title="Mark as correct"></label>
+                        </div>
+                        <% }); %>
+                    </div>
+                </div>
+
+                <!-- Periodic Single -->
+                <div id="reviseAnswerSection_periodic_single" style="display:none">
+                    <label class="form-label">Correct Element Symbol</label>
+                    <input type="text" id="reviseCorrectSymbol" maxlength="3" class="form-input" style="width:120px;font-size:18px;font-weight:800;text-align:center;" placeholder="e.g. Na">
+                </div>
+
+                <!-- Periodic Sequence -->
+                <div id="reviseAnswerSection_periodic_sequence" style="display:none">
+                    <label class="form-label">Correct Chemical Formula Sequence</label>
+                    <div id="reviseSeqRows" class="space-y-2 mt-2"></div>
+                    <button type="button" onclick="addReviseSeqRow()" class="btn btn-outline btn-sm mt-2">
+                        <i class="fas fa-plus text-xs"></i> Add Element
+                    </button>
+                    <div id="reviseSeqPreview" style="margin-top:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px;font-weight:700;color:#15803d;min-height:36px"></div>
+                </div>
+
+                <!-- Numeric -->
+                <div id="reviseAnswerSection_numeric" style="display:none">
+                    <label class="form-label">Correct Numeric Answer</label>
+                    <input type="text" id="reviseCorrectNumeric" class="form-input" style="width:180px;font-size:18px;font-weight:800;text-align:center" placeholder="e.g. 6.022">
+                </div>
+
+                <!-- EXP + Time -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label">Base EXP</label>
+                        <input type="number" id="reviseBaseExp" name="base_exp" class="form-input" min="10" max="500" value="100">
+                    </div>
+                    <div>
+                        <label class="form-label">Time Limit (seconds)</label>
+                        <input type="number" id="reviseTimeLimit" name="time_limit" class="form-input" min="5" max="300" value="30">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeReviseModal()" class="btn btn-outline">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane text-xs"></i> Submit Revision
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ================================================================
+     DELETE CONFIRM MODAL
+================================================================ -->
+<div class="modal-backdrop" id="deleteModal">
+    <div class="modal-card" style="max-width:400px">
+        <div class="modal-header">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                    <i class="fas fa-triangle-exclamation text-red-600 text-sm"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm">Confirm Delete</h3>
+            </div>
+            <button onclick="closeDeleteModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p class="text-sm text-slate-600" id="deleteMsg">Delete this question?</p>
+            <p class="text-xs text-slate-400 mt-1">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeDeleteModal()" class="btn btn-outline">Cancel</button>
+            <button id="confirmDeleteBtn" class="btn btn-danger">
+                <i class="fas fa-trash text-xs"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ================================================================
+     SCRIPTS
+================================================================ -->
+<script>
+
+/* ─── Sidebar ─── */
+function toggleSidebar() {
+    const sb  = document.getElementById('sidebar');
+    const ov  = document.getElementById('sidebarOverlay');
+    const open = !sb.classList.contains('-translate-x-full');
+    sb.classList.toggle('-translate-x-full', open);
+    ov.classList.toggle('hidden', open);
+}
+
+/* ─── Toast ─── */
+function qbToast(msg, type = 'success') {
+    const el = document.getElementById('qb-toast');
+    el.textContent = (type === 'success' ? '✓  ' : '✕  ') + msg;
+    el.className = 'show ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = ''; }, 3200);
+}
+
+/* ─── escHtml ─── */
+function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ─── AI Panel toggle ─── */
+function toggleAiPanel() {
+    const p = document.getElementById('aiPanel');
+    const c = document.getElementById('aiChevron');
+    const open = p.style.display !== 'none';
+    p.style.display = open ? 'none' : 'block';
+    c.className = open ? 'fas fa-chevron-down text-xs' : 'fas fa-chevron-up text-xs';
+}
+
+/* ─── AI Generate ─── */
+async function runAiGenerate() {
+    const materialId = document.getElementById('aiSourceMaterial').value;
+    const topicId    = document.getElementById('aiTopicId').value;
+    const count      = parseInt(document.getElementById('aiCount').value) || 5;
+    const difficulty = document.getElementById('aiDifficulty').value;
+    const mechanic   = document.getElementById('aiMechanic').value;
+    const inputMode  = document.getElementById('aiInputMode').value;
+    const baseExp    = parseInt(document.getElementById('aiBaseExp').value) || 100;
+    const timeLimit  = parseInt(document.getElementById('aiTimeLimit').value) || 30;
+
+    if (!topicId) { qbToast('Please select a topic first.', 'error'); return; }
+    if (count < 1 || count > 20) { qbToast('Count must be between 1 and 20.', 'error'); return; }
+
+    /* Show loader */
+    document.getElementById('aiLoader').classList.add('active');
+    document.getElementById('aiActionRow').style.display = 'none';
+
+    try {
+        const res = await fetch('/teacher/api/generate-questions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                topic_id:     topicId,      // ← WAS: tid (undefined)
+                material_id:  materialId,   // ← WAS: mid (undefined)
+                count:        count,        // ← WAS: num_questions (wrong field name)
+                difficulty:   difficulty,
+                mechanic_type: mechanic,
+                input_mode:   inputMode,
+                base_exp:     baseExp,
+                time_limit:   timeLimit
+            })
+        });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        const data = await res.json();
+        qbToast(data.inserted + ' questions generated and saved!', 'success');
+        setTimeout(() => location.reload(), 1500);
+    } catch(err) {
+        qbToast('Generation failed: ' + err.message, 'error');
+    } finally {
+        document.getElementById('aiLoader').classList.remove('active');
+        document.getElementById('aiActionRow').style.display = 'flex';
+    }
+}
+
+/* ─── Filter state ─── */
+let activeDiff   = '';
+let activeAiFlag = '';
+
+function setDiffFilter(btn) {
+    document.querySelectorAll('[data-diff]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeDiff = btn.dataset.diff;
+    applyFilters();
+}
+
+function setAiFilter(btn) {
+    document.querySelectorAll('[data-ai]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeAiFlag = btn.dataset.ai !== undefined ? btn.dataset.ai : '';
+    applyFilters();
+}
+
+function clearFilters() {
+    document.getElementById('qSearch').value        = '';
+    document.getElementById('filterTopic').value    = '';
+    document.getElementById('filterMechanic').value = '';
+    activeDiff   = '';
+    activeAiFlag = '';
+    document.querySelectorAll('[data-diff]').forEach(b => { b.classList.toggle('active', b.dataset.diff === ''); });
+    document.querySelectorAll('[data-ai]').forEach(b  => { b.classList.toggle('active',  b.dataset.ai  === undefined || b.dataset.ai === ''); });
+    applyFilters();
+}
+
+function applyFilters() {
+    const query    = document.getElementById('qSearch').value.toLowerCase().trim();
+    const topic    = document.getElementById('filterTopic').value;
+    const mechanic = document.getElementById('filterMechanic').value;
+    const cards    = document.querySelectorAll('#questionList .q-card');
+    let visible    = 0;
+
+    cards.forEach(card => {
+        const matchQ = !query    || card.dataset.text.includes(query);
+        const matchT = !topic    || card.dataset.topic    === topic;
+        const matchD = !activeDiff  || card.dataset.diff  === activeDiff;
+        const matchM = !mechanic || card.dataset.mechanic === mechanic;
+        const matchA = activeAiFlag === '' || card.dataset.ai === activeAiFlag;
+        const show   = matchQ && matchT && matchD && matchM && matchA;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    document.getElementById('filterCount').textContent = `Showing ${visible} question${visible !== 1 ? 's' : ''}`;
+}
+
+/* ─── Bulk actions ─── */
+function updateBulkBar() {
+    const checked = document.querySelectorAll('.q-checkbox:checked');
+    const bar = document.getElementById('bulkBar');
+    if (checked.length > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('bulkCount').textContent = checked.length + ' selected';
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+function clearSelection() {
+    document.querySelectorAll('.q-checkbox').forEach(cb => cb.checked = false);
+    updateBulkBar();
+}
+
+async function bulkDelete() {
+    const ids = [...document.querySelectorAll('.q-checkbox:checked')].map(cb => cb.dataset.qid);
+    if (!ids.length) return;
+    if (!confirm('Delete ' + ids.length + ' question(s)?')) return;
+    try {
+        const res = await fetch('/teacher/api/questions/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        qbToast(ids.length + ' questions deleted.', 'success');
+        setTimeout(() => location.reload(), 1200);
+    } catch(err) { qbToast('Bulk delete failed: ' + err.message, 'error'); }
+}
+
+async function bulkApprove() {
+    /* "Approve" in this system means setting is_ai_generated = 0 (teacher-reviewed) */
+    const ids = [...document.querySelectorAll('.q-checkbox:checked')].map(cb => cb.dataset.qid);
+    if (!ids.length) return;
+    try {
+        const res = await fetch('/teacher/api/questions/bulk-approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        qbToast(ids.length + ' questions approved.', 'success');
+        setTimeout(() => location.reload(), 1200);
+    } catch(err) { qbToast('Bulk approve failed: ' + err.message, 'error'); }
+}
+
+/* ─── Question Modal ─── */
+ 
+// Called when input_mode select changes — shows the right answer section
+function updateAnswerSection() {
+    const mode = document.getElementById('qInputMode').value;
+    document.getElementById('answerSection_mcq').style.display               = (mode === 'Standard' || mode === '') ? '' : 'none';
+    document.getElementById('answerSection_periodic_single').style.display   = mode === 'Periodic_Single'   ? '' : 'none';
+    document.getElementById('answerSection_periodic_sequence').style.display = mode === 'Periodic_Sequence' ? '' : 'none';
+    document.getElementById('answerSection_numeric').style.display           = mode === 'Numeric' ? '' : 'none';
+    document.getElementById('numericToleranceRow').style.display             = mode === 'Numeric' ? '' : 'none';
+}
+ 
+// Wire up the input_mode select to trigger the section switch
+document.getElementById('qInputMode').addEventListener('change', updateAnswerSection);
+ 
+/* ── Sequence builder (Periodic_Sequence mode) ── */
+let seqRowCount = 0;
+ 
+function addSeqRow(symbol = '', subscript = 1) {
+    seqRowCount++;
+    const id  = 'seq_' + seqRowCount;
+    const row = document.createElement('div');
+    row.className = 'seq-row';
+    row.id = id;
+    row.innerHTML = `
+        <span style="width:20px;text-align:right;font-size:11px;font-weight:700;color:#94a3b8">${seqRowCount}.</span>
+        <input type="text" class="form-input seq-element-input seq-sym" placeholder="e.g. Na" maxlength="3"
+               value="${escHtml(symbol)}"
+               oninput="updateSeqPreview()" style="font-weight:800;text-align:center;">
+        <span style="font-size:11px;color:#94a3b8">sub</span>
+        <input type="number" class="form-input seq-subscript-input seq-sub" placeholder="1" min="1" max="99"
+               value="${subscript}"
+               oninput="updateSeqPreview()">
+        <button type="button" onclick="document.getElementById('${id}').remove(); updateSeqPreview();"
+                class="btn btn-danger btn-sm" style="padding:4px 8px;flex-shrink:0">
+            <i class="fas fa-times text-xs"></i>
+        </button>
+    `;
+    document.getElementById('seqRows').appendChild(row);
+    updateSeqPreview();
+}
+ 
+function clearSeqRows() {
+    document.getElementById('seqRows').innerHTML = '';
+    seqRowCount = 0;
+    updateSeqPreview();
+}
+ 
+function getSeqData() {
+    const rows = document.querySelectorAll('#seqRows .seq-row');
+    return Array.from(rows).map((row, i) => ({
+        element_symbol: row.querySelector('.seq-sym').value.trim(),
+        subscript:      parseInt(row.querySelector('.seq-sub').value) || 1,
+        sort_order:     i + 1
+    })).filter(r => r.element_symbol);
+}
+ 
+function updateSeqPreview() {
+    const seq = getSeqData();
+    const preview = document.getElementById('seqPreview');
+    if (!seq.length) { preview.textContent = 'Formula preview will appear here'; return; }
+    preview.innerHTML = 'Formula: ' + seq.map(s => {
+        const sub = s.subscript > 1 ? `<sub>${s.subscript}</sub>` : '';
+        return `<strong>${escHtml(s.element_symbol)}</strong>${sub}`;
+    }).join('');
+}
+ 
+function openQModal(qid, text, diff, mechanic, inputMode, optA, optB, optC, optD, correct, instruct, baseExp, timeLimit, topicId, multiAnswer) {
+    const isEdit = qid !== null && qid !== '';
+    document.getElementById('qModalTitle').textContent = isEdit ? 'Edit Question' : 'Add Question';
+    document.getElementById('qId').value = qid || '';
+ 
+    // Reset everything
+    document.getElementById('qForm').reset();
+    document.querySelectorAll('.correct-radio').forEach(r => r.checked = false);
+    clearSeqRows();
+    document.getElementById('elementPreview').textContent = '?';
+    document.getElementById('qCorrectSymbol').value  = '';
+    document.getElementById('qCorrectNumeric').value = '';
+ 
+    if (isEdit) {
+        document.getElementById('qTopicId').value    = topicId   || '';
+        document.getElementById('qText').value       = text      || '';
+        document.getElementById('qInstruct').value   = instruct  || '';
+        document.getElementById('qDifficulty').value = diff      || 'Easy';
+        document.getElementById('qMechanic').value   = mechanic  || 'standard_mcq';
+        document.getElementById('qInputMode').value  = inputMode || 'Standard';
+        document.getElementById('qOptA').value       = optA      || '';
+        document.getElementById('qOptB').value       = optB      || '';
+        document.getElementById('qOptC').value       = optC      || '';
+        document.getElementById('qOptD').value       = optD      || '';
+        document.getElementById('qBaseExp').value    = baseExp   || 100;
+        document.getElementById('qTimeLimit').value  = timeLimit || 30;
+        document.getElementById('qPoints').value     = arguments[15] || 1;
+        document.getElementById('qNumericTolerance').value = arguments[16] || 0;
+        document.getElementById('qMultiAnswer').checked = multiAnswer == 1;
+        // Load media if present
+        const mPath = arguments[17] || '';
+        const mType = arguments[18] || '';
+        document.getElementById('qMediaPath').value = mPath;
+        document.getElementById('qMediaType').value = mType;
+        document.getElementById('qMediaUrl').value  = mPath;
+        showMediaPreview(mPath, mType);
+ 
+        // Set correct answer per input mode
+        if (inputMode === 'Periodic_Single') {
+            document.getElementById('qCorrectSymbol').value = correct || '';
+            document.getElementById('elementPreview').textContent = correct || '?';
+        } else if (inputMode === 'Numeric') {
+            document.getElementById('qCorrectNumeric').value = correct || '';
+        } else {
+            // Standard or empty — set radio
+            const radioEl = document.getElementById('correctRadio' + (correct || ''));
+            if (radioEl) radioEl.checked = true;
+        }
+ 
+        // If Periodic_Sequence, load existing sequence from server
+        if (inputMode === 'Periodic_Sequence' && qid) {
+            fetch('/teacher/api/question/' + qid + '/answer-sequence')
+                .then(r => r.json())
+                .then(data => {
+                    clearSeqRows();
+                    (data.sequences || []).forEach(s => addSeqRow(s.element_symbol, s.subscript));
+                })
+                .catch(() => {/* no sequences yet — that's fine */});
+        }
+    } else {
+        document.getElementById('qBaseExp').value   = 100;
+        document.getElementById('qTimeLimit').value = 30;
+    }
+ 
+    // Show the right answer section for this input mode
+    updateAnswerSection();
+    document.getElementById('qModal').classList.add('open');
+}
+ 
+function closeQModal() {
+    document.getElementById('qModal').classList.remove('open');
+}
+document.getElementById('qModal').addEventListener('click', function(e) {
+    if (e.target === this) closeQModal();
+});
+ 
+async function submitQForm(e) {
+    e.preventDefault();
+    const fd    = new FormData(e.target);
+    const qid   = fd.get('question_id');
+    const url    = qid ? '/teacher/api/question/' + qid : '/teacher/api/question';
+    const method = qid ? 'PUT' : 'POST';
+ 
+    const inputMode = fd.get('input_mode');
+ 
+    // Determine correct_answer based on input mode
+    let correctAnswer = null;
+    if (inputMode === 'Periodic_Single') {
+        correctAnswer = document.getElementById('qCorrectSymbol').value.trim() || null;
+    } else if (inputMode === 'Numeric') {
+        correctAnswer = document.getElementById('qCorrectNumeric').value.trim() || null;
+    } else {
+        // Standard MCQ — use the radio
+        correctAnswer = fd.get('correct_answer') || null;
+    }
+ 
+    const body = {
+        topic_id:             fd.get('topic_id'),
+        question_text:        fd.get('question_text'),
+        instruction_override: fd.get('instruction_override') || null,
+        difficulty:           fd.get('difficulty'),
+        mechanic_type:        fd.get('mechanic_type'),
+        input_mode:           inputMode,
+        option_a:             fd.get('option_a')  || null,
+        option_b:             fd.get('option_b')  || null,
+        option_c:             fd.get('option_c')  || null,
+        option_d:             fd.get('option_d')  || null,
+        correct_answer:       correctAnswer,
+        is_multiple_answer:   fd.get('is_multiple_answer') ? 1 : 0,
+        base_exp:             parseInt(fd.get('base_exp'))   || 100,
+        time_limit:           parseInt(fd.get('time_limit')) || 30,
+        points:               parseInt(fd.get('points'))     || 1,
+        numeric_tolerance:    parseFloat(fd.get('numeric_tolerance')) || 0,
+        media_path:           fd.get('media_path') || null,
+        media_type:           fd.get('media_type') || null,
+    };
+ 
+    // For Periodic_Sequence, attach the sequence data
+    if (inputMode === 'Periodic_Sequence') {
+        body.answer_sequences = getSeqData();
+        if (!body.answer_sequences.length) {
+            qbToast('Add at least one element to the sequence.', 'error');
+            return;
+        }
+    }
+ 
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        closeQModal();
+        qbToast('Question saved.', 'success');
+        setTimeout(() => location.reload(), 1200);
+    } catch(err) { qbToast('Save failed: ' + err.message, 'error'); }
+}
+
+/* ─── Delete ─── */
+function deleteQuestion(qid) {
+    document.getElementById('deleteMsg').textContent = 'Delete question #' + qid + '? This cannot be undone.';
+    const btn = document.getElementById('confirmDeleteBtn');
+    btn.onclick = async () => {
+        try {
+            const res = await fetch('/teacher/api/question/' + qid, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Server ' + res.status);
+            closeDeleteModal();
+            document.getElementById('qcard-' + qid)?.remove();
+            qbToast('Question deleted.', 'success');
+        } catch(err) {
+            closeDeleteModal();
+            qbToast('Delete failed: ' + err.message, 'error');
+        }
+    };
+    document.getElementById('deleteModal').classList.add('open');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('open');
+}
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+});
+
+/* ─── Right panel (arcade settings) ─── */
+let rpCurrentQid = null;
+
+function openArcadePanel(qid, baseExp, timeLimit, mechanic, inputMode) {
+    rpCurrentQid = qid;
+    document.getElementById('rpQid').textContent      = '#' + qid;
+    document.getElementById('rpBaseExp').value        = baseExp    || 100;
+    document.getElementById('rpTimeLimit').value      = timeLimit  || 30;
+    document.getElementById('rpMechanic').value       = mechanic   || 'standard_mcq';
+    document.getElementById('rpInputMode').value      = inputMode  || 'Standard';
+    document.getElementById('rpMultiAnswer').checked  = false;
+    document.getElementById('rightPanelEmpty').style.display   = 'none';
+    document.getElementById('rightPanelContent').style.display = 'block';
+    switchRPanel('config', document.querySelector('.rpanel-tab'));
+    updateMechPreview();
+}
+
+function switchRPanel(name, btn) {
+    document.querySelectorAll('.rpanel-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.rpanel-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('rpanel-' + name).classList.add('active');
+}
+
+const MECH_DESCRIPTIONS = {
+    standard_mcq:     '📋 Standard MCQ — Classic multiple-choice. Student picks one of 4 options.',
+    conveyor_belt:    '🏭 Conveyor Belt — Items scroll past; student must press the correct one before it disappears.',
+    weight_scale:     '⚖️ Weight Scale — Student balances a scale by selecting elements with the correct atomic weight.',
+    radar_scan:       '📡 Radar Scan — Circular radar; student taps the blip that represents the correct answer.',
+    flick_sort:       '👆 Flick Sort — Cards fly in; student flicks them left (wrong) or right (correct).',
+    shield_calibrate: '🛡️ Shield Calibrate — Student adjusts a shield frequency to match the correct element property.',
+    electric_link:    '⚡ Electric Link — Student draws a wire connecting element to its correct match.',
+    cipher_crack:     '🔐 Cipher Crack — Encoded question; student decodes and types the answer.',
+};
+
+function updateMechPreview() {
+    const mech = document.getElementById('rpMechanic').value;
+    document.getElementById('mechPreviewBox').textContent = MECH_DESCRIPTIONS[mech] || 'No preview available.';
+}
+
+async function saveArcadeSettings() {
+    if (!rpCurrentQid) return;
+    const body = {
+        base_exp:           parseInt(document.getElementById('rpBaseExp').value)    || 100,
+        time_limit:         parseInt(document.getElementById('rpTimeLimit').value)  || 30,
+        mechanic_type:      document.getElementById('rpMechanic').value,
+        input_mode:         document.getElementById('rpInputMode').value,
+        is_multiple_answer: document.getElementById('rpMultiAnswer').checked ? 1 : 0,
+    };
+    try {
+        const res = await fetch('/teacher/api/question/' + rpCurrentQid + '/arcade', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        qbToast('Arcade settings saved.', 'success');
+    } catch(err) { qbToast('Save failed: ' + err.message, 'error'); }
+}
+
+/* ─── Link to assessment ─── */
+async function linkToAssessment() {
+    if (!rpCurrentQid) return;
+    const asmtId = document.getElementById('rpAssessment').value;
+    if (!asmtId) { qbToast('Select an assessment first.', 'error'); return; }
+
+    try {
+        const res = await fetch('/teacher/api/question/' + rpCurrentQid + '/link-assessment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assessment_id: asmtId })
+        });
+        if (!res.ok) {
+            const d = await res.json();
+            throw new Error(d.error || ('Server ' + res.status));
+        }
+        document.getElementById('linkStatus').textContent = '✓ Linked successfully.';
+        document.getElementById('linkStatus').style.color = '#059669';
+        qbToast('Question linked to assessment.', 'success');
+    } catch(err) {
+        document.getElementById('linkStatus').textContent = '✕ ' + err.message;
+        document.getElementById('linkStatus').style.color = '#dc2626';
+    }
+}
+
+/* ─── Media attachment helpers ─── */
+function handleMediaUrlInput(url) {
+    if (!url) { clearMediaAttachment(); return; }
+    const imgExts = /\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i;
+    const vidExts = /\.(mp4|webm|ogg|mov)(\?.*)?$/i;
+    let mType = '';
+    if (imgExts.test(url)) mType = 'image';
+    else if (vidExts.test(url)) mType = 'video';
+    else mType = 'image'; // default guess
+    document.getElementById('qMediaPath').value = url;
+    document.getElementById('qMediaType').value = mType;
+    showMediaPreview(url, mType);
+}
+
+function showMediaPreview(url, mType) {
+    const row = document.getElementById('mediaPreviewRow');
+    const img = document.getElementById('mediaPreviewImg');
+    const vid = document.getElementById('mediaPreviewVid');
+    if (!url) { row.style.display = 'none'; img.style.display = 'none'; vid.style.display = 'none'; return; }
+    row.style.display = 'flex';
+    if (mType === 'video') {
+        vid.src = url; vid.style.display = ''; img.style.display = 'none';
+    } else {
+        img.src = url; img.style.display = ''; vid.style.display = 'none';
+    }
+}
+
+function clearMediaAttachment() {
+    document.getElementById('qMediaPath').value = '';
+    document.getElementById('qMediaType').value = '';
+    document.getElementById('qMediaUrl').value  = '';
+    document.getElementById('mediaPreviewRow').style.display = 'none';
+    document.getElementById('mediaPreviewImg').style.display = 'none';
+    document.getElementById('mediaPreviewVid').style.display = 'none';
+}
+
+
+/* ─── Page tab switching ─── */
+function switchPageTab(name, btn) {
+    document.querySelectorAll('.page-tab[onclick*="switchPageTab"]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page-section[id^="page-section-"]').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-section-' + name).classList.add('active');
+    if (name === 'performance') loadPerformanceData();
+}
+
+/* ─── Verification sub-tab switching ─── */
+function switchVTab(name, btn) {
+    document.querySelectorAll('[id^="vtab-"]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('[id^="vsection-"]').forEach(s => { s.classList.remove('active'); s.style.display = 'none'; });
+    btn.classList.add('active');
+    const sec = document.getElementById('vsection-' + name);
+    sec.classList.add('active');
+    sec.style.display = 'block';
+}
+// Init vsections: only pending visible by default
+['approved','rejected'].forEach(n => { const el = document.getElementById('vsection-' + n); if(el) el.style.display = 'none'; });
+
+/* ─── Cancel pending question ─── */
+async function cancelPendingQuestion(qid) {
+    if (!confirm('Cancel submission of question #' + qid + '? It will return to draft (Pending status removed).')) return;
+    try {
+        const res = await fetch('/teacher/api/question/' + qid + '/cancel-submission', { method: 'PATCH' });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        document.getElementById('vcard-' + qid)?.remove();
+        qbToast('Submission cancelled.', 'success');
+    } catch(err) { qbToast('Error: ' + err.message, 'error'); }
+}
+
+/* ─── Revise Modal ─── */
+let reviseSeqCount = 0;
+let _currentReviseQid = null;
+
+function openReviseModal(qid, text, diff, mechanic, inputMode, optA, optB, optC, optD, correct, instruct, baseExp, timeLimit, topicId, multiAnswer) {
+    _currentReviseQid = qid;
+    document.getElementById('reviseQid').value          = qid;
+    document.getElementById('reviseQidLabel').textContent = '#' + qid;
+    document.getElementById('reviseTopicId').value      = topicId   || '';
+    document.getElementById('reviseText').value         = text      || '';
+    document.getElementById('reviseInstruct').value     = instruct  || '';
+    document.getElementById('reviseDifficulty').value   = diff      || 'Easy';
+    document.getElementById('reviseMechanic').value     = mechanic  || 'standard_mcq';
+    document.getElementById('reviseInputMode').value    = inputMode || 'Standard';
+    document.getElementById('reviseOptA').value         = optA || '';
+    document.getElementById('reviseOptB').value         = optB || '';
+    document.getElementById('reviseOptC').value         = optC || '';
+    document.getElementById('reviseOptD').value         = optD || '';
+    document.getElementById('reviseBaseExp').value      = baseExp   || 100;
+    document.getElementById('reviseTimeLimit').value    = timeLimit || 30;
+
+    // Find & show rejection reason
+    const rejBox  = document.getElementById('reviseRejectionBox');
+    const rejText = document.getElementById('reviseRejectionText');
+    // Grab from the rejected card's rejection reason box if it exists
+    const card = document.querySelector('[id^="vcard-"] .text-rose-700');
+    if (card) { rejBox.style.display = ''; rejText.textContent = card.textContent; }
+    else { rejBox.style.display = 'none'; }
+
+    // Set correct answer for Standard MCQ
+    if (inputMode === 'Standard') {
+        const radioEl = document.getElementById('reviseCorrectRadio' + (correct || ''));
+        if (radioEl) radioEl.checked = true;
+    } else if (inputMode === 'Periodic_Single') {
+        document.getElementById('reviseCorrectSymbol').value = correct || '';
+    } else if (inputMode === 'Numeric') {
+        document.getElementById('reviseCorrectNumeric').value = correct || '';
+    }
+
+    // Load sequence for Periodic_Sequence
+    document.getElementById('reviseSeqRows').innerHTML = '';
+    reviseSeqCount = 0;
+    if (inputMode === 'Periodic_Sequence' && qid) {
+        fetch('/teacher/api/question/' + qid + '/answer-sequence')
+            .then(r => r.json())
+            .then(data => { (data.sequences || []).forEach(s => addReviseSeqRow(s.element_symbol, s.subscript)); })
+            .catch(() => {});
+    }
+
+    updateReviseAnswerSection();
+    document.getElementById('reviseModal').classList.add('open');
+}
+
+function closeReviseModal() { document.getElementById('reviseModal').classList.remove('open'); }
+document.getElementById('reviseModal').addEventListener('click', function(e) { if (e.target === this) closeReviseModal(); });
+
+function updateReviseAnswerSection() {
+    const mode = document.getElementById('reviseInputMode').value;
+    document.getElementById('reviseAnswerSection_mcq').style.display               = (mode === 'Standard' || mode === '') ? '' : 'none';
+    document.getElementById('reviseAnswerSection_periodic_single').style.display   = mode === 'Periodic_Single'   ? '' : 'none';
+    document.getElementById('reviseAnswerSection_periodic_sequence').style.display = mode === 'Periodic_Sequence' ? '' : 'none';
+    document.getElementById('reviseAnswerSection_numeric').style.display           = mode === 'Numeric' ? '' : 'none';
+}
+
+function addReviseSeqRow(symbol = '', subscript = 1) {
+    reviseSeqCount++;
+    const id  = 'rseq_' + reviseSeqCount;
+    const row = document.createElement('div');
+    row.className = 'seq-row'; row.id = id;
+    row.innerHTML = `
+        <span style="width:20px;text-align:right;font-size:11px;font-weight:700;color:#94a3b8">${reviseSeqCount}.</span>
+        <input type="text" class="form-input seq-element-input rseq-sym" placeholder="Na" maxlength="3" value="${escHtml(symbol)}" oninput="updateReviseSeqPreview()" style="font-weight:800;text-align:center;">
+        <span style="font-size:11px;color:#94a3b8">sub</span>
+        <input type="number" class="form-input seq-subscript-input rseq-sub" placeholder="1" min="1" max="99" value="${subscript}" oninput="updateReviseSeqPreview()">
+        <button type="button" onclick="document.getElementById('${id}').remove(); updateReviseSeqPreview();" class="btn btn-danger btn-sm" style="padding:4px 8px;flex-shrink:0"><i class="fas fa-times text-xs"></i></button>
+    `;
+    document.getElementById('reviseSeqRows').appendChild(row);
+    updateReviseSeqPreview();
+}
+
+function updateReviseSeqPreview() {
+    const rows = document.querySelectorAll('#reviseSeqRows .seq-row');
+    const seq  = Array.from(rows).map((r,i) => ({ element_symbol: r.querySelector('.rseq-sym').value.trim(), subscript: parseInt(r.querySelector('.rseq-sub').value)||1, sort_order: i+1 })).filter(r => r.element_symbol);
+    const preview = document.getElementById('reviseSeqPreview');
+    if (!seq.length) { preview.textContent = 'Formula preview will appear here'; return; }
+    preview.innerHTML = 'Formula: ' + seq.map(s => { const sub = s.subscript > 1 ? `<sub>${s.subscript}</sub>` : ''; return `<strong>${escHtml(s.element_symbol)}</strong>${sub}`; }).join('');
+}
+
+async function submitRevision(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const qid = fd.get('question_id');
+    const inputMode = document.getElementById('reviseInputMode').value;
+    let correctAnswer = null;
+    if      (inputMode === 'Periodic_Single') correctAnswer = document.getElementById('reviseCorrectSymbol').value.trim()  || null;
+    else if (inputMode === 'Numeric')         correctAnswer = document.getElementById('reviseCorrectNumeric').value.trim() || null;
+    else {
+        const checked = document.querySelector('input[name="revise_correct_answer"]:checked');
+        correctAnswer = checked ? checked.value : null;
+    }
+    const rows = document.querySelectorAll('#reviseSeqRows .seq-row');
+    const seqs = Array.from(rows).map((r,i) => ({ element_symbol: r.querySelector('.rseq-sym').value.trim(), subscript: parseInt(r.querySelector('.rseq-sub').value)||1, sort_order: i+1 })).filter(r => r.element_symbol);
+    const body = {
+        topic_id:             fd.get('topic_id'),
+        question_text:        fd.get('question_text'),
+        instruction_override: fd.get('instruction_override') || null,
+        difficulty:           fd.get('difficulty'),
+        mechanic_type:        fd.get('mechanic_type'),
+        input_mode:           inputMode,
+        option_a:             fd.get('option_a')  || null,
+        option_b:             fd.get('option_b')  || null,
+        option_c:             fd.get('option_c')  || null,
+        option_d:             fd.get('option_d')  || null,
+        correct_answer:       correctAnswer,
+        base_exp:             parseInt(fd.get('base_exp'))   || 100,
+        time_limit:           parseInt(fd.get('time_limit')) || 30,
+        answer_sequences:     inputMode === 'Periodic_Sequence' ? seqs : undefined,
+    };
+    try {
+        const res = await fetch('/teacher/api/question/' + qid + '/revise', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        closeReviseModal();
+        qbToast('Revision submitted — question is now pending review.', 'success');
+        setTimeout(() => location.reload(), 1400);
+    } catch(err) { qbToast('Submit failed: ' + err.message, 'error'); }
+}
+
+/* ─── Performance Gaps ─── */
+let _perfCurrentQid = null;
+
+async function loadPerformanceData() {
+    try {
+        const res = await fetch('/teacher/api/questions/performance-gaps');
+        if (!res.ok) throw new Error('Server ' + res.status);
+        const data = await res.json();
+        renderErrorRankList(data.questions || []);
+    } catch(err) {
+        document.getElementById('errorRankList').innerHTML = `<p class="text-xs text-rose-400 text-center py-4">Failed to load: ${escHtml(err.message)}</p>`;
+    }
+}
+
+function renderErrorRankList(qs) {
+    const container = document.getElementById('errorRankList');
+    if (!qs.length) { container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No response data yet.</p>'; return; }
+    container.innerHTML = qs.map((q, i) => {
+        const pct = Math.round(q.error_rate * 100);
+        return `
+        <div class="cursor-pointer rounded-xl p-3 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition"
+             onclick="loadQuestionPerformance(${q.question_id}, '${escHtml(q.question_text.slice(0,80))}')">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-slate-700 truncate" style="max-width:160px" title="${escHtml(q.question_text)}">${i+1}. ${escHtml(q.question_text.slice(0,55))}${q.question_text.length > 55 ? '…' : ''}</span>
+                <span class="text-xs font-black ${pct >= 70 ? 'text-rose-600' : pct >= 40 ? 'text-amber-600' : 'text-emerald-600'}">${pct}%</span>
+            </div>
+            <div class="error-bar-wrap"><div class="error-bar-fill" style="width:${pct}%;background:${pct >= 70 ? '#f43f5e' : pct >= 40 ? '#f59e0b' : '#10b981'}"></div></div>
+            <p class="text-[10px] text-slate-400 mt-1">${q.total_attempts} attempts · ${q.topic_name || '—'}</p>
+        </div>`;
+    }).join('');
+}
+
+async function loadQuestionPerformance(qid, questionTextSnippet) {
+    _perfCurrentQid = qid;
+    document.getElementById('perfDetailTitle').textContent = 'Q#' + qid + ': ' + questionTextSnippet + (questionTextSnippet.length >= 80 ? '…' : '');
+    document.getElementById('perfDetailBody').innerHTML = '<p class="text-xs text-slate-400 text-center py-6"><i class="fas fa-spinner fa-spin mr-2"></i>Loading…</p>';
+    document.getElementById('remPanel').style.display = '';
+    document.getElementById('remQidLabel').textContent = 'Question #' + qid;
+
+    try {
+        const res = await fetch('/teacher/api/question/' + qid + '/student-performance');
+        if (!res.ok) throw new Error('Server ' + res.status);
+        const data = await res.json();
+        renderStudentTracking(data.classes || []);
+        loadRemediations(qid);
+    } catch(err) {
+        document.getElementById('perfDetailBody').innerHTML = `<p class="text-xs text-rose-400 text-center py-4">Error: ${escHtml(err.message)}</p>`;
+    }
+}
+
+function renderStudentTracking(classes) {
+    const body = document.getElementById('perfDetailBody');
+    if (!classes.length) { body.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">No student responses recorded yet.</p>'; return; }
+    body.innerHTML = classes.map(cls => `
+        <div class="mb-3">
+            <div class="class-group-header" onclick="toggleClassGroup(this)">
+                <span><i class="fas fa-chalkboard-user mr-2 text-indigo-400"></i>${escHtml(cls.class_name)}</span>
+                <div class="flex items-center gap-3">
+                    <span style="background:#dcfce7;color:#14532d;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:800">${cls.correct_count} ✓</span>
+                    <span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:800">${cls.wrong_count} ✕</span>
+                    <i class="fas fa-chevron-down text-indigo-400 text-xs transition-transform"></i>
+                </div>
+            </div>
+            <div class="class-group-body">
+                <table class="perf-table mt-2">
+                    <thead><tr>
+                        <th>Student</th><th>Assessment</th><th>Their Answer</th><th>Correct</th><th>Date</th>
+                    </tr></thead>
+                    <tbody>
+                        ${cls.responses.map(r => `
+                        <tr>
+                            <td>
+                                <p class="font-semibold text-slate-700">${escHtml(r.last_name)}, ${escHtml(r.first_name)}</p>
+                                <p class="text-[10px] text-slate-400">${escHtml(r.lrn_number || '—')}</p>
+                            </td>
+                            <td>
+                                <p class="font-medium text-slate-600">${escHtml(r.assessment_name || '—')}</p>
+                                <span style="background:#ede9fe;color:#5b21b6;padding:1px 6px;border-radius:9999px;font-size:10px;font-weight:700">${escHtml(r.assessment_type || '')}</span>
+                            </td>
+                            <td>
+                                <span class="font-bold ${r.is_correct ? 'text-emerald-600' : 'text-rose-600'}" style="background:${r.is_correct ? '#dcfce7' : '#fee2e2'};padding:2px 8px;border-radius:6px;font-size:12px">
+                                    ${escHtml(r.selected_option || '(blank)')}
+                                </span>
+                            </td>
+                            <td><span class="font-bold text-emerald-700" style="background:#dcfce7;padding:2px 8px;border-radius:6px;font-size:12px">${escHtml(r.correct_answer || '—')}</span></td>
+                            <td class="text-slate-400 text-[11px]">${r.date_recorded ? new Date(r.date_recorded).toLocaleDateString('en-PH', {year:'numeric',month:'short',day:'numeric'}) : '—'}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleClassGroup(header) {
+    const body = header.nextElementSibling;
+    const icon = header.querySelector('.fa-chevron-down');
+    body.classList.toggle('open');
+    if (icon) icon.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+/* ─── Remediation ─── */
+async function loadRemediations(qid) {
+    const container = document.getElementById('remList');
+    container.innerHTML = '<p class="text-xs text-slate-400">Loading…</p>';
+    try {
+        const res = await fetch('/teacher/api/question/' + qid + '/remediations');
+        if (!res.ok) throw new Error('Server ' + res.status);
+        const data = await res.json();
+        const rems = data.remediations || [];
+        if (!rems.length) { container.innerHTML = '<p class="text-xs text-slate-400 italic">No interventions added yet.</p>'; return; }
+        container.innerHTML = rems.map(r => `
+            <div class="rem-card">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1">
+                        ${r.advice_text ? `<p class="text-sm text-slate-700 font-medium mb-1">${escHtml(r.advice_text)}</p>` : ''}
+                        ${r.material_title ? `<p class="text-xs text-indigo-600 mt-1"><i class="fas fa-file mr-1"></i>${escHtml(r.material_title)}</p>` : ''}
+                        ${r.link_url ? `<a href="${escHtml(r.link_url)}" target="_blank" class="text-xs text-cyan-600 mt-1 block break-all"><i class="fas fa-link mr-1"></i>${escHtml(r.link_url)}</a>` : ''}
+                        <p class="text-[10px] text-slate-400 mt-2"><i class="fas fa-calendar mr-1"></i>Added ${new Date(r.created_at).toLocaleDateString('en-PH', {year:'numeric',month:'short',day:'numeric'})}</p>
+                    </div>
+                    <button onclick="deleteRemediation(${r.rem_id})" class="btn btn-danger btn-sm flex-shrink-0" style="padding:3px 7px"><i class="fas fa-trash text-xs"></i></button>
+                </div>
+                ${r.preview_json ? renderPreviewJson(r.preview_json) : ''}
+            </div>`).join('');
+    } catch(err) { container.innerHTML = `<p class="text-xs text-rose-400">Error: ${escHtml(err.message)}</p>`; }
+}
+
+function renderPreviewJson(jsonStr) {
+    try {
+        const p = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+        if (!p || !p.title) return '';
+        return `<div class="flex items-center gap-3 mt-2 p-2 bg-white rounded-lg border border-slate-100">
+            ${p.image ? `<img src="${escHtml(p.image)}" style="width:56px;height:40px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.display='none'">` : ''}
+            <div><p class="text-xs font-semibold text-slate-700 truncate">${escHtml(p.title)}</p><p class="text-[10px] text-slate-400 truncate">${escHtml(p.url || '')}</p></div>
+        </div>`;
+    } catch(e) { return ''; }
+}
+
+async function saveRemediation() {
+    if (!_perfCurrentQid) return;
+    const advice      = document.getElementById('remAdvice').value.trim();
+    const materialId  = document.getElementById('remMaterial').value   || null;
+    const linkUrl     = document.getElementById('remLinkUrl').value.trim() || null;
+
+    if (!advice && !materialId && !linkUrl) { qbToast('Please enter advice, a material, or a link.', 'error'); return; }
+
+    let previewJson = null;
+    if (linkUrl) {
+        previewJson = JSON.stringify({ url: linkUrl, title: linkUrl, image: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(linkUrl)}&sz=64` });
+    }
+
+    try {
+        const res = await fetch('/teacher/api/question/' + _perfCurrentQid + '/remediation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ advice_text: advice || null, material_id: materialId, link_url: linkUrl, preview_json: previewJson })
+        });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        qbToast('Intervention saved.', 'success');
+        document.getElementById('remAdvice').value   = '';
+        document.getElementById('remMaterial').value = '';
+        document.getElementById('remLinkUrl').value  = '';
+        document.getElementById('remLinkPreview').style.display = 'none';
+        loadRemediations(_perfCurrentQid);
+    } catch(err) { qbToast('Save failed: ' + err.message, 'error'); }
+}
+
+async function deleteRemediation(remId) {
+    if (!confirm('Remove this intervention?')) return;
+    try {
+        const res = await fetch('/teacher/api/remediation/' + remId, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Server ' + res.status);
+        qbToast('Intervention removed.', 'success');
+        loadRemediations(_perfCurrentQid);
+    } catch(err) { qbToast('Delete failed: ' + err.message, 'error'); }
+}
+
+let _remLinkDebounce = null;
+function previewRemLink(url) {
+    clearTimeout(_remLinkDebounce);
+    if (!url) { document.getElementById('remLinkPreview').style.display = 'none'; return; }
+    _remLinkDebounce = setTimeout(() => {
+        const preview = document.getElementById('remLinkPreview');
+        const thumb   = document.getElementById('remLinkThumb');
+        const title   = document.getElementById('remLinkTitle');
+        const urlEl   = document.getElementById('remLinkUrl2');
+        preview.style.display = '';
+        try {
+            const hostname = new URL(url).hostname;
+            thumb.src  = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
+            title.textContent = hostname;
+            urlEl.textContent = url;
+        } catch(e) { title.textContent = url; urlEl.textContent = ''; }
+    }, 600);
+}
+
+// Material preview on select change
+document.getElementById('remMaterial').addEventListener('change', function() {
+    const val = this.value;
+    const box = document.getElementById('remMatPreview');
+    const txt = document.getElementById('remMatPreviewText');
+    if (!val) { box.style.display = 'none'; return; }
+    const opt = this.options[this.selectedIndex];
+    box.style.display = '';
+    txt.textContent   = opt.text;
+});
+
+
+/* ─── Init ─── */
+applyFilters();
+</script>
+</body>
+</html>

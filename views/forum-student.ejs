@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forums | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @media (max-width: 768px) {
+            .sidebar-collapsed { transform: translateX(-100%); }
+            .sidebar-open { transform: translateX(0); }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
+            color: white !important; font-weight: 700;
+            box-shadow: 0 4px 16px rgba(6,182,212,0.3), 0 2px 8px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+
+        /* ── MODAL ── */
+        @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(32px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .modal-enter { animation: modalSlideUp 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+        /* Reply bubbles */
+        .reply-bubble { transition: background 0.15s; }
+        .reply-bubble:hover { background: #f8fafc; }
+
+        /* Highlight search match */
+        .search-hl { background: #fef08a; border-radius: 2px; padding: 0 1px; }
+
+        /* Quick-react bar */
+        .react-btn { transition: transform 0.15s, background 0.15s; }
+        .react-btn:hover { transform: scale(1.25); }
+        .react-btn.popped { animation: pop 0.25s ease; }
+        @keyframes pop { 0%{transform:scale(1)} 50%{transform:scale(1.45)} 100%{transform:scale(1)} }
+
+        /* Image / video media preview */
+        .media-preview img { border-radius: 12px; max-height: 260px; object-fit: cover; cursor: zoom-in; }
+        .media-preview video { border-radius: 12px; max-height: 240px; width: 100%; }
+
+        /* Emoji float animation */
+        @keyframes floatUp {
+            0%   { opacity: 1; transform: translateY(0) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+        }
+        .emoji-float { position: fixed; pointer-events: none; font-size: 28px;
+            animation: floatUp 1.2s ease-out forwards; z-index: 9999; }
+
+        /* Pulse badge */
+        @keyframes badgePop { 0%{transform:scale(0)} 70%{transform:scale(1.15)} 100%{transform:scale(1)} }
+        .badge-pop { animation: badgePop 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+        /* Thin scrollbar for modal panels */
+        .thin-scroll::-webkit-scrollbar { width: 4px; }
+        .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+        .thin-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+
+        /* Private message modal */
+        @keyframes pmSlide {
+            from { opacity:0; transform:translateY(20px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .pm-enter { animation: pmSlide 0.22s ease forwards; }
+
+        /* Tab underline */
+        .tab-active { border-bottom: 3px solid #6366f1; color: #6366f1; font-weight: 800; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden"></div>
+
+    <!-- ══════════ SIDEBAR ══════════ -->
+    <aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60"
+        style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
+        <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+            <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4"><i class="fas fa-times text-xl"></i></button>
+            <img src="/assets/logo.png" alt="Logo" class="w-16 h-16 object-contain mb-3">
+            <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">Elem<span class="text-white">enta</span></h1>
+            <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Student Portal</p>
+        </div>
+        <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
+                <div class="space-y-1">
+                    <a href="/home" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fas fa-house w-5 text-cyan-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Home</span></a>
+                    <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fas fa-chart-line w-5 text-red-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Dashboard</span></a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
+                <div class="space-y-1">
+                    <a href="/subjects" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fas fa-book w-5 text-orange-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">My Subjects</span></a>
+                    <a href="/events" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fa-solid fa-calendar-days text-lg text-violet-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Events</span></a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Community & Engagement</p>
+                <div class="space-y-1">
+                    <a href="/forums" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group"><i class="fas fa-comments w-5 text-emerald-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Forums</span></a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">EXP & Rankings</p>
+                <div class="space-y-1">
+                    <a href="/leaderboards" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fas fa-trophy w-5 text-yellow-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Leaderboards</span></a>
+                </div>
+            </div>
+        </nav>
+        <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
+            <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold"><i class="fas fa-right-from-bracket w-5"></i> Log Out</a>
+        </div>
+    </aside>
+
+    <!-- ══════════ MAIN ══════════ -->
+    <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 transition-all duration-300">
+
+        <!-- HEADER -->
+        <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-40">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 md:hidden"><i class="fas fa-bars text-xl"></i></button>
+                <div>
+                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">
+                        Welcome, <%= user.first_name %>!
+                    </h2>
+                    <p class="text-xs text-slate-400 hidden sm:block">
+                        <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
+                        Chemistry Enthusiast &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 md:gap-6">
+                <div onclick="toggleNotifications()" class="relative group cursor-pointer p-2 hover:bg-slate-100 rounded-full transition">
+                    <i class="far fa-bell text-xl text-slate-600"></i>
+                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span></span>
+                </div>
+                <div class="relative">
+                    <div onclick="toggleUserMenu(event)" class="flex items-center gap-3 pl-4 border-l border-slate-200 cursor-pointer hover:opacity-80 transition">
+                        <div class="text-right hidden lg:block">
+                            <p class="text-sm font-bold text-slate-800 leading-none mb-1"><%= user.first_name %> <%= user.last_name %></p>
+                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none"><%= user.role %></p>
+                        </div>
+                        <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100">
+                        <i class="fas fa-chevron-down text-[10px] text-slate-400 ml-1"></i>
+                    </div>
+                    <div id="userDropdown" class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+                        <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition"><i class="far fa-user w-5 text-center"></i> View Profile</a>
+                        <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition font-bold"><i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE BODY -->
+        <div class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden h-[calc(100vh-80px)]">
+
+            <!-- LEFT SIDEBAR: Stats + Subject filter -->
+            <aside class="w-full md:w-72 bg-white border-r border-slate-200 overflow-y-auto p-5 space-y-6 flex-shrink-0 no-scrollbar">
+                <!-- Stat card -->
+                <div class="bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full"></div>
+                    <div class="absolute -right-2 -bottom-6 w-16 h-16 bg-white/10 rounded-full"></div>
+                    <p class="text-[10px] font-bold opacity-70 uppercase tracking-widest mb-1">Activity Rank</p>
+                    <p class="text-4xl font-black leading-none"><%= totalParticipated %></p>
+                    <p class="text-xs opacity-80 mt-1">Discussions Joined</p>
+                    <div class="mt-4 pt-4 border-t border-white/20 flex items-center gap-2">
+                        <i class="fas fa-award text-yellow-300 text-lg"></i>
+                        <span class="text-[11px] font-extrabold uppercase tracking-wide">
+                            <%= totalParticipated >= 10 ? 'Master Alchemist' : totalParticipated >= 5 ? 'Active Alchemist' : 'Novice Scholar' %>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Subject filter nav -->
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-3">Filter by Subject</h4>
+                    <div class="space-y-1">
+                        <button onclick="filterBySubject('all', this)"
+                            class="subject-btn w-full flex items-center gap-3 p-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-sm transition-all">
+                            <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100"><i class="fas fa-globe text-blue-600 text-xs"></i></span>
+                            <span>All Subjects</span>
+                            <span class="ml-auto text-[10px] bg-blue-100 text-blue-600 font-black px-2 py-0.5 rounded-full" id="countAll"></span>
+                        </button>
+                        <%
+                        // Deduplicate subjects from forums array
+                        const seenSubjects = {};
+                        forums.forEach(f => {
+                            if (f.subject_id && !seenSubjects[f.subject_id]) {
+                                seenSubjects[f.subject_id] = { subject_id: f.subject_id, subject_name: f.subject_name };
+                            }
+                        });
+                        Object.values(seenSubjects).forEach(sub => { %>
+                        <button onclick="filterBySubject('<%= sub.subject_id %>', this)"
+                            data-subject="<%= sub.subject_id %>"
+                            class="subject-btn w-full flex items-center gap-3 p-3 rounded-xl text-slate-600 hover:bg-slate-50 font-semibold text-sm transition-all">
+                            <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50"><i class="fas fa-flask text-emerald-500 text-xs"></i></span>
+                            <span class="truncate text-left flex-1"><%= sub.subject_name %></span>
+                            <span class="ml-auto text-[10px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-full subject-count" data-for="<%= sub.subject_id %>"></span>
+                        </button>
+                        <% }) %>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- MAIN FORUM LIST -->
+            <section class="flex-1 bg-slate-50/60 overflow-y-auto p-4 md:p-8 no-scrollbar">
+                <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Chemistry Commons</h2>
+                        <p class="text-sm text-slate-500 mt-0.5">Engage with professors and peers — <span id="forumCountLabel" class="font-bold text-slate-700"></span></p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Sort:</span>
+                        <select onchange="sortForums(this.value)" class="text-sm font-bold bg-white border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="pinned">Pinned First</option>
+                            <option value="newest">Newest</option>
+                            <option value="most_replies">Most Replies</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="forumList" class="space-y-3">
+                    <% forums.forEach(forum => { %>
+                    <div class="forum-card bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
+                         data-subject="<%= forum.subject_id || 'all' %>"
+                         data-title="<%= (forum.title || '').toLowerCase() %>"
+                         data-pinned="<%= forum.is_pinned ? '1' : '0' %>"
+                         data-replies="<%= forum.reply_count || 0 %>"
+                         data-created="<%= forum.created_at %>">
+
+                        <% if (forum.is_pinned) { %>
+                        <div class="h-1 bg-gradient-to-r from-amber-400 to-orange-400"></div>
+                        <% } else if (forum.is_done) { %>
+                        <div class="h-1 bg-gradient-to-r from-emerald-400 to-teal-400"></div>
+                        <% } else { %>
+                        <div class="h-1 bg-gradient-to-r from-slate-100 to-slate-200"></div>
+                        <% } %>
+
+                        <div class="p-5">
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <!-- Teacher avatar -->
+                                <div class="flex-shrink-0">
+                                    <img src="/profile_uploads/<%= forum.teacher_pic || 'default_avatar.png' %>"
+                                        class="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-100">
+                                </div>
+
+                                <!-- Content -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                                        <% if (forum.is_pinned) { %>
+                                        <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                            <i class="fas fa-thumbtack"></i> Pinned
+                                        </span>
+                                        <% } %>
+                                        <% if (forum.is_done) { %>
+                                        <span class="done-badge inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide badge-pop" id="done-<%= forum.forum_id %>">
+                                            <i class="fas fa-check-circle"></i> Done
+                                        </span>
+                                        <% } %>
+                                        <span class="bg-blue-50 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                            <%= forum.subject_name || 'General' %>
+                                        </span>
+                                        <% if (forum.topic_name) { %>
+                                        <span class="bg-violet-50 text-violet-600 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                            <%= forum.topic_name %>
+                                        </span>
+                                        <% } %>
+                                    </div>
+                                    <h3 class="font-extrabold text-slate-800 text-base leading-snug mb-1"><%= forum.title %></h3>
+                                    <p class="text-xs text-slate-400">
+                                        Started by <span class="font-bold text-slate-600">Prof. <%= forum.teacher_lname %></span>
+                                        · <span class="text-slate-400"><%= new Date(forum.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) %></span>
+                                    </p>
+                                </div>
+
+                                <!-- Right: replies + CTA -->
+                                <div class="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 flex-shrink-0">
+                                    <div class="text-center">
+                                        <p class="text-xl font-black text-slate-800 leading-none"><%= forum.reply_count || 0 %></p>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Replies</p>
+                                    </div>
+                                    <button onclick="openThread('<%= forum.forum_id %>')"
+                                        class="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-600 transition-all shadow-sm hover:shadow-indigo-200 hover:shadow-md whitespace-nowrap">
+                                        <i class="fas fa-comments text-[10px]"></i> View Discussion
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <% }) %>
+
+                    <div id="noResults" class="hidden text-center py-20">
+                        <i class="fas fa-search text-4xl text-slate-200 mb-3"></i>
+                        <p class="text-slate-400 font-semibold">No forums match your search.</p>
+                    </div>
+                </div>
+            </section>
+        </div><!-- /page body -->
+    </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     THREAD MODAL — Full Discussion View
+══════════════════════════════════════════════════════════════════════ -->
+<div id="threadModal" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-2 md:p-4">
+    <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" onclick="closeModal()"></div>
+
+    <!-- Modal shell: 3-column layout -->
+    <div class="relative w-full max-w-7xl h-[95vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden modal-enter">
+
+        <!-- ── MODAL HEADER ── -->
+        <div class="flex-shrink-0 px-6 py-4 border-b border-slate-100 bg-white flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span id="modalSubjectBadge" class="text-[10px] font-black px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full uppercase tracking-wide"></span>
+                    <span id="modalTopicBadge" class="text-[10px] font-black px-2 py-0.5 bg-violet-50 text-violet-600 rounded-full uppercase tracking-wide hidden"></span>
+                    <span id="modalDoneBadge" class="hidden items-center gap-1 text-[10px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full uppercase tracking-wide"><i class="fas fa-check-circle"></i> Done</span>
+                </div>
+                <h3 id="modalTitle" class="font-black text-xl text-slate-800 leading-snug truncate"></h3>
+                <p id="threadMeta" class="text-xs text-slate-400 mt-0.5 flex items-center gap-2"></p>
+            </div>
+            <button onclick="closeModal()" class="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-400 transition text-sm">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- ── TABS (mobile) ── -->
+        <div class="flex-shrink-0 flex border-b border-slate-100 md:hidden bg-white">
+            <button onclick="switchTab('discussion')" class="flex-1 py-3 text-xs font-bold tab-active" id="tab-discussion">💬 Discussion</button>
+            <button onclick="switchTab('members')"    class="flex-1 py-3 text-xs font-bold text-slate-400" id="tab-members">👥 Members</button>
+            <button onclick="switchTab('files')"      class="flex-1 py-3 text-xs font-bold text-slate-400" id="tab-files">📎 Files</button>
+        </div>
+
+        <!-- ── MODAL BODY: 3 columns ── -->
+        <div class="flex flex-1 min-h-0 overflow-hidden">
+
+            <!-- COL 1: Discussion + Reply Form -->
+            <div id="col-discussion" class="flex flex-col flex-1 min-w-0 border-r border-slate-100">
+
+                <!-- Forum topic content -->
+                <div id="topicContentArea" class="flex-shrink-0 px-6 py-4 bg-gradient-to-br from-slate-50 to-blue-50/30 border-b border-slate-100">
+                    <div class="flex gap-3 items-start">
+                        <img id="teacherAvatar" src="/profile_uploads/default_avatar.png" class="w-10 h-10 rounded-xl object-cover ring-2 ring-white shadow flex-shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <p id="teacherNameLabel" class="text-xs font-black text-indigo-600 mb-1"></p>
+                            <div id="threadContent" class="text-sm text-slate-700 leading-relaxed whitespace-pre-line break-words max-h-28 overflow-y-auto thin-scroll pr-2 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reply search bar -->
+                <div class="flex-shrink-0 px-6 py-3 bg-white border-b border-slate-100 flex items-center gap-3">
+                    <div class="relative flex-1">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
+                        <input id="replySearch" type="text" placeholder="Search replies…" oninput="searchReplies(this.value)"
+                            class="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    </div>
+                    <span id="replyCount" class="text-xs font-black text-slate-400 whitespace-nowrap"></span>
+                </div>
+
+                <!-- Quick reactions bar -->
+                <div class="flex-shrink-0 px-6 py-2.5 bg-white border-b border-slate-100 flex items-center gap-3">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Quick React:</span>
+                    <div class="flex gap-1.5">
+                        <% [['👍','Like'],['❤️','Heart'],['😢','Sad'],['😮','Wow'],['🤗','Care']].forEach(([emoji, label]) => { %>
+                        <button onclick="sendReaction('<%= emoji %>', '<%= label %>', event)"
+                            class="react-btn flex items-center gap-1 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-600 border border-slate-100 transition"
+                            title="<%= label %>">
+                            <span class="text-base leading-none"><%= emoji %></span>
+                        </button>
+                        <% }) %>
+                    </div>
+                </div>
+
+                <!-- Replies container -->
+                <div id="repliesContainer" class="flex-1 overflow-y-auto thin-scroll px-6 py-5 space-y-4 bg-slate-50/40"></div>
+
+                <!-- Reply Form -->
+                <div class="flex-shrink-0 bg-white border-t border-slate-100 px-6 py-4">
+                    <div id="replyIndicator" class="hidden mb-3 flex items-center justify-between bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl">
+                        <p class="text-xs font-bold text-indigo-700 flex items-center gap-2" id="replyTargetText"><i class="fas fa-reply"></i></p>
+                        <button type="button" onclick="cancelReply()" class="text-indigo-400 hover:text-red-500 transition text-sm"><i class="fas fa-times"></i></button>
+                    </div>
+                    <form id="replyForm" class="flex flex-col gap-3" enctype="multipart/form-data">
+                        <input type="hidden" id="activeForumId" name="forum_id">
+                        <textarea id="replyContent" name="reply_text" required rows="3" placeholder="Write your insight here…"
+                            class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-400 outline-none resize-none transition"></textarea>
+                        <div class="flex items-center gap-3">
+                            <label class="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition text-xs font-bold text-slate-500">
+                                <i class="fas fa-paperclip text-slate-400"></i> Attach File
+                                <input type="file" id="replyFile" name="file" class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx" onchange="previewAttachment(this)">
+                            </label>
+                            <div id="attachPreview" class="hidden flex-1 text-xs text-slate-500 font-medium truncate"></div>
+                            <button type="submit" class="ml-auto flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition shadow-sm hover:shadow-indigo-200 hover:shadow-md">
+                                <i class="fas fa-paper-plane text-xs"></i> Post Insight
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div><!-- /col-discussion -->
+
+            <!-- COL 2: Members Panel -->
+            <div id="col-members" class="hidden md:flex flex-col w-64 flex-shrink-0 bg-white border-r border-slate-100">
+                <div class="flex-shrink-0 px-5 py-4 border-b border-slate-100">
+                    <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><i class="fas fa-users text-indigo-400"></i> Participants</h4>
+                </div>
+                <div id="membersList" class="flex-1 overflow-y-auto thin-scroll px-4 py-3 space-y-2"></div>
+            </div><!-- /col-members -->
+
+            <!-- COL 3: Files Panel -->
+            <div id="col-files" class="hidden md:flex flex-col w-64 flex-shrink-0 bg-white">
+                <div class="flex-shrink-0 px-5 py-4 border-b border-slate-100">
+                    <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><i class="fas fa-folder-open text-amber-400"></i> Uploaded Files</h4>
+                </div>
+                <div id="filesList" class="flex-1 overflow-y-auto thin-scroll px-4 py-3 space-y-2"></div>
+            </div><!-- /col-files -->
+
+        </div><!-- /modal body -->
+    </div><!-- /modal shell -->
+</div>
+
+<!-- ══════════ PRIVATE MESSAGE MODAL ══════════ -->
+<div id="pmModal" class="fixed inset-0 z-[120] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePM()"></div>
+    <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden pm-enter">
+        <div class="px-6 py-5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img id="pmAvatar" src="/profile_uploads/default_avatar.png" class="w-10 h-10 rounded-xl object-cover ring-2 ring-white/30">
+                <div>
+                    <p class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Private Message</p>
+                    <p id="pmRecipientName" class="font-extrabold text-base leading-tight"></p>
+                </div>
+            </div>
+            <button onclick="closePM()" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 transition"><i class="fas fa-times text-sm"></i></button>
+        </div>
+        <div class="p-6">
+            <textarea id="pmContent" rows="5" placeholder="Type your message here…"
+                class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none transition"></textarea>
+            <div class="flex gap-3 mt-4">
+                <button onclick="closePM()" class="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition text-sm">Cancel</button>
+                <button onclick="sendPM()" class="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-paper-plane text-xs"></i> Send
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════ IMAGE LIGHTBOX ══════════ -->
+<div id="lightbox" onclick="closeLightbox()" class="fixed inset-0 z-[200] hidden flex items-center justify-center bg-slate-900/90 backdrop-blur-sm cursor-zoom-out">
+    <img id="lightboxImg" src="" class="max-w-[90vw] max-h-[88vh] rounded-2xl shadow-2xl object-contain">
+</div>
+
+<!-- ══════════ NOTIFICATION PANEL ══════════ -->
+<div id="notification-overlay" onclick="toggleNotifications()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden transition-opacity duration-300 opacity-0"></div>
+<div id="notification-panel" class="fixed top-0 right-0 h-screen w-80 md:w-96 bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col">
+    <div class="p-5 border-b flex justify-between items-center bg-blue-600 text-white flex-shrink-0">
+        <h2 class="text-lg font-bold flex items-center gap-2"><i class="far fa-bell"></i> Notifications</h2>
+        <button onclick="toggleNotifications()" class="hover:bg-blue-700 p-2 rounded-lg transition"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 no-scrollbar" id="notification-list">
+        <div class="flex flex-col items-center justify-center h-full text-slate-400">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+            <p class="text-xs font-bold uppercase tracking-wider">Loading…</p>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SERVER DATA INJECTION
+══════════════════════════════════════════════════ -->
+<script>
+const CURRENT_USER_ID = <%= user.user_id %>;
+const CURRENT_USER = {
+    id:          <%= user.user_id %>,
+    first_name:  '<%= user.first_name %>',
+    last_name:   '<%= user.last_name %>',
+    profile_pic: '<%= user.profile_pic || "default_avatar.png" %>',
+    role:        '<%= user.role %>'
+};
+// All forum data available for client-side operations
+const ALL_FORUMS = <%- JSON.stringify(forums) %>;
+</script>
+
+<!-- ══════════════════════════════════════════════════
+     MAIN SCRIPT
+══════════════════════════════════════════════════ -->
+<script>
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let currentForumId   = null;
+let activeParentId   = null;
+let refreshTask      = null;
+let pmRecipientId    = null;
+let currentReplies   = [];
+
+// ─── INIT: count badges ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    updateCounts();
+});
+
+function updateCounts() {
+    const cards = document.querySelectorAll('.forum-card');
+    document.getElementById('countAll').textContent = cards.length;
+    document.getElementById('forumCountLabel').textContent = `${cards.length} forum${cards.length !== 1 ? 's' : ''} available`;
+
+    // Per-subject counts
+    const counts = {};
+    cards.forEach(c => {
+        const sid = c.getAttribute('data-subject');
+        counts[sid] = (counts[sid] || 0) + 1;
+    });
+    document.querySelectorAll('.subject-count').forEach(el => {
+        const sid = el.getAttribute('data-for');
+        el.textContent = counts[sid] || 0;
+    });
+}
+
+// ─── FORUM CARD FILTER ───────────────────────────────────────────────────────
+let activeSubject = 'all';
+
+function filterBySubject(subjectId, btn) {
+    activeSubject = subjectId;
+    applyFilters();
+
+    document.querySelectorAll('.subject-btn').forEach(b => {
+        b.className = 'subject-btn w-full flex items-center gap-3 p-3 rounded-xl text-slate-600 hover:bg-slate-50 font-semibold text-sm transition-all';
+    });
+    btn.className = subjectId === 'all'
+        ? 'subject-btn w-full flex items-center gap-3 p-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-sm transition-all'
+        : 'subject-btn w-full flex items-center gap-3 p-3 rounded-xl bg-emerald-50 text-emerald-600 font-bold text-sm transition-all';
+}
+
+function filterForumCards(query) {
+    applyFilters(query);
+}
+
+function applyFilters(query = document.getElementById('globalSearch').value) {
+    const q = query.toLowerCase().trim();
+    let visible = 0;
+    document.querySelectorAll('.forum-card').forEach(card => {
+        const matchSubject = activeSubject === 'all' || card.getAttribute('data-subject') === String(activeSubject);
+        const matchSearch  = !q || card.getAttribute('data-title').includes(q);
+        const show = matchSubject && matchSearch;
+        card.classList.toggle('hidden', !show);
+        if (show) visible++;
+    });
+    document.getElementById('noResults').classList.toggle('hidden', visible > 0);
+    document.getElementById('forumCountLabel').textContent = `${visible} forum${visible !== 1 ? 's' : ''} shown`;
+}
+
+function sortForums(mode) {
+    const list  = document.getElementById('forumList');
+    const cards = [...list.querySelectorAll('.forum-card')];
+    cards.sort((a, b) => {
+        if (mode === 'pinned') {
+            if (a.dataset.pinned !== b.dataset.pinned) return b.dataset.pinned - a.dataset.pinned;
+            return new Date(b.dataset.created) - new Date(a.dataset.created);
+        }
+        if (mode === 'newest')       return new Date(b.dataset.created) - new Date(a.dataset.created);
+        if (mode === 'most_replies') return parseInt(b.dataset.replies) - parseInt(a.dataset.replies);
+    });
+    cards.forEach(c => list.appendChild(c));
+}
+
+// ─── OPEN THREAD MODAL ───────────────────────────────────────────────────────
+async function openThread(forumId) {
+    currentForumId = forumId;
+    activeParentId = null;
+
+    document.getElementById('activeForumId').value = forumId;
+    document.getElementById('threadModal').classList.remove('hidden');
+    document.getElementById('repliesContainer').innerHTML = buildLoadingHTML();
+
+    // Find forum data from injected array
+    const forum = ALL_FORUMS.find(f => String(f.forum_id) === String(forumId));
+    if (forum) {
+        document.getElementById('modalTitle').textContent = forum.title;
+        document.getElementById('modalSubjectBadge').textContent = forum.subject_name || 'General';
+        const topicBadge = document.getElementById('modalTopicBadge');
+        if (forum.topic_name) { topicBadge.textContent = forum.topic_name; topicBadge.classList.remove('hidden'); }
+        else topicBadge.classList.add('hidden');
+
+        // Done badge
+        if (forum.is_done) document.getElementById('modalDoneBadge').classList.replace('hidden','inline-flex');
+        else document.getElementById('modalDoneBadge').classList.replace('inline-flex','hidden');
+    }
+
+    // Fetch full topic details
+    try {
+        const res   = await fetch(`/api/forum-topic/${forumId}`);
+        const topic = await res.json();
+        document.getElementById('threadContent').textContent = (topic.forum_content || '').trim() || '(No topic description)';
+        document.getElementById('threadMeta').innerHTML = `<i class="fas fa-user text-[10px]"></i> ${topic.teacher_name} &nbsp;·&nbsp; <i class="fas fa-clock text-[10px]"></i> ${new Date(topic.created_at).toLocaleString()}`;
+        document.getElementById('teacherNameLabel').textContent = topic.teacher_name;
+        if (topic.teacher_pic) document.getElementById('teacherAvatar').src = `/profile_uploads/${topic.teacher_pic}`;
+    } catch (e) { console.error(e); }
+
+    cancelReply();
+    await loadReplies();
+    await loadMembers(forumId);
+
+    if (refreshTask) clearInterval(refreshTask);
+    refreshTask = setInterval(loadReplies, 7000);
+}
+
+// ─── LOAD REPLIES ────────────────────────────────────────────────────────────
+async function loadReplies() {
+    if (!currentForumId) return;
+    const container = document.getElementById('repliesContainer');
+
+    try {
+        const res  = await fetch(`/api/forum-replies/${currentForumId}`);
+        const data = await res.json();
+        currentReplies = data;
+
+        document.getElementById('replyCount').textContent =
+            data.length ? `${data.length} repl${data.length === 1 ? 'y' : 'ies'}` : 'No replies yet';
+
+        renderReplies(data, document.getElementById('replySearch').value);
+        updateFilesList(data);
+
+        // After first load, scroll to last reply with animation
+        if (container._firstLoad === undefined) {
+            container._firstLoad = true;
+            setTimeout(() => scrollToLatest(true), 200);
+        }
+
+        // Check if student has replied → mark forum done
+        const hasReplied = data.some(r => r.user_id === CURRENT_USER_ID);
+        if (hasReplied) markForumDone(currentForumId);
+
+    } catch (e) {
+        console.error('Error loading replies:', e);
+        container.innerHTML = `<div class="text-center py-12 text-red-400"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p class="text-sm">Failed to load replies.</p></div>`;
+    }
+}
+
+function renderReplies(replies, searchQuery = '') {
+    const container = document.getElementById('repliesContainer');
+    const q = (searchQuery || '').toLowerCase().trim();
+
+    const filtered = q ? replies.filter(r =>
+        (r.reply_content || '').toLowerCase().includes(q) ||
+        (r.first_name + ' ' + r.last_name).toLowerCase().includes(q)
+    ) : replies;
+
+    if (filtered.length === 0) {
+        container.innerHTML = q
+            ? `<div class="text-center py-12 text-slate-400"><i class="fas fa-search text-2xl mb-2"></i><p class="text-sm">No replies match "<strong>${q}</strong>"</p></div>`
+            : `<div class="text-center py-16 text-slate-300"><i class="fas fa-comments text-4xl mb-3"></i><p class="font-semibold text-slate-400">No insights yet. Be the first!</p></div>`;
+        return;
+    }
+
+    container.innerHTML = filtered.map(reply => buildReplyHTML(reply, q)).join('');
+}
+
+function buildReplyHTML(reply, hl = '') {
+    const isOwn    = reply.user_id === CURRENT_USER_ID;
+    const isNested = reply.parent_reply_id !== null;
+    const avatar   = `/profile_uploads/${reply.profile_pic || 'default_avatar.png'}`;
+    const fullName = `${reply.first_name} ${reply.last_name}`;
+    const timeStr  = formatTimeAgo(reply.created_at);
+
+    let content = escHtml(reply.reply_content || '').replace(/\n/g, '<br>');
+    if (hl) content = content.replace(new RegExp(escHtml(hl), 'gi'), m => `<mark class="search-hl">${m}</mark>`);
+
+    // Media preview
+    let mediaHTML = '';
+    if (reply.file_path) {
+        const mt = reply.file_type || '';
+        if (mt.startsWith('image/')) {
+            mediaHTML = `<div class="media-preview mt-2"><img src="/forum_uploads/${reply.file_path}" onclick="openLightbox('/forum_uploads/${reply.file_path}')" alt="${escHtml(reply.file_name || 'image')}"></div>`;
+        } else if (mt.startsWith('video/')) {
+            mediaHTML = `<div class="media-preview mt-2"><video controls src="/forum_uploads/${reply.file_path}"></video></div>`;
+        } else {
+            const icon = mt.includes('pdf') ? 'fa-file-pdf text-red-500' : mt.includes('word') || mt.includes('doc') ? 'fa-file-word text-blue-500' : 'fa-file text-slate-400';
+            mediaHTML = `<a href="/forum_uploads/${reply.file_path}" download class="inline-flex items-center gap-2 mt-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 transition">
+                <i class="fas ${icon}"></i> ${escHtml(reply.file_name || 'Download File')}</a>`;
+        }
+    }
+
+    return `
+    <div class="reply-bubble flex gap-3 ${isNested ? 'ml-10 pl-4 border-l-2 border-indigo-100' : ''}" id="reply-${reply.reply_id}">
+        <img src="${avatar}" class="w-9 h-9 rounded-xl object-cover ring-2 ring-white shadow-sm flex-shrink-0 mt-0.5">
+        <div class="flex-1 min-w-0">
+            <div class="bg-white rounded-2xl px-4 py-3 shadow-sm border border-slate-100 ${isOwn ? 'border-indigo-100 bg-indigo-50/30' : ''}">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-extrabold ${isOwn ? 'text-indigo-600' : 'text-slate-700'}">${escHtml(fullName)}</span>
+                        ${isOwn ? `<span class="text-[9px] font-black px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded-full uppercase">You</span>` : ''}
+                        ${reply.role === 'Teacher' ? `<span class="text-[9px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full uppercase"><i class="fas fa-chalkboard-teacher mr-0.5"></i>Teacher</span>` : ''}
+                    </div>
+                    <span class="text-[10px] text-slate-300 whitespace-nowrap">${timeStr}</span>
+                </div>
+                <p class="text-sm text-slate-700 leading-relaxed break-words">${content}</p>
+                ${mediaHTML}
+            </div>
+            <div class="flex items-center gap-3 mt-1.5 px-1">
+                <button onclick="setParentReply('${escHtml(reply.first_name)}', ${reply.reply_id})"
+                    class="text-[11px] text-slate-400 hover:text-indigo-600 font-bold transition flex items-center gap-1">
+                    <i class="fas fa-reply text-[9px]"></i> Reply
+                </button>
+                ${!isOwn ? `
+                <button onclick="openPM(${reply.user_id}, '${escHtml(fullName)}', '${reply.profile_pic || 'default_avatar.png'}')"
+                    class="text-[11px] text-slate-400 hover:text-blue-600 font-bold transition flex items-center gap-1">
+                    <i class="fas fa-paper-plane text-[9px]"></i> Message
+                </button>` : ''}
+            </div>
+        </div>
+    </div>`;
+}
+
+// ─── SCROLL TO LATEST ────────────────────────────────────────────────────────
+function scrollToLatest(animate = false) {
+    const container = document.getElementById('repliesContainer');
+    const lastReply = container.lastElementChild;
+    if (!lastReply) return;
+    if (animate) {
+        lastReply.style.transition = 'box-shadow 0.5s';
+        lastReply.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.3)';
+        setTimeout(() => { lastReply.style.boxShadow = ''; }, 1200);
+    }
+    lastReply.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+// ─── REPLY SEARCH ────────────────────────────────────────────────────────────
+let searchDebounce;
+function searchReplies(val) {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => renderReplies(currentReplies, val), 180);
+}
+
+// ─── LOAD MEMBERS ────────────────────────────────────────────────────────────
+async function loadMembers(forumId) {
+    const list = document.getElementById('membersList');
+    list.innerHTML = buildLoadingHTML('small');
+    try {
+        const res  = await fetch(`/api/forum-members/${forumId}`);
+        const data = await res.json();
+        if (!data.length) { list.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No participants yet.</p>`; return; }
+
+        list.innerHTML = data.map(m => {
+            const isMe      = m.user_id === CURRENT_USER_ID;
+            const isTeacher = m.role === 'Teacher';
+            return `
+            <div class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition group">
+                <img src="/profile_uploads/${m.profile_pic || 'default_avatar.png'}" class="w-9 h-9 rounded-xl object-cover ring-2 ring-white shadow-sm flex-shrink-0">
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-extrabold text-slate-700 leading-tight truncate">${escHtml(m.first_name)} ${escHtml(m.last_name)}</p>
+                    <p class="text-[10px] ${isTeacher ? 'text-amber-600 font-bold' : 'text-slate-400'}">${isTeacher ? '📚 Teacher' : isMe ? '👤 You' : '🎓 Student'}</p>
+                </div>
+                ${!isMe ? `
+                <button onclick="openPM(${m.user_id}, '${escHtml(m.first_name + ' ' + m.last_name)}', '${m.profile_pic || 'default_avatar.png'}')"
+                    class="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 transition text-xs" title="Send message">
+                    <i class="fas fa-paper-plane text-[10px]"></i>
+                </button>` : ''}
+            </div>`;
+        }).join('');
+    } catch (e) { list.innerHTML = `<p class="text-xs text-red-400 text-center py-4">Failed to load members.</p>`; }
+}
+
+// ─── FILES PANEL ─────────────────────────────────────────────────────────────
+function updateFilesList(replies) {
+    const panel = document.getElementById('filesList');
+    const withFiles = replies.filter(r => r.file_path);
+
+    if (!withFiles.length) {
+        panel.innerHTML = `<div class="text-center py-8 text-slate-300"><i class="fas fa-folder-open text-3xl mb-2"></i><p class="text-xs text-slate-400">No files uploaded yet.</p></div>`;
+        return;
+    }
+
+    panel.innerHTML = withFiles.map(r => {
+        const mt   = r.file_type || '';
+        const icon = mt.startsWith('image/') ? 'fa-image text-blue-400' :
+                     mt.startsWith('video/') ? 'fa-film text-purple-400' :
+                     mt.includes('pdf')      ? 'fa-file-pdf text-red-400' :
+                     mt.includes('word') || mt.includes('doc') ? 'fa-file-word text-blue-500' : 'fa-file text-slate-400';
+        const preview = mt.startsWith('image/')
+            ? `<img src="/forum_uploads/${r.file_path}" onclick="openLightbox('/forum_uploads/${r.file_path}')" class="w-full h-20 object-cover rounded-xl mb-2 cursor-zoom-in hover:opacity-90 transition">`
+            : `<div class="w-full h-12 bg-slate-50 rounded-xl mb-2 flex items-center justify-center"><i class="fas ${icon} text-2xl"></i></div>`;
+
+        return `
+        <div class="border border-slate-100 rounded-2xl p-3 hover:border-indigo-100 hover:bg-indigo-50/20 transition">
+            ${preview}
+            <p class="text-[11px] font-bold text-slate-700 truncate mb-0.5">${escHtml(r.file_name || 'File')}</p>
+            <p class="text-[10px] text-slate-400 mb-2">By ${escHtml(r.first_name)} · ${formatTimeAgo(r.created_at)}</p>
+            <a href="/forum_uploads/${r.file_path}" download
+                class="block w-full text-center text-[10px] font-bold py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition">
+                <i class="fas fa-download mr-1"></i> Download
+            </a>
+        </div>`;
+    }).join('');
+}
+
+// ─── MARK FORUM DONE ─────────────────────────────────────────────────────────
+async function markForumDone(forumId) {
+    try {
+        await fetch('/api/forum-done', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ forum_id: forumId })
+        });
+        // Update the card badge in the list
+        const badgeId = `done-${forumId}`;
+        if (!document.getElementById(badgeId)) {
+            const card = document.querySelector(`.forum-card[data-subject]`);
+            // Find the right card
+            const allCards = document.querySelectorAll('.forum-card');
+            allCards.forEach(c => {
+                const btn = c.querySelector(`button[onclick*="${forumId}"]`);
+                if (btn) {
+                    const badgesArea = c.querySelector('.flex.flex-wrap.items-center');
+                    if (badgesArea && !c.querySelector('.done-badge')) {
+                        badgesArea.insertAdjacentHTML('afterbegin',
+                            `<span id="done-${forumId}" class="done-badge inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide badge-pop"><i class="fas fa-check-circle"></i> Done</span>`
+                        );
+                    }
+                }
+            });
+        }
+        // Update modal badge
+        document.getElementById('modalDoneBadge').classList.replace('hidden','inline-flex');
+    } catch (e) { /* silent */ }
+}
+
+// ─── QUICK REACTIONS ─────────────────────────────────────────────────────────
+async function sendReaction(emoji, label, evt) {
+    if (!currentForumId) return;
+    const btn = evt.currentTarget;
+    btn.classList.add('popped');
+    setTimeout(() => btn.classList.remove('popped'), 300);
+
+    // Float animation
+    const float = document.createElement('div');
+    float.className = 'emoji-float';
+    float.textContent = emoji;
+    const rect = btn.getBoundingClientRect();
+    float.style.left = rect.left + rect.width / 2 + 'px';
+    float.style.top  = rect.top + 'px';
+    document.body.appendChild(float);
+    setTimeout(() => float.remove(), 1300);
+
+    // Send as a quick message reply
+    try {
+        const fd = new FormData();
+        fd.append('forum_id',   currentForumId);
+        fd.append('reply_text', emoji + ' ' + label);
+        fd.append('parent_id',  '');
+        await fetch('/api/forum-reply', { method: 'POST', body: fd });
+        await loadReplies();
+        scrollToLatest();
+    } catch (e) { console.error(e); }
+}
+
+// ─── REPLY FORM ───────────────────────────────────────────────────────────────
+function setParentReply(name, id) {
+    activeParentId = id;
+    document.getElementById('replyIndicator').classList.remove('hidden');
+    document.getElementById('replyTargetText').innerHTML = `<i class="fas fa-reply"></i> Replying to <strong>${escHtml(name)}</strong>`;
+    const ta = document.getElementById('replyContent');
+    ta.placeholder = `Reply to ${name}…`;
+    ta.focus();
+}
+
+function cancelReply() {
+    activeParentId = null;
+    document.getElementById('replyIndicator').classList.add('hidden');
+    document.getElementById('replyContent').placeholder = 'Write your insight here…';
+}
+
+function previewAttachment(input) {
+    const prev = document.getElementById('attachPreview');
+    if (input.files[0]) {
+        prev.textContent = input.files[0].name;
+        prev.classList.remove('hidden');
+    } else {
+        prev.classList.add('hidden');
+    }
+}
+
+document.getElementById('replyForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> Posting…';
+
+    const fd = new FormData();
+    fd.append('forum_id',   document.getElementById('activeForumId').value);
+    fd.append('reply_text', document.getElementById('replyContent').value);
+    fd.append('parent_id',  activeParentId !== null ? activeParentId : '');
+    const file = document.getElementById('replyFile').files[0];
+    if (file) fd.append('file', file);
+
+    try {
+        const res  = await fetch('/api/forum-reply', { method: 'POST', body: fd });
+        const raw  = await res.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error('Server error'); }
+
+        if (!res.ok || !data.success) throw new Error(data.error || 'Post failed');
+
+        document.getElementById('replyContent').value = '';
+        document.getElementById('replyFile').value = '';
+        document.getElementById('attachPreview').classList.add('hidden');
+        cancelReply();
+        await loadReplies();
+        scrollToLatest(true);
+
+        // Mark done
+        await markForumDone(currentForumId);
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane text-xs"></i> Post Insight';
+    }
+});
+
+// ─── PRIVATE MESSAGE ─────────────────────────────────────────────────────────
+function openPM(userId, name, pic) {
+    pmRecipientId = userId;
+    document.getElementById('pmRecipientName').textContent = name;
+    document.getElementById('pmAvatar').src = `/profile_uploads/${pic}`;
+    document.getElementById('pmContent').value = '';
+    document.getElementById('pmModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('pmContent').focus(), 100);
+}
+function closePM() {
+    pmRecipientId = null;
+    document.getElementById('pmModal').classList.add('hidden');
+}
+async function sendPM() {
+    const msg = document.getElementById('pmContent').value.trim();
+    if (!msg || !pmRecipientId) return;
+    try {
+        const res  = await fetch('/api/send-message', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ receiver_id: pmRecipientId, message: msg })
+        });
+        const data = await res.json();
+        if (data.success) { closePM(); showToast('Message sent!', 'success'); }
+        else throw new Error(data.error || 'Failed');
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ─── MOBILE TABS ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+    ['discussion','members','files'].forEach(t => {
+        const col = document.getElementById(`col-${t}`);
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tab) {
+            col.classList.remove('hidden');
+            btn.classList.add('tab-active');
+            btn.classList.remove('text-slate-400');
+        } else {
+            col.classList.add('hidden');
+            btn.classList.remove('tab-active');
+            btn.classList.add('text-slate-400');
+        }
+    });
+}
+
+// ─── LIGHTBOX ────────────────────────────────────────────────────────────────
+function openLightbox(src) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightbox').classList.remove('hidden');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.add('hidden'); }
+
+// ─── CLOSE MODAL ────────────────────────────────────────────────────────────
+function closeModal() {
+    document.getElementById('threadModal').classList.add('hidden');
+    if (refreshTask) clearInterval(refreshTask);
+    currentForumId = null;
+    currentReplies = [];
+    document.getElementById('repliesContainer')._firstLoad = undefined;
+    document.getElementById('replySearch').value = '';
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+    const t = document.createElement('div');
+    t.className = `fixed bottom-6 right-6 z-[300] px-5 py-3 rounded-2xl shadow-xl text-sm font-bold text-white transition-all ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 2500);
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function buildLoadingHTML(size = 'normal') {
+    return size === 'small'
+        ? `<div class="flex justify-center py-4"><div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-500"></div></div>`
+        : `<div class="flex flex-col items-center justify-center py-16 text-slate-400">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mb-3"></div>
+            <p class="text-xs font-bold uppercase tracking-wider">Loading discussion…</p>
+           </div>`;
+}
+
+function formatTimeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if (diff < 60)    return 'Just now';
+    if (diff < 3600)  return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return new Date(dateStr).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+async function toggleNotifications() {
+    const panel   = document.getElementById('notification-panel');
+    const overlay = document.getElementById('notification-overlay');
+    const list    = document.getElementById('notification-list');
+
+    if (panel.classList.contains('translate-x-full')) {
+        panel.classList.remove('translate-x-full');
+        overlay.classList.remove('hidden');
+        setTimeout(() => overlay.classList.add('opacity-100'), 10);
+        try {
+            const res   = await fetch('/api/notifications');
+            const notifs = await res.json();
+            list.innerHTML = '';
+            if (!notifs.length) { list.innerHTML = `<div class="flex flex-col items-center justify-center h-64 text-slate-400"><i class="fas fa-check-circle text-4xl mb-2 opacity-20"></i><p>All caught up!</p></div>`; return; }
+            notifs.forEach(n => {
+                const t = formatTimeAgo(n.created_at);
+                const cfgMap = {
+                    announcement: { icon:'fa-bullhorn',  border:'border-blue-500',   badge:'bg-blue-100 text-blue-600',   label:'Announcement' },
+                    assessment:   { icon:'fa-file-alt',  border:'border-red-500',    badge:'bg-red-100 text-red-600',     label:'Assessment'   },
+                    material:     { icon:'fa-book',      border:'border-purple-500', badge:'bg-purple-100 text-purple-600',label:'Material'    },
+                    forum_new:    { icon:'fa-comments',  border:'border-green-500',  badge:'bg-green-100 text-green-600', label:'Forum'        },
+                    forum_reply:  { icon:'fa-comments',  border:'border-green-500',  badge:'bg-green-100 text-green-600', label:'Forum'        },
+                    score:        { icon:'fa-star',      border:'border-yellow-500', badge:'bg-yellow-100 text-yellow-700',label:'Result'      },
+                };
+                const cfg = cfgMap[n.type] || { icon:'fa-info-circle', border:'border-gray-400', badge:'bg-gray-100 text-gray-600', label: n.type };
+                let extra = n.extra_info ? `<span class="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-bold ${n.extra_info.includes('EXP') ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-700'}">${n.extra_info}</span>` : '';
+                list.insertAdjacentHTML('beforeend', `
+                    <div class="bg-white p-3 rounded-lg border-l-4 ${cfg.border} shadow-sm hover:shadow-md transition cursor-pointer">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${cfg.badge}"><i class="fas ${cfg.icon} mr-1"></i>${cfg.label}</span>
+                            <span class="text-[10px] text-gray-400">${t}</span>
+                        </div>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">${n.heading}</p>
+                        <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">${n.snippet}</p>${extra}
+                    </div>`);
+            });
+        } catch(e) { list.innerHTML = `<p class="text-center text-red-500 p-4">Failed to load.</p>`; }
+    } else {
+        panel.classList.add('translate-x-full');
+        overlay.classList.remove('opacity-100');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
+}
+
+// ─── SIDEBAR / USER MENU ─────────────────────────────────────────────────────
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (window.innerWidth < 768) {
+        sidebar.classList.toggle('sidebar-collapsed');
+        sidebar.classList.toggle('sidebar-open');
+        overlay.classList.toggle('hidden');
+    } else {
+        sidebar.classList.toggle('sidebar-collapsed');
+        document.getElementById('mainContent').classList.toggle('md:ml-64');
+        document.getElementById('mainContent').classList.toggle('md:ml-0');
+    }
+}
+function toggleUserMenu(e) { e.stopPropagation(); document.getElementById('userDropdown').classList.toggle('hidden'); }
+document.addEventListener('click', () => {
+    const dd = document.getElementById('userDropdown');
+    if (dd && !dd.classList.contains('hidden')) dd.classList.add('hidden');
+});
+window.addEventListener('resize', () => {
+    const s = document.getElementById('sidebar'), m = document.getElementById('mainContent');
+    if (window.innerWidth >= 768) { s.classList.remove('sidebar-collapsed','sidebar-open'); m.classList.add('md:ml-64'); }
+    else { s.classList.add('sidebar-collapsed'); m.classList.remove('md:ml-64'); }
+});
+</script>
+</body>
+</html>

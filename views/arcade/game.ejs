@@ -1,0 +1,2633 @@
+<%#
+  ============================================================
+  FILE: views/arcade/game.ejs
+  PURPOSE: Chemistry Arcade — Single Player Game Interface
+  EJS VARIABLES FROM ROUTER:
+    questions    : array of processed question objects (Approved only)
+    user         : { user_id, first_name, last_name, profile_pic,
+                     current_level, total_exp }
+    token        : QR token string
+    assessmentId : integer
+    assessment   : { assessment_id, assessment_name, assessment_type,
+                     timer_type, duration_minutes, total_items,
+                     sound_bg, sound_correct, sound_wrong,
+                     sound_result_pass, sound_result_fail, speech_enabled }
+    totalPossibleScore : integer
+    buttonMappings : array of { button_pin, element_symbol, player_side }
+    resumeIndex    : integer (0 if fresh, N if resuming)
+  ============================================================
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chemistry Arcade — Mission Active</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+        /* ═══════════════════════════════════════════════
+           THEME SYSTEM — CSS CUSTOM PROPERTIES
+        ═══════════════════════════════════════════════ */
+        :root {
+            --tc:        #14b8a6;
+            --tc2:       #06b6d4;
+            --tc3:       #0e7490;
+            --tc-dim:    rgba(20,184,166,0.14);
+            --tc-mid:    rgba(20,184,166,0.35);
+            --bg-core:   #020c10;
+            --panel-bg:  rgba(2,20,22,0.92);
+            --panel-b:   rgba(20,184,166,0.28);
+            --glow:      0 0 40px rgba(20,184,166,0.38);
+            --glow-sm:   0 0 16px rgba(20,184,166,0.52);
+            --glow-xl:   0 0 90px rgba(20,184,166,0.22), 0 0 45px rgba(20,184,166,0.32);
+            --feedback-correct-bg: rgba(0,20,10,0.95);
+            --feedback-wrong-bg:   rgba(20,0,0,0.95);
+        }
+        body.theme-default_lab {
+            --tc:#14b8a6; --tc2:#06b6d4; --tc3:#0e7490;
+            --tc-dim:rgba(20,184,166,0.14); --tc-mid:rgba(20,184,166,0.35);
+            --bg-core:#020c10; --panel-bg:rgba(2,20,22,0.92); --panel-b:rgba(20,184,166,0.30);
+            --glow:0 0 50px rgba(20,184,166,0.40); --glow-sm:0 0 18px rgba(20,184,166,0.58);
+            --glow-xl:0 0 100px rgba(20,184,166,0.25), 0 0 50px rgba(20,184,166,0.35);
+        }
+        body.theme-space_lab {
+            --tc:#f97316; --tc2:#fbbf24; --tc3:#ea580c;
+            --tc-dim:rgba(249,115,22,0.14); --tc-mid:rgba(249,115,22,0.35);
+            --bg-core:#0c0500; --panel-bg:rgba(20,8,0,0.92); --panel-b:rgba(249,115,22,0.32);
+            --glow:0 0 55px rgba(249,115,22,0.45); --glow-sm:0 0 18px rgba(249,115,22,0.60);
+            --glow-xl:0 0 110px rgba(249,115,22,0.28), 0 0 55px rgba(251,191,36,0.22);
+        }
+        body.theme-jungle_lab {
+            --tc:#818cf8; --tc2:#c084fc; --tc3:#6366f1;
+            --tc-dim:rgba(129,140,248,0.14); --tc-mid:rgba(129,140,248,0.35);
+            --bg-core:#02000f; --panel-bg:rgba(4,0,20,0.92); --panel-b:rgba(129,140,248,0.32);
+            --glow:0 0 55px rgba(129,140,248,0.45); --glow-sm:0 0 18px rgba(192,132,252,0.60);
+            --glow-xl:0 0 110px rgba(129,140,248,0.28), 0 0 55px rgba(192,132,252,0.22);
+        }
+        body.theme-ocean_lab {
+            --tc:#84cc16; --tc2:#a3e635; --tc3:#65a30d;
+            --tc-dim:rgba(132,204,22,0.14); --tc-mid:rgba(132,204,22,0.35);
+            --bg-core:#020800; --panel-bg:rgba(4,10,0,0.92); --panel-b:rgba(132,204,22,0.32);
+            --glow:0 0 55px rgba(132,204,22,0.45); --glow-sm:0 0 18px rgba(163,230,53,0.60);
+            --glow-xl:0 0 110px rgba(132,204,22,0.28), 0 0 55px rgba(163,230,53,0.22);
+        }
+        body.theme-volcano_lab {
+            --tc:#38bdf8; --tc2:#e879f9; --tc3:#0ea5e9;
+            --tc-dim:rgba(56,189,248,0.14); --tc-mid:rgba(56,189,248,0.35);
+            --bg-core:#000810; --panel-bg:rgba(0,8,22,0.92); --panel-b:rgba(56,189,248,0.32);
+            --glow:0 0 55px rgba(56,189,248,0.45); --glow-sm:0 0 18px rgba(232,121,249,0.60);
+            --glow-xl:0 0 110px rgba(56,189,248,0.28), 0 0 55px rgba(232,121,249,0.22);
+        }
+
+        /* ═══════════════════════════════════════════════
+           BASE RESET
+        ═══════════════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%; overflow: hidden;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        body {
+            background-color: var(--bg-core);
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(20,184,166,0.07) 0%, transparent 55%),
+                radial-gradient(ellipse at 80% 80%, rgba(6,182,212,0.05) 0%, transparent 55%);
+            color: #e2e8f0;
+            transition: background-color 1.2s ease;
+        }
+
+        /* CRT scanlines */
+        body::before {
+            content: ''; position: fixed; inset: 0; z-index: 200; pointer-events: none;
+            background:
+                linear-gradient(rgba(0,0,0,0) 50%, rgba(0,0,0,0.04) 50%),
+                linear-gradient(90deg, rgba(255,0,0,0.015), rgba(0,255,0,0.008), rgba(0,0,255,0.015));
+            background-size: 100% 2px, 3px 100%;
+            animation: scanMove 12s linear infinite;
+        }
+        @keyframes scanMove { 0%{background-position:0 0;} 100%{background-position:0 100%;} }
+
+        /* ═══════════════════════════════════════════════
+           AMBIENT LAYER
+        ═══════════════════════════════════════════════ */
+        #ambient-layer { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+        .amb-particle { position: absolute; border-radius: 50%; pointer-events: none; }
+
+        /* ═══════════════════════════════════════════════
+           MAIN LAYOUT — PDF WIREFRAME FAITHFUL
+           LEFT PANEL (280px fixed) + RIGHT MAIN AREA
+        ═══════════════════════════════════════════════ */
+        #game-root {
+            position: relative; height: 100vh; width: 100%;
+            display: flex; z-index: 10; overflow: hidden;
+        }
+
+        /* ── LEFT PANEL ── */
+        #left-panel {
+            width: 280px; min-width: 280px;
+            display: flex; flex-direction: column;
+            background: rgba(0,0,0,0.55);
+            border-right: 1.5px solid var(--panel-b);
+            backdrop-filter: blur(24px);
+            z-index: 20; overflow: hidden;
+            transition: border-color 0.6s ease;
+        }
+
+        /* Instruction box (top of left panel) */
+        #instruction-box {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            min-height: 80px; max-height: 160px;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.02);
+            flex-shrink: 0;
+        }
+        #instruction-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px; font-weight: 700;
+            letter-spacing: 0.2em; text-transform: uppercase;
+            color: var(--tc); opacity: 0.7; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        #instruction-label::before {
+            content: ''; width: 14px; height: 1.5px;
+            background: var(--tc); display: inline-block;
+        }
+        #instruction-text-display {
+            font-size: 12px; color: rgba(255,255,255,0.65);
+            line-height: 1.5; font-style: italic;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        #instruction-text-display.empty {
+            color: rgba(255,255,255,0.18);
+            font-style: italic;
+        }
+
+        /* Question history scroll area */
+        #history-scroll {
+            flex: 1; overflow-y: auto; padding: 10px 12px;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        #history-scroll::-webkit-scrollbar { width: 3px; }
+        #history-scroll::-webkit-scrollbar-thumb { background: var(--tc); border-radius: 2px; }
+
+        .history-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px; font-weight: 700;
+            letter-spacing: 0.18em; text-transform: uppercase;
+            color: rgba(255,255,255,0.28); padding: 4px 2px 6px;
+        }
+
+        /* Individual history entry */
+        .q-history-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px; padding: 8px 10px;
+            animation: histSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        @keyframes histSlideIn {
+            from { opacity: 0; transform: translateX(-18px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        .q-history-item.correct { border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.05); }
+        .q-history-item.wrong   { border-color: rgba(239,68,68,0.35);  background: rgba(239,68,68,0.05); }
+        .q-history-item.resumed { border-color: rgba(100,116,139,0.35); background: rgba(100,116,139,0.04); }
+
+        .q-hist-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .q-hist-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px; font-weight: 700;
+            color: rgba(255,255,255,0.40);
+        }
+        .q-hist-badge {
+            font-size: 9px; font-weight: 800; padding: 1px 7px;
+            border-radius: 99px; text-transform: uppercase; letter-spacing: 0.06em;
+        }
+        .q-hist-badge.correct { background: rgba(34,197,94,0.18); color: #4ade80; }
+        .q-hist-badge.wrong   { background: rgba(239,68,68,0.18);  color: #f87171; }
+        .q-hist-badge.timeout { background: rgba(251,191,36,0.18); color: #fbbf24; }
+        .q-hist-badge.resumed { background: rgba(100,116,139,0.18); color: #94a3b8; }
+
+        .q-hist-answers {
+            display: flex; gap: 6px; flex-wrap: wrap;
+        }
+        .q-hist-ans {
+            font-size: 10px; padding: 2px 8px; border-radius: 6px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .q-hist-ans.student { background: rgba(255,255,255,0.08); color: #cbd5e1; }
+        .q-hist-ans.correct-ans { background: rgba(34,197,94,0.15); color: #4ade80; }
+
+        /* Score / EXP bottom of left panel */
+        #left-bottom {
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: grid; grid-template-columns: 1fr 1fr;
+            padding: 0; flex-shrink: 0;
+        }
+        .stat-box-left {
+            padding: 14px 16px; text-align: center;
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }
+        .stat-box-left:last-child { border-right: none; }
+        .stat-box-left .stat-lbl {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 7px; font-weight: 700;
+            letter-spacing: 0.2em; text-transform: uppercase;
+            color: rgba(255,255,255,0.30); margin-bottom: 4px;
+        }
+        .stat-box-left .stat-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem; font-weight: 900;
+            color: #fff; line-height: 1;
+            transition: color 0.3s ease;
+        }
+        #live-exp-val { color: var(--tc); text-shadow: var(--glow-sm); }
+
+        /* ── RIGHT MAIN AREA ── */
+        #right-area {
+            flex: 1; display: flex; flex-direction: column;
+            overflow: hidden; position: relative;
+        }
+
+        /* BACKGROUND LAYER (per question) */
+        #bg-layer {
+            position: absolute; inset: 0; z-index: 0;
+            background-size: cover; background-position: center;
+            transition: opacity 0.5s ease;
+        }
+        #bg-layer::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(0,0,0,0.60) 0%,
+                rgba(0,0,0,0.40) 40%,
+                rgba(0,0,0,0.70) 100%
+            );
+        }
+
+        /* TOP HEADER BAR */
+        #top-header {
+            position: relative; z-index: 10;
+            display: flex; align-items: center;
+            gap: 0; height: 56px; flex-shrink: 0;
+            background: rgba(0,0,0,0.65);
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            backdrop-filter: blur(20px);
+        }
+        .header-cell {
+            padding: 0 18px; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            border-right: 1px solid rgba(255,255,255,0.06);
+            font-family: 'Rajdhani', sans-serif;
+        }
+        .header-cell:last-child { border-right: none; }
+        .header-cell.grow { flex: 1; justify-content: flex-start; }
+
+        .hc-label {
+            font-size: 8px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.16em; color: rgba(255,255,255,0.30);
+            margin-bottom: 1px;
+        }
+        .hc-val {
+            font-size: 13px; font-weight: 700; color: #fff;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .hc-badge {
+            font-size: 9px; font-weight: 800; padding: 2px 10px;
+            border-radius: 99px; text-transform: uppercase; letter-spacing: 0.08em;
+            background: var(--tc-dim); color: var(--tc);
+            border: 1px solid var(--tc-mid);
+        }
+
+        /* Student cell */
+        #student-cell {
+            display: flex; align-items: center; gap: 10px; padding: 0 16px;
+            border-left: 1px solid rgba(255,255,255,0.06);
+            flex-shrink: 0;
+        }
+        #student-avatar {
+            width: 34px; height: 34px; border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid var(--tc-mid);
+        }
+        #student-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px; font-weight: 700; color: #fff;
+            max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        /* MAIN CONTENT ZONE (question + answer area) */
+        #content-zone {
+            flex: 1; position: relative; z-index: 10;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 20px 28px; overflow: hidden;
+        }
+
+        /* Question text */
+        #question-text {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.55rem; font-weight: 700;
+            line-height: 1.45; text-align: center; color: #f1f5f9;
+            text-shadow: 0 2px 14px rgba(0,0,0,0.7);
+            margin-bottom: 14px; max-width: 820px;
+            width: 100%;
+            animation: fadeSlideUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Media zone */
+        #media-zone {
+            width: 100%; max-width: 820px; margin-bottom: 16px;
+            border-radius: 16px; overflow: hidden;
+            border: 1.5px solid rgba(255,255,255,0.10);
+            background: rgba(0,0,0,0.38);
+            display: none; /* shown when media_path present */
+            max-height: 220px;
+            position: relative;
+        }
+        #media-img {
+            width: 100%; max-height: 220px;
+            object-fit: contain; display: block;
+        }
+        #media-video {
+            width: 100%; max-height: 220px;
+            object-fit: contain; display: block;
+        }
+
+        /* ── ANSWER PANELS ── */
+        #answer-area { width: 100%; max-width: 820px; }
+
+        /* Standard MCQ */
+        #mcq-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .choice-btn {
+            cursor: pointer; position: relative; overflow: hidden;
+            border-radius: 14px; padding: 14px 16px;
+            background: rgba(255,255,255,0.04);
+            border: 1.5px solid rgba(255,255,255,0.09);
+            display: flex; align-items: center; gap: 12px;
+            transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+            -webkit-tap-highlight-color: transparent;
+            min-height: 64px;
+        }
+        .choice-btn:hover:not(.locked) {
+            border-color: var(--tc); box-shadow: var(--glow-sm);
+            transform: translateY(-2px) scale(1.015);
+        }
+        .choice-btn.locked { pointer-events: none; }
+        .choice-btn.correct-flash { border-color: #22c55e !important; background: rgba(34,197,94,0.14) !important; }
+        .choice-btn.wrong-flash   { border-color: #ef4444 !important; background: rgba(239,68,68,0.10) !important; }
+        .choice-btn.selected-multi {
+            border-color: var(--tc) !important;
+            background: var(--tc-dim) !important;
+            box-shadow: var(--glow-sm);
+        }
+
+        .choice-letter {
+            width: 40px; height: 40px; flex-shrink: 0; border-radius: 11px;
+            background: var(--tc); color: #000;
+            font-family: 'Orbitron', sans-serif; font-size: 0.9rem; font-weight: 900;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--glow-sm);
+            transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.3s;
+        }
+        .choice-btn:hover:not(.locked) .choice-letter { transform: scale(1.14) rotate(-4deg); }
+
+        /* Checkbox for multi-answer */
+        .choice-checkbox {
+            width: 20px; height: 20px; flex-shrink: 0; border-radius: 6px;
+            border: 2px solid rgba(255,255,255,0.25);
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s ease;
+        }
+        .choice-btn.selected-multi .choice-checkbox {
+            border-color: var(--tc); background: var(--tc);
+        }
+        .choice-checkbox::after {
+            content: ''; width: 5px; height: 9px;
+            border-right: 2px solid #000; border-bottom: 2px solid #000;
+            transform: rotate(45deg) translateY(-1px);
+            display: none;
+        }
+        .choice-btn.selected-multi .choice-checkbox::after { display: block; }
+
+        .choice-content { flex: 1; min-width: 0; }
+        .choice-text {
+            font-size: 1rem; font-weight: 600; color: #e2e8f0; line-height: 1.3;
+        }
+        .choice-img {
+            width: 100%; max-height: 90px; object-fit: contain;
+            border-radius: 8px; margin-top: 6px;
+            display: block;
+        }
+
+        /* Multi-answer submit button */
+        #multi-submit {
+            margin-top: 12px; width: 100%;
+            padding: 12px; border-radius: 12px;
+            background: linear-gradient(135deg, var(--tc), var(--tc2));
+            color: #000; font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem; font-weight: 900;
+            letter-spacing: 0.2em; text-transform: uppercase;
+            border: none; cursor: pointer;
+            box-shadow: var(--glow);
+            transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+            display: none;
+        }
+        #multi-submit:hover { transform: scale(1.03); box-shadow: var(--glow-xl); }
+        #multi-submit:active { transform: scale(0.97); }
+        #multi-submit.visible { display: block; }
+
+        /* ── PERIODIC SINGLE ── */
+        #periodic-single-container {
+            display: none; flex-direction: column;
+            align-items: center; gap: 16px;
+        }
+        #single-element-card {
+            width: 140px; height: 160px; border-radius: 20px;
+            border: 2.5px dashed rgba(255,255,255,0.2);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.35);
+            transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        #single-element-card.filled {
+            border-style: solid; border-color: var(--tc);
+            background: var(--tc-dim); box-shadow: var(--glow);
+            animation: cardPop 0.45s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes cardPop {
+            0%  { transform: scale(0.5); }
+            70% { transform: scale(1.1); }
+            100%{ transform: scale(1); }
+        }
+        #single-element-symbol {
+            font-family: 'Orbitron', sans-serif; font-size: 3.5rem; font-weight: 900;
+            color: var(--tc); text-shadow: var(--glow-sm);
+            line-height: 1;
+        }
+        #single-element-waiting {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem; color: rgba(255,255,255,0.25);
+            letter-spacing: 0.15em; text-align: center;
+        }
+        #single-status-line {
+            font-size: 10px; font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.22em; color: var(--tc); opacity: 0.65;
+            text-transform: uppercase;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .pulse-dot {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--tc);
+            animation: pulseDot 1.2s ease infinite;
+        }
+        @keyframes pulseDot {
+            0%,100% { transform: scale(1); opacity: 1; }
+            50%     { transform: scale(1.9); opacity: 0.3; }
+        }
+
+        /* ── PERIODIC SEQUENCE ── */
+        #periodic-sequence-container {
+            display: none; flex-direction: column;
+            align-items: center; gap: 14px;
+        }
+        #formula-slots {
+            display: flex; gap: 10px; flex-wrap: wrap;
+            justify-content: center;
+            background: rgba(0,0,0,0.35); border-radius: 16px;
+            padding: 18px 22px; min-height: 100px;
+            border: 1px solid rgba(255,255,255,0.08);
+            min-width: 300px;
+        }
+        .formula-slot {
+            width: 64px; height: 78px; border-radius: 13px;
+            border: 2px dashed rgba(255,255,255,0.18);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.02);
+            transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            position: relative;
+        }
+        .formula-slot.active-slot {
+            border-color: var(--tc);
+            box-shadow: 0 0 14px rgba(20,184,166,0.35);
+            background: var(--tc-dim);
+        }
+        .formula-slot.filled-slot {
+            border-style: solid; border-color: var(--tc-mid);
+            background: var(--tc-dim);
+        }
+        .slot-symbol {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem; font-weight: 900; color: #fff;
+            line-height: 1;
+        }
+        .slot-subscript {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem; color: var(--tc); margin-top: 2px;
+        }
+        .slot-placeholder {
+            font-size: 1.4rem; color: rgba(255,255,255,0.15);
+        }
+        #formula-display {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.6rem; color: var(--tc);
+            text-shadow: var(--glow-sm); letter-spacing: 3px;
+            background: rgba(0,0,0,0.30);
+            border-radius: 10px; padding: 8px 24px;
+            border: 1px solid var(--tc-mid);
+            min-width: 200px; text-align: center;
+            min-height: 50px;
+        }
+        #seq-confirm-btn {
+            padding: 11px 36px; border-radius: 12px;
+            background: linear-gradient(135deg, var(--tc), var(--tc2));
+            color: #000; font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem; font-weight: 900;
+            letter-spacing: 0.2em; text-transform: uppercase;
+            border: none; cursor: pointer; box-shadow: var(--glow);
+            transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        #seq-confirm-btn:hover { transform: scale(1.06); box-shadow: var(--glow-xl); }
+
+        /* ── NUMERIC ── */
+        #numeric-container {
+            display: none; flex-direction: column;
+            align-items: center; gap: 12px;
+        }
+        #numeric-input {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.2rem; font-weight: 900;
+            background: rgba(0,0,0,0.45); border: 2px solid var(--panel-b);
+            border-radius: 16px; color: #fff; padding: 16px 28px;
+            width: 100%; max-width: 340px; text-align: center;
+            outline: none; transition: border-color 0.25s, box-shadow 0.25s;
+            caret-color: var(--tc);
+        }
+        #numeric-input:focus { border-color: var(--tc); box-shadow: var(--glow-sm); }
+        #numeric-range-display {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem; color: rgba(255,255,255,0.45);
+            background: rgba(255,255,255,0.04); border-radius: 10px;
+            padding: 8px 20px; border: 1px solid rgba(255,255,255,0.08);
+            min-width: 220px; text-align: center;
+        }
+        #numeric-submit {
+            padding: 12px 40px; border-radius: 12px;
+            background: linear-gradient(135deg, var(--tc), var(--tc2));
+            color: #000; font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem; font-weight: 900;
+            letter-spacing: 0.2em; text-transform: uppercase;
+            border: none; cursor: pointer; box-shadow: var(--glow);
+            transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        #numeric-submit:hover { transform: scale(1.06); box-shadow: var(--glow-xl); }
+
+        /* ── TIMER (bottom-right of content zone) ── */
+        #timer-wrapper {
+            position: absolute; bottom: 80px; right: 24px;
+            z-index: 20;
+        }
+        #timer-svg { width: 90px; height: 90px; transform: rotate(-90deg); }
+        #timer-track { stroke: rgba(255,255,255,0.06); }
+        #timer-bar {
+            stroke: var(--tc);
+            transition: stroke-dashoffset 0.9s linear, stroke 0.4s ease;
+            stroke-linecap: round;
+        }
+        #timer-num {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem; font-weight: 900; color: #fff;
+            text-shadow: var(--glow-sm);
+            transition: color 0.3s ease; z-index: 2;
+            pointer-events: none;
+        }
+        .timer-critical #timer-num  { color: #ef4444; animation: blinkNum 0.5s ease infinite; }
+        .timer-critical #timer-bar  { stroke: #ef4444 !important; }
+        @keyframes blinkNum { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+
+        /* ── BOTTOM TOOLBAR ── */
+        #bottom-toolbar {
+            position: relative; z-index: 20;
+            height: 56px; flex-shrink: 0;
+            display: flex; align-items: center;
+            background: rgba(0,0,0,0.70);
+            border-top: 1px solid rgba(255,255,255,0.07);
+            backdrop-filter: blur(20px);
+            padding: 0 16px; gap: 8px;
+        }
+        .toolbar-btn {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px; border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.09);
+            color: rgba(255,255,255,0.55);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px; font-weight: 700;
+            letter-spacing: 0.14em; text-transform: uppercase;
+            cursor: pointer; transition: all 0.18s ease;
+            user-select: none;
+        }
+        .toolbar-btn:hover { border-color: var(--tc); color: var(--tc); background: var(--tc-dim); }
+        .toolbar-btn.active { border-color: var(--tc); color: var(--tc); background: var(--tc-dim); box-shadow: var(--glow-sm); }
+        .toolbar-btn i { font-size: 13px; }
+        .toolbar-sep { flex: 1; }
+
+        /* ═══════════════════════════════════════════════
+           FEEDBACK OVERLAY (full right area)
+        ═══════════════════════════════════════════════ */
+        #feedback-overlay {
+            position: absolute; inset: 0; z-index: 100;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.28s ease;
+        }
+        #feedback-overlay.show {
+            opacity: 1; pointer-events: all;
+            animation: fbIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        @keyframes fbIn { from{transform:scale(0.9);} to{transform:scale(1);} }
+
+        .fb-icon { font-size: 5rem; line-height: 1; margin-bottom: 8px; }
+        .fb-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.8rem; font-weight: 900;
+            letter-spacing: 0.06em; text-transform: uppercase;
+        }
+        .fb-sub { margin-top: 10px; font-size: 1.1rem; font-weight: 600; color: rgba(255,255,255,0.65); }
+        .fb-answer-box {
+            margin-top: 14px; padding: 10px 28px;
+            background: rgba(255,255,255,0.10); border-radius: 12px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.3rem; font-weight: 900; color: #fff;
+            border: 1px solid rgba(255,255,255,0.18);
+        }
+        .fb-exp-gained {
+            margin-top: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem; font-weight: 900; color: #fbbf24;
+            text-shadow: 0 0 24px rgba(251,191,36,0.7);
+        }
+
+        /* ═══════════════════════════════════════════════
+           COMBO TAG
+        ═══════════════════════════════════════════════ */
+        #combo-tag {
+            position: fixed; top: 50%; left: 290px;
+            transform: translateY(-50%); z-index: 300;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        #combo-tag.show { opacity: 1; animation: comboBounce 0.55s cubic-bezier(0.34,1.56,0.64,1) both; }
+        @keyframes comboBounce {
+            from{ transform:translateY(-50%) translateX(-60px) scale(0.4); }
+            to  { transform:translateY(-50%) translateX(0) scale(1); }
+        }
+        #combo-inner {
+            font-family: 'Orbitron', sans-serif; font-size: 3.2rem; font-weight: 900;
+            color: #fbbf24; text-shadow: 0 0 30px rgba(251,191,36,0.80);
+            white-space: nowrap;
+        }
+
+        /* ═══════════════════════════════════════════════
+           ZOOM / FULLSCREEN MEDIA OVERLAY
+        ═══════════════════════════════════════════════ */
+        #zoom-overlay {
+            position: fixed; inset: 0; z-index: 500;
+            background: rgba(0,0,0,0.94);
+            backdrop-filter: blur(10px);
+            display: none; align-items: center; justify-content: center;
+            flex-direction: column; gap: 16px;
+        }
+        #zoom-overlay.show { display: flex; animation: fbIn 0.3s ease both; }
+        #zoom-media-img {
+            max-width: 90vw; max-height: 75vh;
+            object-fit: contain; border-radius: 14px;
+            border: 2px solid rgba(255,255,255,0.12);
+        }
+        #zoom-media-video {
+            max-width: 90vw; max-height: 75vh;
+            border-radius: 14px;
+        }
+        #zoom-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.45); text-transform: uppercase;
+        }
+        #zoom-hint {
+            font-size: 11px; color: rgba(255,255,255,0.28);
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* ═══════════════════════════════════════════════
+           HOME CONFIRMATION DIALOG
+        ═══════════════════════════════════════════════ */
+        #home-dialog {
+            position: fixed; inset: 0; z-index: 600;
+            background: rgba(0,0,0,0.88); backdrop-filter: blur(16px);
+            display: none; align-items: center; justify-content: center;
+        }
+        #home-dialog.show { display: flex; animation: fbIn 0.3s ease both; }
+        #home-dialog-box {
+            background: var(--panel-bg); border: 2px solid var(--panel-b);
+            border-radius: 24px; padding: 40px 48px;
+            text-align: center; max-width: 420px; width: 90%;
+            box-shadow: var(--glow-xl);
+        }
+        #home-dialog-box .dlg-icon { font-size: 3rem; margin-bottom: 14px; color: #fbbf24; }
+        #home-dialog-box .dlg-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: 8px;
+        }
+        #home-dialog-box .dlg-sub {
+            font-size: 0.9rem; color: rgba(255,255,255,0.50); margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        #home-dialog-box .dlg-actions {
+            display: flex; gap: 12px; justify-content: center;
+        }
+        .dlg-btn {
+            padding: 10px 26px; border-radius: 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px; font-weight: 900; letter-spacing: 0.18em;
+            text-transform: uppercase; cursor: pointer; border: none;
+            transition: all 0.2s ease;
+        }
+        .dlg-btn.confirm { background: #ef4444; color: #fff; }
+        .dlg-btn.confirm:hover { background: #dc2626; transform: scale(1.04); }
+        .dlg-btn.cancel { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.60); border: 1px solid rgba(255,255,255,0.12); }
+        .dlg-btn.cancel:hover { background: rgba(255,255,255,0.14); }
+        #home-hint {
+            margin-top: 14px; font-size: 10px; font-family: 'Share Tech Mono', monospace;
+            color: rgba(255,255,255,0.22); letter-spacing: 0.12em;
+        }
+
+        /* ═══════════════════════════════════════════════
+           FINAL RESULTS SCREEN
+        ═══════════════════════════════════════════════ */
+        #final-screen {
+            display: none; position: fixed; inset: 0; z-index: 700;
+            background: rgba(0,0,0,0.95); backdrop-filter: blur(28px);
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        #final-screen.show { display: flex; animation: finalIn 0.7s cubic-bezier(0.34,1.56,0.64,1) both; }
+        @keyframes finalIn { from{opacity:0;transform:scale(0.80);} to{opacity:1;transform:scale(1);} }
+
+        #final-card {
+            max-width: 660px; width: 100%;
+            background: var(--panel-bg); border: 2px solid var(--panel-b);
+            border-radius: 34px; padding: 48px;
+            text-align: center;
+            box-shadow: var(--glow-xl), 0 40px 100px rgba(0,0,0,0.95);
+            position: relative; overflow: hidden;
+            backdrop-filter: blur(40px);
+        }
+        .final-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.2rem; font-weight: 900;
+            color: var(--tc); text-shadow: var(--glow-sm);
+            letter-spacing: 0.07em; margin-bottom: 4px;
+        }
+        .final-sub { font-size: 0.85rem; color: rgba(255,255,255,0.32); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 28px; }
+        #grade-badge {
+            display: inline-block; padding: 6px 22px; border-radius: 99px;
+            font-family: 'Orbitron', sans-serif; font-size: 0.85rem; font-weight: 900;
+            letter-spacing: 0.08em; margin-bottom: 22px;
+        }
+        #grade-badge.grade-s { background: #fbbf24; color: #000; box-shadow: 0 0 28px rgba(251,191,36,0.55); }
+        #grade-badge.grade-a { background: #22c55e; color: #000; box-shadow: 0 0 28px rgba(34,197,94,0.50); }
+        #grade-badge.grade-b { background: #06b6d4; color: #000; box-shadow: 0 0 28px rgba(6,182,212,0.50); }
+        #grade-badge.grade-c { background: #f97316; color: #000; box-shadow: 0 0 28px rgba(249,115,22,0.50); }
+        #grade-badge.grade-d { background: #ef4444; color: #fff; box-shadow: 0 0 28px rgba(239,68,68,0.50); }
+
+        .stat-grid-final {
+            display: grid; grid-template-columns: repeat(2,1fr);
+            gap: 12px; margin-bottom: 24px;
+        }
+        .stat-f {
+            background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.08);
+            border-radius: 18px; padding: 18px;
+            transition: border-color 0.3s;
+        }
+        .stat-f:hover { border-color: var(--tc); }
+        .stat-f .sf-lbl { font-size: 7px; font-family: 'Orbitron', sans-serif; letter-spacing: 0.18em; color: rgba(255,255,255,0.28); text-transform: uppercase; margin-bottom: 6px; }
+        .stat-f .sf-val { font-family: 'Orbitron', sans-serif; font-size: 1.9rem; font-weight: 900; color: #fff; }
+        .stat-f .sf-val.tc { color: var(--tc); text-shadow: var(--glow-sm); }
+
+        #exit-btn {
+            padding: 14px 44px; border-radius: 13px;
+            background: linear-gradient(135deg, var(--tc), var(--tc2));
+            color: #000; font-family: 'Orbitron', sans-serif;
+            font-size: 0.76rem; font-weight: 900;
+            letter-spacing: 0.22em; text-transform: uppercase;
+            border: none; cursor: pointer; box-shadow: var(--glow);
+            transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        #exit-btn:hover { transform: scale(1.07); box-shadow: var(--glow-xl); }
+
+        /* ═══════════════════════════════════════════════
+           GLOBAL TIMER BAR (for Global timer type)
+        ═══════════════════════════════════════════════ */
+        #global-timer-bar-wrap {
+            position: absolute; bottom: 56px; left: 0; right: 0; z-index: 15;
+            height: 3px; background: rgba(255,255,255,0.06);
+        }
+        #global-timer-bar {
+            height: 100%; background: var(--tc);
+            transition: width 1s linear, background 0.5s ease;
+            box-shadow: 0 0 10px var(--tc);
+        }
+        #global-timer-countdown {
+            position: absolute; bottom: 62px; right: 28px;
+            font-family: 'Orbitron', sans-serif; font-size: 10px;
+            font-weight: 700; color: rgba(255,255,255,0.35);
+            z-index: 16; letter-spacing: 0.1em;
+        }
+
+        /* ═══════════════════════════════════════════════
+           UTILITY
+        ═══════════════════════════════════════════════ */
+        .hidden { display: none !important; }
+        .flex-col { display: flex; flex-direction: column; }
+        .flex-center { display: flex; align-items: center; justify-content: center; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--tc-mid); border-radius: 2px; }
+    </style>
+</head>
+
+<%#
+  EJS: safely read theme from first question or assessment
+%>
+<% var initTheme = (questions && questions[0] && questions[0].theme_id) ? questions[0].theme_id : 'default_lab'; %>
+<% var validThemes = ['default_lab','space_lab','jungle_lab','ocean_lab','volcano_lab']; %>
+<% if (validThemes.indexOf(initTheme) === -1) { initTheme = 'default_lab'; } %>
+<body class="theme-<%= initTheme %>">
+
+<!-- AMBIENT LAYER -->
+<div id="ambient-layer"></div>
+
+<!-- COMBO TAG -->
+<div id="combo-tag">
+    <div id="combo-inner"><span id="combo-val">3</span>X COMBO!</div>
+</div>
+
+<!-- ZOOM OVERLAY -->
+<div id="zoom-overlay">
+    <div id="zoom-label">ZOOM MODE</div>
+    <img id="zoom-media-img" src="" alt="Zoom" style="display:none;">
+    <video id="zoom-media-video" style="display:none;" controls></video>
+    <div id="zoom-hint"></div>
+</div>
+
+<!-- HOME CONFIRMATION DIALOG -->
+<div id="home-dialog">
+    <div id="home-dialog-box">
+        <div class="dlg-icon"><i class="fas fa-door-open"></i></div>
+        <div class="dlg-title">Exit Mission?</div>
+        <div class="dlg-sub">Your progress will be saved and you'll return to the standby screen.</div>
+        <div class="dlg-actions">
+            <button class="dlg-btn confirm" id="home-confirm-btn">
+                <i class="fas fa-check mr-1"></i> Yes, Exit
+            </button>
+            <button class="dlg-btn cancel" id="home-cancel-btn">
+                <i class="fas fa-times mr-1"></i> Keep Playing
+            </button>
+        </div>
+        <div id="home-hint">Press ENTER to confirm · Press HOME to cancel</div>
+    </div>
+</div>
+
+<!-- MAIN GAME ROOT -->
+<div id="game-root">
+
+    <!-- ══════════════════════════
+         LEFT PANEL
+    ══════════════════════════ -->
+    <div id="left-panel">
+
+        <!-- Instruction Box -->
+        <div id="instruction-box">
+            <div id="instruction-label">
+                <i class="fas fa-info-circle" style="font-size:10px;"></i>
+                Instruction
+            </div>
+            <div id="instruction-text-display" class="empty">No instruction for this question.</div>
+        </div>
+
+        <!-- History Scroll -->
+        <div id="history-scroll">
+            <div class="history-label">
+                <i class="fas fa-list-ol" style="font-size:9px;margin-right:4px;"></i>
+                Question Log
+            </div>
+            <div id="history-list"></div>
+        </div>
+
+        <!-- Score / EXP -->
+        <div id="left-bottom">
+            <div class="stat-box-left">
+                <div class="stat-lbl">Score</div>
+                <div class="stat-val" id="live-score-val">0</div>
+            </div>
+            <div class="stat-box-left">
+                <div class="stat-lbl">EXP</div>
+                <div class="stat-val" id="live-exp-val">0</div>
+            </div>
+        </div>
+    </div><!-- /left-panel -->
+
+    <!-- ══════════════════════════
+         RIGHT MAIN AREA
+    ══════════════════════════ -->
+    <div id="right-area">
+
+        <!-- Background Layer -->
+        <div id="bg-layer"></div>
+
+        <!-- Top Header -->
+        <div id="top-header">
+            <div class="header-cell" style="min-width:160px;">
+                <div>
+                    <div class="hc-label">Assessment</div>
+                    <div class="hc-val" id="hc-asm-name"><%= assessment.assessment_name || 'Chemistry Mission' %></div>
+                </div>
+            </div>
+            <div class="header-cell">
+                <span class="hc-badge" id="hc-asm-type"><%= assessment.assessment_type || 'Quiz' %></span>
+            </div>
+            <div class="header-cell">
+                <div>
+                    <div class="hc-label">Type</div>
+                    <div class="hc-val" id="hc-input-mode">—</div>
+                </div>
+            </div>
+            <div class="header-cell grow">
+                <!-- progress indicator -->
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="font-family:'Orbitron',sans-serif;font-size:1.5rem;font-weight:900;color:#fff;line-height:1;">
+                        <span id="hc-current">1</span><span style="font-size:0.9rem;color:rgba(255,255,255,0.28);"> / </span><span id="hc-total" style="font-size:0.9rem;color:rgba(255,255,255,0.28);">1</span>
+                    </div>
+                    <div style="font-size:8px;font-family:'Orbitron',sans-serif;letter-spacing:0.12em;color:rgba(255,255,255,0.28);text-transform:uppercase;" id="hc-difficulty">—</div>
+                </div>
+            </div>
+            <div id="student-cell">
+                <img id="student-avatar"
+                     src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                     onerror="this.src='/profile_uploads/default_avatar.png'"
+                     alt="Avatar">
+                <div id="student-name"><%= user.first_name %> <%= user.last_name || '' %></div>
+            </div>
+        </div><!-- /top-header -->
+
+        <!-- Content Zone -->
+        <div id="content-zone">
+
+            <!-- Question Text -->
+            <p id="question-text">Loading question...</p>
+
+            <!-- Media Zone -->
+            <div id="media-zone">
+                <img id="media-img" src="" alt="Question Media" style="display:none;">
+                <video id="media-video" style="display:none;" preload="metadata"></video>
+            </div>
+
+            <!-- ── ANSWER AREA ── -->
+            <div id="answer-area">
+
+                <!-- Standard MCQ -->
+                <div id="mcq-container">
+                    <div id="mcq-grid">
+                        <div class="choice-btn" id="btn-a" data-key="A" onclick="onChoiceClick('A')">
+                            <div class="choice-letter">A</div>
+                            <div class="choice-content">
+                                <div class="choice-text" id="opt-a-text"></div>
+                                <img class="choice-img" id="opt-a-img" src="" alt="" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="choice-btn" id="btn-b" data-key="B" onclick="onChoiceClick('B')">
+                            <div class="choice-letter">B</div>
+                            <div class="choice-content">
+                                <div class="choice-text" id="opt-b-text"></div>
+                                <img class="choice-img" id="opt-b-img" src="" alt="" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="choice-btn" id="btn-c" data-key="C" onclick="onChoiceClick('C')">
+                            <div class="choice-letter">C</div>
+                            <div class="choice-content">
+                                <div class="choice-text" id="opt-c-text"></div>
+                                <img class="choice-img" id="opt-c-img" src="" alt="" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="choice-btn" id="btn-d" data-key="D" onclick="onChoiceClick('D')">
+                            <div class="choice-letter">D</div>
+                            <div class="choice-content">
+                                <div class="choice-text" id="opt-d-text"></div>
+                                <img class="choice-img" id="opt-d-img" src="" alt="" style="display:none;">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Multi-answer submit -->
+                    <button id="multi-submit" onclick="submitMultiAnswer()">
+                        <i class="fas fa-check-circle"></i>&nbsp; Submit Answers (<span id="multi-count">0</span> selected)
+                    </button>
+                </div><!-- /mcq-container -->
+
+                <!-- Periodic Single -->
+                <div id="periodic-single-container" class="flex-col flex-center">
+                    <div id="single-element-card">
+                        <div id="single-element-symbol" style="display:none;"></div>
+                        <div id="single-element-waiting">
+                            PRESS ELEMENT<br>BUTTON
+                        </div>
+                    </div>
+                    <div id="single-status-line">
+                        <div class="pulse-dot"></div>
+                        <span>Awaiting Hardware Input</span>
+                    </div>
+                </div>
+
+                <!-- Periodic Sequence -->
+                <div id="periodic-sequence-container" class="flex-col flex-center">
+                    <div id="formula-slots"></div>
+                    <div id="formula-display">—</div>
+                    <button id="seq-confirm-btn" onclick="submitSequence()">
+                        <i class="fas fa-check-circle"></i>&nbsp; Confirm Formula
+                    </button>
+                </div>
+
+                <!-- Numeric -->
+                <div id="numeric-container" class="flex-col flex-center">
+                    <input type="number" id="numeric-input"
+                           placeholder="Enter value..."
+                           autocomplete="off"
+                           onkeydown="onNumericKey(event)">
+                    <div id="numeric-range-display">Accepted range: —</div>
+                    <button id="numeric-submit" onclick="submitNumeric()">
+                        <i class="fas fa-check-circle"></i>&nbsp; Confirm Answer
+                    </button>
+                </div>
+
+            </div><!-- /answer-area -->
+
+            <!-- Feedback Overlay (inside right area) -->
+            <div id="feedback-overlay">
+                <div class="fb-icon" id="fb-icon"></div>
+                <div class="fb-title" id="fb-title"></div>
+                <div class="fb-sub"   id="fb-sub"></div>
+                <div class="fb-answer-box hidden" id="fb-answer"></div>
+                <div class="fb-exp-gained hidden" id="fb-exp"></div>
+            </div>
+
+        </div><!-- /content-zone -->
+
+        <!-- Global Timer Bar (only shown when timer_type = Global) -->
+        <div id="global-timer-bar-wrap" class="hidden">
+            <div id="global-timer-bar" style="width:100%;"></div>
+        </div>
+        <div id="global-timer-countdown" class="hidden"></div>
+
+        <!-- Per-Item Timer Ring -->
+        <div id="timer-wrapper">
+            <svg id="timer-svg" viewBox="0 0 100 100">
+                <circle id="timer-track" cx="50" cy="50" r="42"
+                        stroke="currentColor" stroke-width="5" fill="transparent"/>
+                <circle id="timer-bar" cx="50" cy="50" r="42"
+                        stroke="currentColor" stroke-width="6" fill="transparent"
+                        stroke-dasharray="263.9" stroke-dashoffset="0"
+                        stroke-linecap="round"/>
+            </svg>
+            <div id="timer-num">—</div>
+        </div>
+
+        <!-- Bottom Toolbar -->
+        <div id="bottom-toolbar">
+            <button class="toolbar-btn" id="btn-repeat" onclick="onRepeat()" title="Repeat TTS">
+                <i class="fas fa-redo"></i> Repeat
+            </button>
+            <button class="toolbar-btn" id="btn-instruction" onclick="onInstruction()" title="Read Instruction">
+                <i class="fas fa-info-circle"></i> Instruction
+            </button>
+            <button class="toolbar-btn" id="btn-zoom" onclick="onZoom()" title="Zoom Media">
+                <i class="fas fa-expand"></i> Zoom
+            </button>
+            <button class="toolbar-btn" id="btn-bgm" onclick="onBGM()" title="Toggle Music">
+                <i class="fas fa-music"></i> BGM
+            </button>
+            <div class="toolbar-sep"></div>
+            <button class="toolbar-btn" id="btn-home" onclick="onHome()" title="Exit Mission" style="color:rgba(239,68,68,0.65);border-color:rgba(239,68,68,0.2);">
+                <i class="fas fa-home"></i> Home
+            </button>
+        </div>
+
+    </div><!-- /right-area -->
+
+</div><!-- /game-root -->
+
+<!-- FINAL RESULTS SCREEN -->
+<div id="final-screen">
+    <div id="final-card">
+        <div class="final-title">MISSION COMPLETE</div>
+        <div class="final-sub">Chemistry Arcade &middot; After-Action Report</div>
+        <div id="grade-badge" class="grade-s">S RANK</div>
+        <div class="stat-grid-final">
+            <div class="stat-f">
+                <div class="sf-lbl">Score</div>
+                <div class="sf-val" id="final-score">0 / 0</div>
+            </div>
+            <div class="stat-f">
+                <div class="sf-lbl">Total EXP</div>
+                <div class="sf-val tc" id="final-exp">0</div>
+            </div>
+            <div class="stat-f">
+                <div class="sf-lbl">Accuracy</div>
+                <div class="sf-val tc" id="final-accuracy">0%</div>
+            </div>
+            <div class="stat-f">
+                <div class="sf-lbl">Max Combo</div>
+                <div class="sf-val" id="final-combo">0x</div>
+            </div>
+        </div>
+        <div style="font-size:0.95rem;color:rgba(255,255,255,0.42);margin-bottom:24px;font-style:italic;">
+            You surpassed <span style="color:var(--tc);font-weight:700;" id="final-surpassed">0</span> agents this mission.
+        </div>
+        <button id="exit-btn" onclick="window.location.href='/arcade/standby'">
+            Confirm &amp; Exit Mission
+        </button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     SOCKET.IO + MAIN GAME SCRIPT
+════════════════════════════════════════════════ -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// SERVER DATA INJECTION (EJS → JS, no template literals inside tags)
+// ═══════════════════════════════════════════════════════════════════
+var QUESTIONS      = <%- JSON.stringify(questions) %>;
+var USER_DATA      = <%- JSON.stringify({ user_id: user.user_id, first_name: user.first_name, last_name: user.last_name || '', profile_pic: user.profile_pic || 'default_avatar.png', current_level: user.current_level || 1, total_exp: user.total_exp || 0 }) %>;
+var ASSESSMENT     = <%- JSON.stringify({ assessment_id: assessment.assessment_id, assessment_name: assessment.assessment_name, assessment_type: assessment.assessment_type, timer_type: assessment.timer_type || 'Global', duration_minutes: assessment.duration_minutes || 30, total_items: assessment.total_items, sound_bg: assessment.sound_bg || '', sound_correct: assessment.sound_correct || '', sound_wrong: assessment.sound_wrong || '', sound_result_pass: assessment.sound_result_pass || '', sound_result_fail: assessment.sound_result_fail || '', speech_enabled: assessment.speech_enabled || 0 }) %>;
+var ASSESSMENT_ID  = "<%= assessmentId %>";
+var TOKEN          = "<%= token %>";
+var RESUME_INDEX   = <%= resumeIndex || 0 %>;
+var BTN_MAPPINGS   = <%- JSON.stringify(buttonMappings || []) %>;
+
+// ═══════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════
+var CIRCUMFERENCE   = 2 * Math.PI * 42; // r=42 → 263.89
+var DEFAULT_BGS     = ['default_bg_1.jpg','default_bg_2.jpg','default_bg_3.jpg'];
+var VALID_THEMES    = ['default_lab','space_lab','jungle_lab','ocean_lab','volcano_lab'];
+
+// ═══════════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════════
+var currentIndex       = 0;
+var currentScore       = 0;
+var totalExp           = USER_DATA.total_exp || 0;
+var sessionExp         = 0; // EXP gained this session only
+var comboCount         = 0;
+var maxCombo           = 0;
+var isPaused           = false;
+var isGameOver         = false;
+var isZoomOpen         = false;
+var isHomeDialogOpen   = false;
+var isBGMOn            = true;
+var isSFXOn            = true;
+
+// Timer state
+var perItemTimer       = null;
+var timeLeft           = 0;
+var timeLimitFull      = 0;
+var globalTimerInterval= null;
+var globalSecondsLeft  = 0;
+var globalSecondsTotal = 0;
+
+// Per-question state
+var selectedMulti      = []; // for multi-answer (keys: 'A','B','C','D')
+var selectedElements   = []; // for Periodic_Sequence { symbol, subscript }
+var activeSlotIndex    = 0;  // cursor for Periodic_Sequence navigation
+var questionStartTime  = Date.now();
+var playerResponses    = [];
+var lastAnswer         = '';
+
+// Zoom state
+var zoomImageList      = []; // array of { src, label }
+var zoomImageIndex     = 0;
+
+// ═══════════════════════════════════════════════════════════════════
+// THEME CONFIG
+// ═══════════════════════════════════════════════════════════════════
+var THEME_CONFIG = {
+    'default_lab'  : { particles:'bubble', count:16, feedbackBg:'rgba(0,20,15,0.95)'    },
+    'space_lab' : { particles:'spark',  count:28, feedbackBg:'rgba(20,5,0,0.95)'     },
+    'jungle_lab'   : { particles:'star',   count:38, feedbackBg:'rgba(2,0,20,0.95)'     },
+    'ocean_lab'   : { particles:'gas',    count:10, feedbackBg:'rgba(4,10,0,0.95)'     },
+    'volcano_lab' : { particles:'ray',    count:14, feedbackBg:'rgba(0,4,18,0.95)'     }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// AUDIO ENGINE
+// ═══════════════════════════════════════════════════════════════════
+var bgmSound    = null;
+var sfxCorrect  = null;
+var sfxWrong    = null;
+var sfxTimerLow = new Howl({ src:['https://assets.mixkit.co/active_storage/sfx/959/959-preview.mp3'], volume:0.22, loop:true });
+var sfxBtn      = new Howl({ src:['https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'], volume:0.25 });
+
+function initAudio(q) {
+    // BGM — from assessment.sound_bg (file path or empty)
+    if (ASSESSMENT.sound_bg && ASSESSMENT.sound_bg.trim() !== '') {
+        bgmSound = new Howl({ src:['/sounds/' + ASSESSMENT.sound_bg], volume:0.12, loop:true, html5:true });
+    }
+    // SFX
+    if (ASSESSMENT.sound_correct && ASSESSMENT.sound_correct.trim() !== '') {
+        sfxCorrect = new Howl({ src:['/sounds/' + ASSESSMENT.sound_correct], volume:0.55 });
+    } else {
+        sfxCorrect = new Howl({ src:['https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'], volume:0.50 });
+    }
+    if (ASSESSMENT.sound_wrong && ASSESSMENT.sound_wrong.trim() !== '') {
+        sfxWrong = new Howl({ src:['/sounds/' + ASSESSMENT.sound_wrong], volume:0.45 });
+    } else {
+        sfxWrong = new Howl({ src:['https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3'], volume:0.38 });
+    }
+}
+
+function playBGM() {
+    if (bgmSound && isBGMOn && !bgmSound.playing()) {
+        bgmSound.play();
+    }
+}
+function stopBGM() {
+    if (bgmSound && bgmSound.playing()) { bgmSound.fade(bgmSound.volume(), 0, 1000); setTimeout(function(){ bgmSound.stop(); }, 1100); }
+}
+
+// TTS / Web Speech
+var speechSynthesis   = window.speechSynthesis;
+var ttsEnabled        = ASSESSMENT.speech_enabled === 1;
+var currentUtterance  = null;
+
+function speak(text) {
+    if (!ttsEnabled || !text) return;
+    if (currentUtterance) { speechSynthesis.cancel(); }
+    currentUtterance = new SpeechSynthesisUtterance(text);
+    currentUtterance.lang  = 'en-US';
+    currentUtterance.rate  = 0.92;
+    currentUtterance.pitch = 1.0;
+    speechSynthesis.speak(currentUtterance);
+}
+
+function speakQuestion(q) {
+    if (!ttsEnabled) return;
+    var text = q.question_text || '';
+    if (q.input_mode === 'Standard') {
+        var parts = [text];
+        if (q.option_a) parts.push('A: ' + q.option_a);
+        if (q.option_b) parts.push('B: ' + q.option_b);
+        if (q.option_c) parts.push('C: ' + q.option_c);
+        if (q.option_d) parts.push('D: ' + q.option_d);
+        speak(parts.join('. '));
+    } else {
+        speak(text);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════════════════
+var currentTheme = '';
+
+function applyTheme(themeId) {
+    var t = VALID_THEMES.indexOf(themeId) !== -1 ? themeId : 'default_lab';
+    if (t === currentTheme) return;
+    currentTheme = t;
+    document.body.className = document.body.className.replace(/theme-\S+/g,'').trim();
+    document.body.classList.add('theme-' + t);
+    buildAmbientLayer(t);
+}
+
+function buildAmbientLayer(themeId) {
+    var layer = document.getElementById('ambient-layer');
+    layer.innerHTML = '';
+    var cfg   = THEME_CONFIG[themeId] || THEME_CONFIG['default_lab'];
+    for (var i = 0; i < cfg.count; i++) {
+        var el = document.createElement('div');
+        el.className = 'amb-particle';
+        var size, dur, delay, x;
+        if (cfg.particles === 'bubble') {
+            size  = Math.random()*40+10; dur=Math.random()*13+8; delay=Math.random()*8; x=Math.random()*100;
+            el.style.cssText = 'width:'+size+'px;height:'+size+'px;left:'+x+'%;bottom:-60px;border:1px solid rgba(20,184,166,0.28);animation:bubbleRise '+dur+'s '+delay+'s linear infinite;';
+        } else if (cfg.particles === 'spark') {
+            size=Math.random()*65+20; dur=Math.random()*8+4; delay=Math.random()*5; x=Math.random()*100;
+            el.style.cssText='width:2px;height:'+size+'px;left:'+x+'%;bottom:0;background:linear-gradient(to top,transparent,var(--tc));border-radius:2px;animation:sparkRise '+dur+'s '+delay+'s linear infinite;';
+        } else if (cfg.particles === 'star') {
+            size=Math.random()*3+0.8; dur=Math.random()*16+7; delay=Math.random()*10; var dx=(Math.random()*110-55); var dy=-(Math.random()*85+20);
+            el.style.cssText='width:'+size+'px;height:'+size+'px;top:'+Math.random()*100+'%;left:'+Math.random()*100+'%;background:var(--tc);--dx:'+dx+'px;--dy:'+dy+'px;animation:starDrift '+dur+'s '+delay+'s linear infinite;';
+        } else if (cfg.particles === 'gas') {
+            size=Math.random()*200+100; dur=Math.random()*22+14; delay=Math.random()*8;
+            el.style.cssText='width:'+size+'px;height:'+size+'px;top:'+Math.random()*100+'%;left:'+Math.random()*100+'%;background:radial-gradient(circle,rgba(132,204,22,0.16) 0%,transparent 70%);filter:blur(26px);animation:gasSwirl '+dur+'s '+delay+'s ease-in-out infinite;';
+        } else if (cfg.particles === 'ray') {
+            size=Math.random()*220+80; dur=Math.random()*11+5; delay=Math.random()*6; var ra=(Math.random()*32-16);
+            el.style.cssText='width:2px;height:'+size+'px;top:0;left:'+Math.random()*100+'%;background:linear-gradient(to bottom,transparent,var(--tc),transparent);transform-origin:top center;--ra:'+ra+'deg;filter:blur(1.5px);animation:rayShine '+dur+'s '+delay+'s linear infinite;';
+        }
+        layer.appendChild(el);
+    }
+}
+
+// Inject ambient keyframes dynamically (safe - no EJS backticks)
+(function injectKeyframes() {
+    var style = document.createElement('style');
+    style.textContent = [
+        '@keyframes bubbleRise{0%{transform:translateY(100vh) scale(0.5);opacity:0;}10%{opacity:0.55;}90%{opacity:0.25;}100%{transform:translateY(-120px) scale(1.1);opacity:0;}}',
+        '@keyframes sparkRise{0%{transform:translateY(0) scaleY(1);opacity:0;}20%{opacity:1;}80%{opacity:0.55;}100%{transform:translateY(-100vh) scaleY(3);opacity:0;}}',
+        '@keyframes starDrift{0%{transform:translate(0,0) scale(0);opacity:0;}30%{opacity:0.8;}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0;}}',
+        '@keyframes gasSwirl{0%{transform:scale(0.5) rotate(0deg);opacity:0;}30%{opacity:0.65;}70%{opacity:0.45;}100%{transform:scale(1.9) rotate(130deg);opacity:0;}}',
+        '@keyframes rayShine{0%,100%{opacity:0;transform:scaleY(0.5) rotate(var(--ra,0deg));}50%{opacity:0.38;transform:scaleY(1.3) rotate(var(--ra,0deg));}}'
+    ].join('');
+    document.head.appendChild(style);
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// BACKGROUND SETTER
+// ═══════════════════════════════════════════════════════════════════
+function setBackground(q, idx) {
+    var bgLayer = document.getElementById('bg-layer');
+    var bgUrl   = '';
+    if (q.selected_bg_key && q.selected_bg_key.trim() !== '') {
+        bgUrl = '/backgrounds/' + q.selected_bg_key;
+    } else {
+        var bgFile = DEFAULT_BGS[idx % DEFAULT_BGS.length];
+        bgUrl = '/backgrounds/' + bgFile;
+    }
+    bgLayer.style.backgroundImage = 'url("' + bgUrl + '")';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SOCKET.IO — ESP32 HARDWARE INPUT
+// ═══════════════════════════════════════════════════════════════════
+var socket = io();
+socket.emit('register-player', USER_DATA.user_id);
+
+socket.on('esp32-press', function(data) {
+    if (!data || !data.symbol || isPaused || isGameOver) return;
+    if (isHomeDialogOpen) {
+        // Enter in home dialog = confirm exit
+        if (data.symbol === 'ENTER') { doExitMission(); }
+        // Home press again = cancel
+        if (data.symbol === 'HOME') { closeHomeDialog(); }
+        return;
+    }
+    if (isZoomOpen) {
+        var q = QUESTIONS[currentIndex];
+        if (q && q.media_type === 'video') {
+            if (data.symbol === 'ENTER') { toggleZoomVideo(); }
+        } else {
+            if (data.symbol === 'A' || data.symbol === 'C') { cycleZoomImage(data.symbol === 'A' ? -1 : 1); }
+        }
+        if (data.symbol === 'ZOOM') { closeZoom(); }
+        return;
+    }
+
+    var q = QUESTIONS[currentIndex];
+    if (!q) return;
+    var sym = String(data.symbol).trim().toUpperCase();
+
+    if (q.input_mode === 'Standard') {
+        handleStandardHardware(sym, q);
+    } else if (q.input_mode === 'Numeric') {
+        handleNumericHardware(sym);
+    } else if (q.input_mode === 'Periodic_Single') {
+        handlePeriodicSingleInput(sym);
+    } else if (q.input_mode === 'Periodic_Sequence') {
+        handlePeriodicSequenceHardware(sym);
+    }
+
+    // Function buttons
+    if (sym === 'REPEAT')      { onRepeat(); }
+    if (sym === 'INSTRUCTION') { onInstruction(); }
+    if (sym === 'ZOOM')        { onZoom(); }
+    if (sym === 'BGM')         { onBGM(); }
+    if (sym === 'HOME')        { onHome(); }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT QUESTION — MASTER FUNCTION
+// ═══════════════════════════════════════════════════════════════════
+function initQuestion() {
+    if (currentIndex >= QUESTIONS.length) {
+        showFinalResults();
+        return;
+    }
+
+    var q = QUESTIONS[currentIndex];
+    isPaused          = false;
+    selectedMulti     = [];
+    selectedElements  = [];
+    activeSlotIndex   = 0;
+    lastAnswer        = '';
+    questionStartTime = Date.now();
+
+    // Theme
+    var themeId = (q.theme_id && VALID_THEMES.indexOf(q.theme_id) !== -1) ? q.theme_id : 'default_lab';
+    applyTheme(themeId);
+
+    // Background
+    setBackground(q, currentIndex);
+
+    // Header updates
+    document.getElementById('hc-current').textContent   = currentIndex + 1;
+    document.getElementById('hc-total').textContent     = QUESTIONS.length;
+    document.getElementById('hc-input-mode').textContent = (q.input_mode || '').replace(/_/g,' ');
+    document.getElementById('hc-difficulty').textContent = (q.difficulty || '').toUpperCase();
+
+    // Instruction box (left panel)
+    var instrDisplay = document.getElementById('instruction-text-display');
+    if (q.instruction_override && q.instruction_override.trim() !== '') {
+        instrDisplay.textContent = q.instruction_override;
+        instrDisplay.classList.remove('empty');
+    } else {
+        instrDisplay.textContent = 'No instruction for this question.';
+        instrDisplay.classList.add('empty');
+    }
+
+    // Question text
+    var qtEl = document.getElementById('question-text');
+    qtEl.style.animation = 'none';
+    void qtEl.offsetHeight; // force reflow
+    qtEl.style.animation = '';
+    qtEl.textContent = q.question_text || '';
+
+    // Media
+    setupMedia(q);
+
+    // Hide feedback
+    hideFeedback();
+
+    // Reset all answer panels, then show correct one
+    hideAllAnswerPanels();
+    if (q.input_mode === 'Standard') {
+        setupStandardUI(q);
+    } else if (q.input_mode === 'Numeric') {
+        setupNumericUI(q);
+    } else if (q.input_mode === 'Periodic_Single') {
+        setupPeriodicSingleUI();
+    } else if (q.input_mode === 'Periodic_Sequence') {
+        setupPeriodicSequenceUI(q);
+    }
+
+    // Timer
+    if (ASSESSMENT.timer_type === 'PerItem') {
+        var limit = parseInt(q.time_limit, 10) || 20;
+        startPerItemTimer(limit);
+    }
+    // Global timer: already running from game start
+
+    // TTS on question load
+    speakQuestion(q);
+
+    // Update session
+    updateSession();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MEDIA SETUP
+// ═══════════════════════════════════════════════════════════════════
+function setupMedia(q) {
+    var mediaZone  = document.getElementById('media-zone');
+    var mediaImg   = document.getElementById('media-img');
+    var mediaVideo = document.getElementById('media-video');
+
+    mediaImg.style.display   = 'none';
+    mediaVideo.style.display = 'none';
+    mediaZone.style.display  = 'none';
+    mediaVideo.pause();
+    mediaVideo.src = '';
+
+    if (q.media_path && q.media_path.trim() !== '') {
+        var src = '/uploads/questions/' + q.media_path;
+        if (q.media_type === 'image') {
+            mediaImg.src = src;
+            mediaImg.style.display = 'block';
+            mediaZone.style.display = 'block';
+        } else if (q.media_type === 'video') {
+            mediaVideo.src = src;
+            mediaVideo.style.display = 'block';
+            mediaZone.style.display = 'block';
+        }
+    }
+
+    // Build zoom image list for this question
+    zoomImageList  = [];
+    zoomImageIndex = 0;
+    if (q.media_path && q.media_path.trim() !== '' && q.media_type === 'image') {
+        zoomImageList.push({ src: '/uploads/question_media/' + q.media_path, label: 'Question Media' });
+    }
+    var opts = [
+        { key: 'option_a_image', label: 'Choice A' },
+        { key: 'option_b_image', label: 'Choice B' },
+        { key: 'option_c_image', label: 'Choice C' },
+        { key: 'option_d_image', label: 'Choice D' }
+    ];
+    opts.forEach(function(o) {
+        if (q[o.key] && q[o.key].trim() !== '') {
+            zoomImageList.push({ src: '/uploads/choice_images/' + q[o.key], label: o.label });
+        }
+    });
+
+    // Show zoom button only if there's something to zoom
+    var zoomBtn = document.getElementById('btn-zoom');
+    if (zoomImageList.length > 0 || (q.media_path && q.media_type === 'video')) {
+        zoomBtn.style.display = '';
+    } else {
+        zoomBtn.style.display = 'none';
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PANEL SWITCHER
+// ═══════════════════════════════════════════════════════════════════
+function hideAllAnswerPanels() {
+    document.getElementById('mcq-container').style.display              = 'none';
+    document.getElementById('periodic-single-container').style.display  = 'none';
+    document.getElementById('periodic-sequence-container').style.display= 'none';
+    document.getElementById('numeric-container').style.display          = 'none';
+    document.getElementById('multi-submit').classList.remove('visible');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STANDARD MCQ SETUP
+// ═══════════════════════════════════════════════════════════════════
+function setupStandardUI(q) {
+    document.getElementById('mcq-container').style.display = 'block';
+
+    // Reset button states
+    ['A','B','C','D'].forEach(function(k) {
+        var btn = document.getElementById('btn-' + k.toLowerCase());
+        btn.classList.remove('locked','correct-flash','wrong-flash','selected-multi');
+        btn.style.opacity = '1';
+        // Checkbox visibility
+        var cbEl = btn.querySelector('.choice-checkbox');
+        if (cbEl) cbEl.remove();
+    });
+
+    // Determine if multiple answer mode
+    var isMulti = q.is_multiple_answer === 1 || q.is_multiple_answer === true;
+
+    var opts = [
+        { key: 'A', textId: 'opt-a-text', imgId: 'opt-a-img', btnId: 'btn-a', text: q.option_a, img: q.option_a_image },
+        { key: 'B', textId: 'opt-b-text', imgId: 'opt-b-img', btnId: 'btn-b', text: q.option_b, img: q.option_b_image },
+        { key: 'C', textId: 'opt-c-text', imgId: 'opt-c-img', btnId: 'btn-c', text: q.option_c, img: q.option_c_image },
+        { key: 'D', textId: 'opt-d-text', imgId: 'opt-d-img', btnId: 'btn-d', text: q.option_d, img: q.option_d_image }
+    ];
+
+    opts.forEach(function(o) {
+        var textEl = document.getElementById(o.textId);
+        var imgEl  = document.getElementById(o.imgId);
+        var btn    = document.getElementById(o.btnId);
+
+        // Text
+        textEl.textContent = o.text || '';
+
+        // Image
+        if (o.img && o.img.trim() !== '') {
+            imgEl.src = '/uploads/choices/' + o.img;
+            imgEl.style.display = 'block';
+        } else {
+            imgEl.style.display = 'none';
+            imgEl.src = '';
+        }
+
+        // Checkbox injection for multi-answer
+        if (isMulti) {
+            var cb = document.createElement('div');
+            cb.className = 'choice-checkbox';
+            btn.insertBefore(cb, btn.querySelector('.choice-letter').nextSibling);
+        }
+    });
+
+    // Show multi-submit
+    if (isMulti) {
+        var ms = document.getElementById('multi-submit');
+        ms.classList.add('visible');
+        updateMultiCount();
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STANDARD MCQ — CLICK / HARDWARE
+// ═══════════════════════════════════════════════════════════════════
+function onChoiceClick(key) {
+    if (isPaused) return;
+    var q = QUESTIONS[currentIndex];
+    if (!q || q.input_mode !== 'Standard') return;
+    sfxBtn.play();
+
+    var isMulti = q.is_multiple_answer === 1 || q.is_multiple_answer === true;
+    if (isMulti) {
+        toggleMultiChoice(key);
+    } else {
+        submitSingleChoice(key, q);
+    }
+}
+
+function handleStandardHardware(sym, q) {
+    if (['A','B','C','D'].indexOf(sym) !== -1) {
+        onChoiceClick(sym);
+    } else if (sym === 'ENTER') {
+        var isMulti = q.is_multiple_answer === 1 || q.is_multiple_answer === true;
+        if (isMulti) { submitMultiAnswer(); }
+    }
+}
+
+function submitSingleChoice(key, q) {
+    isPaused = true;
+    clearPerItemTimer();
+    sfxTimerLow.stop();
+
+    // Determine correct
+    var correctKey = (q.correct_answer || 'A').toUpperCase();
+    var isCorrect  = (key === correctKey);
+    lastAnswer     = key;
+
+    // Highlight
+    lockChoices();
+    var btn = document.getElementById('btn-' + key.toLowerCase());
+    if (btn) btn.classList.add(isCorrect ? 'correct-flash' : 'wrong-flash');
+
+    // Also highlight correct if wrong
+    if (!isCorrect) {
+        var cBtn = document.getElementById('btn-' + correctKey.toLowerCase());
+        if (cBtn) cBtn.classList.add('correct-flash');
+    }
+
+    recordResponse(q, key, isCorrect);
+    validateAnswer(isCorrect, q);
+}
+
+function toggleMultiChoice(key) {
+    var idx = selectedMulti.indexOf(key);
+    if (idx === -1) {
+        selectedMulti.push(key);
+        var btn = document.getElementById('btn-' + key.toLowerCase());
+        if (btn) btn.classList.add('selected-multi');
+    } else {
+        selectedMulti.splice(idx, 1);
+        var btn2 = document.getElementById('btn-' + key.toLowerCase());
+        if (btn2) btn2.classList.remove('selected-multi');
+    }
+    updateMultiCount();
+}
+
+function updateMultiCount() {
+    document.getElementById('multi-count').textContent = selectedMulti.length;
+}
+
+function submitMultiAnswer() {
+    if (isPaused) return;
+    var q = QUESTIONS[currentIndex];
+    if (!q || selectedMulti.length === 0) return;
+    isPaused = true;
+    clearPerItemTimer();
+    sfxTimerLow.stop();
+
+    // correct_answer is comma-separated e.g. "A,C" or could be single "A"
+    var correctRaw = (q.correct_answer || '').toUpperCase();
+    var correctSet = correctRaw.split(',').map(function(s){ return s.trim(); }).filter(Boolean).sort();
+    var userSet    = selectedMulti.slice().sort();
+    var isCorrect  = (correctSet.join(',') === userSet.join(','));
+
+    lockChoices();
+    correctSet.forEach(function(k) {
+        var b = document.getElementById('btn-' + k.toLowerCase());
+        if (b) b.classList.add('correct-flash');
+    });
+    userSet.forEach(function(k) {
+        var b = document.getElementById('btn-' + k.toLowerCase());
+        if (b && !b.classList.contains('correct-flash')) b.classList.add('wrong-flash');
+    });
+
+    lastAnswer = userSet.join(',');
+    recordResponse(q, lastAnswer, isCorrect);
+    validateAnswer(isCorrect, q);
+}
+
+function lockChoices() {
+    ['A','B','C','D'].forEach(function(k) {
+        var b = document.getElementById('btn-' + k.toLowerCase());
+        if (b) b.classList.add('locked');
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// NUMERIC SETUP & LOGIC
+// ═══════════════════════════════════════════════════════════════════
+function setupNumericUI(q) {
+    document.getElementById('numeric-container').style.display = 'flex';
+    var inp = document.getElementById('numeric-input');
+    inp.value = '';
+
+    // Show computed range
+    var ans   = parseFloat(q.numeric_answer);
+    var tol   = parseFloat(q.numeric_tolerance) || 0;
+    var rng   = document.getElementById('numeric-range-display');
+    if (!isNaN(ans)) {
+        var lo = (ans - tol).toFixed(4).replace(/\.?0+$/,'');
+        var hi = (ans + tol).toFixed(4).replace(/\.?0+$/,'');
+        rng.textContent = 'Accepted range: ' + lo + ' to ' + hi + (tol > 0 ? ' (±' + tol + ')' : '');
+    } else {
+        rng.textContent = 'Accepted range: —';
+    }
+
+    setTimeout(function() { inp.focus(); }, 80);
+}
+
+function onNumericKey(e) {
+    if (e.key === 'Enter') { e.preventDefault(); submitNumeric(); }
+}
+
+function handleNumericHardware(sym) {
+    var inp = document.getElementById('numeric-input');
+    if (!inp) return;
+    // A = clear last char (backspace), C = toggle negative, ENTER = submit
+    if (sym === 'ENTER') { submitNumeric(); return; }
+    // digits 0-9
+    if (/^\d$/.test(sym)) { inp.value += sym; return; }
+    if (sym === 'A' && inp.value.length > 0) { inp.value = inp.value.slice(0,-1); }
+    if (sym === 'D') { inp.value = inp.value.startsWith('-') ? inp.value.slice(1) : '-' + inp.value; }
+    if (sym === '.') { if (inp.value.indexOf('.') === -1) inp.value += '.'; }
+}
+
+function submitNumeric() {
+    if (isPaused) return;
+    var q   = QUESTIONS[currentIndex];
+    var val = document.getElementById('numeric-input').value.trim();
+    if (val === '') return;
+    sfxBtn.play();
+    isPaused = true;
+    clearPerItemTimer();
+    sfxTimerLow.stop();
+
+    var userNum    = parseFloat(val);
+    var correctNum = parseFloat(q.numeric_answer);
+    var tolerance  = parseFloat(q.numeric_tolerance) || 0;
+    var isCorrect  = false;
+    if (!isNaN(userNum) && !isNaN(correctNum)) {
+        isCorrect = Math.abs(userNum - correctNum) <= tolerance;
+    }
+
+    lastAnswer = val;
+    recordResponse(q, val, isCorrect);
+    validateAnswer(isCorrect, q);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PERIODIC SINGLE SETUP & LOGIC
+// ═══════════════════════════════════════════════════════════════════
+function setupPeriodicSingleUI() {
+    document.getElementById('periodic-single-container').style.display = 'flex';
+    document.getElementById('single-element-card').classList.remove('filled');
+    document.getElementById('single-element-symbol').style.display = 'none';
+    document.getElementById('single-element-symbol').textContent    = '';
+    document.getElementById('single-element-waiting').style.display = 'block';
+}
+
+function handlePeriodicSingleInput(symbol) {
+    if (isPaused) return;
+    var q = QUESTIONS[currentIndex];
+    if (!q || q.input_mode !== 'Periodic_Single') return;
+
+    // Show element on card
+    var card    = document.getElementById('single-element-card');
+    var symEl   = document.getElementById('single-element-symbol');
+    var waitEl  = document.getElementById('single-element-waiting');
+    symEl.textContent    = symbol;
+    symEl.style.display  = 'block';
+    waitEl.style.display = 'none';
+    card.classList.add('filled');
+
+    sfxBtn.play();
+    isPaused = true;
+    clearPerItemTimer();
+    sfxTimerLow.stop();
+
+    // Correct answer from answer_sequences (first row's element_symbol)
+    var correctSym = '';
+    if (q.answer_sequences && q.answer_sequences.length > 0) {
+        correctSym = (q.answer_sequences[0].element_symbol || '').toUpperCase();
+    } else {
+        correctSym = (q.correct_answer || '').toUpperCase();
+    }
+    var isCorrect = (symbol.toUpperCase() === correctSym);
+
+    lastAnswer = symbol;
+    recordResponse(q, symbol, isCorrect);
+    validateAnswer(isCorrect, q);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PERIODIC SEQUENCE SETUP & LOGIC
+// ═══════════════════════════════════════════════════════════════════
+function setupPeriodicSequenceUI(q) {
+    document.getElementById('periodic-sequence-container').style.display = 'flex';
+
+    // Determine slot count from answer_sequences
+    var seqLen = (q.answer_sequences && q.answer_sequences.length > 0)
+        ? q.answer_sequences.length
+        : (q.target_answer ? q.target_answer.split(',').length : 1);
+
+    // Initialize selectedElements array
+    selectedElements = [];
+    for (var i = 0; i < seqLen; i++) {
+        selectedElements.push({ symbol: '', subscript: 1 });
+    }
+    activeSlotIndex = 0;
+
+    renderSequenceSlots(seqLen);
+    updateFormulaDisplay();
+}
+
+function renderSequenceSlots(count) {
+    var container = document.getElementById('formula-slots');
+    container.innerHTML = '';
+    for (var i = 0; i < count; i++) {
+        var slot = document.createElement('div');
+        slot.className = 'formula-slot' + (i === activeSlotIndex ? ' active-slot' : '');
+        slot.id        = 'seq-slot-' + i;
+        slot.innerHTML = '<div class="slot-placeholder">?</div>';
+        container.appendChild(slot);
+    }
+}
+
+function handlePeriodicSequenceHardware(sym) {
+    if (isPaused) return;
+    var q = QUESTIONS[currentIndex];
+    if (!q || q.input_mode !== 'Periodic_Sequence') return;
+
+    var seqLen = selectedElements.length;
+
+    if (sym === 'A') {
+        // Navigate left
+        activeSlotIndex = Math.max(0, activeSlotIndex - 1);
+        updateSlotHighlight();
+    } else if (sym === 'C') {
+        // Navigate right
+        activeSlotIndex = Math.min(seqLen - 1, activeSlotIndex + 1);
+        updateSlotHighlight();
+    } else if (sym === 'B') {
+        // Increase subscript of current slot
+        if (selectedElements[activeSlotIndex].symbol !== '') {
+            selectedElements[activeSlotIndex].subscript = Math.min(99, selectedElements[activeSlotIndex].subscript + 1);
+            renderSlotContent(activeSlotIndex);
+            updateFormulaDisplay();
+        }
+    } else if (sym === 'D') {
+        // Decrease subscript
+        if (selectedElements[activeSlotIndex].symbol !== '') {
+            selectedElements[activeSlotIndex].subscript = Math.max(1, selectedElements[activeSlotIndex].subscript - 1);
+            renderSlotContent(activeSlotIndex);
+            updateFormulaDisplay();
+        }
+    } else if (sym === 'ENTER') {
+        submitSequence();
+    } else {
+        // It's an element symbol — place in active slot
+        sfxBtn.play();
+        selectedElements[activeSlotIndex].symbol    = sym;
+        selectedElements[activeSlotIndex].subscript = 1;
+        renderSlotContent(activeSlotIndex);
+        updateFormulaDisplay();
+        // Auto-advance to next unfilled slot
+        var next = findNextEmptySlot();
+        if (next !== -1) {
+            activeSlotIndex = next;
+            updateSlotHighlight();
+        }
+    }
+}
+
+function findNextEmptySlot() {
+    for (var i = 0; i < selectedElements.length; i++) {
+        if (selectedElements[i].symbol === '') return i;
+    }
+    return -1;
+}
+
+function updateSlotHighlight() {
+    selectedElements.forEach(function(_, i) {
+        var slot = document.getElementById('seq-slot-' + i);
+        if (!slot) return;
+        slot.classList.toggle('active-slot', i === activeSlotIndex);
+    });
+}
+
+function renderSlotContent(i) {
+    var slot = document.getElementById('seq-slot-' + i);
+    if (!slot) return;
+    var el = selectedElements[i];
+    if (el.symbol) {
+        slot.classList.add('filled-slot');
+        slot.innerHTML = '<div class="slot-symbol">' + el.symbol + '</div>' +
+                         '<div class="slot-subscript">' + (el.subscript > 1 ? el.subscript : '') + '</div>';
+    } else {
+        slot.classList.remove('filled-slot');
+        slot.innerHTML = '<div class="slot-placeholder">?</div>';
+    }
+    slot.classList.toggle('active-slot', i === activeSlotIndex);
+}
+
+function updateFormulaDisplay() {
+    var display = document.getElementById('formula-display');
+    var parts = [];
+    selectedElements.forEach(function(el) {
+        if (el.symbol) {
+            parts.push(el.symbol + (el.subscript > 1 ? el.subscript : ''));
+        }
+    });
+    display.textContent = parts.length > 0 ? parts.join('') : '—';
+}
+
+function submitSequence() {
+    if (isPaused) return;
+    var q = QUESTIONS[currentIndex];
+    if (!q) return;
+
+    // Check all slots filled
+    var allFilled = selectedElements.every(function(el) { return el.symbol !== ''; });
+    if (!allFilled) { return; } // silently wait
+
+    sfxBtn.play();
+    isPaused = true;
+    clearPerItemTimer();
+    sfxTimerLow.stop();
+
+    // Compare against answer_sequences
+    var correct = true;
+    var correctSeq = q.answer_sequences || [];
+    if (selectedElements.length !== correctSeq.length) {
+        correct = false;
+    } else {
+        for (var i = 0; i < correctSeq.length; i++) {
+            var cs = (correctSeq[i].element_symbol || '').toUpperCase();
+            var us = (selectedElements[i].symbol || '').toUpperCase();
+            var csub = parseInt(correctSeq[i].subscript, 10) || 1;
+            var usub = parseInt(selectedElements[i].subscript, 10) || 1;
+            if (cs !== us || csub !== usub) { correct = false; break; }
+        }
+    }
+
+    lastAnswer = selectedElements.map(function(el){ return el.symbol + (el.subscript > 1 ? el.subscript : ''); }).join(',');
+    recordResponse(q, lastAnswer, correct);
+    validateAnswer(correct, q);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RECORD RESPONSE
+// ═══════════════════════════════════════════════════════════════════
+function recordResponse(q, selected, isCorrect) {
+    var timeTaken = Date.now() - questionStartTime;
+    playerResponses.push({
+        questionId : q.question_id,
+        selected   : String(selected).substring(0, 255),
+        isCorrect  : isCorrect,
+        timeTaken  : timeTaken
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VALIDATE ANSWER — MASTER OUTCOME
+// ═══════════════════════════════════════════════════════════════════
+function validateAnswer(isCorrect, q) {
+    var card = document.getElementById('right-area');
+
+    if (isCorrect) {
+        currentScore++;
+        if (sfxCorrect) sfxCorrect.play();
+
+        comboCount++;
+        if (comboCount > maxCombo) maxCombo = comboCount;
+
+        var multiplier = comboCount >= 5 ? 2.0 : comboCount >= 3 ? 1.5 : 1.0;
+        var gained     = Math.round((q.base_exp || 100) * multiplier + (timeLeft * 8));
+        sessionExp    += gained;
+        totalExp      += gained;
+
+        animateStatValue('live-score-val', currentScore);
+        animateStatValue('live-exp-val', totalExp);
+
+        if (comboCount >= 3) showComboTag(comboCount);
+
+        confetti({ particleCount:90, spread:65, origin:{y:0.65}, colors:['#fbbf24','#ffffff','#4ade80'] });
+
+        showFeedback(true, gained, q);
+        addHistoryEntry(currentIndex + 1, lastAnswer, getCorrectAnswerDisplay(q), true, false);
+
+    } else {
+        if (sfxWrong) sfxWrong.play();
+        comboCount = 0;
+
+        showFeedback(false, 0, q);
+        addHistoryEntry(currentIndex + 1, lastAnswer || 'timeout', getCorrectAnswerDisplay(q), false, lastAnswer === '');
+    }
+}
+
+function getCorrectAnswerDisplay(q) {
+    if (q.input_mode === 'Standard') {
+        var keyMap = { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d };
+        var correct = (q.correct_answer || '').toUpperCase();
+        // multi answer
+        if (correct.indexOf(',') !== -1) {
+            return correct;
+        }
+        return keyMap[correct] ? correct + ' – ' + (keyMap[correct] || '') : correct;
+    } else if (q.input_mode === 'Numeric') {
+        return String(q.numeric_answer || '?');
+    } else if (q.input_mode === 'Periodic_Single') {
+        var seq = q.answer_sequences || [];
+        return seq.length > 0 ? seq[0].element_symbol : (q.correct_answer || '?');
+    } else if (q.input_mode === 'Periodic_Sequence') {
+        var seqs = q.answer_sequences || [];
+        return seqs.map(function(s){ return s.element_symbol + (s.subscript > 1 ? s.subscript : ''); }).join('');
+    }
+    return q.correct_answer || '?';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FEEDBACK OVERLAY
+// ═══════════════════════════════════════════════════════════════════
+function showFeedback(isCorrect, expGained, q) {
+    var overlay  = document.getElementById('feedback-overlay');
+    var iconEl   = document.getElementById('fb-icon');
+    var titleEl  = document.getElementById('fb-title');
+    var subEl    = document.getElementById('fb-sub');
+    var answerEl = document.getElementById('fb-answer');
+    var expEl    = document.getElementById('fb-exp');
+
+    var cfg = THEME_CONFIG[currentTheme] || THEME_CONFIG['default_lab'];
+    overlay.style.background = isCorrect ? cfg.feedbackBg.replace(')',',').replace('rgba','rgba') : cfg.feedbackBg;
+    overlay.style.background = isCorrect
+        ? 'rgba(0,30,15,0.95)'
+        : 'rgba(30,0,0,0.95)';
+
+    if (isCorrect) {
+        iconEl.textContent      = '✓';
+        iconEl.style.color      = '#22c55e';
+        iconEl.style.textShadow = '0 0 40px rgba(34,197,94,0.85)';
+        titleEl.textContent     = 'CORRECT!';
+        titleEl.style.color     = '#22c55e';
+        subEl.textContent       = comboCount >= 3 ? comboCount + 'x COMBO!' : 'Well done, Agent!';
+        answerEl.classList.add('hidden');
+        expEl.textContent       = '+' + expGained + ' EXP' + (comboCount >= 5 ? ' ×2.0' : comboCount >= 3 ? ' ×1.5' : '');
+        expEl.classList.remove('hidden');
+    } else {
+        iconEl.textContent      = '✗';
+        iconEl.style.color      = '#ef4444';
+        iconEl.style.textShadow = '0 0 40px rgba(239,68,68,0.85)';
+        titleEl.textContent     = lastAnswer === '' ? 'TIME OUT!' : 'WRONG!';
+        titleEl.style.color     = '#ef4444';
+        subEl.textContent       = 'Correct Answer:';
+        answerEl.textContent    = getCorrectAnswerDisplay(q);
+        answerEl.classList.remove('hidden');
+        expEl.classList.add('hidden');
+    }
+
+    overlay.classList.add('show');
+
+    // 2-second display then advance
+    setTimeout(function() {
+        hideFeedback();
+        document.getElementById('right-area').classList.remove('card-correct','card-wrong');
+        currentIndex++;
+        initQuestion();
+    }, 2000);
+}
+
+function hideFeedback() {
+    document.getElementById('feedback-overlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// QUESTION HISTORY (LEFT PANEL)
+// ═══════════════════════════════════════════════════════════════════
+function addHistoryEntry(num, studentAns, correctAns, isCorrect, isTimeout) {
+    var list = document.getElementById('history-list');
+    var item = document.createElement('div');
+    var status = isCorrect ? 'correct' : 'wrong';
+    item.className = 'q-history-item ' + status;
+
+    var badgeLabel = isCorrect ? 'Correct' : (isTimeout ? 'Timeout' : 'Wrong');
+    var badgeClass = isCorrect ? 'correct' : (isTimeout ? 'timeout' : 'wrong');
+
+    item.innerHTML =
+        '<div class="q-hist-header">' +
+            '<span class="q-hist-num">Q' + num + '</span>' +
+            '<span class="q-hist-badge ' + badgeClass + '">' + badgeLabel + '</span>' +
+        '</div>' +
+        '<div class="q-hist-answers">' +
+            '<span class="q-hist-ans student">' + truncate(studentAns, 18) + '</span>' +
+            '<span class="q-hist-ans correct-ans">' + truncate(correctAns, 18) + '</span>' +
+        '</div>';
+
+    list.appendChild(item);
+    // Scroll to bottom
+    var scroll = document.getElementById('history-scroll');
+    scroll.scrollTop = scroll.scrollHeight;
+}
+
+function addResumedEntry(num) {
+    var list = document.getElementById('history-list');
+    var item = document.createElement('div');
+    item.className = 'q-history-item resumed';
+    item.innerHTML =
+        '<div class="q-hist-header">' +
+            '<span class="q-hist-num">Q' + num + '</span>' +
+            '<span class="q-hist-badge resumed">Resumed</span>' +
+        '</div>' +
+        '<div class="q-hist-answers">' +
+            '<span class="q-hist-ans student" style="color:rgba(255,255,255,0.25);">—</span>' +
+        '</div>';
+    list.appendChild(item);
+}
+
+function truncate(str, max) {
+    str = String(str || '');
+    return str.length > max ? str.substring(0, max) + '…' : str;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TIMERS
+// ═══════════════════════════════════════════════════════════════════
+
+// PER-ITEM TIMER
+function startPerItemTimer(seconds) {
+    clearPerItemTimer();
+    timeLeft      = seconds;
+    timeLimitFull = seconds;
+
+    var bar   = document.getElementById('timer-bar');
+    var numEl = document.getElementById('timer-num');
+    var timerW= document.getElementById('timer-wrapper');
+
+    bar.style.strokeDasharray  = CIRCUMFERENCE;
+    bar.style.strokeDashoffset = '0';
+    numEl.textContent = seconds;
+    timerW.classList.remove('timer-critical');
+
+    // Show per-item timer, hide global bar
+    document.getElementById('timer-wrapper').style.display = '';
+    document.getElementById('global-timer-bar-wrap').classList.add('hidden');
+    document.getElementById('global-timer-countdown').classList.add('hidden');
+
+    perItemTimer = setInterval(function() {
+        if (isPaused) { clearInterval(perItemTimer); return; }
+        timeLeft--;
+        numEl.textContent = Math.max(0, timeLeft);
+        var offset = CIRCUMFERENCE - (timeLeft / timeLimitFull) * CIRCUMFERENCE;
+        bar.style.strokeDashoffset = offset;
+
+        if (timeLeft <= 5 && timeLeft > 0) {
+            timerW.classList.add('timer-critical');
+            if (!sfxTimerLow.playing()) sfxTimerLow.play();
+        }
+        if (timeLeft <= 0) {
+            clearInterval(perItemTimer);
+            sfxTimerLow.stop();
+            if (!isPaused) {
+                isPaused   = true;
+                lastAnswer = '';
+                var q = QUESTIONS[currentIndex];
+                if (q) {
+                    recordResponse(q, 'timeout', false);
+                    validateAnswer(false, q);
+                }
+            }
+        }
+    }, 1000);
+}
+
+function clearPerItemTimer() {
+    if (perItemTimer) { clearInterval(perItemTimer); perItemTimer = null; }
+    timeLeft = 0;
+}
+
+// GLOBAL TIMER
+function startGlobalTimer(totalSeconds) {
+    globalSecondsLeft  = totalSeconds;
+    globalSecondsTotal = totalSeconds;
+
+    document.getElementById('timer-wrapper').style.display = 'none';
+    document.getElementById('global-timer-bar-wrap').classList.remove('hidden');
+    document.getElementById('global-timer-countdown').classList.remove('hidden');
+
+    updateGlobalTimerUI();
+
+    globalTimerInterval = setInterval(function() {
+        if (isGameOver) { clearInterval(globalTimerInterval); return; }
+        globalSecondsLeft--;
+        updateGlobalTimerUI();
+        if (globalSecondsLeft <= 0) {
+            clearInterval(globalTimerInterval);
+            onGlobalTimerExpired();
+        }
+    }, 1000);
+}
+
+function updateGlobalTimerUI() {
+    var pct = globalSecondsTotal > 0 ? (globalSecondsLeft / globalSecondsTotal) * 100 : 0;
+    var bar = document.getElementById('global-timer-bar');
+    bar.style.width = pct + '%';
+    if (pct <= 20) { bar.style.background = '#ef4444'; }
+    else if (pct <= 50) { bar.style.background = '#fbbf24'; }
+    else { bar.style.background = 'var(--tc)'; }
+
+    var mins = Math.floor(globalSecondsLeft / 60);
+    var secs = globalSecondsLeft % 60;
+    document.getElementById('global-timer-countdown').textContent =
+        (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
+}
+
+function onGlobalTimerExpired() {
+    if (isGameOver) return;
+    isGameOver = true;
+    isPaused   = true;
+    // Mark all remaining as timeout
+    while (currentIndex < QUESTIONS.length) {
+        var q = QUESTIONS[currentIndex];
+        recordResponse(q, 'timeout', false);
+        addHistoryEntry(currentIndex + 1, 'timeout', getCorrectAnswerDisplay(q), false, true);
+        currentIndex++;
+    }
+    showFinalResults();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TOOLBAR BUTTON HANDLERS
+// ═══════════════════════════════════════════════════════════════════
+function onRepeat() {
+    var q = QUESTIONS[currentIndex];
+    if (!q) return;
+    speakQuestion(q);
+}
+
+function onInstruction() {
+    var q = QUESTIONS[currentIndex];
+    if (!q || !q.instruction_override) return;
+    speak(q.instruction_override);
+    // Flash instruction box
+    var box = document.getElementById('instruction-box');
+    box.style.boxShadow = '0 0 18px var(--tc)';
+    setTimeout(function(){ box.style.boxShadow = ''; }, 1000);
+}
+
+function onZoom() {
+    var q = QUESTIONS[currentIndex];
+    if (!q) return;
+    if (isZoomOpen) { closeZoom(); return; }
+
+    if (q.media_type === 'video' && q.media_path) {
+        openZoomVideo('/uploads/questions/' + q.media_path);
+    } else if (zoomImageList.length > 0) {
+        openZoomImage(0);
+    }
+}
+
+function openZoomImage(idx) {
+    zoomImageIndex = idx;
+    var item = zoomImageList[idx];
+    if (!item) return;
+    isZoomOpen = true;
+
+    var overlay = document.getElementById('zoom-overlay');
+    var img     = document.getElementById('zoom-media-img');
+    var vid     = document.getElementById('zoom-media-video');
+    var lbl     = document.getElementById('zoom-label');
+    var hint    = document.getElementById('zoom-hint');
+
+    img.src = item.src; img.style.display = 'block';
+    vid.style.display = 'none'; vid.pause();
+    lbl.textContent  = item.label;
+    hint.textContent = zoomImageList.length > 1
+        ? 'A ← → C  to cycle · ZOOM to exit (' + (idx+1) + '/' + zoomImageList.length + ')'
+        : 'ZOOM to exit';
+    overlay.classList.add('show');
+    document.getElementById('btn-zoom').classList.add('active');
+}
+
+function openZoomVideo(src) {
+    isZoomOpen = true;
+    var overlay = document.getElementById('zoom-overlay');
+    var img     = document.getElementById('zoom-media-img');
+    var vid     = document.getElementById('zoom-media-video');
+    var lbl     = document.getElementById('zoom-label');
+    var hint    = document.getElementById('zoom-hint');
+
+    img.style.display = 'none';
+    vid.src = src; vid.style.display = 'block';
+    lbl.textContent  = 'VIDEO — ZOOM MODE';
+    hint.textContent = 'ENTER to play/pause · ZOOM to exit';
+    overlay.classList.add('show');
+    document.getElementById('btn-zoom').classList.add('active');
+}
+
+function closeZoom() {
+    isZoomOpen = false;
+    var overlay = document.getElementById('zoom-overlay');
+    var vid     = document.getElementById('zoom-media-video');
+    overlay.classList.remove('show');
+    vid.pause();
+    document.getElementById('btn-zoom').classList.remove('active');
+}
+
+function cycleZoomImage(dir) {
+    var newIdx = zoomImageIndex + dir;
+    if (newIdx < 0) newIdx = zoomImageList.length - 1;
+    if (newIdx >= zoomImageList.length) newIdx = 0;
+    openZoomImage(newIdx);
+}
+
+function toggleZoomVideo() {
+    var vid = document.getElementById('zoom-media-video');
+    if (vid.paused) { vid.play(); } else { vid.pause(); }
+}
+
+function onBGM() {
+    isBGMOn = !isBGMOn;
+    var btn = document.getElementById('btn-bgm');
+    if (isBGMOn) {
+        playBGM();
+        btn.classList.add('active');
+        btn.querySelector('i').className = 'fas fa-music';
+    } else {
+        stopBGM();
+        btn.classList.remove('active');
+        btn.querySelector('i').className = 'fas fa-volume-mute';
+    }
+}
+
+function onHome() {
+    if (isHomeDialogOpen) { closeHomeDialog(); return; }
+    isHomeDialogOpen = true;
+    isPaused = true;
+    document.getElementById('home-dialog').classList.add('show');
+}
+
+function closeHomeDialog() {
+    isHomeDialogOpen = false;
+    if (!isGameOver) isPaused = false;
+    document.getElementById('home-dialog').classList.remove('show');
+}
+
+async function doExitMission() {
+    // Save session then redirect
+    await updateSession();
+    window.location.href = '/arcade/standby';
+}
+
+// Wire home dialog buttons
+document.getElementById('home-confirm-btn').onclick = doExitMission;
+document.getElementById('home-cancel-btn').onclick  = closeHomeDialog;
+
+// ═══════════════════════════════════════════════════════════════════
+// KEYBOARD FALLBACK (for desktop testing)
+// ═══════════════════════════════════════════════════════════════════
+window.addEventListener('keydown', function(e) {
+    if (isGameOver) return;
+
+    // Home dialog priority
+    if (isHomeDialogOpen) {
+        if (e.key === 'Enter')  { e.preventDefault(); doExitMission(); }
+        if (e.key === 'Escape') { closeHomeDialog(); }
+        return;
+    }
+
+    // Zoom priority
+    if (isZoomOpen) {
+        if (e.key === 'ArrowLeft')  cycleZoomImage(-1);
+        if (e.key === 'ArrowRight') cycleZoomImage(1);
+        if (e.key === 'Enter') { toggleZoomVideo(); }
+        if (e.key === 'z' || e.key === 'Z' || e.key === 'Escape') closeZoom();
+        return;
+    }
+
+    if (isPaused) return;
+    var q = QUESTIONS[currentIndex];
+    if (!q) return;
+
+    if (q.input_mode === 'Standard') {
+        var isMulti = q.is_multiple_answer === 1;
+        var kmap    = { 'a':'A','b':'B','c':'C','d':'D','1':'A','2':'B','3':'C','4':'D' };
+        var k = kmap[e.key.toLowerCase()];
+        if (k) { sfxBtn.play(); onChoiceClick(k); }
+        if (e.key === 'Enter' && isMulti) { e.preventDefault(); submitMultiAnswer(); }
+    }
+    if (q.input_mode === 'Periodic_Sequence') {
+        if (e.key === 'Enter') { e.preventDefault(); submitSequence(); }
+        if (e.key === 'ArrowLeft')  handlePeriodicSequenceHardware('A');
+        if (e.key === 'ArrowRight') handlePeriodicSequenceHardware('C');
+        if (e.key === 'ArrowUp')    handlePeriodicSequenceHardware('B');
+        if (e.key === 'ArrowDown')  handlePeriodicSequenceHardware('D');
+    }
+    if (q.input_mode === 'Numeric' && e.key === 'Escape') {
+        document.getElementById('numeric-input').blur();
+    }
+
+    // Toolbar shortcuts
+    if (e.key === 'r' || e.key === 'R') onRepeat();
+    if (e.key === 'i' || e.key === 'I') onInstruction();
+    if (e.key === 'z' || e.key === 'Z') onZoom();
+    if (e.key === 'm' || e.key === 'M') onBGM();
+    if (e.key === 'Escape') onHome();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// EXP / SCORE ANIMATION
+// ═══════════════════════════════════════════════════════════════════
+function animateStatValue(elemId, endVal) {
+    var el    = document.getElementById(elemId);
+    var start = parseInt(el.textContent, 10) || 0;
+    var diff  = endVal - start;
+    var step  = Math.ceil(Math.abs(diff) / 25) || 1;
+    var dir   = diff >= 0 ? 1 : -1;
+    var iv    = setInterval(function() {
+        start += dir * step;
+        if ((dir === 1 && start >= endVal) || (dir === -1 && start <= endVal)) {
+            start = endVal;
+            clearInterval(iv);
+        }
+        el.textContent = start;
+    }, 18);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// COMBO TAG
+// ═══════════════════════════════════════════════════════════════════
+function showComboTag(count) {
+    var tag = document.getElementById('combo-tag');
+    document.getElementById('combo-val').textContent = count;
+    tag.classList.add('show');
+    setTimeout(function() { tag.classList.remove('show'); }, 1600);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SESSION UPDATE (after every answer)
+// ═══════════════════════════════════════════════════════════════════
+async function updateSession() {
+    try {
+        await fetch('/arcade/game/update-session', {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify({
+                studentId          : USER_DATA.user_id,
+                assessmentId       : ASSESSMENT.assessment_id,
+                currentItemIndex   : currentIndex + 1,
+                accumulatedScore   : currentScore
+            })
+        });
+    } catch(_) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FINAL RESULTS
+// ═══════════════════════════════════════════════════════════════════
+async function showFinalResults() {
+    isGameOver = true;
+    clearPerItemTimer();
+    if (globalTimerInterval) clearInterval(globalTimerInterval);
+    sfxTimerLow.stop();
+    stopBGM();
+
+    // Stop TTS
+    if (speechSynthesis) speechSynthesis.cancel();
+
+    var resultData = {
+        userId             : USER_DATA.user_id,
+        assessmentId       : ASSESSMENT.assessment_id,
+        subjectId          : null, // filled by server from assessment chain
+        scoreObtained      : currentScore,
+        totalPossibleScore : QUESTIONS.length,
+        totalItems         : QUESTIONS.length,
+        expGained          : sessionExp,
+        responses          : playerResponses
+    };
+
+    try {
+        var resp   = await fetch('/arcade/submit-results', {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify(resultData)
+        });
+        var result = await resp.json();
+
+        if (result.success) {
+            var accuracy = QUESTIONS.length > 0
+                ? Math.round((currentScore / QUESTIONS.length) * 100) : 0;
+
+            document.getElementById('final-score').textContent    = currentScore + ' / ' + QUESTIONS.length;
+            document.getElementById('final-exp').textContent      = sessionExp.toLocaleString();
+            document.getElementById('final-accuracy').textContent = accuracy + '%';
+            document.getElementById('final-combo').textContent    = maxCombo + 'x';
+            document.getElementById('final-surpassed').textContent= result.surpassedCount || 0;
+
+            // Grade badge
+            var gb = document.getElementById('grade-badge');
+            if      (accuracy >= 95) { gb.textContent = 'S RANK'; gb.className = 'grade-s'; confetti({ particleCount:280, spread:120, origin:{y:0.4}, colors:['#fbbf24','#fff','#a5f3fc'] }); }
+            else if (accuracy >= 80) { gb.textContent = 'A RANK'; gb.className = 'grade-a'; confetti({ particleCount:150, spread:90, origin:{y:0.5}, colors:['#4ade80','#fff'] }); }
+            else if (accuracy >= 65) { gb.textContent = 'B RANK'; gb.className = 'grade-b'; }
+            else if (accuracy >= 50) { gb.textContent = 'C RANK'; gb.className = 'grade-c'; }
+            else                      { gb.textContent = 'D RANK'; gb.className = 'grade-d'; }
+
+            document.getElementById('final-screen').classList.add('show');
+        } else {
+            alert('Failed to sync results: ' + (result.message || 'Unknown error'));
+        }
+    } catch(err) {
+        console.error('[GAME] Submit error:', err);
+        alert('Network error syncing results. Please notify your teacher.');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PARALLAX / MOUSE TILT (subtle)
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+    var contentZone = document.getElementById('content-zone');
+    document.addEventListener('mousemove', function(e) {
+        if (!contentZone || isPaused) return;
+        var cx = window.innerWidth  / 2;
+        var cy = window.innerHeight / 2;
+        var dx = (e.clientX - cx) / cx * 0.8;
+        var dy = (e.clientY - cy) / cy * 0.5;
+        contentZone.style.transform = 'perspective(1200px) rotateY(' + dx + 'deg) rotateX(' + (-dy) + 'deg)';
+    });
+    document.addEventListener('mouseleave', function() {
+        if (contentZone) contentZone.style.transform = 'none';
+    });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════════════════════════════════
+(function boot() {
+    if (!QUESTIONS || QUESTIONS.length === 0) {
+        document.getElementById('question-text').textContent = 'No questions available. Returning to standby...';
+        setTimeout(function() { window.location.href = '/arcade/standby'; }, 2800);
+        return;
+    }
+
+    // Init audio (requires first user interaction for autoplay)
+    initAudio();
+
+    // Start BGM on first interaction
+    document.body.addEventListener('click', function startAudio() {
+        playBGM();
+        document.body.removeEventListener('click', startAudio);
+    }, { once: true });
+
+    // Build ambient layer for initial theme
+    var initTheme = (QUESTIONS[0] && QUESTIONS[0].theme_id && VALID_THEMES.indexOf(QUESTIONS[0].theme_id) !== -1)
+        ? QUESTIONS[0].theme_id : 'default_lab';
+    buildAmbientLayer(initTheme);
+    currentTheme = initTheme;
+
+    // Handle resume: if RESUME_INDEX > 0, show resumed entries in history
+    if (RESUME_INDEX > 0) {
+        currentIndex = RESUME_INDEX;
+        for (var ri = 0; ri < RESUME_INDEX; ri++) {
+            addResumedEntry(ri + 1);
+        }
+    }
+
+    // Start global timer if applicable
+    if (ASSESSMENT.timer_type === 'Global') {
+        var totalSecs = (ASSESSMENT.duration_minutes || 30) * 60;
+        startGlobalTimer(totalSecs);
+    }
+
+    // BGM initial state indicator
+    if (isBGMOn) { document.getElementById('btn-bgm').classList.add('active'); }
+
+    // Load first question
+    initQuestion();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Classes | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdfa;
+            background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+        #sidebar {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ── Main scroll ── */
+        #mainScroll { overflow-y: auto; }
+        #mainScroll::-webkit-scrollbar { width: 5px; }
+        #mainScroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+
+        /* ── Section card ── */
+        .section-card {
+            background: white;
+            border-radius: 1.25rem;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* ── Class card ── */
+        .class-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.25rem;
+            overflow: hidden;
+            transition: box-shadow 0.2s, transform 0.2s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+        .class-card:hover {
+            box-shadow: 0 8px 32px rgba(99,102,241,0.12);
+            transform: translateY(-2px);
+        }
+        .class-card-banner {
+            height: 90px;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .class-card-banner img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .class-card-banner-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(15,23,42,0.55) 0%, rgba(99,102,241,0.35) 100%);
+        }
+        .class-card-body { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .class-card-footer {
+            padding: 10px 16px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fafafa;
+        }
+
+        /* ── Student detail modal ── */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(15,23,42,0.55);
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal-card {
+            background: white;
+            border-radius: 1.25rem;
+            width: 100%;
+            max-width: 680px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(15,23,42,0.18);
+            animation: modalIn 0.2s ease;
+        }
+        .modal-card::-webkit-scrollbar { width: 4px; }
+        .modal-card::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 9999px; }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to   { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+            border-bottom: 1px solid #f1f5f9;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+        .modal-section { padding: 18px 22px; border-bottom: 1px solid #f8fafc; }
+        .modal-section:last-child { border-bottom: none; }
+        .modal-section-title {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media (max-width: 480px) { .detail-grid { grid-template-columns: 1fr; } }
+        .detail-item { }
+        .detail-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+        .detail-value { font-size: 13px; font-weight: 600; color: #334155; }
+        .detail-value.mono { font-family: monospace; font-size: 12px; color: #475569; }
+
+        /* ── Progress bar ── */
+        .prog-track { width: 100%; height: 6px; background: #e2e8f0; border-radius: 9999px; overflow: hidden; }
+        .prog-fill   { height: 100%; border-radius: 9999px; transition: width 0.6s ease; }
+
+        /* ── Score rows ── */
+        .score-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f8fafc; font-size: 12px; }
+        .score-row:last-child { border-bottom: none; }
+
+        /* ── EXP badge ── */
+        .exp-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 9999px;
+            background: linear-gradient(90deg, #fef3c7, #fde68a);
+            color: #92400e;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        /* ── Badge type ── */
+        .badge-type { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 9999px; font-size: 10px; font-weight: 700; }
+        .atype-pre    { background: #e0f2fe; color: #0369a1; }
+        .atype-post   { background: #dcfce7; color: #15803d; }
+        .atype-quiz   { background: #fef9c3; color: #a16207; }
+        .atype-comp   { background: #fce7f3; color: #9d174d; }
+
+        /* ── Pill chip ── */
+        .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
+        .chip-blue   { background: #e0f2fe; color: #0369a1; }
+        .chip-violet { background: #ede9fe; color: #5b21b6; }
+        .chip-teal   { background: #ccfbf1; color: #0f766e; }
+        .chip-amber  { background: #fef3c7; color: #92400e; }
+        .chip-rose   { background: #ffe4e6; color: #be123c; }
+        .chip-green  { background: #dcfce7; color: #15803d; }
+        .chip-gray   { background: #f1f5f9; color: #475569; }
+
+        /* ── Search + filter ── */
+        .search-input {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 8px 14px 8px 36px;
+            font-size: 13px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
+            width: 220px;
+        }
+        .search-input:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.12); }
+
+        .filter-select {
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 7px 10px;
+            font-size: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #475569;
+            outline: none;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .filter-select:focus { border-color: #06b6d4; }
+
+        /* ── Tab bar (student detail modal) ── */
+        .student-tabs { display: flex; gap: 2px; background: #f1f5f9; border-radius: 10px; padding: 3px; margin-bottom: 16px; flex-wrap: wrap; }
+        .student-tab  { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; color: #64748b; cursor: pointer; transition: all .15s; border: none; background: transparent; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; gap: 5px; }
+        .student-tab:hover  { background: white; color: #334155; }
+        .student-tab.active { background: white; color: #4f46e5; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .student-panel { display: none; }
+        .student-panel.active { display: block; }
+
+        /* ── Fade-in for cards ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-card { animation: fadeUp 0.25s ease forwards; opacity: 0; }
+
+        /* ── Toast ── */
+        #toast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 999;
+            background: #1e293b; color: white;
+            padding: 10px 18px; border-radius: 10px;
+            font-size: 13px; font-weight: 600;
+            box-shadow: 0 8px 24px rgba(15,23,42,0.2);
+            transform: translateY(80px); opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        #toast.show { transform: translateY(0); opacity: 1; }
+        #toast.success { background: #064e3b; }
+        #toast.error   { background: #7f1d1d; }
+
+        /* ── Response breakdown mini bar ── */
+        .resp-bar-wrap { display: flex; align-items: center; gap: 6px; }
+        .resp-bar-track { flex: 1; height: 4px; background: #e2e8f0; border-radius: 9999px; overflow: hidden; min-width: 60px; }
+        .resp-bar-fill  { height: 100%; border-radius: 9999px; }
+
+        /* ── Sy filter button ── */
+        .sy-btn { padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; border: 1px solid #e2e8f0; background: white; color: #475569; cursor: pointer; transition: all .15s; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .sy-btn:hover  { border-color: #06b6d4; color: #0891b2; background: #ecfeff; }
+        .sy-btn.active { background: #0891b2; border-color: #0e7490; color: white; }
+
+        /* ── No results ── */
+        .no-results { text-align: center; padding: 60px 0; color: #cbd5e1; }
+        .no-results i { font-size: 32px; margin-bottom: 10px; display: block; }
+
+        /* Nav active state */
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 4px 16px rgba(6,182,212,0.3), 0 2px 8px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Profile dropdown */
+        .profile-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 210px;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(6,182,212,0.13), 0 2px 8px rgba(99,102,241,0.10);
+            border: 1px solid #e0f2fe;
+            z-index: 999;
+            opacity: 0;
+            transform: translateY(-6px) scale(0.97);
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+        .profile-dropdown.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+        .profile-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            cursor: pointer;
+            transition: background 0.13s;
+            border-radius: 0.75rem;
+            text-decoration: none;
+        }
+        .profile-dropdown-item:hover { background: #f0f9ff; color: #0369a1; }
+        .profile-dropdown-item.danger:hover { background: #fff1f2; color: #be123c; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+<div id="toast"></div>
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <!-- Sidebar overlay (mobile) -->
+    <!-- Overlay (mobile) -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+        <aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60" style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
+            <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+                <!-- Mobile close button -->
+                <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+
+                <!-- Logo -->
+                <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+
+                <!-- Brand name -->
+                <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                    Elem<span class="text-white">enta</span>
+                </h1>
+                <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Teacher Portal</p>
+
+                <!-- Divider -->
+                <!-- <div class="w-full mt-5 border-t border-indigo-800/60"></div> -->
+            </div>
+
+            <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
+
+
+                    <div class="space-y-1">
+                        <a href="/teacher/classes" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-chalkboard-user w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">My Classes</span>
+                        </a>
+                    </div>
+
+                    <div class="space-y-1">
+                        <a href="/teacher/question-bank" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-database w-5 text-rose-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Question Bank</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Engagement and Communication</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/forums" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-comments w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Forums</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Reports and Analytics</p>
+                    <div class="space-y-1">
+                        <a href="/teacher/reports" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-file-export w-5 text-fuchsia-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Reports</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
+                <a href="/logout"
+                class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+                    <i class="fas fa-right-from-bracket w-5"></i> Log Out
+                </a>
+            </div>
+        </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- Top header -->
+        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="hidden sm:block">
+                    <h2 class="text-lg font-black text-indigo-900 uppercase tracking-tight">My Classes</h2>
+                    <p class="text-xs text-slate-400">Manage your classes and student rosters</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 md:gap-6">
+                <div class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
+                    <i class="far fa-bell text-xl text-cyan-600"></i>
+                    <% if (notifications && notifications.length > 0) { %>
+                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <% } %>
+                </div>
+                <div class="flex items-center gap-3 pl-4 border-l border-cyan-100">
+                        <div class="text-right hidden lg:block">
+                            <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
+                            <p class="text-[10px] uppercase font-black text-cyan-500 tracking-widest">Teacher</p>
+                        </div>
+                        <!-- Profile dropdown trigger -->
+                        <div class="relative" id="profileDropdownWrap">
+                            <button onclick="toggleProfileDropdown()"
+                                    class="block rounded-xl ring-2 ring-cyan-400 shadow-sm shadow-cyan-200 hover:ring-indigo-400 transition focus:outline-none">
+                                <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                                     class="w-10 h-10 rounded-xl object-cover">
+                            </button>
+                            <div class="profile-dropdown" id="profileDropdown">
+                                <!-- User info mini card -->
+                                <div class="px-4 pt-4 pb-3 border-b border-slate-100">
+                                    <div class="flex items-center gap-3">
+                                        <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                                             class="w-9 h-9 rounded-xl object-cover ring-2 ring-cyan-300">
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-black text-indigo-900 truncate"><%= user.first_name %> <%= user.last_name %></p>
+                                            <p class="text-[10px] text-cyan-500 font-bold uppercase tracking-widest">Teacher</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Options -->
+                                <div class="p-2">
+                                    <a href="/teacher/profile" class="profile-dropdown-item">
+                                        <i class="fas fa-user-circle text-cyan-500 w-4 text-center"></i>
+                                        View Profile
+                                    </a>
+                                    <a href="/logout" class="profile-dropdown-item danger">
+                                        <i class="fas fa-right-from-bracket text-rose-400 w-4 text-center"></i>
+                                        Logout
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+        </header>
+
+        <!-- ===== SCROLLABLE BODY ===== -->
+        <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
+    
+                <div class="p-4 md:p-8 flex-1 space-y-8">
+
+                <!-- ============================================================
+                     SUMMARY STATS STRIP
+                ============================================================ -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
+                        <p class="text-3xl font-black text-indigo-700"><%= classes.length %></p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Total Classes</p>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
+                        <p class="text-3xl font-black text-cyan-600" id="totalStudentCount">
+                            <%= classes.reduce(function(sum, c){ return sum + (c.student_count || 0); }, 0) %>
+                        </p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Total Students</p>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
+                        <p class="text-3xl font-black text-emerald-600">
+                            <%= schoolYears.filter(function(sy){ return sy.is_active; }).length > 0 ? schoolYears.filter(function(sy){ return sy.is_active; })[0].sy_range : 'N/A' %>
+                        </p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Active School Year</p>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
+                        <p class="text-3xl font-black text-amber-500">
+                            <%= [...new Set(classes.map(function(c){ return c.subject_name; }))].length %>
+                        </p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Subjects Handled</p>
+                    </div>
+                </div>
+
+                <!-- ============================================================
+                     CLASSES LIST
+                ============================================================ -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-indigo-500 flex items-center justify-center shadow-md flex-shrink-0">
+                                <i class="fas fa-chalkboard-user text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-slate-800">All Classes</h2>
+                                <p class="text-xs text-slate-400">Click a class to view the full student roster</p>
+                            </div>
+                        </div>
+                        <!-- Filters -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- SY filter buttons -->
+                            <div class="flex gap-1 flex-wrap" id="syFilterGroup">
+                                <button class="sy-btn active" data-sy="" onclick="filterClasses(this)">All Years</button>
+                                <% schoolYears.forEach(function(sy){ %>
+                                <button class="sy-btn <%= sy.is_active ? 'active' : '' %>"
+                                        data-sy="<%= sy.sy_id %>"
+                                        onclick="filterClasses(this)">
+                                    <%= sy.sy_range %><% if(sy.is_active){ %> <span style="font-size:8px">●</span><% } %>
+                                </button>
+                                <% }); %>
+                            </div>
+                            <!-- Search -->
+                            <div class="relative">
+                                <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                                <input type="text" id="classSearch" class="search-input" placeholder="Search class or subject…"
+                                       oninput="filterClasses(null)">
+                            </div>
+                            <!-- Subject filter -->
+                            <select class="filter-select" id="subjectFilter" onchange="filterClasses(null)">
+                                <option value="">All Subjects</option>
+                                <% [...new Set(classes.map(function(c){ return c.subject_name; }))].sort().forEach(function(sn){ %>
+                                <option value="<%= sn %>"><%= sn %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Classes grid -->
+                    <div class="p-5">
+                        <% if (classes.length === 0) { %>
+                        <div class="no-results">
+                            <i class="fas fa-chalkboard text-slate-300"></i>
+                            <p>No classes found.</p>
+                        </div>
+                        <% } %>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="classGrid">
+                            <% classes.forEach(function(cls, idx){ %>
+                            <%
+                                var semLabel  = cls.semester == 1 ? '1st Sem' : '2nd Sem';
+                                var progColor = '#06b6d4';
+                                var avg       = cls.avg_progress || 0;
+                                if (avg >= 80) progColor = '#10b981';
+                                else if (avg >= 50) progColor = '#06b6d4';
+                                else if (avg >= 25) progColor = '#f59e0b';
+                                else progColor = '#ef4444';
+                            %>
+                            <div class="class-card fade-card"
+                                 style="animation-delay: <%= idx * 40 %>ms"
+                                 data-class-id="<%= cls.class_id %>"
+                                 data-class-name="<%= cls.class_name.toLowerCase() %>"
+                                 data-subject-name="<%= cls.subject_name %>"
+                                 data-sy-id="<%= cls.sy_id %>"
+                                 onclick="window.location.href='/teacher/class/<%= cls.class_id %>'">
+
+                                <!-- Banner -->
+                                <!-- Banner -->
+                                <div class="class-card-banner">
+                                    <% 
+                                        // Siguraduhin na may value ang image, kung wala gamitin ang default
+                                        var displayImg = (cls.subject_image && cls.subject_image !== 'default_subject.png') 
+                                                        ? cls.subject_image 
+                                                        : 'default_subject.png'; 
+                                    %>
+                                    
+                                    <img src="/profile_uploads/<%= displayImg %>" 
+                                        alt="<%= cls.subject_name %>"
+                                        onerror="this.src='/profile_uploads/default_subject.png'"> <!-- Fallback kung sakaling broken ang link -->
+
+                                    <div class="class-card-banner-overlay"></div>
+                                    
+                                    <!-- Overlay text -->
+                                    <div style="position:absolute;bottom:8px;left:12px;right:12px">
+                                        <p style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:.06em">
+                                            <%= cls.sy_range %> · <%= semLabel %>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Body -->
+                                <div class="class-card-body">
+                                    <p class="font-black text-slate-800 text-sm leading-tight"><%= cls.class_name %></p>
+                                    <p class="text-xs text-indigo-500 font-bold truncate"><%= cls.subject_name %></p>
+                                    <p class="text-xs text-slate-400"><%= cls.subject_code || '' %></p>
+                                    <!-- Progress strip -->
+                                    <div class="mt-1">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-xs text-slate-400">Avg Progress</span>
+                                            <span class="text-xs font-black" style="color:<%= progColor %>"><%= avg %>%</span>
+                                        </div>
+                                        <div class="prog-track">
+                                            <div class="prog-fill" style="width:<%= avg %>%;background:<%= progColor %>"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Footer -->
+                                <div class="class-card-footer">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-users text-slate-400 text-xs"></i>
+                                        <span class="text-xs font-bold text-slate-600"><%= cls.student_count || 0 %> students</span>
+                                    </div>
+                                    <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                                        <button onclick="openRoster('<%= cls.class_id %>', '<%= cls.class_name.replace(/['"]/g, '') %>', '<%= cls.subject_name.replace(/['"]/g, '') %>')"
+                                                class="chip chip-teal text-xs"
+                                                title="View inline roster">
+                                            <i class="fas fa-users" style="font-size:9px"></i> Roster
+                                        </button>
+                                        <span class="chip chip-violet text-xs"><i class="fas fa-book-open" style="font-size:9px"></i> View Class</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }); %>
+                        </div>
+
+                        <!-- No results state (hidden by default, shown by JS) -->
+                        <div id="noClassResults" class="no-results hidden">
+                            <i class="fas fa-search text-slate-300"></i>
+                            <p>No classes match your search.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================
+                     STUDENT ROSTER (per class, expanded inline)
+                ============================================================ -->
+                <div class="section-card" id="rosterSection" style="display:none">
+                    <div class="section-header">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center shadow-md flex-shrink-0">
+                                <i class="fas fa-users text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-slate-800" id="rosterTitle">Student Roster</h2>
+                                <p class="text-xs text-slate-400" id="rosterSubtitle">–</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="relative">
+                                <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                                <input type="text" id="rosterSearch" class="search-input" style="width:200px"
+                                       placeholder="Search student…" oninput="filterRoster()">
+                            </div>
+                            <select class="filter-select" id="rosterSortBy" onchange="filterRoster()">
+                                <option value="name">Sort: Name</option>
+                                <option value="exp">Sort: EXP ↓</option>
+                                <option value="progress">Sort: Progress ↓</option>
+                                <option value="level">Sort: Level ↓</option>
+                            </select>
+                            <button onclick="exportRosterCSV()"
+                                    class="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 text-emerald-600 text-xs font-bold hover:bg-emerald-50 transition">
+                                <i class="fas fa-file-csv text-xs"></i> Export
+                            </button>
+                            <button onclick="closeRoster()"
+                                    class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs font-bold hover:bg-slate-50 transition">
+                                <i class="fas fa-times text-xs"></i> Close
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Summary strip -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 border-b border-slate-100">
+                        <div class="bg-white px-5 py-4 text-center">
+                            <p class="text-xl font-black text-indigo-700" id="rosterStudentCount">0</p>
+                            <p class="text-xs text-slate-400 font-semibold mt-0.5">Students</p>
+                        </div>
+                        <div class="bg-white px-5 py-4 text-center">
+                            <p class="text-xl font-black text-cyan-600" id="rosterAvgProgress">—</p>
+                            <p class="text-xs text-slate-400 font-semibold mt-0.5">Avg Progress</p>
+                        </div>
+                        <div class="bg-white px-5 py-4 text-center">
+                            <p class="text-xl font-black text-amber-500" id="rosterAvgExp">—</p>
+                            <p class="text-xs text-slate-400 font-semibold mt-0.5">Avg EXP</p>
+                        </div>
+                        <div class="bg-white px-5 py-4 text-center">
+                            <p class="text-xl font-black text-emerald-600" id="rosterComplete">—</p>
+                            <p class="text-xs text-slate-400 font-semibold mt-0.5">100% Done</p>
+                        </div>
+                    </div>
+
+                    <!-- Roster table -->
+                    <div class="overflow-x-auto">
+                        <table style="width:100%;border-collapse:collapse;font-size:12px">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0">#</th>
+                                    <th style="text-align:left;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0;min-width:180px">Student</th>
+                                    <th style="text-align:left;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0">LRN</th>
+                                    <th style="text-align:left;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0">Grade / Section</th>
+                                    <th style="text-align:center;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0">Level</th>
+                                    <th style="text-align:center;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0">Total EXP</th>
+                                    <th style="text-align:left;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0;min-width:150px">Progress</th>
+                                    <th style="text-align:left;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0">Last Active</th>
+                                    <th style="text-align:center;padding:9px 14px;background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;border-bottom:1px solid #e2e8f0">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rosterTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Roster footer -->
+                    <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
+                        <p class="text-xs text-slate-400" id="rosterCount">–</p>
+                    </div>
+                </div>
+
+                <div class="h-4"></div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="bg-white border-t border-cyan-100 py-6 px-8 w-full">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-2 max-w-[1600px] mx-auto">
+                    <p class="text-[11px] text-indigo-400 font-black uppercase tracking-tight">
+                        &copy; 2026 <span class="text-cyan-600">Chemistry Arcade</span> - Mabini College v2.5.0
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest">Support Lab</a>
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest border-l pl-4 border-indigo-100">Atomic Logs</a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+        <!-- /mainScroll -->
+    </main>
+</div>
+
+
+<!-- ================================================================
+     STUDENT DETAIL MODAL
+================================================================ -->
+<div class="modal-backdrop" id="studentModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="flex items-center gap-3">
+                <img id="sdAvatar" src="/profile_uploads/default_avatar.png"
+                     style="width:42px;height:42px;border-radius:12px;object-fit:cover;border:2px solid #e0f2fe;flex-shrink:0"
+                     onerror="this.src='/profile_uploads/default_avatar.png'">
+                <div>
+                    <h3 class="font-black text-slate-800 text-base" id="sdFullName">Student Name</h3>
+                    <p class="text-xs text-slate-400" id="sdMeta">–</p>
+                </div>
+            </div>
+            <button onclick="closeStudentModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Tab bar -->
+        <div style="padding:14px 22px 0">
+            <div class="student-tabs" id="studentModalTabs">
+                <button class="student-tab active" onclick="switchStudentTab('profile', this)">
+                    <i class="fas fa-id-card text-[10px]"></i> Profile
+                </button>
+                <button class="student-tab" onclick="switchStudentTab('academic', this)">
+                    <i class="fas fa-chart-bar text-[10px]"></i> Academic
+                </button>
+                <button class="student-tab" onclick="switchStudentTab('scores', this)">
+                    <i class="fas fa-star text-[10px]"></i> Scores
+                </button>
+            </div>
+        </div>
+
+        <!-- ── TAB: PROFILE ── -->
+        <div class="student-panel active" id="spanel-profile">
+            <div class="modal-section">
+                <div class="modal-section-title">Personal Information</div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">First Name</div>
+                        <div class="detail-value" id="sdFirstName">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Last Name</div>
+                        <div class="detail-value" id="sdLastName">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Middle Name</div>
+                        <div class="detail-value" id="sdMiddleName">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Alternative Name</div>
+                        <div class="detail-value" id="sdAltName">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Sex</div>
+                        <div class="detail-value" id="sdSex">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Birthdate</div>
+                        <div class="detail-value" id="sdBirthdate">–</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-section">
+                <div class="modal-section-title">Academic Profile</div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">LRN</div>
+                        <div class="detail-value mono" id="sdLRN">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Grade Level</div>
+                        <div class="detail-value" id="sdGrade">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Section</div>
+                        <div class="detail-value" id="sdSection">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Strand</div>
+                        <div class="detail-value" id="sdStrand">–</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-section">
+                <div class="modal-section-title">Contact & Location</div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Email</div>
+                        <div class="detail-value" id="sdEmail">–</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Mobile</div>
+                        <div class="detail-value" id="sdMobile">–</div>
+                    </div>
+                    <div class="detail-item" style="grid-column:1/-1">
+                        <div class="detail-label">Home Address</div>
+                        <div class="detail-value" id="sdAddress">–</div>
+                    </div>
+                    <div class="detail-item" style="grid-column:1/-1">
+                        <div class="detail-label">City / Town</div>
+                        <div class="detail-value" id="sdCity">–</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-section">
+                <div class="modal-section-title">About</div>
+                <p class="text-sm text-slate-500 leading-relaxed" id="sdAbout">No description provided.</p>
+            </div>
+        </div>
+
+        <!-- ── TAB: ACADEMIC ── -->
+        <div class="student-panel" id="spanel-academic">
+            <div class="modal-section">
+                <div class="modal-section-title">Gamification Stats</div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div style="background:#f8fafc;border-radius:10px;padding:12px;text-align:center">
+                        <p style="font-size:22px;font-weight:800;color:#4f46e5" id="sdLevel">–</p>
+                        <p style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-top:2px">Level</p>
+                    </div>
+                    <div style="background:#fef9c3;border-radius:10px;padding:12px;text-align:center">
+                        <p style="font-size:22px;font-weight:800;color:#92400e" id="sdTotalExp">–</p>
+                        <p style="font-size:10px;color:#92400e;font-weight:600;text-transform:uppercase;margin-top:2px;opacity:.7">Total EXP</p>
+                    </div>
+                    <div style="background:#f0fdf4;border-radius:10px;padding:12px;text-align:center">
+                        <p style="font-size:22px;font-weight:800;color:#15803d" id="sdProgress">–</p>
+                        <p style="font-size:10px;color:#15803d;font-weight:600;text-transform:uppercase;margin-top:2px;opacity:.7">Progress</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-section">
+                <div class="modal-section-title">Leaderboard History</div>
+                <div id="sdLeaderboard">
+                    <p class="text-xs text-slate-400 italic">No rank history yet.</p>
+                </div>
+            </div>
+            <div class="modal-section">
+                <div class="modal-section-title">Subject Progress</div>
+                <div id="sdProgressBar">
+                    <div class="prog-track" style="margin-top:4px">
+                        <div class="prog-fill" id="sdProgressFill" style="width:0%;background:#06b6d4"></div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1" id="sdProgressLabel">0% complete</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── TAB: SCORES ── -->
+        <div class="student-panel" id="spanel-scores">
+            <div class="modal-section">
+                <div class="modal-section-title">Assessment Scores</div>
+                <div id="sdScoresList">
+                    <p class="text-xs text-slate-400 italic">Loading scores…</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ================================================================
+     SCRIPTS
+================================================================ -->
+<script>
+
+/* ── Sidebar ── */
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const isOpen  = !sidebar.classList.contains('-translate-x-full');
+    sidebar.classList.toggle('-translate-x-full', isOpen);
+    overlay.classList.toggle('hidden', isOpen);
+}
+
+/* ── Toast ── */
+function showToast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+/* ── escHtml ── */
+function escHtml(str) {
+    return String(str || '–')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Active SY filter state ── */
+let activeSyFilter = '';
+
+/* ── Filter classes grid ── */
+function filterClasses(syBtn) {
+    if (syBtn) {
+        document.querySelectorAll('#syFilterGroup .sy-btn').forEach(b => b.classList.remove('active'));
+        syBtn.classList.add('active');
+        activeSyFilter = syBtn.dataset.sy || '';
+    }
+    const query   = document.getElementById('classSearch').value.toLowerCase().trim();
+    const subject = document.getElementById('subjectFilter').value;
+    const cards   = document.querySelectorAll('#classGrid .class-card');
+    let visible   = 0;
+
+    cards.forEach(card => {
+        const matchSy   = !activeSyFilter || card.dataset.syId === activeSyFilter;
+        const matchName = !query   || card.dataset.className.includes(query) || card.dataset.subjectName.toLowerCase().includes(query);
+        const matchSub  = !subject || card.dataset.subjectName === subject;
+        const show = matchSy && matchName && matchSub;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    document.getElementById('noClassResults').classList.toggle('hidden', visible > 0);
+}
+
+/* ── Roster data (populated by JS fetch) ── */
+let currentRosterStudents = [];
+
+/* ── Open class roster (fetched from API) ── */
+async function openRoster(classId, className, subjectName) {
+    /* Scroll to roster */
+    const section = document.getElementById('rosterSection');
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    document.getElementById('rosterTitle').textContent    = className;
+    document.getElementById('rosterSubtitle').textContent = subjectName;
+    document.getElementById('rosterTableBody').innerHTML  =
+        '<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin mr-2"></i>Loading students…</td></tr>';
+
+    try {
+        const res  = await fetch('/teacher/api/class-roster/' + classId);
+        if (!res.ok) throw new Error('Server ' + res.status);
+        const data = await res.json();
+        currentRosterStudents = data.students || [];
+        renderRosterTable(currentRosterStudents, classId);
+        computeRosterStats(currentRosterStudents);
+    } catch(err) {
+        document.getElementById('rosterTableBody').innerHTML =
+            `<tr><td colspan="9" style="text-align:center;padding:40px;color:#ef4444">Failed to load: ${escHtml(err.message)}</td></tr>`;
+    }
+}
+
+/* ── Render roster table ── */
+function renderRosterTable(students) {
+    const tbody = document.getElementById('rosterTableBody');
+    if (!students.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8">No students enrolled.</td></tr>';
+        document.getElementById('rosterCount').textContent = '0 students';
+        return;
+    }
+
+    tbody.innerHTML = students.map((s, i) => {
+        const prog = parseInt(s.progress_percent) || 0;
+        let pColor = '#ef4444';
+        if (prog >= 80) pColor = '#10b981';
+        else if (prog >= 50) pColor = '#06b6d4';
+        else if (prog >= 25) pColor = '#f59e0b';
+
+        const lastStr = s.last_accessed
+            ? new Date(s.last_accessed).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})
+            : 'Never';
+
+        const totalExp = parseInt(s.total_exp) || 0;
+
+        return `<tr style="transition:background .15s" onmouseover="this.style.background='#f0fdfa'" onmouseout="this.style.background=''">
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#94a3b8;font-weight:700;font-size:11px">${i+1}</td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9">
+                <div style="display:flex;align-items:center;gap:9px">
+                    <img src="/profile_uploads/${escHtml(s.profile_pic||'default_avatar.png')}"
+                         style="width:30px;height:30px;border-radius:8px;object-fit:cover;border:1.5px solid #e0f2fe;flex-shrink:0"
+                         onerror="this.src='/profile_uploads/default_avatar.png'">
+                    <div>
+                        <p style="font-weight:700;font-size:12px;color:#1e293b">${escHtml(s.last_name)}, ${escHtml(s.first_name)}${s.middle_name?' '+escHtml(s.middle_name.charAt(0))+'.':''}</p>
+                        <p style="font-size:10px;color:#94a3b8">Lvl <strong style="color:#6366f1">${s.current_level||1}</strong></p>
+                    </div>
+                </div>
+            </td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;color:#94a3b8">${escHtml(s.lrn_number||'–')}</td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9">
+                <div style="font-size:11px;font-weight:700;color:#334155">${escHtml(s.grade_level||'–')}</div>
+                <div style="font-size:10px;color:#94a3b8">${escHtml(s.section||'–')}</div>
+            </td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;text-align:center">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:#ede9fe;color:#5b21b6;font-size:12px;font-weight:800">${s.current_level||1}</span>
+            </td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;text-align:center">
+                <span class="exp-badge"><i class="fas fa-star" style="font-size:8px;color:#f59e0b"></i>${totalExp.toLocaleString()}</span>
+            </td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;min-width:140px">
+                <div style="display:flex;align-items:center;gap:6px">
+                    <div class="prog-track" style="flex:1"><div class="prog-fill" style="width:${prog}%;background:${pColor}"></div></div>
+                    <span style="font-size:11px;font-weight:800;color:${pColor};min-width:32px;text-align:right">${prog}%</span>
+                </div>
+            </td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#64748b;white-space:nowrap">${lastStr}</td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;text-align:center">
+                <button onclick="openStudentModalByIndex(${i})"
+                        style="width:28px;height:28px;border-radius:7px;border:1px solid #e2e8f0;background:white;cursor:pointer;transition:all .15s;color:#64748b;display:inline-flex;align-items:center;justify-content:center"
+                        onmouseover="this.style.borderColor='#06b6d4';this.style.color='#0891b2'"
+                        onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#64748b'"
+                        title="View full profile">
+                    <i class="fas fa-eye" style="font-size:11px"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    _visibleRosterStudents = students;
+    document.getElementById('rosterCount').textContent = `Showing ${students.length} student${students.length!==1?'s':''}`;
+}
+
+/* ── Compute roster stats ── */
+function computeRosterStats(students) {
+    const count = students.length;
+    document.getElementById('rosterStudentCount').textContent = count;
+    if (!count) {
+        document.getElementById('rosterAvgProgress').textContent = '–';
+        document.getElementById('rosterAvgExp').textContent      = '–';
+        document.getElementById('rosterComplete').textContent    = '–';
+        return;
+    }
+    const progs  = students.map(s => parseInt(s.progress_percent) || 0);
+    const exps   = students.map(s => parseInt(s.total_exp)        || 0);
+    const avgProg = Math.round(progs.reduce((a,b)=>a+b,0) / count);
+    const avgExp  = Math.round(exps.reduce((a,b)=>a+b,0)  / count);
+    const done    = progs.filter(p => p >= 100).length;
+    document.getElementById('rosterAvgProgress').textContent = avgProg + '%';
+    document.getElementById('rosterAvgExp').textContent      = avgExp.toLocaleString();
+    document.getElementById('rosterComplete').textContent    = done;
+}
+
+/* ── Filter roster ── */
+function filterRoster() {
+    const query  = document.getElementById('rosterSearch').value.toLowerCase().trim();
+    const sortBy = document.getElementById('rosterSortBy').value;
+    let   list   = [...currentRosterStudents];
+
+    if (query) {
+        list = list.filter(s =>
+            (s.first_name + ' ' + s.last_name).toLowerCase().includes(query) ||
+            (s.lrn_number || '').includes(query) ||
+            (s.section    || '').toLowerCase().includes(query)
+        );
+    }
+
+    if      (sortBy === 'exp')      list.sort((a,b) => (parseInt(b.total_exp)||0)        - (parseInt(a.total_exp)||0));
+    else if (sortBy === 'progress') list.sort((a,b) => (parseInt(b.progress_percent)||0) - (parseInt(a.progress_percent)||0));
+    else if (sortBy === 'level')    list.sort((a,b) => (parseInt(b.current_level)||1)     - (parseInt(a.current_level)||1));
+    else                            list.sort((a,b) => (a.last_name||'').localeCompare(b.last_name||''));
+
+    renderRosterTable(list);
+    computeRosterStats(list);
+}
+
+/* ── Close roster ── */
+function closeRoster() {
+    document.getElementById('rosterSection').style.display = 'none';
+    currentRosterStudents = [];
+}
+
+/* ── Export roster CSV ── */
+function exportRosterCSV() {
+    const headers = ['#','Name','LRN','Grade','Section','Strand','Level','Total EXP','Progress %','Last Active'];
+    const lines   = [headers.join(',')];
+    currentRosterStudents.forEach((s, i) => {
+        const name    = `${s.last_name}, ${s.first_name}`;
+        const last    = s.last_accessed ? new Date(s.last_accessed).toLocaleDateString('en-PH') : 'Never';
+        lines.push([
+            i+1, `"${name}"`, s.lrn_number||'',
+            s.grade_level||'', s.section||'', s.strand||'',
+            s.current_level||1, parseInt(s.total_exp)||0,
+            parseInt(s.progress_percent)||0, last
+        ].join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type:'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'roster.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+/* ── Student modal ── */
+function switchStudentTab(name, btn) {
+    document.querySelectorAll('#studentModalTabs .student-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.student-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('spanel-' + name).classList.add('active');
+}
+
+function closeStudentModal() {
+    document.getElementById('studentModal').classList.remove('open');
+}
+document.getElementById('studentModal').addEventListener('click', function(e) {
+    if (e.target === this) closeStudentModal();
+});
+
+function openStudentModalByIndex(idx) {
+    const tbody = document.getElementById('rosterTableBody');
+    // rows contain visible students; currentRosterStudents holds the sorted list
+    openStudentModal(_visibleRosterStudents[idx]);
+}
+
+let _visibleRosterStudents = [];
+
+function openStudentModal(student) {
+    /* ── Populate profile tab ── */
+    document.getElementById('sdAvatar').src        = '/profile_uploads/' + (student.profile_pic || 'default_avatar.png');
+    document.getElementById('sdFullName').textContent = (student.last_name || '') + ', ' + (student.first_name || '') + (student.suffix ? ' ' + student.suffix : '');
+    document.getElementById('sdMeta').textContent  = (student.grade_level || '') + ' · ' + (student.section || '') + ' · ' + (student.strand || '');
+    document.getElementById('sdFirstName').textContent  = student.first_name  || '–';
+    document.getElementById('sdLastName').textContent   = student.last_name   || '–';
+    document.getElementById('sdMiddleName').textContent = student.middle_name || '–';
+    document.getElementById('sdAltName').textContent    = student.alternative_name || '–';
+    document.getElementById('sdSex').textContent        = student.sex       || '–';
+    document.getElementById('sdBirthdate').textContent  = student.birthdate
+        ? new Date(student.birthdate).toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'}) : '–';
+    document.getElementById('sdLRN').textContent        = student.lrn_number || '–';
+    document.getElementById('sdGrade').textContent      = student.grade_level || '–';
+    document.getElementById('sdSection').textContent    = student.section     || '–';
+    document.getElementById('sdStrand').textContent     = student.strand      || '–';
+    document.getElementById('sdEmail').textContent      = student.email       || '–';
+    document.getElementById('sdMobile').textContent     = student.mobile_number || '–';
+    document.getElementById('sdAddress').textContent    = student.home_address  || '–';
+    document.getElementById('sdCity').textContent       = student.city_town     || '–';
+    document.getElementById('sdAbout').textContent      = student.self_description || 'No description provided.';
+
+    /* ── Populate academic tab ── */
+    const prog = parseInt(student.progress_percent) || 0;
+    let pColor = prog >= 80 ? '#10b981' : prog >= 50 ? '#06b6d4' : prog >= 25 ? '#f59e0b' : '#ef4444';
+    document.getElementById('sdLevel').textContent        = student.current_level || 1;
+    document.getElementById('sdTotalExp').textContent     = (parseInt(student.total_exp)||0).toLocaleString();
+    document.getElementById('sdProgress').textContent     = prog + '%';
+    document.getElementById('sdProgressFill').style.width = prog + '%';
+    document.getElementById('sdProgressFill').style.background = pColor;
+    document.getElementById('sdProgressLabel').textContent = prog + '% complete · last active: ' + (student.last_accessed
+        ? new Date(student.last_accessed).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : 'Never');
+
+    /* Leaderboard history */
+    if (student.leaderboard_history && student.leaderboard_history.length) {
+        document.getElementById('sdLeaderboard').innerHTML = student.leaderboard_history.map(h => `
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px">
+                <span style="color:#334155;font-weight:600">Rank #${h.rank_achieved}</span>
+                <div style="display:flex;gap:8px">
+                    <span style="color:#64748b">${new Date(h.awarded_date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</span>
+                    <span class="exp-badge" style="font-size:10px;padding:1px 7px"><i class="fas fa-star" style="font-size:8px;color:#f59e0b"></i>${(h.total_exp_snapshot||0).toLocaleString()}</span>
+                </div>
+            </div>`).join('');
+    } else {
+        document.getElementById('sdLeaderboard').innerHTML = '<p class="text-xs text-slate-400 italic">No rank history yet.</p>';
+    }
+
+    /* ── Populate scores tab ── */
+    if (student.scores && student.scores.length) {
+        document.getElementById('sdScoresList').innerHTML = student.scores.map(sc => {
+            const pct = Math.round((sc.score_obtained / sc.total_items) * 100);
+            let bColor = pct >= 75 ? '#10b981' : pct >= 50 ? '#06b6d4' : pct >= 25 ? '#f59e0b' : '#ef4444';
+            const tClass = sc.assessment_type === 'Pre-Test' ? 'atype-pre'
+                         : sc.assessment_type === 'Post-Test' ? 'atype-post'
+                         : sc.assessment_type === 'Quiz' ? 'atype-quiz' : 'atype-comp';
+            const dateStr = sc.date_recorded ? new Date(sc.date_recorded).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : '–';
+            return `
+            <div class="score-row">
+                <div style="flex:1;min-width:0">
+                    <p style="font-size:12px;font-weight:700;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">${escHtml(sc.assessment_name)}</p>
+                    <div style="display:flex;gap:5px;margin-top:2px;flex-wrap:wrap">
+                        <span class="badge-type ${tClass}">${sc.assessment_type}</span>
+                        <span style="font-size:10px;color:#94a3b8">${dateStr}</span>
+                    </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                    <div class="resp-bar-wrap" style="justify-content:flex-end">
+                        <div class="resp-bar-track" style="width:60px"><div class="resp-bar-fill" style="width:${pct}%;background:${bColor}"></div></div>
+                        <span style="font-size:12px;font-weight:800;color:${bColor};min-width:42px">${sc.score_obtained}/${sc.total_items}</span>
+                    </div>
+                    <span class="exp-badge" style="font-size:10px;padding:1px 7px;margin-top:3px;display:inline-flex"><i class="fas fa-star" style="font-size:8px;color:#f59e0b"></i>+${sc.exp_gained}</span>
+                </div>
+            </div>`;
+        }).join('');
+    } else {
+        document.getElementById('sdScoresList').innerHTML = '<p class="text-xs text-slate-400 italic">No scores recorded yet.</p>';
+    }
+
+    /* Reset to first tab */
+    switchStudentTab('profile', document.querySelector('#studentModalTabs .student-tab'));
+    document.getElementById('studentModal').classList.add('open');
+}
+
+/* ── Active SY auto-select on load ── */
+(function autoSelectActiveSY() {
+    const activeSyBtn = document.querySelector('#syFilterGroup .sy-btn.active[data-sy]');
+    if (activeSyBtn && activeSyBtn.dataset.sy) {
+        activeSyFilter = activeSyBtn.dataset.sy;
+        /* Deactivate "All Years" button */
+        const allBtn = document.querySelector('#syFilterGroup .sy-btn[data-sy=""]');
+        if (allBtn) allBtn.classList.remove('active');
+        filterClasses(null);
+    }
+})();
+
+</script>
+
+<!-- =============================================
+     NOTIFICATION PANEL
+============================================= -->
+<div id="notifPanel" class="fixed top-0 right-0 h-full w-full max-w-sm z-[200] translate-x-full transition-transform duration-300 ease-in-out flex flex-col"
+     style="background: linear-gradient(180deg, #0d1a2e 0%, #0f1f38 100%); box-shadow: -8px 0 40px rgba(6,182,212,0.15);">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-5 border-b border-white/10 flex-shrink-0">
+        <div>
+            <h3 class="text-white font-black text-base tracking-tight uppercase italic flex items-center gap-2">
+                <i class="fas fa-bell text-cyan-400 text-sm"></i> Notifications
+            </h3>
+            <p class="text-indigo-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
+                <%= notifications ? notifications.length : 0 %> updates
+            </p>
+        </div>
+        <button onclick="toggleNotifPanel()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-rose-500/20 text-indigo-300 hover:text-rose-400 transition">
+            <i class="fas fa-times text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Scrollable List -->
+    <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-2">
+        <% if (notifications && notifications.length > 0) { %>
+            <% notifications.forEach(notif => { %>
+                <%
+                    let href = '#';
+                    let iconClass = 'fas fa-bell text-cyan-400';
+                    let badgeClass = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+                    let badgeLabel = 'Update';
+
+                    if (notif.notif_type === 'forum_reply') {
+                        href = '/teacher/forums#forum-' + notif.link_id;
+                        iconClass = 'fas fa-comments text-amber-400';
+                        badgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+                        badgeLabel = 'Forum Reply';
+                    } else if (notif.notif_type === 'private_message') {
+                        href = '/teacher/messages/' + notif.link_id;
+                        iconClass = 'fas fa-envelope text-indigo-400';
+                        badgeClass = 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+                        badgeLabel = 'Message';
+                    } else if (notif.notif_type === 'struggling_student') {
+                        href = '/teacher/class/' + notif.link_id + '#students';
+                        iconClass = 'fas fa-triangle-exclamation text-rose-400';
+                        badgeClass = 'bg-rose-500/20 text-rose-300 border-rose-500/30';
+                        badgeLabel = 'Needs Help';
+                    } else if (notif.notif_type === 'pending_question') {
+                        href = '/teacher/question-bank?q=' + notif.link_id;
+                        iconClass = 'fas fa-database text-fuchsia-400';
+                        badgeClass = 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30';
+                        badgeLabel = 'Review Question';
+                    } else if (notif.notif_type === 'upcoming_deadline') {
+                        href = '/teacher/class/' + notif.link_id;
+                        iconClass = 'fas fa-hourglass-half text-emerald-400';
+                        badgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+                        badgeLabel = 'Deadline Soon';
+                    }
+                %>
+                <a href="<%= href %>"
+                   class="flex items-start gap-3 p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-cyan-500/30 transition group cursor-pointer">
+
+                    <div class="flex-shrink-0 mt-0.5">
+                        <% if (notif.actor_pic && notif.notif_type !== 'upcoming_deadline') { %>
+                            <img src="/profile_uploads/<%= notif.actor_pic %>" class="w-9 h-9 rounded-xl object-cover ring-1 ring-white/10 group-hover:ring-cyan-400/40 transition">
+                        <% } else { %>
+                            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                                <i class="<%= iconClass %> text-sm"></i>
+                            </div>
+                        <% } %>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border <%= badgeClass %>"><%= badgeLabel %></span>
+                        </div>
+                        <p class="text-white text-[11px] font-bold leading-snug group-hover:text-cyan-300 transition line-clamp-2">
+                            <% if (notif.notif_type !== 'upcoming_deadline') { %>
+                                <span class="text-cyan-400"><%= notif.actor_name %></span>
+                            <% } %>
+                            <%= notif.message %>
+                        </p>
+                        <p class="text-indigo-500 text-[9px] font-bold mt-1 uppercase tracking-widest">
+                            <% if (notif.notif_time) { %>
+                                <%= new Date(notif.notif_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                            <% } else { %>
+                                —
+                            <% } %>
+                        </p>
+                    </div>
+
+                    <div class="flex-shrink-0 self-center text-indigo-600 group-hover:text-cyan-400 transition">
+                        <i class="fas fa-chevron-right text-[10px]"></i>
+                    </div>
+                </a>
+            <% }) %>
+        <% } else { %>
+            <div class="flex flex-col items-center justify-center h-full py-20 text-center">
+                <div class="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center mb-4">
+                    <i class="fas fa-bell-slash text-indigo-500 text-2xl"></i>
+                </div>
+                <p class="text-indigo-400 text-xs font-black uppercase tracking-widest">You're all caught up!</p>
+                <p class="text-indigo-600 text-[10px] font-bold mt-1">No new notifications</p>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- Backdrop -->
+<div id="notifBackdrop" class="fixed inset-0 bg-indigo-950/50 backdrop-blur-sm z-[199] hidden" onclick="toggleNotifPanel()"></div>
+
+<script>
+    function toggleNotifPanel() {
+        const panel    = document.getElementById('notifPanel');
+        const backdrop = document.getElementById('notifBackdrop');
+        const isOpen   = !panel.classList.contains('translate-x-full');
+        if (isOpen) {
+            panel.classList.add('translate-x-full');
+            backdrop.classList.add('hidden');
+        } else {
+            panel.classList.remove('translate-x-full');
+            backdrop.classList.remove('hidden');
+        }
+    }
+
+
+    function toggleProfileDropdown() {
+        document.getElementById('profileDropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        const wrap = document.getElementById('profileDropdownWrap');
+        if (wrap && !wrap.contains(e.target)) {
+            document.getElementById('profileDropdown').classList.remove('open');
+        }
+    });
+</script>
+</body>
+</html>

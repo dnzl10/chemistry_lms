@@ -1,0 +1,2336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Management | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdfa;
+            background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-card { background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); }
+        .stat-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.10); }
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4, #6366f1) !important;
+            color: white !important; font-weight: 700;
+            box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+        .fade-in { animation: fadeUp 0.35s ease both; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        /* Tab system */
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-btn.active { background: linear-gradient(135deg,#06b6d4,#6366f1); color:white; box-shadow:0 4px 14px rgba(99,102,241,0.35); }
+        .tab-pane { display:none; }
+        .tab-pane.active { display:block; }
+
+        /* Modal */
+        .modal-overlay {
+            position:fixed; inset:0; background:rgba(15,23,42,0.55);
+            backdrop-filter:blur(4px); z-index:9000;
+            display:flex; align-items:center; justify-content:center;
+            opacity:0; pointer-events:none; transition:opacity 0.22s ease;
+        }
+        .modal-overlay.open { opacity:1; pointer-events:all; }
+        .modal-box {
+            background:white; border-radius:20px;
+            box-shadow:0 32px 80px rgba(0,0,0,0.22);
+            width:95%; max-width:680px; max-height:90vh;
+            overflow-y:auto; transform:scale(0.96) translateY(12px);
+            transition:transform 0.22s ease;
+        }
+        .modal-overlay.open .modal-box { transform:scale(1) translateY(0); }
+        .modal-box-sm { max-width:440px; }
+        .modal-box-lg { max-width:860px; }
+
+        /* Badge */
+        .badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; text-transform:uppercase; letter-spacing:.04em; }
+        .badge-locked   { background:#fee2e2; color:#991b1b; }
+        .badge-unlocked { background:#d1fae5; color:#065f46; }
+        .badge-active   { background:#dbeafe; color:#1e40af; }
+        .badge-inactive { background:#f1f5f9; color:#64748b; }
+
+        /* Search */
+        .search-input { transition:box-shadow 0.18s, border-color 0.18s; }
+        .search-input:focus { box-shadow:0 0 0 3px rgba(6,182,212,0.18); border-color:#06b6d4; outline:none; }
+
+        /* Table */
+        .data-table th { background:#f8fafc; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#64748b; font-weight:700; }
+        .data-table tbody tr:hover { background:#f0f9ff; }
+        .data-table td { vertical-align:middle; }
+        .table-wrap { overflow-x:auto; }
+        .table-wrap::-webkit-scrollbar { height:3px; }
+        .table-wrap::-webkit-scrollbar-thumb { background:#c7d2fe; border-radius:2px; }
+
+        /* Action buttons */
+        .btn-icon { width:30px; height:30px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s; font-size:12px; cursor:pointer; border:none; }
+        .btn-icon:hover { transform:scale(1.12); }
+        .btn-edit   { background:#e0f2fe; color:#0369a1; }
+        .btn-delete { background:#fee2e2; color:#dc2626; }
+        .btn-lock   { background:#fef3c7; color:#d97706; }
+        .btn-unlock { background:#d1fae5; color:#059669; }
+        .btn-view   { background:#ede9fe; color:#7c3aed; }
+        .btn-add    { background:#dbeafe; color:#1d4ed8; }
+
+        /* Subject card grid */
+        .subject-card {
+            background:white; border-radius:16px; border:1.5px solid #e2e8f0;
+            transition:all 0.2s ease; cursor:pointer; overflow:hidden;
+        }
+        .subject-card:hover { border-color:#6366f1; box-shadow:0 8px 24px rgba(99,102,241,0.15); transform:translateY(-2px); }
+        .subject-card.selected { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,0.2); }
+
+        /* Drill-down panel */
+        #drillPanel { transition: all 0.3s ease; }
+
+        /* Progress bar */
+        .progress-bar { height:6px; border-radius:3px; background:#e2e8f0; }
+        .progress-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#06b6d4,#6366f1); transition:width 0.5s ease; }
+
+        /* Glitch effect on arcade buttons */
+        .btn-arcade {
+            position:relative; overflow:hidden;
+            background:linear-gradient(135deg,#f59e0b,#ef4444);
+            color:white; font-weight:700; border:none; cursor:pointer;
+            transition:all 0.2s;
+        }
+        .btn-arcade:hover { animation:glitch 0.3s infinite; }
+        @keyframes glitch {
+            0%   { transform:translate(0); }
+            20%  { transform:translate(-2px,1px); filter:hue-rotate(10deg); }
+            40%  { transform:translate(2px,-1px); }
+            60%  { transform:translate(-1px,2px); filter:hue-rotate(-10deg); }
+            80%  { transform:translate(1px,-2px); }
+            100% { transform:translate(0); }
+        }
+
+        /* Breadcrumb */
+        .breadcrumb span { font-size:12px; font-weight:700; color:#94a3b8; }
+        .breadcrumb span.active { color:#6366f1; }
+        .breadcrumb i { font-size:10px; color:#cbd5e1; margin:0 4px; }
+
+        /* Drop zone */
+        .drop-zone {
+            border:2.5px dashed #c7d2fe; border-radius:16px;
+            transition:all 0.2s ease; cursor:pointer;
+        }
+        .drop-zone.dragover { border-color:#6366f1; background:#eef2ff; }
+
+        /* Toast */
+        #toast {
+            position:fixed; bottom:28px; right:28px; z-index:99999;
+            padding:14px 22px; border-radius:14px; font-weight:700; font-size:14px;
+            display:flex; align-items:center; gap:10px;
+            box-shadow:0 8px 30px rgba(0,0,0,0.18);
+            transform:translateY(80px); opacity:0; pointer-events:none;
+            transition:all 0.3s cubic-bezier(.34,1.56,.64,1);
+        }
+        #toast.show { transform:translateY(0); opacity:1; }
+        #toast.success { background:#10b981; color:white; }
+        #toast.error   { background:#ef4444; color:white; }
+        #toast.info    { background:#6366f1; color:white; }
+
+        /* Topic nested indent */
+        .topic-row { border-left:3px solid #e0f2fe; margin-left:12px; }
+
+        /* SY card */
+        .sy-card-active { border:2px solid #22c55e; background:linear-gradient(135deg,#f0fdf4,#dcfce7); }
+        .sy-card-inactive { border:2px solid #e2e8f0; background:white; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <div id="sidebarOverlay" onclick="toggleSidebar()"
+         class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside id="sidebar" class="bg-indigo-950 text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-800/50">
+        <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+            <!-- Mobile close button -->
+            <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <!-- Logo -->
+            <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+
+            <!-- Brand name -->
+            <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                Elem<span class="text-white">enta</span>
+            </h1>
+            <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Admin Console</p>
+
+            <!-- Divider -->
+            <!-- <div class="w-full mt-5 border-t border-indigo-800/60"></div> -->
+        </div>
+        <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Main Interface</p>
+                <div class="space-y-1">
+                    <a href="/admin/dashboard" class="flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white hover:bg-white/10 group">
+                        <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-bold tracking-tight text-sm">Main Dashboard</span>
+                    </a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Administrative</p>
+                <div class="space-y-1">
+                    <a href="/admin/user_access_control" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-users w-5 text-sky-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">User & Access Control</span>
+                    </a>
+                    <a href="/admin/academic_management" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-graduation-cap w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Academic Management</span>
+                    </a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Learning Assets</p>
+                <div class="space-y-1">
+                    <a href="/admin/gaming_question_bank" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-gamepad w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Gaming & Q-Bank</span>
+                    </a>
+                    <a href="/admin/resources_engagement" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-lightbulb w-5 text-lime-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Resources & Engagement</span>
+                    </a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">System Health</p>
+                <div class="space-y-1">
+                    <a href="/admin/reports_monitoring" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-chart-line w-5 text-blue-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Reports & Monitoring</span>
+                    </a>
+                    <a href="/admin/system_audit" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-fingerprint w-5 text-indigo-300 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">System Audit</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        <div class="p-4 border-t border-indigo-800">
+            <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+                <i class="fas fa-right-from-bracket w-5"></i> Log Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- ===================== MAIN CONTENT ===================== -->
+    <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- TOP HEADER -->
+        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">
+                        <i class="fas fa-graduation-cap text-emerald-400"></i>
+                        Academic Management
+                    </h2>
+                    <p class="text-xs text-slate-400 hidden sm:block">
+                        <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
+                        Manage subjects, curriculum, classes &amp; academic structure
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 md:gap-6">
+                <!-- Notification bell -->
+                <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
+                    <i class="far fa-bell text-xl text-cyan-600"></i>
+                    <span id="notifDot" class="absolute top-2 right-2 flex h-2.5 w-2.5 hidden">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <span id="notifCount" class="absolute -top-0.5 -right-0.5 hidden bg-rose-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center"></span>
+                </div>
+
+                <!-- Admin profile -->
+                <div class="flex items-center gap-3 pl-4 border-l border-cyan-100">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-[10px] uppercase font-black text-rose-500 tracking-widest">Administrator</p>
+                    </div>
+                    <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                         class="w-10 h-10 rounded-xl object-cover ring-2 ring-rose-400 shadow-sm">
+                </div>
+            </div>
+        </header>
+
+        <!-- SCROLLABLE CONTENT -->
+        <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
+            <div class="p-4 md:p-8 flex-1 fade-in">
+
+                <!-- ── BREADCRUMB ── -->
+                <div class="breadcrumb flex items-center mb-5" id="breadcrumb">
+                    <span class="active">Academic</span>
+                    <i class="fas fa-chevron-right"></i>
+                    <span id="bc-subject">—</span>
+                    <i class="fas fa-chevron-right" id="bc-arrow2" style="display:none"></i>
+                    <span id="bc-quarter" style="display:none"></span>
+                    <i class="fas fa-chevron-right" id="bc-arrow3" style="display:none"></i>
+                    <span id="bc-topic" style="display:none"></span>
+                </div>
+
+                <!-- ═══════════════════════════════════
+                     SECTION A: SCHOOL YEAR + KPI STATS
+                ═══════════════════════════════════ -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7">
+
+                    <!-- School Year Card -->
+                    <div class="glass-card rounded-2xl border border-emerald-100 shadow-sm p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-black text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-calendar-alt text-emerald-500"></i> School Year
+                            </h3>
+                            <button onclick="openModal('modalAddSY')"
+                                class="text-xs font-bold bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-200 transition">
+                                <i class="fas fa-plus mr-1"></i> Add SY
+                            </button>
+                        </div>
+                        <% if (activeSY) { %>
+                        <div class="sy-card-active rounded-xl p-4 mb-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
+                                <span class="text-xs font-black text-green-700 uppercase tracking-wider">Active</span>
+                            </div>
+                            <p class="text-2xl font-black text-green-800"><%= activeSY.sy_range %></p>
+                            <p class="text-xs text-green-600 mt-1"><%= activeSY.classCount %> class(es) · <%= activeSY.enrolledCount %> enrolled</p>
+                        </div>
+                        <% } else { %>
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-3 text-center">
+                            <i class="fas fa-exclamation-triangle text-amber-400 text-2xl mb-1"></i>
+                            <p class="text-xs font-bold text-amber-600">No active school year set!</p>
+                        </div>
+                        <% } %>
+                        <div class="space-y-2">
+                        <% schoolYears.forEach(function(sy) { %>
+                            <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50">
+                                <div class="flex items-center gap-2">
+                                    <% if (sy.is_active) { %>
+                                    <span class="badge badge-active">Active</span>
+                                    <% } else { %>
+                                    <span class="badge badge-inactive">Inactive</span>
+                                    <% } %>
+                                    <span class="text-sm font-bold text-slate-700"><%= sy.sy_range %></span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <% if (!sy.is_active) { %>
+                                    <button class="btn-icon btn-unlock" title="Activate this SY"
+                                        onclick="confirmActivateSY(<%= sy.sy_id %>, '<%= sy.sy_range %>')">
+                                        <i class="fas fa-toggle-off"></i>
+                                    </button>
+                                    <% } %>
+                                    <button class="btn-icon btn-edit" title="Edit SY"
+                                        onclick="openEditSY(<%= JSON.stringify(sy) %>)">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+                                    <% if (!sy.is_active) { %>
+                                    <button class="btn-icon btn-delete" title="Delete SY"
+                                        onclick="confirmDeleteSY(<%= sy.sy_id %>, '<%= sy.sy_range %>')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% }) %>
+                        </div>
+                        <!-- View All Past School Years -->
+                        <button onclick="openModal('modalAllSY')"
+                            class="mt-3 w-full text-center text-[11px] font-bold text-indigo-500 hover:text-indigo-700 hover:underline transition">
+                            <i class="fas fa-history mr-1"></i> View All School Years
+                        </button>
+                    </div>
+
+                    <!-- KPI Stats (2 cols) -->
+                    <div class="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="stat-card glass-card rounded-2xl p-5 border border-indigo-100 shadow-sm">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center mb-3">
+                                <i class="fas fa-book text-indigo-600"></i>
+                            </div>
+                            <p class="text-3xl font-black text-indigo-900"><%= amStats.totalSubjects %></p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Subjects</p>
+                        </div>
+                        <div class="stat-card glass-card rounded-2xl p-5 border border-cyan-100 shadow-sm">
+                            <div class="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center mb-3">
+                                <i class="fas fa-layer-group text-cyan-600"></i>
+                            </div>
+                            <p class="text-3xl font-black text-indigo-900"><%= amStats.totalQuarters %></p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Quarters</p>
+                        </div>
+                        <div class="stat-card glass-card rounded-2xl p-5 border border-emerald-100 shadow-sm">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-3">
+                                <i class="fas fa-tags text-emerald-600"></i>
+                            </div>
+                            <p class="text-3xl font-black text-indigo-900"><%= amStats.totalTopics %></p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Topics</p>
+                        </div>
+                        <div class="stat-card glass-card rounded-2xl p-5 border border-rose-100 shadow-sm">
+                            <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center mb-3">
+                                <i class="fas fa-school text-rose-600"></i>
+                            </div>
+                            <p class="text-3xl font-black text-indigo-900"><%= amStats.totalClasses %></p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Classes</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══════════════════════════════════
+                     SECTION B: SUBJECT GRID
+                ═══════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-5">
+                        <h3 class="font-black text-slate-800 text-base flex items-center gap-2">
+                            <i class="fas fa-th text-indigo-400"></i> Subject Directory
+                        </h3>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <div class="relative">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input id="subjectSearch" type="text" placeholder="Search subjects…"
+                                    class="search-input pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white w-48"
+                                    oninput="filterSubjects()">
+                            </div>
+                            <select id="semesterFilter" class="search-input px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white" onchange="filterSubjects()">
+                                <option value="">All Semesters</option>
+                                <option value="1">Semester 1</option>
+                                <option value="2">Semester 2</option>
+                            </select>
+                            <button onclick="openModal('modalAddSubject')"
+                                class="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-bold text-sm px-4 py-2 rounded-xl hover:opacity-90 transition shadow-md">
+                                <i class="fas fa-plus"></i> Add Subject
+                            </button>
+                            <button onclick="openModal('modalBulkSubject')"
+                                class="flex items-center gap-2 border border-indigo-200 text-indigo-600 font-bold text-sm px-4 py-2 rounded-xl hover:bg-indigo-50 transition">
+                                <i class="fas fa-file-excel"></i> Bulk Import
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Subject Cards Grid -->
+                    <div id="subjectGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <% subjects.forEach(function(s) { %>
+                        <div class="subject-card p-4"
+                             data-id="<%= s.subject_id %>"
+                             data-name="<%= s.subject_name.toLowerCase() %>"
+                             data-semester="<%= s.semester %>"
+                             onclick="drillIntoSubject(<%= s.subject_id %>, '<%= s.subject_name.replace(/'/g,"\\'"  ) %>')">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-atom text-white text-sm"></i>
+                                </div>
+                                <div class="flex gap-1" onclick="event.stopPropagation()">
+                                    <button class="btn-icon btn-edit" title="Edit Subject"
+                                        onclick="openEditSubject(<%- JSON.stringify(s) %>)">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+                                    <button class="btn-icon btn-delete" title="Delete Subject"
+                                        onclick="confirmDeleteSubject(<%= s.subject_id %>, '<%= s.subject_name.replace(/'/g,"\\'") %>', <%= s.quarterCount || 0 %>, <%= s.topicCount || 0 %>)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="font-black text-slate-800 text-sm leading-tight mb-1"><%= s.subject_name %></p>
+                            <p class="text-[10px] font-mono text-slate-400 mb-2"><%= s.subject_code || '—' %></p>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="badge badge-active">Sem <%= s.semester %></span>
+                                <span class="text-[10px] text-slate-400 font-medium"><%= s.quarterCount || 0 %> quarters</span>
+                            </div>
+                            <p class="text-xs text-indigo-500 font-bold mt-2">Click to manage →</p>
+                        </div>
+                    <% }) %>
+                    <% if (subjects.length === 0) { %>
+                        <div class="col-span-full py-16 text-center text-slate-400">
+                            <i class="fas fa-book-open text-4xl mb-3 block opacity-30"></i>
+                            <p class="font-bold">No subjects yet. Add your first subject.</p>
+                        </div>
+                    <% } %>
+                    </div>
+                </div>
+
+                <!-- ═══════════════════════════════════
+                     SECTION C: DRILL-DOWN PANEL
+                     Appears when a subject is selected
+                ═══════════════════════════════════ -->
+                <div id="drillPanel" class="hidden">
+
+                    <!-- Drill Header -->
+                    <div class="glass-card rounded-2xl border border-indigo-100 shadow-sm p-5 mb-5">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div class="flex items-center gap-3">
+                                <button onclick="closeDrill()"
+                                    class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center">
+                                    <i class="fas fa-arrow-left"></i>
+                                </button>
+                                <div>
+                                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Currently Managing</p>
+                                    <h3 id="drillTitle" class="font-black text-indigo-900 text-lg"></h3>
+                                </div>
+                            </div>
+                            <!-- Drill Tab Bar -->
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button class="tab-btn active flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600" onclick="switchDrillTab('dt-curriculum', this)">
+                                    <i class="fas fa-sitemap"></i> Curriculum
+                                </button>
+                                <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600" onclick="switchDrillTab('dt-classes', this)">
+                                    <i class="fas fa-school"></i> Classes
+                                </button>
+                                <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600" onclick="switchDrillTab('dt-progress', this)">
+                                    <i class="fas fa-chart-bar"></i> Progress
+                                </button>
+                                <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600" onclick="switchDrillTab('dt-announcements', this)">
+                                    <i class="fas fa-bullhorn"></i> Announcements
+                                </button>
+                                <button class="tab-btn btn-arcade flex items-center gap-2 px-4 py-2 rounded-xl text-sm" onclick="switchDrillTab('dt-arcade', this)">
+                                    <i class="fas fa-gamepad"></i> Arcade Config
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── DRILL TAB: CURRICULUM ── -->
+                    <div id="dt-curriculum" class="tab-pane active glass-card rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-black text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-sitemap text-indigo-400"></i> Quarters & Topics
+                            </h4>
+                            <button id="btnAddQuarter" onclick="openAddQuarter()"
+                                class="flex items-center gap-2 bg-indigo-100 text-indigo-700 font-bold text-xs px-3 py-2 rounded-xl hover:bg-indigo-200 transition">
+                                <i class="fas fa-plus"></i> Add Quarter
+                            </button>
+                        </div>
+
+                        <div id="quartersContainer" class="space-y-4">
+                            <div class="text-center py-10 text-slate-400">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2 block text-indigo-300"></i>
+                                <p class="text-sm font-medium">Select a subject to load quarters.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── DRILL TAB: CLASSES ── -->
+                    <div id="dt-classes" class="tab-pane glass-card rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
+                        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+                            <h4 class="font-black text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-school text-rose-400"></i> Classes Under This Subject
+                            </h4>
+                            <div class="flex gap-2">
+                                <button onclick="openAddClass()"
+                                    class="flex items-center gap-2 bg-rose-100 text-rose-700 font-bold text-xs px-3 py-2 rounded-xl hover:bg-rose-200 transition">
+                                    <i class="fas fa-plus"></i> Add Class
+                                </button>
+                                <button onclick="openModal('modalBulkEnroll')"
+                                    class="flex items-center gap-2 border border-rose-200 text-rose-600 font-bold text-xs px-3 py-2 rounded-xl hover:bg-rose-50 transition">
+                                    <i class="fas fa-file-excel"></i> Bulk Enroll
+                                </button>
+                            </div>
+                        </div>
+                        <div id="classesContainer">
+                            <div class="text-center py-8 text-slate-400 text-sm">Select a subject to view classes.</div>
+                        </div>
+                    </div>
+
+                    <!-- ── DRILL TAB: PROGRESS ── -->
+                    <div id="dt-progress" class="tab-pane glass-card rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
+                        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+                            <h4 class="font-black text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-chart-bar text-cyan-400"></i> Student Progress Tracker
+                            </h4>
+                            <div class="flex gap-2">
+                                <select id="progressClassFilter" class="search-input px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white" onchange="loadProgress()">
+                                    <option value="">All Classes</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="progressContainer">
+                            <div class="text-center py-8 text-slate-400 text-sm">Select a subject to view student progress.</div>
+                        </div>
+                    </div>
+
+                    <!-- ── DRILL TAB: ANNOUNCEMENTS ── -->
+                    <div id="dt-announcements" class="tab-pane glass-card rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
+                        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+                            <h4 class="font-black text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-bullhorn text-amber-400"></i> Announcements
+                            </h4>
+                            <button onclick="openAddAnnouncement()"
+                                class="flex items-center gap-2 bg-amber-100 text-amber-700 font-bold text-xs px-3 py-2 rounded-xl hover:bg-amber-200 transition">
+                                <i class="fas fa-plus"></i> New Announcement
+                            </button>
+                        </div>
+                        <div id="announcementsContainer">
+                            <div class="text-center py-8 text-slate-400 text-sm">Select a subject to view announcements.</div>
+                        </div>
+                    </div>
+
+                    <!-- ── DRILL TAB: ARCADE CONFIG ── -->
+                    <div id="dt-arcade" class="tab-pane glass-card rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
+                        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+                            <h4 class="font-black text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-gamepad text-amber-400"></i> Arcade & Gamification Config
+                            </h4>
+                        </div>
+
+                        <!-- Leaderboard History -->
+                        <div class="mb-6">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="font-bold text-slate-700 flex items-center gap-2">
+                                    <i class="fas fa-trophy text-yellow-500"></i> Leaderboard Snapshots
+                                </p>
+                            </div>
+                            <div id="leaderboardContainer">
+                                <div class="text-center py-6 text-slate-400 text-sm">Select a subject to load leaderboard data.</div>
+                            </div>
+                        </div>
+
+                        <!-- Competitive Matches -->
+                        <div class="mb-6">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="font-bold text-slate-700 flex items-center gap-2">
+                                    <i class="fas fa-swords text-rose-500"></i> Competitive Match History
+                                </p>
+                            </div>
+                            <div id="matchesContainer">
+                                <div class="text-center py-6 text-slate-400 text-sm">Select a subject to load match history.</div>
+                            </div>
+                        </div>
+
+                        <!-- Hardware Button Mapping -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="font-bold text-slate-700 flex items-center gap-2">
+                                    <i class="fas fa-microchip text-indigo-500"></i> Hardware Button Mapping
+                                </p>
+                                <button onclick="openModal('modalAddMapping')"
+                                    class="btn-arcade flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl">
+                                    <i class="fas fa-plus"></i> Add Mapping
+                                </button>
+                            </div>
+                            <div id="mappingContainer">
+                                <div class="text-center py-6 text-slate-400 text-sm">Loading hardware mappings…</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- end drillPanel -->
+
+            </div><!-- end p-4 -->
+
+            <!-- FOOTER -->
+            <footer class="bg-white border-t border-cyan-100 py-6 px-8 mt-auto w-full">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-2 max-w-[1600px] mx-auto">
+                    <p class="text-[11px] text-indigo-400 font-black uppercase tracking-tight">
+                        &copy; 2026 <span class="text-cyan-600">Chemistry Arcade</span> — Mabini College v2.5.0
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest">Support Lab</a>
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest border-l pl-4 border-indigo-100">Atomic Logs</a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════ -->
+
+<!-- ADD SCHOOL YEAR -->
+<div id="modalAddSY" class="modal-overlay">
+    <div class="modal-box modal-box-sm p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Add School Year</h3></div>
+            <button onclick="closeModal('modalAddSY')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="addSYForm" onsubmit="submitAddSY(event)" class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">SY Range *</label>
+                <input type="text" id="addSYInput" name="sy_range" required
+                    placeholder="e.g. <%= new Date().getFullYear() %>-<%= new Date().getFullYear() + 1 %>"
+                    maxlength="9" pattern="\d{4}-\d{4}"
+                    oninput="validateSYInput(this)"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Format: YYYY-YYYY · Numbers only · Only current year's SY is allowed
+                    (<%= new Date().getFullYear() %>-<%= new Date().getFullYear() + 1 %>)
+                </p>
+                <p id="addSYError" class="text-[11px] text-rose-500 font-bold mt-1 hidden"></p>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalAddSY')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT SCHOOL YEAR -->
+<div id="modalEditSY" class="modal-overlay">
+    <div class="modal-box modal-box-sm p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Edit School Year</h3></div>
+            <button onclick="closeModal('modalEditSY')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="editSYForm" onsubmit="submitEditSY(event)" class="p-6 space-y-4">
+            <input type="hidden" id="editSYId">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">SY Range *</label>
+                <input type="text" id="editSYRange" name="sy_range" required maxlength="9"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalEditSY')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-save mr-1"></i> Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ALL / PAST SCHOOL YEARS MODAL -->
+<div id="modalAllSY" class="modal-overlay">
+    <div class="modal-box modal-box-sm p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div>
+                <h3 class="font-black text-indigo-900 text-lg">All School Years</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Sorted from latest to oldest</p>
+            </div>
+            <button onclick="closeModal('modalAllSY')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-6 space-y-2 max-h-[60vh] overflow-y-auto">
+            <% if (typeof pastSchoolYears !== 'undefined') { %>
+            <% pastSchoolYears.forEach(function(sy) { %>
+            <div class="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <div class="flex items-center gap-2">
+                    <% if (sy.is_active) { %>
+                    <span class="badge badge-active">Active</span>
+                    <% } else { %>
+                    <span class="badge badge-inactive">Inactive</span>
+                    <% } %>
+                    <span class="text-sm font-bold text-slate-700"><%= sy.sy_range %></span>
+                    <span class="text-[10px] text-slate-400">
+                        Added <%= new Date(sy.created_at).toLocaleDateString('en-PH', {year:'numeric', month:'short', day:'numeric'}) %>
+                    </span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <% if (!sy.is_active) { %>
+                    <button class="btn-icon btn-unlock" title="Activate this SY"
+                        onclick="confirmActivateSY(<%= sy.sy_id %>, '<%= sy.sy_range %>')">
+                        <i class="fas fa-toggle-off"></i>
+                    </button>
+                    <% } else { %>
+                    <button class="btn-icon" style="cursor:default;opacity:0.4;" title="Currently active" disabled>
+                        <i class="fas fa-toggle-on text-emerald-500"></i>
+                    </button>
+                    <% } %>
+                    <button class="btn-icon btn-edit" title="Edit SY"
+                        onclick="openEditSY(<%= JSON.stringify(sy) %>)">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <% if (!sy.is_active) { %>
+                    <button class="btn-icon btn-delete" title="Delete SY"
+                        onclick="confirmDeleteSY(<%= sy.sy_id %>, '<%= sy.sy_range %>')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <% } %>
+                </div>
+            </div>
+            <% }) %>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- ADD SUBJECT -->
+<div id="modalAddSubject" class="modal-overlay">
+    <div class="modal-box p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Add New Subject</h3><p class="text-xs text-slate-400 mt-0.5">Fill in the subject details below.</p></div>
+            <button onclick="closeModal('modalAddSubject')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="addSubjectForm" onsubmit="submitAddSubject(event)" class="p-6 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Subject Name *</label>
+                    <input type="text" name="subject_name" required placeholder="General Chemistry 1"
+                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Subject Code</label>
+                    <input type="text" name="subject_code" placeholder="GEN-CHEM-1"
+                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Semester *</label>
+                    <select name="semester" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Enrollment Code</label>
+                    <input type="text" name="enrollment_code" placeholder="AUTO-GENERATED if blank"
+                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Description</label>
+                <textarea name="description" rows="2" placeholder="Brief subject description…"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white resize-none"></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalAddSubject')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Create Subject</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT SUBJECT -->
+<div id="modalEditSubject" class="modal-overlay">
+    <div class="modal-box p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Edit Subject</h3></div>
+            <button onclick="closeModal('modalEditSubject')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="editSubjectForm" onsubmit="submitEditSubject(event)" class="p-6 space-y-4">
+            <input type="hidden" id="editSubjectId">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Subject Name *</label>
+                    <input type="text" id="editSubjectName" name="subject_name" required class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Subject Code</label>
+                    <input type="text" id="editSubjectCode" name="subject_code" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Semester *</label>
+                    <select id="editSubjectSemester" name="semester" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Enrollment Code</label>
+                    <input type="text" id="editSubjectEnrollCode" name="enrollment_code" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Description</label>
+                <textarea id="editSubjectDesc" name="description" rows="2" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white resize-none"></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalEditSubject')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-save mr-1"></i> Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD QUARTER -->
+<div id="modalAddQuarter" class="modal-overlay">
+    <div class="modal-box modal-box-sm p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Add Quarter</h3></div>
+            <button onclick="closeModal('modalAddQuarter')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="addQuarterForm" onsubmit="submitAddQuarter(event)" class="p-6 space-y-4">
+            <input type="hidden" id="addQuarterSubjectId">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Quarter Number *</label>
+                <select name="quarter_number" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                    <option value="1">Quarter 1</option>
+                    <option value="2">Quarter 2</option>
+                    <option value="3">Quarter 3</option>
+                    <option value="4">Quarter 4</option>
+                </select>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalAddQuarter')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD TOPIC -->
+<div id="modalAddTopic" class="modal-overlay">
+    <div class="modal-box modal-box-sm p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Add Topic</h3></div>
+            <button onclick="closeModal('modalAddTopic')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="addTopicForm" onsubmit="submitAddTopic(event)" class="p-6 space-y-4">
+            <input type="hidden" id="addTopicQuarterId">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Topic Name *</label>
+                <input type="text" name="topic_name" required placeholder="e.g. Atomic Structure"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Arcade Theme ID</label>
+                <input type="text" name="theme_id" placeholder="default_lab"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                <p class="text-[10px] text-slate-400 mt-1">Leave blank for default_lab theme</p>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalAddTopic')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Add Topic</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT TOPIC -->
+<div id="modalEditTopic" class="modal-overlay">
+    <div class="modal-box modal-box-sm p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Edit Topic</h3></div>
+            <button onclick="closeModal('modalEditTopic')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="editTopicForm" onsubmit="submitEditTopic(event)" class="p-6 space-y-4">
+            <input type="hidden" id="editTopicId">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Topic Name *</label>
+                <input type="text" id="editTopicName" name="topic_name" required class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Arcade Theme ID</label>
+                <input type="text" id="editTopicTheme" name="theme_id" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalEditTopic')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-save mr-1"></i> Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD CLASS -->
+<div id="modalAddClass" class="modal-overlay">
+    <div class="modal-box p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Add Class</h3></div>
+            <button onclick="closeModal('modalAddClass')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="addClassForm" onsubmit="submitAddClass(event)" class="p-6 space-y-4">
+            <input type="hidden" id="addClassSubjectId">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Class Name *</label>
+                    <input type="text" name="class_name" required placeholder="STEM-A G11"
+                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Teacher *</label>
+                    <select name="teacher_id" id="addClassTeacher" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                        <option value="">— Select Teacher —</option>
+                        <% teachers.forEach(function(t) { %>
+                        <option value="<%= t.user_id %>"><%= t.first_name %> <%= t.last_name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">School Year *</label>
+                <select name="sy_id" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                    <% schoolYears.forEach(function(sy) { %>
+                    <option value="<%= sy.sy_id %>" <%= sy.is_active ? 'selected' : '' %>><%= sy.sy_range %> <%= sy.is_active ? '(Active)' : '' %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalAddClass')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Create Class</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD ANNOUNCEMENT -->
+<div id="modalAddAnnouncement" class="modal-overlay">
+    <div class="modal-box p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">New Announcement</h3></div>
+            <button onclick="closeModal('modalAddAnnouncement')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="addAnnouncementForm" onsubmit="submitAddAnnouncement(event)" class="p-6 space-y-4">
+            <input type="hidden" id="addAnnSubjectId">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Title *</label>
+                <input type="text" name="title" required placeholder="Announcement title"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Target Class</label>
+                <select name="class_id" id="annClassTarget" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                    <option value="">All Classes (Subject-wide)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Content *</label>
+                <textarea name="content" rows="4" required placeholder="Write your announcement here…"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white resize-none"></textarea>
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="checkbox" name="is_priority" id="isPriority" class="w-4 h-4 rounded text-rose-500">
+                <label for="isPriority" class="text-sm font-bold text-slate-600">Mark as Priority</label>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalAddAnnouncement')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-paper-plane mr-1"></i> Post</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD HARDWARE MAPPING -->
+<div id="modalAddMapping" class="modal-overlay">
+    <div class="modal-box modal-box-sm p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Add Button Mapping</h3></div>
+            <button onclick="closeModal('modalAddMapping')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="addMappingForm" onsubmit="submitAddMapping(event)" class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Button Pin *</label>
+                <input type="number" name="button_pin" required placeholder="e.g. 17" min="0" max="99"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Element Symbol *</label>
+                <input type="text" name="element_symbol" required placeholder="e.g. O, H, Na" maxlength="10"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Player Side *</label>
+                <select name="player_side" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                    <option value="1">Player 1</option>
+                    <option value="2">Player 2</option>
+                </select>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalAddMapping')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="btn-arcade px-5 py-2.5 rounded-xl text-sm"><i class="fas fa-microchip mr-1"></i> Save Mapping</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- BULK SUBJECT IMPORT -->
+<div id="modalBulkSubject" class="modal-overlay">
+    <div class="modal-box p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Bulk Subject Import</h3><p class="text-xs text-slate-400 mt-0.5">Upload an Excel file to create multiple subjects at once.</p></div>
+            <button onclick="closeModal('modalBulkSubject')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="drop-zone p-10 text-center"
+                 onclick="document.getElementById('subjectBulkFile').click()"
+                 ondragover="event.preventDefault();this.classList.add('dragover')"
+                 ondragleave="this.classList.remove('dragover')"
+                 ondrop="handleBulkDrop(event,'subject')">
+                <i class="fas fa-file-excel text-5xl text-indigo-300 mb-3 block"></i>
+                <p class="font-bold text-indigo-700">Drop Excel file or click to browse</p>
+                <p class="text-xs text-slate-400 mt-1">.xlsx / .xls · Max 200 subjects</p>
+            </div>
+            <input type="file" id="subjectBulkFile" accept=".xlsx,.xls" class="hidden" onchange="previewBulkSubject(this)">
+            <div id="subjectBulkPreview" class="hidden"></div>
+            <div class="flex items-center gap-3">
+                <button onclick="downloadAcademicTemplate('subject')" class="flex items-center gap-2 text-xs font-bold border border-indigo-200 text-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-50 transition">
+                    <i class="fas fa-download"></i> Download Template
+                </button>
+                <button id="btnSubmitSubjectBulk" disabled onclick="submitBulkSubjects()"
+                    class="flex items-center gap-2 text-xs font-bold bg-indigo-500 text-white px-4 py-2 rounded-xl hover:bg-indigo-600 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fas fa-upload"></i> Import Subjects
+                </button>
+            </div>
+            <div id="subjectBulkLog" class="hidden bg-slate-900 rounded-xl p-4 text-xs font-mono text-green-400 max-h-40 overflow-y-auto"></div>
+        </div>
+    </div>
+</div>
+
+<!-- BULK ENROLL -->
+<div id="modalBulkEnroll" class="modal-overlay">
+    <div class="modal-box p-0">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div><h3 class="font-black text-indigo-900 text-lg">Bulk Student Enrollment</h3><p class="text-xs text-slate-400 mt-0.5">Upload Excel with LRN or email to enroll students into a class.</p></div>
+            <button onclick="closeModal('modalBulkEnroll')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Target Class *</label>
+                <select id="bulkEnrollClassId" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                    <option value="">— Select Class —</option>
+                </select>
+            </div>
+            <div class="drop-zone p-10 text-center"
+                 onclick="document.getElementById('enrollBulkFile').click()"
+                 ondragover="event.preventDefault();this.classList.add('dragover')"
+                 ondragleave="this.classList.remove('dragover')"
+                 ondrop="handleBulkDrop(event,'enroll')">
+                <i class="fas fa-users text-5xl text-rose-300 mb-3 block"></i>
+                <p class="font-bold text-rose-700">Drop Excel file or click to browse</p>
+                <p class="text-xs text-slate-400 mt-1">Columns: lrn_number or email · .xlsx/.xls</p>
+            </div>
+            <input type="file" id="enrollBulkFile" accept=".xlsx,.xls" class="hidden" onchange="previewEnrollFile(this)">
+            <div id="enrollBulkPreview" class="hidden"></div>
+            <div class="flex items-center gap-3">
+                <button onclick="downloadAcademicTemplate('enroll')" class="flex items-center gap-2 text-xs font-bold border border-rose-200 text-rose-600 px-4 py-2 rounded-xl hover:bg-rose-50 transition">
+                    <i class="fas fa-download"></i> Template
+                </button>
+                <button id="btnSubmitEnrollBulk" disabled onclick="submitBulkEnroll()"
+                    class="flex items-center gap-2 text-xs font-bold bg-rose-500 text-white px-4 py-2 rounded-xl hover:bg-rose-600 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fas fa-upload"></i> Enroll Students
+                </button>
+            </div>
+            <div id="enrollBulkLog" class="hidden bg-slate-900 rounded-xl p-4 text-xs font-mono text-green-400 max-h-40 overflow-y-auto"></div>
+        </div>
+    </div>
+</div>
+
+<!-- GENERIC CONFIRM MODAL -->
+<div id="modalConfirm" class="modal-overlay">
+    <div class="modal-box modal-box-sm p-8 text-center">
+        <div id="confirmIcon" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl"></div>
+        <h3 id="confirmTitle" class="font-black text-slate-900 text-lg mb-2"></h3>
+        <p id="confirmDesc" class="text-sm text-slate-500 mb-6"></p>
+        <div class="flex gap-3 justify-center">
+            <button onclick="closeModal('modalConfirm')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+            <button id="confirmBtn" class="px-5 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-90 transition shadow-md">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"><i id="toastIcon" class="fas"></i> <span id="toastMsg"></span></div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let activeDrillSubjectId   = null;
+let activeDrillSubjectName = '';
+let bulkSubjectFile        = null;
+let bulkEnrollFile         = null;
+
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    sb.classList.toggle('-translate-x-full');
+    ov.classList.toggle('hidden');
+}
+
+// ─── Modal helpers ────────────────────────────────────────────────────────────
+function openModal(id) {
+    document.getElementById(id).classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    document.body.style.overflow = '';
+}
+document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', function(e) { if (e.target === this) closeModal(this.id); });
+});
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    t.className = `show ${type}`;
+    document.getElementById('toastIcon').className = `fas ${type==='success'?'fa-check-circle':type==='error'?'fa-circle-xmark':'fa-circle-info'}`;
+    setTimeout(() => { t.className = ''; }, 3500);
+}
+
+// ─── Confirm modal ────────────────────────────────────────────────────────────
+function showConfirm({ icon, iconBg, iconColor, title, desc, btnLabel, btnColor, onConfirm }) {
+    const el = document.getElementById('confirmIcon');
+    el.className = `w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl ${iconBg}`;
+    el.innerHTML = `<i class="fas ${icon} ${iconColor}"></i>`;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmDesc').textContent  = desc;
+    const btn = document.getElementById('confirmBtn');
+    btn.textContent = btnLabel;
+    btn.className   = `px-5 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-90 transition shadow-md ${btnColor}`;
+    btn.onclick     = onConfirm;
+    openModal('modalConfirm');
+}
+
+// ─── Subject filter ───────────────────────────────────────────────────────────
+function filterSubjects() {
+    const q   = document.getElementById('subjectSearch').value.toLowerCase();
+    const sem = document.getElementById('semesterFilter').value;
+    document.querySelectorAll('.subject-card').forEach(card => {
+        const nameMatch = !q || card.dataset.name.includes(q);
+        const semMatch  = !sem || card.dataset.semester === sem;
+        card.style.display = (nameMatch && semMatch) ? '' : 'none';
+    });
+}
+
+// ─── Drill-down ───────────────────────────────────────────────────────────────
+function drillIntoSubject(subjectId, subjectName) {
+    activeDrillSubjectId   = subjectId;
+    activeDrillSubjectName = subjectName;
+
+    // Breadcrumb
+    document.getElementById('bc-subject').textContent      = subjectName;
+    document.getElementById('bc-subject').classList.add('active');
+
+    // Highlight selected card
+    document.querySelectorAll('.subject-card').forEach(c => c.classList.remove('selected'));
+    const card = document.querySelector(`.subject-card[data-id="${subjectId}"]`);
+    if (card) card.classList.add('selected');
+
+    // Show drill panel
+    document.getElementById('drillPanel').classList.remove('hidden');
+    document.getElementById('drillTitle').textContent = subjectName;
+
+    // Scroll to panel
+    document.getElementById('drillPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Load default tab data
+    loadQuarters();
+    loadClasses();
+}
+
+function closeDrill() {
+    activeDrillSubjectId = null;
+    document.getElementById('drillPanel').classList.add('hidden');
+    document.querySelectorAll('.subject-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('bc-subject').textContent = '—';
+    document.getElementById('bc-subject').classList.remove('active');
+}
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+function switchDrillTab(tabId, btn) {
+    document.querySelectorAll('#drillPanel .tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('#drillPanel .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+
+    // Lazy load tab data
+    if (tabId === 'dt-progress')       loadProgress();
+    if (tabId === 'dt-announcements')  loadAnnouncements();
+    if (tabId === 'dt-arcade')         loadArcadeData();
+}
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
+async function apiPost(url, body) {
+    const res  = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    return res.json();
+}
+async function apiDelete(url) {
+    const res = await fetch(url, { method:'DELETE' });
+    return res.json();
+}
+
+// ─── School Year ──────────────────────────────────────────────────────────────
+async function submitAddSY(e) {
+    e.preventDefault();
+    const fd   = new FormData(document.getElementById('addSYForm'));
+    const data = await apiPost('/admin/am/school-years', { sy_range: fd.get('sy_range') });
+    if (data.success) { showToast('School year added!', 'success'); closeModal('modalAddSY'); setTimeout(() => location.reload(), 1000); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function openEditSY(sy) {
+    document.getElementById('editSYId').value    = sy.sy_id;
+    document.getElementById('editSYRange').value = sy.sy_range;
+    openModal('modalEditSY');
+}
+async function submitEditSY(e) {
+    e.preventDefault();
+    const id   = document.getElementById('editSYId').value;
+    const data = await apiPost(`/admin/am/school-years/${id}`, { sy_range: document.getElementById('editSYRange').value });
+    if (data.success) { showToast('School year updated!', 'success'); closeModal('modalEditSY'); setTimeout(() => location.reload(), 1000); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function confirmActivateSY(syId, syRange) {
+    showConfirm({
+        icon:'fa-toggle-on', iconBg:'bg-emerald-100', iconColor:'text-emerald-600',
+        title:`Activate ${syRange}?`,
+        desc:'This will deactivate the current active school year. All classes and enrollments remain intact.',
+        btnLabel:'Yes, Activate', btnColor:'bg-emerald-600',
+        onConfirm: async () => {
+            const data = await apiPost(`/admin/am/school-years/${syId}/activate`, {});
+            closeModal('modalConfirm');
+            if (data.success) { showToast('School year activated!', 'success'); setTimeout(() => location.reload(), 1000); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+function confirmDeleteSY(syId, syRange) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:`Delete "${syRange}"?`,
+        desc:'This cannot be undone. All classes linked to this school year will also be removed.',
+        btnLabel:'Delete', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/school-years/${syId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Deleted.', 'success'); setTimeout(() => location.reload(), 1000); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+// ─── SY Input Validator (client-side preview) ─────────────────────────────
+function validateSYInput(input) {
+    const errorEl = document.getElementById('addSYError');
+    const val     = input.value.trim();
+    const currentYear = new Date().getFullYear();
+
+    // Clear if empty
+    if (!val) { errorEl.classList.add('hidden'); errorEl.textContent = ''; return; }
+
+    // Block non-numeric characters (allow only digits and dash)
+    if (/[^0-9\-]/.test(val)) {
+        errorEl.textContent = '⛔ Letters and special characters are not allowed. Numbers only.';
+        errorEl.classList.remove('hidden'); return;
+    }
+
+    // Once full length, do deep checks
+    if (val.length === 9) {
+        const match = val.match(/^(\d{4})-(\d{4})$/);
+        if (!match) { errorEl.textContent = '⛔ Format must be YYYY-YYYY (e.g. 2026-2027).'; errorEl.classList.remove('hidden'); return; }
+
+        const start = parseInt(match[1]);
+        const end   = parseInt(match[2]);
+
+        if (end !== start + 1) {
+            errorEl.textContent = `⛔ End year must be exactly one year after start year.`;
+            errorEl.classList.remove('hidden'); return;
+        }
+        if (start < currentYear) {
+            errorEl.textContent = `⛔ "${val}" is a past school year. You cannot add past SYs.`;
+            errorEl.classList.remove('hidden'); return;
+        }
+        if (start > currentYear) {
+            errorEl.textContent = `⛔ You can only add the current SY: ${currentYear}-${currentYear + 1}.`;
+            errorEl.classList.remove('hidden'); return;
+        }
+
+        // All good
+        errorEl.textContent = `✅ Valid school year!`;
+        errorEl.classList.remove('hidden');
+        errorEl.style.color = '#16a34a';
+        return;
+    }
+
+    errorEl.classList.add('hidden');
+    errorEl.style.color = '';
+}
+
+// ─── Subject ──────────────────────────────────────────────────────────────────
+async function submitAddSubject(e) {
+    e.preventDefault();
+    const fd = new FormData(document.getElementById('addSubjectForm'));
+    const data = await apiPost('/admin/am/subjects', Object.fromEntries(fd));
+    if (data.success) { showToast('Subject created!', 'success'); closeModal('modalAddSubject'); setTimeout(() => location.reload(), 1000); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function openEditSubject(s) {
+    document.getElementById('editSubjectId').value          = s.subject_id;
+    document.getElementById('editSubjectName').value        = s.subject_name || '';
+    document.getElementById('editSubjectCode').value        = s.subject_code || '';
+    document.getElementById('editSubjectSemester').value    = s.semester || 1;
+    document.getElementById('editSubjectEnrollCode').value  = s.enrollment_code || '';
+    document.getElementById('editSubjectDesc').value        = s.description || '';
+    openModal('modalEditSubject');
+}
+async function submitEditSubject(e) {
+    e.preventDefault();
+    const id = document.getElementById('editSubjectId').value;
+    if (!id) { showToast('No subject selected.', 'error'); return; }
+    const payload = {
+        subject_name    : document.getElementById('editSubjectName').value.trim(),
+        subject_code    : document.getElementById('editSubjectCode').value.trim(),
+        semester        : document.getElementById('editSubjectSemester').value,
+        enrollment_code : document.getElementById('editSubjectEnrollCode').value.trim(),
+        description     : document.getElementById('editSubjectDesc').value.trim(),
+    };
+    if (!payload.subject_name) { showToast('Subject name is required.', 'error'); return; }
+    const data = await apiPost(`/admin/am/subjects/${id}`, payload);
+    if (data.success) { showToast('Subject updated!', 'success'); closeModal('modalEditSubject'); setTimeout(() => location.reload(), 1000); }
+    else showToast(data.message || 'Failed to update subject.', 'error');
+}
+
+function confirmDeleteSubject(subjectId, name, qCount, tCount) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:`Delete "${name}"?`,
+        desc:`This will permanently delete ${qCount} quarter(s) and ${tCount} topic(s) linked to this subject.`,
+        btnLabel:'Delete Subject', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/subjects/${subjectId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Subject deleted.', 'success'); setTimeout(() => location.reload(), 1000); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+// ─── Quarters ─────────────────────────────────────────────────────────────────
+async function loadQuarters() {
+    if (!activeDrillSubjectId) return;
+    const container = document.getElementById('quartersContainer');
+    container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-indigo-300 text-2xl"></i></div>`;
+    try {
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/quarters`);
+        const data = await res.json();
+        if (!data.success) { container.innerHTML = `<p class="text-rose-500 text-sm">${data.message}</p>`; return; }
+        const quarters = data.quarters;
+        if (quarters.length === 0) {
+            container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fas fa-layer-group text-3xl mb-2 block opacity-30"></i><p class="font-bold text-sm">No quarters yet. Add the first one.</p></div>`;
+            return;
+        }
+        container.innerHTML = quarters.map(q => `
+            <div class="border border-slate-100 rounded-2xl overflow-hidden mb-4">
+                <div class="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-cyan-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-500 text-white flex items-center justify-center font-black text-sm">Q${q.quarter_number}</div>
+                        <span class="font-black text-slate-800">Quarter ${q.quarter_number}</span>
+                        <span class="badge ${q.is_locked ? 'badge-locked' : 'badge-unlocked'}">${q.is_locked ? 'Locked' : 'Unlocked'}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="btn-icon ${q.is_locked ? 'btn-unlock' : 'btn-lock'}" title="${q.is_locked ? 'Unlock' : 'Lock'}" onclick="toggleQuarterLock(${q.quarter_id}, ${q.is_locked})">
+                            <i class="fas ${q.is_locked ? 'fa-lock-open' : 'fa-lock'}"></i>
+                        </button>
+                        <button class="btn-icon btn-add" title="Add Topic" onclick="openAddTopic(${q.quarter_id})">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="btn-icon btn-delete" title="Delete Quarter" onclick="confirmDeleteQuarter(${q.quarter_id}, ${q.quarter_number})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-4 space-y-2" id="topics-${q.quarter_id}">
+                    ${(q.topics || []).length === 0
+                        ? `<p class="text-xs text-slate-400 text-center py-3">No topics. Add one above.</p>`
+                        : (q.topics || []).map(t => `
+                            <div class="topic-row flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
+                                <div class="flex items-center gap-3">
+                                    <span class="badge ${t.is_locked ? 'badge-locked' : 'badge-unlocked'} text-[9px]">${t.is_locked ? '🔒' : '🔓'}</span>
+                                    <span class="text-sm font-bold text-slate-700">${t.topic_name}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">${t.theme_id || 'default_lab'}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button class="btn-icon ${t.is_locked ? 'btn-unlock' : 'btn-lock'}" onclick="toggleTopicLock(${t.topic_id}, ${t.is_locked})">
+                                        <i class="fas ${t.is_locked ? 'fa-lock-open' : 'fa-lock'}"></i>
+                                    </button>
+                                    <button class="btn-icon btn-edit" onclick="openEditTopicModal(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+                                    <button class="btn-icon btn-delete" onclick="confirmDeleteTopic(${t.topic_id}, '${t.topic_name.replace(/'/g,"\\'")}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>`).join('')
+                    }
+                </div>
+            </div>`).join('');
+    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load quarters.</p>`; }
+}
+
+function openAddQuarter() {
+    document.getElementById('addQuarterSubjectId').value = activeDrillSubjectId;
+    openModal('modalAddQuarter');
+}
+async function submitAddQuarter(e) {
+    e.preventDefault();
+    const fd   = new FormData(document.getElementById('addQuarterForm'));
+    const data = await apiPost(`/admin/am/subjects/${activeDrillSubjectId}/quarters`, { quarter_number: fd.get('quarter_number') });
+    if (data.success) { showToast('Quarter added!', 'success'); closeModal('modalAddQuarter'); loadQuarters(); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+async function toggleQuarterLock(quarterId, isLocked) {
+    const data = await apiPost(`/admin/am/quarters/${quarterId}/toggle-lock`, { is_locked: isLocked ? 0 : 1 });
+    if (data.success) { showToast(`Quarter ${isLocked ? 'unlocked' : 'locked'}!`, 'success'); loadQuarters(); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function confirmDeleteQuarter(quarterId, num) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:`Delete Quarter ${num}?`,
+        desc:'All topics, assessments, and materials under this quarter will be permanently deleted.',
+        btnLabel:'Delete Quarter', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/quarters/${quarterId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Quarter deleted.', 'success'); loadQuarters(); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+// ─── Topics ───────────────────────────────────────────────────────────────────
+function openAddTopic(quarterId) {
+    document.getElementById('addTopicQuarterId').value = quarterId;
+    openModal('modalAddTopic');
+}
+async function submitAddTopic(e) {
+    e.preventDefault();
+    const qId  = document.getElementById('addTopicQuarterId').value;
+    const fd   = new FormData(document.getElementById('addTopicForm'));
+    const data = await apiPost(`/admin/am/quarters/${qId}/topics`, { topic_name: fd.get('topic_name'), theme_id: fd.get('theme_id') || 'default_lab' });
+    if (data.success) { showToast('Topic added!', 'success'); closeModal('modalAddTopic'); loadQuarters(); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function openEditTopicModal(t) {
+    if (typeof t === 'string') t = JSON.parse(t);
+    document.getElementById('editTopicId').value    = t.topic_id;
+    document.getElementById('editTopicName').value  = t.topic_name || '';
+    document.getElementById('editTopicTheme').value = t.theme_id || '';
+    openModal('modalEditTopic');
+}
+async function submitEditTopic(e) {
+    e.preventDefault();
+    const id   = document.getElementById('editTopicId').value;
+    const fd   = new FormData(document.getElementById('editTopicForm'));
+    const data = await apiPost(`/admin/am/topics/${id}`, { topic_name: fd.get('topic_name'), theme_id: fd.get('theme_id') || 'default_lab' });
+    if (data.success) { showToast('Topic updated!', 'success'); closeModal('modalEditTopic'); loadQuarters(); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+async function toggleTopicLock(topicId, isLocked) {
+    const data = await apiPost(`/admin/am/topics/${topicId}/toggle-lock`, { is_locked: isLocked ? 0 : 1 });
+    if (data.success) { showToast(`Topic ${isLocked ? 'unlocked' : 'locked'}!`, 'success'); loadQuarters(); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function confirmDeleteTopic(topicId, name) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:`Delete topic "${name}"?`,
+        desc:'This will remove the topic and all materials, assessments, and questions linked to it.',
+        btnLabel:'Delete Topic', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/topics/${topicId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Topic deleted.', 'success'); loadQuarters(); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+// ─── Classes ──────────────────────────────────────────────────────────────────
+async function loadClasses() {
+    if (!activeDrillSubjectId) return;
+    const container = document.getElementById('classesContainer');
+    container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-rose-300 text-2xl"></i></div>`;
+    try {
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/classes`);
+        const data = await res.json();
+        if (!data.success) { container.innerHTML = `<p class="text-rose-500 text-sm">${data.message}</p>`; return; }
+        const classes = data.classes;
+
+        // Populate bulk enroll dropdown
+        const sel = document.getElementById('bulkEnrollClassId');
+        sel.innerHTML = '<option value="">— Select Class —</option>' + classes.map(c => `<option value="${c.class_id}">${c.class_name}</option>`).join('');
+
+        // Populate announcement class filter
+        const annSel = document.getElementById('annClassTarget');
+        annSel.innerHTML = '<option value="">All Classes (Subject-wide)</option>' + classes.map(c => `<option value="${c.class_id}">${c.class_name}</option>`).join('');
+
+        // Populate progress class filter
+        const progSel = document.getElementById('progressClassFilter');
+        progSel.innerHTML = '<option value="">All Classes</option>' + classes.map(c => `<option value="${c.class_id}">${c.class_name}</option>`).join('');
+
+        if (classes.length === 0) {
+            container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fas fa-school text-3xl mb-2 block opacity-30"></i><p class="font-bold text-sm">No classes yet for this subject.</p></div>`;
+            return;
+        }
+        // Show active SY notice
+        const syNotice = data.activeSY
+            ? `<p class="text-[11px] text-emerald-600 font-bold mb-3"><i class="fas fa-circle-check mr-1"></i>Showing classes under active SY: ${data.activeSY.sy_range}. To view past classes, activate that school year.</p>`
+            : `<p class="text-[11px] text-amber-600 font-bold mb-3"><i class="fas fa-exclamation-triangle mr-1"></i>No active school year. Activate a school year to see classes.</p>`;
+
+        container.innerHTML = syNotice + `
+            <div class="space-y-2">
+            ${classes.map(c => `
+                <div class="rounded-xl border border-slate-100 bg-slate-50 overflow-hidden">
+                    <!-- Class Row Header -->
+                    <div class="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-100 transition"
+                         onclick="toggleClassStudents(${c.class_id}, this)">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-chalkboard text-white text-xs"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-slate-800 text-sm">${c.class_name}</p>
+                            <p class="text-[11px] text-slate-400">${c.teacher_name || 'No teacher assigned'} · ${c.sy_range || '—'}</p>
+                        </div>
+                        <span class="badge badge-active text-xs">${c.student_count || 0} students</span>
+                        <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                            <button class="btn-icon btn-edit" title="Edit" onclick="editClassModal(${JSON.stringify(c).replace(/"/g,'&quot;')})"><i class="fas fa-pen"></i></button>
+                            <button class="btn-icon btn-delete" title="Delete" onclick="confirmDeleteClass(${c.class_id},'${c.class_name.replace(/'/g,"\\'")}',${c.student_count||0})"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <i class="fas fa-chevron-down text-slate-300 text-xs transition-transform" id="chevron-class-${c.class_id}"></i>
+                    </div>
+                    <!-- Expandable Students List -->
+                    <div id="students-class-${c.class_id}" class="hidden border-t border-slate-100 bg-white">
+                        <div class="p-3 text-center text-slate-400 text-xs" id="students-loading-${c.class_id}">
+                            <i class="fas fa-spinner fa-spin mr-1"></i> Loading students...
+                        </div>
+                    </div>
+                </div>`).join('')}
+            </div>`;
+    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load classes.</p>`; }
+}
+
+function openAddClass() {
+    document.getElementById('addClassSubjectId').value = activeDrillSubjectId;
+    openModal('modalAddClass');
+}
+async function submitAddClass(e) {
+    e.preventDefault();
+    const fd   = new FormData(document.getElementById('addClassForm'));
+    const data = await apiPost('/admin/am/classes', {
+        class_name: fd.get('class_name'),
+        teacher_id: fd.get('teacher_id'),
+        sy_id:      fd.get('sy_id'),
+        subject_id: activeDrillSubjectId
+    });
+    if (data.success) { showToast('Class created!', 'success'); closeModal('modalAddClass'); loadClasses(); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function editClassModal(c) {
+    // Reuse addClassForm for edit by changing action
+    document.getElementById('addClassSubjectId').value = activeDrillSubjectId;
+    document.querySelector('#addClassForm [name="class_name"]').value  = c.class_name;
+    document.querySelector('#addClassForm [name="teacher_id"]').value  = c.teacher_id || '';
+    document.querySelector('#addClassForm [name="sy_id"]').value       = c.sy_id || '';
+    document.getElementById('addClassForm').dataset.editId = c.class_id;
+    openModal('modalAddClass');
+}
+
+function confirmDeleteClass(classId, name, count) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:`Delete class "${name}"?`,
+        desc:`${count} enrolled student(s) will be unenrolled. This cannot be undone.`,
+        btnLabel:'Delete Class', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/classes/${classId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Class deleted.', 'success'); loadClasses(); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+// ─── Toggle Class Students Dropdown ──────────────────────────────────────────
+async function toggleClassStudents(classId, headerEl) {
+    const container = document.getElementById(`students-class-${classId}`);
+    const chevron   = document.getElementById(`chevron-class-${classId}`);
+    const loading   = document.getElementById(`students-loading-${classId}`);
+
+    const isOpen = !container.classList.contains('hidden');
+    if (isOpen) {
+        container.classList.add('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+        return;
+    }
+
+    container.classList.remove('hidden');
+    chevron.style.transform = 'rotate(180deg)';
+
+    // Only fetch if not already loaded
+    if (container.dataset.loaded === 'true') return;
+
+    try {
+        const res  = await fetch(`/admin/am/classes/${classId}/students`);
+        const data = await res.json();
+        container.dataset.loaded = 'true';
+
+        if (!data.success || data.students.length === 0) {
+            container.innerHTML = `<p class="text-center text-slate-400 text-xs py-4">No students enrolled in this class yet.</p>`;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="p-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">${data.students.length} Enrolled Student(s)</p>
+                <div class="space-y-1.5">
+                ${data.students.map((s, i) => `
+                    <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition">
+                        <span class="text-[10px] font-black text-slate-300 w-5 text-right">${i + 1}</span>
+                        <img src="/profile_uploads/${s.profile_pic || 'default_avatar.png'}"
+                             class="w-7 h-7 rounded-lg object-cover border border-indigo-100 flex-shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-indigo-900">${s.last_name}, ${s.first_name}</p>
+                            <p class="text-[10px] text-slate-400 truncate">${s.lrn_number || s.email}</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-violet-600">Lv.${s.current_level}</span>
+                    </div>`).join('')}
+                </div>
+            </div>`;
+    } catch {
+        container.innerHTML = `<p class="text-center text-rose-400 text-xs py-4">Failed to load students.</p>`;
+    }
+}
+
+// ─── Progress ─────────────────────────────────────────────────────────────────
+async function loadProgress() {
+    if (!activeDrillSubjectId) return;
+    const classId   = document.getElementById('progressClassFilter').value;
+    const container = document.getElementById('progressContainer');
+    container.innerHTML = `<div class="text-center py-6"><i class="fas fa-spinner fa-spin text-cyan-300 text-xl"></i></div>`;
+    try {
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/progress?class_id=${classId}`);
+        const data = await res.json();
+        if (!data.success || !data.progress.length) {
+            container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fas fa-chart-bar text-3xl mb-2 block opacity-30"></i><p class="font-bold text-sm">No progress data yet.</p></div>`;
+            return;
+        }
+        container.innerHTML = `<div class="space-y-3">` + data.progress.map(p => `
+            <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <img src="/profile_uploads/${p.profile_pic || 'default_avatar.png'}" class="w-9 h-9 rounded-xl object-cover border-2 border-slate-200" onerror="this.src='/profile_uploads/default_avatar.png'">
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-slate-800 text-sm truncate">${p.first_name} ${p.last_name}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <div class="progress-bar flex-1"><div class="progress-fill" style="width:${p.progress_percent}%"></div></div>
+                        <span class="text-xs font-black text-indigo-700 w-10 text-right">${p.progress_percent}%</span>
+                    </div>
+                </div>
+                <span class="text-xs text-slate-400 hidden md:block">${p.last_accessed ? new Date(p.last_accessed).toLocaleDateString('en-PH',{month:'short',day:'numeric'}) : '—'}</span>
+            </div>`).join('') + `</div>`;
+    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load progress.</p>`; }
+}
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+async function loadAnnouncements() {
+    if (!activeDrillSubjectId) return;
+    const container = document.getElementById('announcementsContainer');
+    container.innerHTML = `<div class="text-center py-6"><i class="fas fa-spinner fa-spin text-amber-300 text-xl"></i></div>`;
+    try {
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/announcements`);
+        const data = await res.json();
+        if (!data.success || !data.announcements.length) {
+            container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fas fa-bullhorn text-3xl mb-2 block opacity-30"></i><p class="font-bold text-sm">No announcements yet.</p></div>`;
+            return;
+        }
+        container.innerHTML = `<div class="space-y-3">` + data.announcements.map(a => `
+            <div class="p-4 rounded-xl border ${a.is_priority ? 'border-rose-200 bg-rose-50' : 'border-slate-100 bg-white'}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1">
+                        ${a.is_priority ? `<span class="badge badge-locked text-[9px] mb-1">Priority</span>` : ''}
+                        <p class="font-black text-slate-800 text-sm">${a.title}</p>
+                        <p class="text-xs text-slate-500 mt-1 line-clamp-2">${a.content}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">${new Date(a.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</p>
+                    </div>
+                    <button class="btn-icon btn-delete flex-shrink-0" onclick="confirmDeleteAnnouncement(${a.announcement_id},'${a.title.replace(/'/g,"\\'")}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>`).join('') + `</div>`;
+    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load announcements.</p>`; }
+}
+
+function openAddAnnouncement() {
+    document.getElementById('addAnnSubjectId').value = activeDrillSubjectId;
+    openModal('modalAddAnnouncement');
+}
+async function submitAddAnnouncement(e) {
+    e.preventDefault();
+    const fd   = new FormData(document.getElementById('addAnnouncementForm'));
+    const data = await apiPost('/admin/am/announcements', {
+        title:      fd.get('title'),
+        content:    fd.get('content'),
+        class_id:   fd.get('class_id') || null,
+        subject_id: activeDrillSubjectId,
+        is_priority: fd.get('is_priority') ? 1 : 0,
+        teacher_id: <%- JSON.stringify(user.user_id) %>
+    });
+    if (data.success) { showToast('Announcement posted!', 'success'); closeModal('modalAddAnnouncement'); loadAnnouncements(); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function confirmDeleteAnnouncement(annId, title) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:`Delete "${title}"?`,
+        desc:'This announcement will be permanently removed.',
+        btnLabel:'Delete', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/announcements/${annId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Deleted.', 'success'); loadAnnouncements(); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+// ─── Arcade Data ──────────────────────────────────────────────────────────────
+async function loadArcadeData() {
+    loadLeaderboard();
+    loadMatches();
+    loadMappings();
+}
+
+async function loadLeaderboard() {
+    if (!activeDrillSubjectId) return;
+    const container = document.getElementById('leaderboardContainer');
+    container.innerHTML = `<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-yellow-300 text-xl"></i></div>`;
+    try {
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/leaderboard`);
+        const data = await res.json();
+        if (!data.success || !data.history.length) {
+            container.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">No leaderboard snapshots yet.</p>`;
+            return;
+        }
+        container.innerHTML = `
+            <div class="table-wrap rounded-xl border border-slate-100">
+                <table class="data-table w-full text-sm">
+                    <thead><tr class="border-b border-slate-100">
+                        <th class="p-3 text-left">Rank</th><th class="p-3 text-left">Student</th>
+                        <th class="p-3 text-left">EXP Snapshot</th><th class="p-3 text-left hidden md:table-cell">Date</th>
+                        <th class="p-3 text-center">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                    ${data.history.map(h => `
+                        <tr class="border-b border-slate-50">
+                            <td class="p-3 font-black text-indigo-700">#${h.rank_achieved}</td>
+                            <td class="p-3 font-bold text-slate-800">${h.student_name}</td>
+                            <td class="p-3 font-mono text-sm text-slate-600">${h.total_exp_snapshot.toLocaleString()}</td>
+                            <td class="p-3 hidden md:table-cell text-xs text-slate-400">${new Date(h.awarded_date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</td>
+                            <td class="p-3 text-center">
+                                <button class="btn-icon btn-delete" onclick="confirmDeleteLB(${h.history_id})"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load leaderboard.</p>`; }
+}
+
+function confirmDeleteLB(histId) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:'Delete Leaderboard Entry?',
+        desc:'This snapshot record will be permanently deleted.',
+        btnLabel:'Delete', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/leaderboard/${histId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Entry deleted.', 'success'); loadLeaderboard(); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+async function loadMatches() {
+    if (!activeDrillSubjectId) return;
+    const container = document.getElementById('matchesContainer');
+    container.innerHTML = `<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-rose-300 text-xl"></i></div>`;
+    try {
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/matches`);
+        const data = await res.json();
+        if (!data.success || !data.matches.length) {
+            container.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">No competitive matches recorded yet.</p>`;
+            return;
+        }
+        container.innerHTML = `
+            <div class="table-wrap rounded-xl border border-slate-100">
+                <table class="data-table w-full text-sm">
+                    <thead><tr class="border-b border-slate-100">
+                        <th class="p-3 text-left">Player 1</th><th class="p-3 text-left">Player 2</th>
+                        <th class="p-3 text-left hidden md:table-cell">Score</th><th class="p-3 text-left">Winner</th>
+                        <th class="p-3 text-left hidden md:table-cell">Date</th><th class="p-3 text-center">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                    ${data.matches.map(m => `
+                        <tr class="border-b border-slate-50">
+                            <td class="p-3 font-bold text-slate-700">${m.p1_name}</td>
+                            <td class="p-3 font-bold text-slate-700">${m.p2_name}</td>
+                            <td class="p-3 hidden md:table-cell text-xs font-mono text-slate-500">${m.p1_score} – ${m.p2_score}</td>
+                            <td class="p-3"><span class="badge badge-active">${m.winner_name || '—'}</span></td>
+                            <td class="p-3 hidden md:table-cell text-xs text-slate-400">${new Date(m.match_date).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</td>
+                            <td class="p-3 text-center">
+                                <button class="btn-icon btn-delete" onclick="confirmDeleteMatch(${m.match_id})"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load matches.</p>`; }
+}
+
+function confirmDeleteMatch(matchId) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:'Delete this match record?',
+        desc:'This competitive match record will be permanently removed.',
+        btnLabel:'Delete', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/matches/${matchId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Match deleted.', 'success'); loadMatches(); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+async function loadMappings() {
+    const container = document.getElementById('mappingContainer');
+    container.innerHTML = `<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-indigo-300 text-xl"></i></div>`;
+    try {
+        const res  = await fetch('/admin/am/button-mappings');
+        const data = await res.json();
+        if (!data.success || !data.mappings.length) {
+            container.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">No hardware mappings configured.</p>`;
+            return;
+        }
+        container.innerHTML = `
+            <div class="table-wrap rounded-xl border border-slate-100">
+                <table class="data-table w-full text-sm">
+                    <thead><tr class="border-b border-slate-100">
+                        <th class="p-3 text-left">Pin</th><th class="p-3 text-left">Element</th>
+                        <th class="p-3 text-left">Player Side</th><th class="p-3 text-center">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                    ${data.mappings.map(m => `
+                        <tr class="border-b border-slate-50">
+                            <td class="p-3 font-mono font-bold text-indigo-700">${m.button_pin}</td>
+                            <td class="p-3 font-mono font-bold text-slate-800">${m.element_symbol}</td>
+                            <td class="p-3"><span class="badge badge-active">P${m.player_side}</span></td>
+                            <td class="p-3 text-center">
+                                <button class="btn-icon btn-delete" onclick="confirmDeleteMapping(${m.mapping_id})"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load mappings.</p>`; }
+}
+
+async function submitAddMapping(e) {
+    e.preventDefault();
+    const fd   = new FormData(document.getElementById('addMappingForm'));
+    const data = await apiPost('/admin/am/button-mappings', { button_pin: fd.get('button_pin'), element_symbol: fd.get('element_symbol'), player_side: fd.get('player_side') });
+    if (data.success) { showToast('Mapping saved!', 'success'); closeModal('modalAddMapping'); loadMappings(); }
+    else showToast(data.message || 'Failed.', 'error');
+}
+
+function confirmDeleteMapping(mappingId) {
+    showConfirm({
+        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
+        title:'Delete this mapping?',
+        desc:'The hardware button mapping will be permanently removed.',
+        btnLabel:'Delete', btnColor:'bg-rose-500',
+        onConfirm: async () => {
+            const data = await apiDelete(`/admin/am/button-mappings/${mappingId}`);
+            closeModal('modalConfirm');
+            if (data.success) { showToast('Deleted.', 'success'); loadMappings(); }
+            else showToast(data.message || 'Failed.', 'error');
+        }
+    });
+}
+
+// ─── Bulk Import ──────────────────────────────────────────────────────────────
+function handleBulkDrop(e, type) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (type === 'subject') { bulkSubjectFile = file; showBulkPreview(file,'subjectBulkPreview'); document.getElementById('btnSubmitSubjectBulk').disabled = false; }
+    if (type === 'enroll')  { bulkEnrollFile  = file; showBulkPreview(file,'enrollBulkPreview');  document.getElementById('btnSubmitEnrollBulk').disabled  = false; }
+}
+function previewBulkSubject(input) {
+    bulkSubjectFile = input.files[0];
+    if (bulkSubjectFile) { showBulkPreview(bulkSubjectFile,'subjectBulkPreview'); document.getElementById('btnSubmitSubjectBulk').disabled = false; }
+}
+function previewEnrollFile(input) {
+    bulkEnrollFile = input.files[0];
+    if (bulkEnrollFile) { showBulkPreview(bulkEnrollFile,'enrollBulkPreview'); document.getElementById('btnSubmitEnrollBulk').disabled = false; }
+}
+function showBulkPreview(file, previewId) {
+    const el = document.getElementById(previewId);
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100"><i class="fas fa-file-excel text-emerald-500 text-2xl"></i><div><p class="font-bold text-sm text-slate-700">${file.name}</p><p class="text-xs text-slate-400">${(file.size/1024).toFixed(1)} KB</p></div><span class="ml-auto badge badge-active">Ready</span></div>`;
+}
+
+async function submitBulkSubjects() {
+    if (!bulkSubjectFile) return;
+    const fd  = new FormData(); fd.append('file', bulkSubjectFile);
+    const log = document.getElementById('subjectBulkLog');
+    log.classList.remove('hidden'); log.innerHTML = `<div class="text-cyan-400">⏳ Importing subjects…</div>`;
+    const res  = await fetch('/admin/am/bulk-subjects', { method:'POST', body:fd });
+    const data = await res.json();
+    if (data.success) {
+        log.innerHTML = `<div class="text-emerald-400 font-bold mb-1">✅ Done! Created: ${data.created} · Skipped: ${data.skipped} · Errors: ${data.errors}</div>${(data.log||[]).map(l=>`<div class="text-xs mt-0.5 ${l.ok?'text-slate-400':'text-rose-400'}">${l.msg}</div>`).join('')}`;
+        showToast(`Imported ${data.created} subject(s)!`, 'success');
+    } else { log.innerHTML = `<div class="text-rose-400">❌ ${data.message}</div>`; showToast('Import failed.', 'error'); }
+}
+
+async function submitBulkEnroll() {
+    const classId = document.getElementById('bulkEnrollClassId').value;
+    if (!classId) { showToast('Please select a target class first.', 'error'); return; }
+    if (!bulkEnrollFile) return;
+    const fd  = new FormData(); fd.append('file', bulkEnrollFile); fd.append('class_id', classId);
+    const log = document.getElementById('enrollBulkLog');
+    log.classList.remove('hidden'); log.innerHTML = `<div class="text-cyan-400">⏳ Enrolling students…</div>`;
+    const res  = await fetch('/admin/am/bulk-enroll', { method:'POST', body:fd });
+    const data = await res.json();
+    if (data.success) {
+        log.innerHTML = `<div class="text-emerald-400 font-bold mb-1">✅ Done! Enrolled: ${data.enrolled} · Skipped: ${data.skipped} · Errors: ${data.errors}</div>${(data.log||[]).map(l=>`<div class="text-xs mt-0.5 ${l.ok?'text-slate-400':'text-rose-400'}">${l.msg}</div>`).join('')}`;
+        showToast(`Enrolled ${data.enrolled} student(s)!`, 'success'); loadClasses();
+    } else { log.innerHTML = `<div class="text-rose-400">❌ ${data.message}</div>`; showToast('Enrollment failed.', 'error'); }
+}
+
+function downloadAcademicTemplate(type) {
+    window.location.href = `/admin/am/bulk-template?type=${type}`;
+}
+</script>
+<!-- ═══════════════════════════════════════════════════════
+     NOTIFICATION PANEL — Reusable across all admin pages
+     Fetches from GET /admin/notifications on open.
+═══════════════════════════════════════════════════════ -->
+
+<!-- Backdrop -->
+<div id="notifBackdrop" class="fixed inset-0 z-[998] hidden" onclick="closeNotifPanel()"></div>
+
+<!-- Slide-in Panel -->
+<div id="notifPanel"
+     class="fixed top-0 right-0 h-full w-full max-w-sm z-[999] flex flex-col
+            bg-white border-l border-cyan-100 shadow-2xl
+            transform translate-x-full transition-transform duration-300 ease-in-out">
+
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-cyan-100 bg-gradient-to-r from-indigo-950 to-indigo-900 flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                <i class="fas fa-bell text-cyan-400"></i>
+            </div>
+            <div>
+                <p class="text-sm font-black text-white tracking-tight">Notifications</p>
+                <p class="text-[10px] text-indigo-400 font-semibold" id="notifSubtitle">Loading…</p>
+            </div>
+        </div>
+        <button onclick="closeNotifPanel()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+            <i class="fas fa-times text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="flex gap-0 border-b border-cyan-100 overflow-x-auto flex-shrink-0 bg-slate-50" id="notifTabs">
+        <button class="notif-tab active px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-cyan-500 text-cyan-600 transition" data-tab="all">All</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="alerts">Alerts</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="activity">Activity</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="live">Live</button>
+    </div>
+
+    <!-- Scrollable Body -->
+    <div id="notifBody" class="flex-1 overflow-y-auto p-4 space-y-3" style="scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent;">
+        <!-- Skeleton loader -->
+        <div id="notifSkeleton" class="space-y-3">
+            <% for(let i=0;i<5;i++) { %>
+            <div class="animate-pulse flex gap-3 items-start">
+                <div class="w-8 h-8 rounded-lg bg-slate-200 flex-shrink-0"></div>
+                <div class="flex-1 space-y-1.5">
+                    <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <!-- Actual content injected by JS -->
+        <div id="notifContent" class="hidden space-y-3"></div>
+    </div>
+
+    <!-- Panel Footer -->
+    <div class="px-5 py-3 border-t border-cyan-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
+        <p class="text-[10px] text-slate-400 font-semibold">Auto-refreshes every 60s</p>
+        <button onclick="loadNotifications()" class="text-[11px] font-black text-cyan-600 hover:text-cyan-800 flex items-center gap-1 transition">
+            <i class="fas fa-rotate-right text-[10px]"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<style>
+    .notif-tab.active { border-bottom-color: #06b6d4 !important; color: #0891b2 !important; }
+    .notif-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; transition: border-color 0.15s, box-shadow 0.15s; }
+    .notif-item:hover { border-color: #06b6d4; box-shadow: 0 4px 12px rgba(6,182,212,0.08); }
+    .notif-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+    .notif-title { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.35; }
+    .notif-sub { font-size: 10.5px; color: #64748b; margin-top: 1px; }
+    .notif-time { font-size: 10px; color: #94a3b8; white-space: nowrap; margin-left: auto; padding-left: 6px; flex-shrink: 0; }
+    .notif-section-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; padding: 4px 0 6px; }
+    .notif-link { font-size: 10.5px; color: #06b6d4; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .notif-link:hover { color: #0891b2; }
+</style>
+
+<script>
+(function() {
+    let _notifData   = null;
+    let _activeTab   = 'all';
+    let _refreshTimer = null;
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return '';
+        const diff = (Date.now() - new Date(dateStr)) / 1000;
+        if (diff < 60)   return 'just now';
+        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+        return Math.floor(diff/86400) + 'd ago';
+    }
+
+    function fmtDate(dateStr) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    window.toggleNotifPanel = function() {
+        const panel    = document.getElementById('notifPanel');
+        const backdrop = document.getElementById('notifBackdrop');
+        const isOpen   = !panel.classList.contains('translate-x-full');
+        if (isOpen) { closeNotifPanel(); return; }
+        panel.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        loadNotifications();
+        _refreshTimer = setInterval(loadNotifications, 60000);
+    };
+
+    window.closeNotifPanel = function() {
+        document.getElementById('notifPanel').classList.add('translate-x-full');
+        document.getElementById('notifBackdrop').classList.add('hidden');
+        document.body.style.overflow = '';
+        clearInterval(_refreshTimer);
+    };
+
+    window.loadNotifications = async function() {
+        document.getElementById('notifSkeleton').classList.remove('hidden');
+        document.getElementById('notifContent').classList.add('hidden');
+        try {
+            const res  = await fetch('/admin/notifications');
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            _notifData = data;
+            updateBell(data.total);
+            renderTab(_activeTab);
+        } catch(e) {
+            document.getElementById('notifContent').innerHTML =
+                '<div class="py-10 text-center text-slate-400 text-xs">Failed to load notifications.</div>';
+            document.getElementById('notifContent').classList.remove('hidden');
+            document.getElementById('notifSkeleton').classList.add('hidden');
+        }
+    };
+
+    function updateBell(count) {
+        const dot   = document.getElementById('notifDot');
+        const badge = document.getElementById('notifCount');
+        if (count > 0) {
+            dot.classList.remove('hidden');
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.classList.remove('hidden');
+        } else {
+            dot.classList.add('hidden');
+            badge.classList.add('hidden');
+        }
+        document.getElementById('notifSubtitle').textContent =
+            count > 0 ? count + ' item' + (count !== 1 ? 's' : '') + ' need attention' : 'All clear';
+    }
+
+    function renderTab(tab) {
+        _activeTab = tab;
+        const d = _notifData;
+        if (!d) return;
+
+        let html = '';
+
+        // ── ALL tab ──
+        if (tab === 'all' || tab === 'alerts') {
+            const alertItems = [
+                ...d.expiredInvites.map(i => ({
+                    icon: 'fas fa-envelope-circle-check', iconBg: 'bg-rose-50', iconColor: 'text-rose-500',
+                    title: 'Expired Invitation',
+                    sub: i.email + ' · ' + (i.role || 'Unknown role'),
+                    time: fmtDate(i.expires_at),
+                    link: '/admin/user_access_control', linkLabel: 'View UAC'
+                })),
+                ...d.flaggedStudents.map(s => ({
+                    icon: 'fas fa-flag', iconBg: 'bg-amber-50', iconColor: 'text-amber-500',
+                    title: 'Flagged Student',
+                    sub: s.full_name + (s.assessment_name ? ' · ' + s.assessment_name : ''),
+                    time: '',
+                    link: '/admin/user_access_control', linkLabel: 'View Student'
+                })),
+                ...d.lockedPastDue.map(a => ({
+                    icon: 'fas fa-lock', iconBg: 'bg-orange-50', iconColor: 'text-orange-500',
+                    title: 'Assessment Past Due & Locked',
+                    sub: a.assessment_name + ' · ' + (a.subject_name || ''),
+                    time: fmtDate(a.due_date),
+                    link: '/admin/gaming_question_bank', linkLabel: 'Manage'
+                })),
+                ...d.overdueDeadlines.map(e => ({
+                    icon: 'fas fa-calendar-xmark', iconBg: 'bg-red-50', iconColor: 'text-red-500',
+                    title: 'Overdue Deadline',
+                    sub: e.event_title + (e.subject_name ? ' · ' + e.subject_name : ''),
+                    time: fmtDate(e.event_date),
+                    link: '/admin/academic_management', linkLabel: 'View'
+                })),
+                ...d.pendingQuestions.map(q => ({
+                    icon: 'fas fa-robot', iconBg: 'bg-indigo-50', iconColor: 'text-indigo-500',
+                    title: 'AI Question Awaiting Approval',
+                    sub: q.question_text.substring(0, 55) + (q.question_text.length > 55 ? '…' : ''),
+                    time: timeAgo(q.created_at),
+                    link: '/admin/gaming_question_bank', linkLabel: 'Review'
+                })),
+            ];
+
+            if (tab === 'alerts' || tab === 'all') {
+                if (alertItems.length === 0) {
+                    if (tab === 'alerts') html += emptyState('fa-shield-halved', 'No alerts', 'Everything looks good!');
+                } else {
+                    if (tab === 'all') html += '<div class="notif-section-label"><i class="fas fa-triangle-exclamation mr-1 text-rose-400"></i>Alerts Requiring Action</div>';
+                    alertItems.forEach(item => { html += notifItem(item); });
+                }
+            }
+        }
+
+        // ── ACTIVITY tab (pending & new users) ──
+        if (tab === 'activity' || tab === 'all') {
+            const actItems = [
+                ...d.pendingInvites.map(i => ({
+                    icon: 'fas fa-paper-plane', iconBg: 'bg-cyan-50', iconColor: 'text-cyan-500',
+                    title: 'Pending Invitation',
+                    sub: i.email + ' · ' + (i.role || ''),
+                    time: timeAgo(i.created_at),
+                    link: '/admin/user_access_control', linkLabel: 'View'
+                })),
+                ...d.newUsers.map(u => ({
+                    icon: 'fas fa-user-plus', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500',
+                    title: 'New ' + u.role + ' Registered',
+                    sub: u.full_name,
+                    time: timeAgo(u.created_at),
+                    link: '/admin/user_access_control', linkLabel: 'View Profile'
+                })),
+            ];
+
+            if (tab === 'activity') {
+                if (actItems.length === 0) html += emptyState('fa-clock-rotate-left', 'No recent activity', 'No new users or pending invites.');
+                else actItems.forEach(item => { html += notifItem(item); });
+            } else if (tab === 'all' && actItems.length > 0) {
+                html += '<div class="notif-section-label mt-2"><i class="fas fa-bolt mr-1 text-cyan-400"></i>Recent Activity</div>';
+                actItems.forEach(item => { html += notifItem(item); });
+            }
+        }
+
+        // ── LIVE tab (active sessions) ──
+        if (tab === 'live' || tab === 'all') {
+            if (tab === 'live') {
+                if (d.activeSessions.length === 0) {
+                    html += emptyState('fa-gamepad', 'No live sessions', 'No students are playing right now.');
+                } else {
+                    d.activeSessions.forEach(s => {
+                        html += notifItem({
+                            icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
+                            title: s.student_name + ' is playing',
+                            sub: s.assessment_name + ' · ' + s.player_mode,
+                            time: timeAgo(s.start_time),
+                            link: null
+                        });
+                    });
+                }
+            } else if (tab === 'all' && d.activeSessions.length > 0) {
+                html += '<div class="notif-section-label mt-2"><i class="fas fa-circle text-green-400 mr-1"></i>Live Sessions (' + d.activeSessions.length + ')</div>';
+                d.activeSessions.slice(0, 3).forEach(s => {
+                    html += notifItem({
+                        icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
+                        title: s.student_name + ' is playing',
+                        sub: s.assessment_name + ' · ' + s.player_mode,
+                        time: timeAgo(s.start_time),
+                        link: null
+                    });
+                });
+            }
+        }
+
+        if (tab === 'all' && html === '') {
+            html = emptyState('fa-bell-slash', 'All clear!', 'No alerts or pending items.');
+        }
+
+        document.getElementById('notifContent').innerHTML = html;
+        document.getElementById('notifContent').classList.remove('hidden');
+        document.getElementById('notifSkeleton').classList.add('hidden');
+    }
+
+    function notifItem(item) {
+        return '<div class="notif-item">' +
+            '<div class="notif-icon ' + item.iconBg + ' ' + item.iconColor + '">' +
+                '<i class="' + item.icon + '"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<p class="notif-title">' + item.title + '</p>' +
+                '<p class="notif-sub truncate">' + item.sub + '</p>' +
+                (item.link ? '<a href="' + item.link + '" class="notif-link">' + item.linkLabel + ' →</a>' : '') +
+            '</div>' +
+            (item.time ? '<span class="notif-time">' + item.time + '</span>' : '') +
+        '</div>';
+    }
+
+    function emptyState(icon, title, sub) {
+        return '<div class="py-10 text-center">' +
+            '<i class="fas ' + icon + ' text-3xl text-slate-200 mb-3 block"></i>' +
+            '<p class="text-sm font-bold text-slate-400">' + title + '</p>' +
+            '<p class="text-xs text-slate-300 mt-1">' + sub + '</p>' +
+        '</div>';
+    }
+
+    // Tab switching
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.notif-tab').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.notif-tab').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                renderTab(btn.dataset.tab);
+            });
+        });
+
+        // Auto-poll bell count every 2 minutes even when panel is closed
+        setInterval(async function() {
+            try {
+                const res  = await fetch('/admin/notifications');
+                const data = await res.json();
+                if (data.success) updateBell(data.total);
+            } catch(_) {}
+        }, 120000);
+    });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        @media (max-width: 768px) {
+            .sidebar-collapsed { transform: translateX(-100%); }
+            .sidebar-open { transform: translateX(0); }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-active {
+            background: linear-gradient(135deg, #A2BBD9 0%, #6366f1 100%) !important;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 4px 16px rgba(6,182,212,0.3), 0 2px 8px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 text-slate-900">
+
+    <div class="flex min-h-screen relative overflow-x-hidden">
+        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden"></div>
+
+        <aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60" style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
+            <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+                <!-- Mobile close button -->
+                <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+
+                <!-- Logo -->
+                <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+
+                <!-- Brand name -->
+                <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                    Elem<span class="text-white">enta</span>
+                </h1>
+                <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Teacher Portal</p>
+
+                <!-- Divider -->
+                <!-- <div class="w-full mt-5 border-t border-indigo-800/60"></div> -->
+            </div>
+
+            <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
+                    <div class="space-y-1">
+                        <a href="/home" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-house w-5 text-cyan-500 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Home</span>
+                        </a>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="space-y-1">
+                        <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-chart-line w-5 text-red-500 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Dashboard</span>
+                        </a>
+                    </div>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
+                    <div class="space-y-1">
+                        <a href="/subjects" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-book w-5 text-orange-500 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">My Subjects</span>
+                        </a>
+                    </div>
+
+                    <div class="space-y-1">
+                        <a href="/events" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fa-solid fa-calendar-days text-lg text-violet-500 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Events</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Community & Engagement</p>
+                    <div class="space-y-1">
+                        <a href="/forums" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-comments w-5 text-emerald-500 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Forums</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">EXP & Rankings</p>
+                    <div class="space-y-1">
+                        <a href="/leaderboards" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
+                            <i class="fas fa-trophy w-5 text-yellow-500 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold tracking-tight text-base">Leaderboards</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
+                <a href="/logout"
+                class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+                    <i class="fas fa-right-from-bracket w-5"></i> Log Out
+                </a>
+            </div>
+        </aside>
+
+        <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+            <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 md:hidden">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">
+                            Welcome, <%= user.first_name %>!
+                        </h2>
+                        <p class="text-xs text-slate-400 hidden sm:block">
+                            <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
+                            Chemistry Enthusiast &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 md:gap-6">
+                    <div onclick="toggleNotifications()" class="relative group cursor-pointer p-2 hover:bg-slate-100 rounded-full transition">
+                        <i class="far fa-bell text-xl text-slate-600"></i>
+                        
+                        <span class="absolute top-2 right-2 flex h-2.5 w-2.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
+                        </span>
+
+                        <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 transition-all bg-slate-800 text-white text-[10px] px-2 py-1 rounded">
+                            Notifications
+                        </span>
+                    </div>
+                    
+                    <div class="relative">
+                        <div onclick="toggleUserMenu(event)" id="userMenuBtn" class="flex items-center gap-3 pl-4 border-l border-slate-200 cursor-pointer hover:opacity-80 transition">
+                            <div class="text-right hidden lg:block">
+                                <p class="text-sm font-bold text-slate-800 leading-none mb-1"><%= user.first_name %> <%= user.last_name %></p>
+                                <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none"><%= user.role %></p>
+                            </div>
+                            <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100">
+                            <i class="fas fa-chevron-down text-[10px] text-slate-400 ml-1"></i>
+                        </div>
+
+                        <div id="userDropdown" class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+                            <div class="px-4 py-3 border-b border-slate-50 lg:hidden">
+                                <p class="text-sm font-bold text-slate-800"><%= user.first_name %></p>
+                                <p class="text-[10px] text-slate-400 mt-1 uppercase"><%= user.role %></p>
+                            </div>
+                            <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition">
+                                <i class="far fa-user w-5 text-center"></i> View Profile
+                            </a>    
+
+                            <hr class="my-2 border-slate-50">
+                            <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition font-bold">
+                                <i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="flex-1 overflow-y-auto mt-6 no-scrollbar flex flex-col ">
+                <div class="p-4 md:p-8 flex-1">
+                <!-- ===== SECTION 1: BENEFITS ===== -->
+                <section class="px-4 md:px-8 py-14 bg-[#A2BBD9] rounded-3xl shadow-xl shadow-slate-200 mb-6 mt-10">
+                    <div class="max-w-6xl mx-auto">
+                        <!-- Header Row -->
+                        <div class="flex flex-col md:flex-row md:items-start gap-6 mb-12">
+                            <div class="flex-shrink-0">
+                                <p class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                                    Benefits You'll Gain
+                                </p>
+                                <h2 class="text-4xl font-black text-slate-800 leading-none tracking-tight">
+                                    Unlock<br>Exclusive<br>Advantages
+                                </h2>
+                            </div>
+                            <div class="md:ml-auto md:max-w-xs">
+                                <p class="text-sm text-slate-500 leading-relaxed mt-1">
+                                    Elementa provides flexible, effective solutions for all your chemistry learning needs — ensuring consistent quality, timely feedback, and dedicated instructor support.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Bento cards grid -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 items-end">
+
+                            <!-- Card 1: Gamified Learning (dark, tall) -->
+                            <div class="row-span-2 md:row-span-1 bg-slate-800 rounded-3xl p-6 flex flex-col justify-between min-h-[200px] md:min-h-[220px] shadow-lg">
+                                <div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center mb-4">
+                                    <i class="fas fa-gamepad text-cyan-400 text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-white font-black text-lg leading-tight mb-2">Gamified<br>Learning</h3>
+                                    <p class="text-slate-400 text-xs leading-relaxed">Earn EXP, climb leaderboards, and unlock achievements as you master chemistry concepts.</p>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: Photo/Visual (image card) -->
+                            <div class="rounded-3xl overflow-hidden min-h-[140px] md:min-h-[220px] bg-slate-700 shadow-lg">
+                                <img src="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=600&q=80" 
+                                     alt="Chemistry lab" 
+                                     class="w-full h-full object-cover">
+                            </div>
+
+                            <!-- Card 3: Consistent Quality (beige, center) -->
+                            <div class="bg-[#e8e4d9] rounded-3xl p-6 flex flex-col justify-center min-h-[140px] md:min-h-[220px] shadow-sm">
+                                <div class="w-9 h-9 rounded-xl bg-slate-200 flex items-center justify-center mb-3">
+                                    <i class="fas fa-flask text-slate-500 text-sm"></i>
+                                </div>
+                                <p class="text-slate-700 text-sm font-bold leading-snug">Consistent quality for uninterrupted academic progress.</p>
+                            </div>
+
+                            <!-- Card 4: Image card right -->
+                            <div class="rounded-3xl overflow-hidden min-h-[140px] md:min-h-[220px] bg-slate-200 shadow-lg">
+                                <img src="https://images.unsplash.com/photo-1587614382346-4ec70e388b28?w=600&q=80"
+                                     alt="Student studying"
+                                     class="w-full h-full object-cover">
+                            </div>
+
+                            <!-- Card 5: Personalized (light, bottom) -->
+                            <div class="col-span-1 md:col-span-1 bg-[#dde8f0] rounded-3xl p-6 flex flex-col justify-between min-h-[140px] shadow-sm">
+                                <div class="w-9 h-9 rounded-xl bg-white/60 flex items-center justify-center mb-3">
+                                    <i class="fas fa-atom text-blue-500 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-slate-800 font-black text-base leading-tight mb-1">Personalized<br>Modules</h3>
+                                    <p class="text-slate-500 text-xs">Tailored content per subject and semester.</p>
+                                </div>
+                            </div>
+
+                            <!-- Card 6: 24/7 Support (dark blue, image) -->
+                            <div class="col-span-1 md:col-span-2 rounded-3xl overflow-hidden relative min-h-[140px] shadow-lg bg-blue-800">
+                                <img src="https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=700&q=80"
+                                     alt="Teacher support"
+                                     class="w-full h-full object-cover opacity-60">
+                                <div class="absolute inset-0 flex flex-col justify-between p-6">
+                                    <h3 class="text-white font-black text-lg leading-tight">24/7 Instructor<br>Support</h3>
+                                    <p class="text-blue-100 text-xs">Get help any time via the forums and messaging system.</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== SECTION 2: TRUSTED PARTNERS / LOGOS ===== -->
+                <section class="px-4 md:px-8 py-16 bg-white border-t border-b border-slate-100 mb-6 shadow-xl shadow-slate-200">
+                    <div class="max-w-5xl mx-auto text-center">
+                        <!-- Badge -->
+                        <p class="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
+                            2026 Education Reform Updates
+                        </p>
+                        
+                        <!-- Main Heading -->
+                        <h2 class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight mb-3">
+                            Strengthening the <br>Senior High School Curriculum
+                        </h2>
+                        
+                        <!-- Description -->
+                        <p class="text-slate-500 text-sm max-w-2xl mx-auto mb-10 leading-relaxed">
+                            The Department of Education has launched the <b>Strengthened SHS Curriculum</b> to streamline learning into two primary tracks: Academic and Technical-Professional (TechPro). Explore the official portals below for the latest guidelines.
+                        </p>
+                        
+                        <div class="w-16 h-px bg-slate-200 mx-auto mb-10"></div>
+
+                        <!-- Verified Resource Links -->
+                        <div class="flex flex-wrap items-center justify-center gap-8 md:gap-14">
+                            
+                            <!-- Link 1: Academic Track (Latest MATATAG/SSHS Portal) -->
+                            <a href="https://www.deped.gov.ph/matatagcurriculumk147/" target="_blank" class="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-all duration-300 group">
+                                <i class="fas fa-book-open text-2xl group-hover:scale-110 transition-transform"></i>
+                                <span class="font-black text-sm uppercase tracking-widest">Academic Track</span>
+                            </a>
+
+                            <!-- Link 2: TechPro/TVL (LATEST BEIS Portal for SSHS) -->
+                            <a href="https://beis.deped.gov.ph/" target="_blank" class="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-all duration-300 group">
+                                <i class="fas fa-tools text-2xl group-hover:scale-110 transition-transform"></i>
+                                <span class="font-black text-sm uppercase tracking-widest">TechPro (TVL)</span>
+                            </a>
+
+                            <!-- Link 3: K-12 Legal Basis (Official Gazette) -->
+                            <a href="https://www.officialgazette.gov.ph/k-12/" target="_blank" class="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-all duration-300 group">
+                                <i class="fas fa-gavel text-2xl group-hover:scale-110 transition-transform"></i>
+                                <span class="font-black text-sm uppercase tracking-widest">K-12 Policy</span>
+                            </a>
+
+                            <!-- Link 4: Science & STEM Integration -->
+                            <a href="https://www.deped.gov.ph/k-to-12/" target="_blank" class="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-all duration-300 group">
+                                <i class="fas fa-microscope text-2xl group-hover:scale-110 transition-transform"></i>
+                                <span class="font-black text-sm uppercase tracking-widest">STEM Guides</span>
+                            </a>
+
+                            <!-- Link 5: Higher Ed Integration (CHED Official) -->
+                            <a href="https://ched.gov.ph/" target="_blank" class="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-all duration-300 group">
+                                <i class="fas fa-university text-2xl group-hover:scale-110 transition-transform"></i>
+                                <span class="font-black text-sm uppercase tracking-widest">CHED Portal</span>
+                            </a>
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== SECTION 3: INDUSTRIES / SECTORS ===== -->
+                <section class="px-4 md:px-8 py-14 bg-[#D1DFEF] rounded-3xl shadow-xl shadow-slate-200">
+                    <div class="max-w-6xl mx-auto">
+                        <div class="bg-blue-600 rounded-3xl overflow-hidden relative min-h-[480px] flex flex-col">
+                            <!-- Background image -->
+                            <div class="absolute inset-0">
+                                <img src="https://images.unsplash.com/photo-1554475900-0a0350e3fc7b?w=1200&q=80"
+                                     alt="Scientist"
+                                     class="w-full h-full object-cover object-center opacity-25">
+                            </div>
+
+                            <div class="relative z-10 p-8 md:p-12 flex-1 flex flex-col justify-between">
+                                <!-- Top text -->
+                                <div class="max-w-xs mb-8">
+                                    <p class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-200 mb-3">
+                                        <span class="w-2 h-2 rounded-full bg-white inline-block"></span>
+                                        Subjects We Cover
+                                    </p>
+                                    <h2 class="text-4xl md:text-5xl font-black text-white leading-none tracking-tight">
+                                        Tailored<br>Solutions for<br>Diverse Fields
+                                    </h2>
+                                </div>
+
+                                <!-- Bottom cards -->
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-auto">
+                                    <!-- Card: General Chemistry -->
+                                    <div class="bg-white/90 backdrop-blur rounded-2xl p-5 flex flex-col items-center text-center hover:bg-white transition shadow-lg">
+                                        <div class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mb-3">
+                                            <i class="fas fa-seedling text-green-500 text-xl"></i>
+                                        </div>
+                                        <h4 class="font-black text-slate-800 text-sm mb-1">General<br>Chemistry</h4>
+                                        <p class="text-slate-400 text-[10px] leading-snug">Foundation for every science learner</p>
+                                    </div>
+
+                                    <!-- Card: Biochemistry -->
+                                    <div class="bg-white/90 backdrop-blur rounded-2xl p-5 flex flex-col items-center text-center hover:bg-white transition shadow-lg">
+                                        <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+                                            <i class="fas fa-dna text-blue-500 text-xl"></i>
+                                        </div>
+                                        <h4 class="font-black text-slate-800 text-sm mb-1">Biochem-<br>istry</h4>
+                                        <p class="text-slate-400 text-[10px] leading-snug">Crucial for healthcare advancements</p>
+                                    </div>
+
+                                    <!-- Card: Organic Chem -->
+                                    <div class="bg-white/90 backdrop-blur rounded-2xl p-5 flex flex-col items-center text-center hover:bg-white transition shadow-lg">
+                                        <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mb-3">
+                                            <i class="fas fa-mortar-pestle text-orange-500 text-xl"></i>
+                                        </div>
+                                        <h4 class="font-black text-slate-800 text-sm mb-1">Organic<br>Chemistry</h4>
+                                        <p class="text-slate-400 text-[10px] leading-snug">Key to pharmaceutical sciences</p>
+                                    </div>
+
+                                    <!-- Card: Industrial Chem -->
+                                    <div class="bg-white/90 backdrop-blur rounded-2xl p-5 flex flex-col items-center text-center hover:bg-white transition shadow-lg">
+                                        <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-3">
+                                            <i class="fas fa-industry text-purple-500 text-xl"></i>
+                                        </div>
+                                        <h4 class="font-black text-slate-800 text-sm mb-1">Industrial<br>Chemistry</h4>
+                                        <p class="text-slate-400 text-[10px] leading-snug">Integral to every manufacturing field</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== AVAILABLE COURSES ===== -->
+                <div class="px-4 md:px-8 py-10 bg-white border-t border-b border-slate-100 mt-6 mb-10 shadow-xl shadow-slate-200">
+                    <div class="mb-8">
+                        <header class="mb-10">
+                            <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Available Courses</h2>
+                            <p class="text-slate-500">Choose subject and fill in the given access code to enroll.</p>
+                        </header>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <% subjects.forEach(subject => { %>
+                                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group">
+                                    
+                                    <div class="h-40 bg-slate-200 relative overflow-hidden">
+                                        <img src="/profile_uploads/<%= subject.subject_image || 'default_subject.png' %>" 
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=<%= subject.subject_name %>'">
+                                        
+                                        <div class="absolute top-4 left-4 flex flex-col gap-2">
+                                            <span class="w-fit px-3 py-1 bg-white/90 backdrop-blur text-slate-900 text-[9px] font-black rounded-lg uppercase tracking-widest shadow-sm">
+                                                <%= subject.semester == 1 ? '1st Semester' : '2nd Semester' %>
+                                            </span>
+                                            <span class="w-fit px-3 py-1 bg-blue-600/90 backdrop-blur text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-sm">
+                                                SY <%= subject.sy_range || '2025-2026' %>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="p-6 flex-1 flex flex-col">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <span class="text-blue-600 text-[10px] font-black uppercase tracking-widest">
+                                                <%= subject.subject_code %>
+                                            </span>
+                                            <div class="flex items-center gap-1 text-slate-300">
+                                                <i class="fas fa-calendar-alt text-xs"></i>
+                                                <span class="text-[10px] font-bold"><%= subject.sy_range %></span>
+                                            </div>
+                                        </div>
+
+                                        <h3 class="text-xl font-bold text-slate-800 mb-2 leading-tight">
+                                            <%= subject.subject_name %>
+                                        </h3>
+
+                                        <p class="text-slate-500 text-sm line-clamp-2 mb-4">
+                                            <%= subject.description || 'No description available for this course.' %>
+                                        </p>
+                                        
+                                        <div class="flex items-center gap-3 mb-6 mt-auto">
+                                            <img src="/profile_uploads/<%= subject.profile_pic || 'default_avatar.png' %>" 
+                                                class="w-8 h-8 rounded-full border-2 border-slate-100 shadow-sm object-cover">
+                                            <div class="text-xs">
+                                                <p class="text-slate-400 font-medium text-[10px] uppercase">Instructor</p>
+                                                <p class="text-slate-700 font-bold">
+                                                    <%= subject.first_name ? subject.first_name + ' ' + subject.last_name : 'No Teacher Assigned' %>
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <form action="/enroll" method="POST" class="mt-auto">
+                                            <input type="hidden" name="subject_id" value="<%= subject.subject_id %>">
+                                            <div class="space-y-3">
+                                                <div class="relative">
+                                                    <input type="password" name="enrollment_code" placeholder="Enter Access Code" 
+                                                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
+                                                </div>
+                                                <button type="submit" class="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 group/btn">
+                                                    Enroll in Course
+                                                    <i class="fas fa-arrow-right text-[10px] group-hover/btn:translate-x-1 transition-transform"></i>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+
+                        <% if (subjects.length === 0) { %>
+                            <div class="text-center py-20 bg-slate-100 rounded-3xl border-2 border-dashed border-slate-200">
+                                <i class="fas fa-graduation-cap text-4xl text-slate-300 mb-4"></i>
+                                <p class="text-slate-500 font-medium">There are no more subjects available for you.</p>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            
+            <footer class="mt-auto py-6 px-8 border-t border-slate-200 bg-white/50">
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="text-center md:text-left">
+                            <p class="text-sm text-slate-500 font-medium">
+                                &copy; 2026 <span class="text-blue-600 font-bold">Mabini College</span>. All rights reserved.
+                            </p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1">
+                                System Version 2.4.0-stable
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap justify-center gap-6">
+                            <a href="/privacy" class="text-xs font-bold text-slate-500 hover:text-blue-600 transition">Privacy Policy</a>
+                            <a href="/terms" class="text-xs font-bold text-slate-500 hover:text-blue-600 transition">Terms of Service</a>
+                            <a href="/support" class="text-xs font-bold text-slate-500 hover:text-blue-600 transition flex items-center gap-1">
+                                <i class="far fa-question-circle"></i> Help & Support
+                            </a>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    </div> <div id="notification-overlay" 
+                onclick="toggleNotifications()" 
+                class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden transition-opacity duration-300 opacity-0">
+            </div>
+
+            <div id="notification-panel" 
+                class="fixed top-0 right-0 h-screen w-80 md:w-96 bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col">
+                
+                <div class="p-5 border-b flex justify-between items-center bg-blue-600 text-white flex-shrink-0">
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="far fa-bell"></i> Notifications
+                    </h2>
+                    <button onclick="toggleNotifications()" class="hover:bg-blue-700 p-2 rounded-lg transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 no-scrollbar" id="notification-list">
+                    <div id="notification-loader" class="flex flex-col items-center justify-center h-full text-slate-400">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                        <p class="text-xs font-bold uppercase tracking-wider">Loading Arcade Updates...</p>
+                    </div>
+                </div>
+            </div>
+
+    <script>
+        async function toggleNotifications() {
+            const panel = document.getElementById('notification-panel');
+            const overlay = document.getElementById('notification-overlay');
+            const list = document.getElementById('notification-list');
+
+            if (panel.classList.contains('translate-x-full')) {
+                // OPEN PANEL
+                panel.classList.remove('translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.add('opacity-100'), 10);
+
+                // FETCH DATA FROM DATABASE
+                try {
+                    const response = await fetch('/api/notifications'); 
+                    const notifications = await response.json();
+
+                    list.innerHTML = '';
+
+                    if (notifications.length === 0) {
+                        list.innerHTML = `
+                            <div class="flex flex-col items-center justify-center h-64 text-gray-400">
+                                <i class="fas fa-check-circle text-4xl mb-2 opacity-20"></i>
+                                <p>All caught up!</p>
+                            </div>`;
+                        return;
+                    }
+
+                    notifications.forEach(notif => {
+                        const timeAgo = formatTimeAgo(notif.created_at);
+                        
+                        // --- DYNAMIC CONFIGURATION BASED ON TYPE ---
+                        let config = {
+                            icon: 'fa-info-circle',
+                            border: 'border-gray-500',
+                            badge: 'bg-gray-100 text-gray-600',
+                            label: notif.type
+                        };
+
+                        switch(notif.type) {
+                            case 'announcement':
+                                config = { icon: 'fa-bullhorn', border: 'border-blue-500', badge: 'bg-blue-100 text-blue-600', label: 'Announcement' };
+                                break;
+                            case 'assessment':
+                                config = { icon: 'fa-file-alt', border: 'border-red-500', badge: 'bg-red-100 text-red-600', label: 'Assessment' };
+                                break;
+                            case 'material':
+                                config = { icon: 'fa-book', border: 'border-purple-500', badge: 'bg-purple-100 text-purple-600', label: 'New Material' };
+                                break;
+                            case 'forum_new':
+                            case 'forum_reply':
+                                config = { icon: 'fa-comments', border: 'border-green-500', badge: 'bg-green-100 text-green-600', label: 'Forum' };
+                                break;
+                            case 'score':
+                                config = { icon: 'fa-star', border: 'border-yellow-500', badge: 'bg-yellow-100 text-yellow-700', label: 'Result' };
+                                break;
+                        }
+
+                        // --- BUILD EXTRA INFO (EXP GAINED / SUBJECT NAME) ---
+                        let extraBadge = '';
+                        if (notif.extra_info) {
+                            const isExp = notif.extra_info.includes('EXP');
+                            extraBadge = `<span class="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-bold ${isExp ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-700'}">${notif.extra_info}</span>`;
+                        }
+
+                        const itemHTML = `
+                            <div class="bg-white p-3 rounded-lg border-l-4 ${config.border} shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${config.badge}">
+                                        <i class="fas ${config.icon} mr-1"></i>${config.label}
+                                    </span>
+                                    <span class="text-[10px] text-gray-400 group-hover:text-gray-600">${timeAgo}</span>
+                                </div>
+                                <p class="text-sm font-bold text-gray-800 leading-tight">${notif.heading}</p>
+                                <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">${notif.snippet}</p>
+                                ${extraBadge}
+                            </div>
+                        `;
+                        list.insertAdjacentHTML('beforeend', itemHTML);
+                    });
+
+                } catch (err) {
+                    list.innerHTML = `<p class="text-center text-red-500 p-4">Failed to load notifications.</p>`;
+                    console.error(err);
+                }
+            } else {
+                // CLOSE PANEL
+                panel.classList.add('translate-x-full');
+                overlay.classList.remove('opacity-100');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+
+        function formatTimeAgo(dateString) {
+            if (!dateString) return '';
+            const now = new Date();
+            const past = new Date(dateString);
+            const diffInMs = now - past;
+            const diffInMins = Math.floor(diffInMs / 60000);
+            
+            if (diffInMins < 0) return 'Upcoming'; // For future due dates
+            if (diffInMins < 1) return 'Just now';
+            if (diffInMins < 60) return `${diffInMins}m ago`;
+            const diffInHours = Math.floor(diffInMins / 60);
+            if (diffInHours < 24) return `${diffInHours}h ago`;
+            return past.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (window.innerWidth < 768) {
+                sidebar.classList.toggle('sidebar-collapsed');
+                sidebar.classList.toggle('sidebar-open');
+                overlay.classList.toggle('hidden');
+            } else {
+                // For desktop, usually you'd toggle a mini-sidebar or just leave it
+                sidebar.classList.toggle('sidebar-collapsed');
+                document.getElementById('mainContent').classList.toggle('md:ml-64');
+                document.getElementById('mainContent').classList.toggle('md:ml-0');
+            }
+        }
+
+        function toggleUserMenu(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Close dropdown when clicking outside
+        window.addEventListener('click', function() {
+            const dropdown = document.getElementById('userDropdown');
+            if (!dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Auto-handle sidebar on resize
+        window.addEventListener('resize', () => {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('mainContent');
+            if (window.innerWidth >= 768) {
+                sidebar.classList.remove('sidebar-collapsed', 'sidebar-open');
+                main.classList.add('md:ml-64');
+            } else {
+                sidebar.classList.add('sidebar-collapsed');
+                main.classList.remove('md:ml-64');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resources &amp; Engagement | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdfa;
+            background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-card { background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); }
+
+        .stat-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.10); }
+
+        .pulse-badge { animation: pulseRing 2s infinite; }
+        @keyframes pulseRing { 0%,100% { opacity:1; } 50% { opacity:0.45; } }
+
+        .table-scroll { max-height: 300px; overflow-y: auto; }
+        .table-scroll::-webkit-scrollbar { width: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius:2px; }
+
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4, #6366f1) !important;
+            color: white !important; font-weight: 700;
+            box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+
+        .fade-in { animation: fadeUp 0.35s ease both; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        .live-dot {
+            width:8px; height:8px; border-radius:50%; background:#22c55e;
+            box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+            animation: livePulse 1.6s infinite; display:inline-block;
+        }
+        @keyframes livePulse {
+            0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+            70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+
+        /* ── TABS ── */
+        .re-tab { transition: all 0.2s; border-bottom: 3px solid transparent; }
+        .re-tab.active { border-bottom-color: #06b6d4; color: #0891b2; font-weight: 800; }
+        .re-tab:not(.active):hover { color: #0891b2; }
+        .re-pane { display: none; }
+        .re-pane.active { display: block; }
+
+        /* ── MATERIAL CARDS ── */
+        .mat-card {
+            background: white; border-radius: 16px; border: 1.5px solid #e2e8f0;
+            transition: all 0.18s ease; overflow: hidden;
+        }
+        .mat-card:hover { border-color: #06b6d4; box-shadow: 0 8px 24px rgba(6,182,212,0.12); transform: translateY(-2px); }
+
+        /* ── ACCORDION ── */
+        .accordion-body { display: none; }
+        .accordion-body.open { display: block; }
+        .accordion-toggle .chevron { transition: transform 0.2s; }
+        .accordion-toggle.open .chevron { transform: rotate(180deg); }
+
+        /* ── MODAL ── */
+        .re-modal {
+            position: fixed; inset: 0; background: rgba(15,23,42,0.6);
+            backdrop-filter: blur(6px); z-index: 9000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s;
+            padding: 16px;
+        }
+        .re-modal.open { opacity: 1; pointer-events: all; }
+        .re-modal-box {
+            background: white; border-radius: 20px; width: 95%;
+            max-width: 580px; max-height: 90vh; overflow-y: auto;
+            transform: scale(0.96) translateY(10px); transition: transform 0.2s;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.18);
+        }
+        .re-modal.open .re-modal-box { transform: scale(1) translateY(0); }
+        .re-modal-box-sm { max-width: 440px; }
+        .re-modal-box-lg { max-width: 700px; }
+
+        /* ── FORM INPUTS ── */
+        .fi {
+            width: 100%; padding: 10px 14px; border-radius: 10px;
+            border: 1.5px solid #e2e8f0; font-size: 13px;
+            background: #f8fafc; color: #1e293b; font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .fi:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.1); outline: none; }
+
+        /* ── BADGE ── */
+        .re-badge {
+            display: inline-flex; align-items: center; gap: 3px;
+            font-size: 10px; font-weight: 800; padding: 2px 8px;
+            border-radius: 99px; text-transform: uppercase; letter-spacing: .05em;
+        }
+
+        /* ── TOAST ── */
+        #reToast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 99999;
+            padding: 13px 20px; border-radius: 14px; font-weight: 700; font-size: 13px;
+            display: flex; align-items: center; gap: 9px; min-width: 220px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.18);
+            transform: translateY(60px); opacity: 0; pointer-events: none;
+            transition: all .3s cubic-bezier(.34,1.56,.64,1);
+        }
+        #reToast.show  { transform: translateY(0); opacity: 1; }
+        #reToast.ok    { background: linear-gradient(135deg,#10b981,#059669); color:white; }
+        #reToast.err   { background: linear-gradient(135deg,#ef4444,#dc2626); color:white; }
+        #reToast.warn  { background: linear-gradient(135deg,#f59e0b,#d97706); color:white; }
+        #reToast.info  { background: linear-gradient(135deg,#6366f1,#4f46e5); color:white; }
+
+        /* ── PROGRESS BAR ── */
+        .prog-bar { height: 6px; border-radius: 3px; background: #e2e8f0; overflow: hidden; }
+        .prog-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg,#06b6d4,#6366f1); transition: width 0.5s ease; }
+
+        /* ── FILE TYPE ICON COLORS ── */
+        .icon-pdf   { color: #ef4444; }
+        .icon-word  { color: #3b82f6; }
+        .icon-img   { color: #10b981; }
+        .icon-video { color: #8b5cf6; }
+        .icon-link  { color: #f59e0b; }
+        .icon-ppt   { color: #f97316; }
+        .icon-default { color: #64748b; }
+
+        /* Data table */
+        .re-table th {
+            background: #f0fdfa; font-size: 10px; text-transform: uppercase;
+            letter-spacing: .07em; color: #0891b2; font-weight: 800;
+            border-bottom: 2px solid #ccfbf1;
+        }
+        .re-table td { border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #475569; }
+        .re-table tbody tr:hover { background: #f0fdfa; }
+
+        /* Button icon */
+        .btn-ic {
+            width: 30px; height: 30px; border-radius: 8px;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: all .15s; font-size: 11px; cursor: pointer; border: none;
+        }
+        .btn-ic:hover { transform: scale(1.1); }
+        .btn-edit   { background: rgba(6,182,212,0.1);  color: #0891b2; border: 1px solid rgba(6,182,212,0.2); }
+        .btn-del    { background: rgba(239,68,68,0.1);   color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
+        .btn-view   { background: rgba(99,102,241,0.1);  color: #6366f1; border: 1px solid rgba(99,102,241,0.2); }
+    </style>
+</head>
+<body class="text-slate-900">
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <!-- Mobile overlay -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()"
+         class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+    <!-- ═══════════ SIDEBAR ═══════════ -->
+    <aside id="sidebar"
+        class="bg-indigo-950 text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-800/50">
+
+        <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+            <!-- Mobile close button -->
+            <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <!-- Logo -->
+            <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+
+            <!-- Brand name -->
+            <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                Elem<span class="text-white">enta</span>
+            </h1>
+            <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Admin Console</p>
+
+            <!-- Divider -->
+            <!-- <div class="w-full mt-5 border-t border-indigo-800/60"></div> -->
+        </div>
+        <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Main Interface</p>
+                <a href="/admin/dashboard" class="flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white hover:bg-white/10 group">
+                    <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold tracking-tight text-sm">Main Dashboard</span>
+                </a>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Administrative</p>
+                <div class="space-y-1">
+                    <a href="/admin/user_access_control" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-users w-5 text-sky-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">User &amp; Access Control</span>
+                    </a>
+                    <a href="/admin/academic_management" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-graduation-cap w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Academic Management</span>
+                    </a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Learning Assets</p>
+                <div class="space-y-1">
+                    <a href="/admin/gaming_question_bank" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-gamepad w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Gaming &amp; Q-Bank</span>
+                    </a>
+                    <a href="/admin/resources_engagement" class="nav-active flex items-center gap-3 p-3 rounded-xl transition group">
+                        <i class="fas fa-lightbulb w-5 text-lime-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Resources &amp; Engagement</span>
+                    </a>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">System Health</p>
+                <div class="space-y-1">
+                    <a href="/admin/reports_monitoring" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-chart-line w-5 text-blue-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Reports &amp; Monitoring</span>
+                    </a>
+                    <a href="/admin/system_audit" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-fingerprint w-5 text-indigo-300 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">System Audit</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-indigo-800">
+            <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+                <i class="fas fa-right-from-bracket w-5"></i> Log Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- ═══════════ MAIN ═══════════ -->
+    <main class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- Header -->
+        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight flex items-center gap-2">
+                        <i class="fas fa-lightbulb text-lime-500"></i>
+                        Resources &amp; Engagement
+                    </h2>
+                    <p class="text-xs text-slate-400 hidden sm:block">
+                        <span class="live-dot mr-1"></span>
+                        Learning Vault &nbsp;·&nbsp; Forum &nbsp;·&nbsp; Analytics &nbsp;·&nbsp; Leaderboard
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 md:gap-6">
+                <!-- Notification bell -->
+                <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
+                    <i class="far fa-bell text-xl text-cyan-600"></i>
+                    <span id="notifDot" class="absolute top-2 right-2 flex h-2.5 w-2.5 hidden">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <span id="notifCount" class="absolute -top-0.5 -right-0.5 hidden bg-rose-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center"></span>
+                </div>
+
+                <!-- Admin profile -->
+                <div class="flex items-center gap-3 pl-4 border-l border-cyan-100">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-[10px] uppercase font-black text-rose-500 tracking-widest">Administrator</p>
+                    </div>
+                    <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                         class="w-10 h-10 rounded-xl object-cover ring-2 ring-rose-400 shadow-sm">
+                </div>
+            </div>
+        </header>
+
+        <!-- Body -->
+        <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
+            <div class="p-4 md:p-8 flex-1 fade-in">
+
+                <!-- ── KPI STAT CARDS ── -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-cyan-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center">
+                                <i class="fas fa-folder-open text-cyan-600"></i>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Materials</span>
+                        </div>
+                        <p class="text-3xl font-black text-indigo-900"><%= reStats.totalMaterials %></p>
+                        <p class="text-xs text-slate-400 mt-1">Learning files</p>
+                    </div>
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-indigo-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
+                                <i class="fas fa-comments text-indigo-500"></i>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Forums</span>
+                        </div>
+                        <p class="text-3xl font-black text-indigo-900"><%= reStats.totalForums %></p>
+                        <p class="text-xs text-slate-400 mt-1">Discussion boards</p>
+                    </div>
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-emerald-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                                <i class="fas fa-hand-pointer text-emerald-600"></i>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Interactions</span>
+                        </div>
+                        <p class="text-3xl font-black text-indigo-900"><%= reStats.totalInteractions %></p>
+                        <p class="text-xs text-slate-400 mt-1">Views &amp; downloads</p>
+                    </div>
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-amber-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
+                                <i class="fas fa-trophy text-amber-500"></i>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Students</span>
+                        </div>
+                        <p class="text-3xl font-black text-indigo-900"><%= reStats.totalStudents %></p>
+                        <p class="text-xs text-slate-400 mt-1">Active learners</p>
+                    </div>
+                </div>
+
+                <!-- ── PILLAR TABS ── -->
+                <div class="glass-card rounded-2xl border border-cyan-100 overflow-hidden">
+
+                    <!-- Tab nav -->
+                    <div class="flex items-center gap-1 px-6 pt-4 border-b border-cyan-100 overflow-x-auto no-scrollbar flex-wrap">
+                        <button class="re-tab active px-4 py-3 text-sm font-bold text-slate-500 whitespace-nowrap" onclick="switchTab('pillar1',this)">
+                            <i class="fas fa-folder-open mr-1.5 text-cyan-500"></i> Learning Vault
+                        </button>
+                        <button class="re-tab px-4 py-3 text-sm font-bold text-slate-500 whitespace-nowrap" onclick="switchTab('pillar2',this)">
+                            <i class="fas fa-comments mr-1.5 text-indigo-500"></i> Forum Moderation
+                        </button>
+                        <button class="re-tab px-4 py-3 text-sm font-bold text-slate-500 whitespace-nowrap" onclick="switchTab('pillar3',this)">
+                            <i class="fas fa-chart-bar mr-1.5 text-emerald-500"></i> Engagement Analytics
+                        </button>
+                        <button class="re-tab px-4 py-3 text-sm font-bold text-slate-500 whitespace-nowrap" onclick="switchTab('pillar4',this)">
+                            <i class="fas fa-trophy mr-1.5 text-amber-500"></i> Progress &amp; Rewards
+                        </button>
+                    </div>
+
+                    <!-- ═══════════════════════════════════════════════
+                         PILLAR 1 — LEARNING VAULT
+                    ═══════════════════════════════════════════════ -->
+                    <div id="pillar1" class="re-pane active p-6">
+
+                        <!-- Toolbar -->
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-6">
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-lg">Learning Vault</h3>
+                                <p class="text-xs text-slate-400">Manage all uploaded learning materials, grouped by Quarter &rarr; Topic.</p>
+                            </div>
+                            <button onclick="openModal('modalAddMaterial')"
+                                class="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:opacity-90 transition shadow-md whitespace-nowrap">
+                                <i class="fas fa-plus"></i> Upload Material
+                            </button>
+                        </div>
+
+                        <!-- Search bar -->
+                        <div class="relative mb-5">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input id="matSearch" type="text" placeholder="Search materials, topics…"
+                                class="fi pl-9" oninput="filterMaterials()">
+                        </div>
+
+                        <!-- Accordion: Subject > Quarter > Topic > Material Cards -->
+                        <div id="materialAccordion" class="space-y-5">
+                        <% if (quarters.length === 0) { %>
+                            <div class="py-14 text-center text-slate-400">
+                                <i class="fas fa-folder-open text-5xl block mb-3 opacity-20"></i>
+                                <p class="font-bold">No materials uploaded yet.</p>
+                            </div>
+                        <% } %>
+                        <%
+                            /* Group quarters by subject */
+                            var subjectMap = {};
+                            quarters.forEach(function(q) {
+                                var key = q.subject_id || 'none';
+                                if (!subjectMap[key]) {
+                                    subjectMap[key] = { subject_id: q.subject_id, subject_name: q.subject_name || 'Unknown Subject', quarters: [] };
+                                }
+                                subjectMap[key].quarters.push(q);
+                            });
+                            var subjectGroups = Object.values(subjectMap);
+                        %>
+                        <% subjectGroups.forEach(function(s, si) { %>
+                            <!-- ── SUBJECT BLOCK ── -->
+                            <div class="border-2 border-indigo-200 rounded-2xl overflow-hidden bg-indigo-50/40">
+                                <!-- Subject Header -->
+                                <button class="accordion-toggle w-full flex items-center justify-between px-5 py-4 bg-gradient-to-r from-indigo-100 to-cyan-50 hover:from-indigo-200 hover:to-cyan-100 transition"
+                                    onclick="toggleAccordion(this)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow">
+                                            <i class="fas fa-book text-white text-sm"></i>
+                                        </div>
+                                        <div class="text-left">
+                                            <p class="font-black text-indigo-900 text-base"><%= s.subject_name %></p>
+                                            <p class="text-[10px] text-slate-500"><%= s.quarters.length %> quarter(s)</p>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-chevron-down chevron text-indigo-400 text-sm"></i>
+                                </button>
+                                <!-- Subject Body -->
+                                <div class="accordion-body open">
+                                <div class="p-4 space-y-4">
+                        <% s.quarters.forEach(function(q) { %>
+                            <div class="mat-quarter border border-cyan-100 rounded-2xl overflow-hidden">
+                                <!-- Quarter Header -->
+                                <button class="accordion-toggle w-full flex items-center justify-between p-4 bg-cyan-50 hover:bg-cyan-100 transition"
+                                    onclick="toggleAccordion(this)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center">
+                                            <span class="text-white text-xs font-black">Q<%= q.quarter_number %></span>
+                                        </div>
+                                        <div class="text-left">
+                                            <p class="font-black text-indigo-900 text-sm">Quarter <%= q.quarter_number %></p>
+                                            <p class="text-[10px] text-slate-400"><%= q.subject_name %> &nbsp;&middot;&nbsp; <%= q.topicCount %> topic(s)</p>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-chevron-down chevron text-slate-400 text-sm"></i>
+                                </button>
+                                <!-- Accordion body -->
+                                <div class="accordion-body">
+                                <% q.topics.forEach(function(t) { %>
+                                    <div class="p-4 border-t border-cyan-50">
+                                        <!-- Topic label -->
+                                        <div class="flex items-center gap-2 mb-3">
+                                            <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
+                                            <p class="text-sm font-bold text-indigo-700"><%= t.topic_name %></p>
+                                            <span class="text-[10px] text-slate-400">(<%= t.materials.length %> file<% if(t.materials.length!==1){%>s<%}%>)</span>
+                                        </div>
+                                        <!-- Material cards grid -->
+                                        <% if (t.materials.length === 0) { %>
+                                            <p class="text-xs text-slate-400 italic pl-4">No materials for this topic yet.</p>
+                                        <% } else { %>
+                                        <div class="flex flex-col gap-2 mat-grid">
+                                        <% t.materials.forEach(function(m) { %>
+                                            <!-- Compact horizontal material row -->
+                                            <div class="mat-card mat-item flex items-center gap-3 px-3 py-2.5"
+                                                data-search="<%= (m.title + ' ' + t.topic_name).toLowerCase() %>">
+                                                <!-- Icon -->
+                                                <div class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center
+                                                    <% if(m.material_type==='pdf'){%>bg-red-50<%}else if(m.material_type==='video'){%>bg-violet-50<%}else if(m.material_type==='img'){%>bg-emerald-50<%}else if(m.material_type==='link'){%>bg-amber-50<%}else if(m.material_type==='presentation'){%>bg-orange-50<%}else{%>bg-slate-50<%}%>">
+                                                    <i class="text-sm <%
+                                                        if(m.material_type==='pdf'){%>fas fa-file-pdf icon-pdf<%
+                                                        }else if(m.material_type==='word'){%>fas fa-file-word icon-word<%
+                                                        }else if(m.material_type==='img'){%>fas fa-image icon-img<%
+                                                        }else if(m.material_type==='video'){%>fas fa-video icon-video<%
+                                                        }else if(m.material_type==='link'){%>fas fa-link icon-link<%
+                                                        }else if(m.material_type==='presentation'){%>fas fa-file-powerpoint icon-ppt<%
+                                                        }else{%>fas fa-file icon-default<%}%>"></i>
+                                                </div>
+                                                <!-- Info -->
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-bold text-xs text-indigo-900 truncate leading-tight"><%= m.title %></p>
+                                                    <p class="text-[10px] text-slate-400 uppercase font-semibold"><%= m.material_type %></p>
+                                                </div>
+                                                <!-- Lock badge -->
+                                                <% if (m.is_locked) { %>
+                                                <span class="re-badge bg-red-50 text-red-500 border border-red-100 flex-shrink-0">
+                                                    <i class="fas fa-lock text-[8px]"></i> Locked
+                                                </span>
+                                                <% } else { %>
+                                                <span class="re-badge bg-emerald-50 text-emerald-600 border border-emerald-100 flex-shrink-0">
+                                                    <i class="fas fa-lock-open text-[8px]"></i> Open
+                                                </span>
+                                                <% } %>
+                                                <!-- Actions -->
+                                                <div class="flex items-center gap-1 flex-shrink-0">
+                                                    <button class="btn-ic btn-edit" title="Edit"
+                                                        onclick='openEditMaterial(<%- JSON.stringify(m) %>)'>
+                                                        <i class="fas fa-pen"></i>
+                                                    </button>
+                                                    <button class="btn-ic btn-view" title="Toggle Lock"
+                                                        onclick="toggleMatLock(<%= m.material_id %>, <%= m.is_locked %>)">
+                                                        <i class="fas <%= m.is_locked ? 'fa-lock-open' : 'fa-lock' %>"></i>
+                                                    </button>
+                                                    <button class="btn-ic btn-del" title="Delete"
+                                                        onclick="confirmDeleteMaterial(<%= m.material_id %>, '<%= m.title.replace(/'/g, '&#39;') %>')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                    <a href="<%= m.material_type === 'link' ? m.file_path_or_url : (m.file_path_or_url.startsWith('/material_uploads') ? m.file_path_or_url : '/material_uploads/' + m.file_path_or_url) %>"
+                                                       target="_blank" class="btn-ic btn-view" title="Open / View">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+                                        </div>
+                                        <% } %>
+                                    </div>
+                                <% }) %>
+                                </div>
+                            </div>
+                        <% }) %><!-- end quarters loop -->
+                        </div><!-- /subject body inner -->
+                        </div><!-- /subject accordion-body -->
+                        </div><!-- /subject block -->
+                        <% }) %><!-- end subjects loop -->
+                        </div><!-- /accordion -->
+                    </div><!-- /pillar1 -->
+
+                    <!-- ═══════════════════════════════════════════════
+                         PILLAR 2 — FORUM MODERATION
+                    ═══════════════════════════════════════════════ -->
+                    <div id="pillar2" class="re-pane p-6">
+
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-6">
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-lg">Forum Moderation</h3>
+                                <p class="text-xs text-slate-400">Create &amp; moderate discussion boards and threads across all topics.</p>
+                            </div>
+                            <button onclick="openModal('modalAddForum')"
+                                class="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:opacity-90 transition shadow-md whitespace-nowrap">
+                                <i class="fas fa-plus"></i> New Forum Board
+                            </button>
+                        </div>
+
+                        <!-- Forum list -->
+                        <div class="space-y-3" id="forumList">
+                        <% if (forums.length === 0) { %>
+                            <div class="py-14 text-center text-slate-400">
+                                <i class="fas fa-comments text-5xl block mb-3 opacity-20"></i>
+                                <p class="font-bold">No forum boards yet.</p>
+                            </div>
+                        <% } %>
+                        <% forums.forEach(function(f) { %>
+                            <div class="border border-indigo-100 rounded-2xl overflow-hidden forum-board" data-forum-id="<%= f.forum_id %>">
+                                <!-- Forum header -->
+                                <div class="flex items-center justify-between p-4 bg-indigo-50 hover:bg-indigo-100 transition cursor-pointer"
+                                    onclick="toggleForumReplies('<%= f.forum_id %>')">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-comments text-white text-sm"></i>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <p class="font-black text-indigo-900 text-sm truncate"><%= f.title %></p>
+                                                <% if (f.is_pinned) { %>
+                                                <span class="re-badge bg-amber-50 text-amber-600 border border-amber-100 flex-shrink-0">
+                                                    <i class="fas fa-thumbtack text-[8px]"></i> Pinned
+                                                </span>
+                                                <% } %>
+                                            </div>
+                                            <p class="text-[10px] text-slate-400">
+                                                Topic: <%= f.topic_name || 'General' %>
+                                                &nbsp;&middot;&nbsp; <%= f.reply_count %> reply(-ies)
+                                                &nbsp;&middot;&nbsp; by <%= f.teacher_name || 'System' %>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0 ml-3">
+                                        <button class="btn-ic btn-edit" title="Edit Forum"
+                                            onclick='event.stopPropagation(); openEditForum(<%- JSON.stringify(f) %>)'>
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn-ic btn-del" title="Delete Forum"
+                                            onclick="event.stopPropagation(); confirmDeleteForum(<%= f.forum_id %>, '<%= f.title.replace(/'/g, '&#39;') %>')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        <i class="fas fa-chevron-down text-slate-400 text-sm transition-transform" id="forumChevron<%= f.forum_id %>"></i>
+                                    </div>
+                                </div>
+                                <!-- Replies drill-down -->
+                                <div id="forumReplies<%= f.forum_id %>" class="hidden">
+                                    <div class="p-4 border-t border-indigo-100">
+                                        <p class="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-3">
+                                            <i class="fas fa-reply mr-1"></i> Replies (<%= f.reply_count %>)
+                                        </p>
+                                        <% if (f.replies && f.replies.length > 0) { %>
+                                        <div class="space-y-2">
+                                        <% f.replies.forEach(function(r) { %>
+                                            <div class="flex items-start gap-3 p-3 rounded-xl bg-white border border-indigo-50">
+                                                <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                                                    <i class="fas fa-user text-indigo-500 text-[10px]"></i>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <p class="text-xs font-bold text-indigo-800"><%= r.user_name %></p>
+                                                        <span class="text-[10px] text-slate-400">
+                                                            <%= new Date(r.created_at).toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'}) %>
+                                                        </span>
+                                                    </div>
+                                                    <p class="text-xs text-slate-600 mt-0.5 line-clamp-2"><%= r.reply_content %></p>
+                                                </div>
+                                                <button class="btn-ic btn-del flex-shrink-0" title="Delete Reply"
+                                                    onclick="confirmDeleteReply(<%= r.reply_id %>, <%= f.forum_id %>)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        <% }) %>
+                                        </div>
+                                        <% } else { %>
+                                        <p class="text-xs text-slate-400 italic">No replies yet.</p>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+                        </div><!-- /forumList -->
+                    </div><!-- /pillar2 -->
+
+                    <!-- ═══════════════════════════════════════════════
+                         PILLAR 3 — ENGAGEMENT ANALYTICS
+                    ═══════════════════════════════════════════════ -->
+                    <div id="pillar3" class="re-pane p-6">
+
+                        <h3 class="font-black text-indigo-900 text-lg mb-1">Engagement Analytics</h3>
+                        <p class="text-xs text-slate-400 mb-6">Track who is actually studying and what they are consuming.</p>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                            <!-- Student Interaction Monitor (2/3 width) -->
+                            <div class="lg:col-span-2 glass-card rounded-2xl border border-cyan-100 p-5">
+                                <div class="flex items-center justify-between mb-4">
+                                    <p class="font-bold text-sm text-indigo-900 flex items-center gap-2">
+                                        <i class="fas fa-hand-pointer text-cyan-500"></i> Student Interaction Log
+                                    </p>
+                                    <div class="relative">
+                                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input id="interactionSearch" type="text" placeholder="Search student…"
+                                            class="fi pl-8 py-2 text-xs w-44" oninput="filterInteractions()">
+                                    </div>
+                                </div>
+                                <div class="table-scroll rounded-xl border border-cyan-50">
+                                    <table class="re-table w-full text-xs">
+                                        <thead>
+                                            <tr>
+                                                <th class="p-2.5 text-left">Student</th>
+                                                <th class="p-2.5 text-left hidden sm:table-cell">Material</th>
+                                                <th class="p-2.5 text-left">Type</th>
+                                                <th class="p-2.5 text-left hidden md:table-cell">Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="interactionTableBody">
+                                        <% if (interactionLog.length === 0) { %>
+                                            <tr><td colspan="4" class="p-6 text-center text-slate-400">No interactions recorded yet.</td></tr>
+                                        <% } %>
+                                        <% interactionLog.forEach(function(i) { %>
+                                            <tr class="interaction-row" data-search="<%= i.student_name.toLowerCase() %>">
+                                                <td class="p-2.5 font-medium text-indigo-800 whitespace-nowrap"><%= i.student_name %></td>
+                                                <td class="p-2.5 text-slate-500 hidden sm:table-cell max-w-[140px] truncate"><%= i.material_title %></td>
+                                                <td class="p-2.5">
+                                                    <span class="re-badge <%= i.interaction_type === 'viewed' ? 'bg-cyan-50 text-cyan-700 border border-cyan-100' : 'bg-violet-50 text-violet-700 border border-violet-100' %>">
+                                                        <i class="fas <%= i.interaction_type === 'viewed' ? 'fa-eye' : 'fa-download' %> text-[8px]"></i>
+                                                        <%= i.interaction_type %>
+                                                    </span>
+                                                </td>
+                                                <td class="p-2.5 text-slate-400 hidden md:table-cell whitespace-nowrap">
+                                                    <%= new Date(i.interacted_at).toLocaleDateString('en-PH', {month:'short', day:'numeric'}) %>
+                                                </td>
+                                            </tr>
+                                        <% }) %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Activity Audit Feed (1/3 width) -->
+                            <div class="glass-card rounded-2xl border border-indigo-100 p-5">
+                                <p class="font-bold text-sm text-indigo-900 flex items-center gap-2 mb-4">
+                                    <i class="fas fa-stream text-indigo-500"></i> Activity Audit Feed
+                                </p>
+                                <div class="space-y-3 max-h-72 overflow-y-auto no-scrollbar">
+                                <% if (activityFeed.length === 0) { %>
+                                    <p class="text-xs text-slate-400 italic">No recent activity.</p>
+                                <% } %>
+                                <% activityFeed.forEach(function(log) { %>
+                                    <div class="flex items-start gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <i class="fas fa-bolt text-indigo-400 text-[10px]"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-indigo-800 font-semibold leading-snug"><%= log.description || log.action %></p>
+                                            <p class="text-[10px] text-slate-400 mt-0.5">
+                                                <%= log.actor_role %> &nbsp;&middot;&nbsp;
+                                                <%= new Date(log.created_at).toLocaleDateString('en-PH', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) %>
+                                            </p>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                                </div>
+                            </div>
+                        </div><!-- /grid -->
+
+                        <!-- Engagement Milestones — Student Progress -->
+                        <div class="mt-6 glass-card rounded-2xl border border-emerald-100 p-5">
+                            <p class="font-bold text-sm text-indigo-900 flex items-center gap-2 mb-4">
+                                <i class="fas fa-seedling text-emerald-500"></i> Engagement Milestones — Material Consumption Progress
+                            </p>
+                            <% if (studentProgress.length === 0) { %>
+                                <p class="text-xs text-slate-400 italic">No student progress data yet.</p>
+                            <% } %>
+                            <div class="space-y-3">
+                            <% studentProgress.forEach(function(sp) { %>
+                                <div class="flex items-center gap-4">
+                                    <img src="/profile_uploads/<%= sp.profile_pic || 'default_avatar.png' %>"
+                                         class="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                                         onerror="this.src='/profile_uploads/default_avatar.png'">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <p class="text-xs font-bold text-indigo-800 truncate">
+                                                <%= sp.first_name %> <%= sp.last_name %>
+                                            </p>
+                                            <span class="text-[10px] font-bold text-cyan-600 ml-2 flex-shrink-0">
+                                                <%= sp.progress_percent %>%
+                                            </span>
+                                        </div>
+                                        <div class="prog-bar">
+                                            <div class="prog-fill" style="width: <%= sp.progress_percent %>%"></div>
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 mt-0.5"><%= sp.subject_name %></p>
+                                    </div>
+                                </div>
+                            <% }) %>
+                            </div>
+                        </div>
+
+                    </div><!-- /pillar3 -->
+
+                    <!-- ═══════════════════════════════════════════════
+                         PILLAR 4 — PROGRESS & REWARDS
+                    ═══════════════════════════════════════════════ -->
+                    <div id="pillar4" class="re-pane p-6">
+
+                        <h3 class="font-black text-indigo-900 text-lg mb-1">Progress &amp; Rewards</h3>
+                        <p class="text-xs text-slate-400 mb-6">Master leaderboard and gamification milestones.</p>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                            <!-- Master Leaderboard -->
+                            <div class="glass-card rounded-2xl border border-amber-100 p-5">
+                                <p class="font-bold text-sm text-indigo-900 flex items-center gap-2 mb-4">
+                                    <i class="fas fa-trophy text-amber-500"></i> Top 10 — Master Leaderboard
+                                </p>
+                                <% if (leaderboard.length === 0) { %>
+                                    <p class="text-xs text-slate-400 italic">No leaderboard data yet.</p>
+                                <% } %>
+                                <div class="space-y-2">
+                                <% leaderboard.forEach(function(s, idx) { %>
+                                    <div class="flex items-center gap-3 p-3 rounded-xl
+                                        <%= idx === 0 ? 'bg-amber-50 border border-amber-200' : idx === 1 ? 'bg-slate-100 border border-slate-200' : idx === 2 ? 'bg-orange-50 border border-orange-200' : 'bg-white border border-slate-100' %>">
+                                        <!-- Rank badge -->
+                                        <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 font-black text-sm
+                                            <%= idx === 0 ? 'bg-amber-400 text-white' : idx === 1 ? 'bg-slate-400 text-white' : idx === 2 ? 'bg-orange-400 text-white' : 'bg-indigo-100 text-indigo-500' %>">
+                                            <%= idx + 1 %>
+                                        </div>
+                                        <img src="/profile_uploads/<%= s.profile_pic || 'default_avatar.png' %>"
+                                             class="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                                             onerror="this.src='/profile_uploads/default_avatar.png'">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-bold text-indigo-900 truncate">
+                                                <%= s.first_name %> <%= s.last_name %>
+                                            </p>
+                                            <p class="text-[10px] text-slate-400">Level <%= s.current_level %></p>
+                                        </div>
+                                        <div class="text-right flex-shrink-0">
+                                            <p class="text-sm font-black text-amber-600">
+                                                <i class="fas fa-star text-amber-400 text-xs mr-0.5"></i>
+                                                <%= s.total_exp.toLocaleString() %>
+                                            </p>
+                                            <p class="text-[10px] text-slate-400">EXP</p>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                                </div>
+                            </div>
+
+                            <!-- Leaderboard History Snapshots -->
+                            <div class="glass-card rounded-2xl border border-indigo-100 p-5">
+                                <p class="font-bold text-sm text-indigo-900 flex items-center gap-2 mb-4">
+                                    <i class="fas fa-history text-indigo-500"></i> Rank History Snapshots
+                                </p>
+                                <div class="table-scroll rounded-xl border border-indigo-50">
+                                    <table class="re-table w-full text-xs">
+                                        <thead>
+                                            <tr>
+                                                <th class="p-2.5 text-left">Student</th>
+                                                <th class="p-2.5 text-left">Rank</th>
+                                                <th class="p-2.5 text-left">EXP Snapshot</th>
+                                                <th class="p-2.5 text-left hidden md:table-cell">Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        <% if (leaderboardHistory.length === 0) { %>
+                                            <tr><td colspan="4" class="p-5 text-center text-slate-400">No history snapshots yet.</td></tr>
+                                        <% } %>
+                                        <% leaderboardHistory.forEach(function(h) { %>
+                                            <tr>
+                                                <td class="p-2.5 font-medium text-indigo-800"><%= h.student_name %></td>
+                                                <td class="p-2.5">
+                                                    <span class="re-badge bg-amber-50 text-amber-600 border border-amber-100">
+                                                        #<%= h.rank_achieved %>
+                                                    </span>
+                                                </td>
+                                                <td class="p-2.5 font-bold text-cyan-700"><%= h.total_exp_snapshot.toLocaleString() %></td>
+                                                <td class="p-2.5 text-slate-400 hidden md:table-cell">
+                                                    <%= new Date(h.awarded_date).toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'}) %>
+                                                </td>
+                                            </tr>
+                                        <% }) %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div><!-- /grid -->
+                    </div><!-- /pillar4 -->
+
+                </div><!-- /pillar tabs card -->
+                <div class="h-4"></div>
+            </div><!-- /p-8 -->
+
+            <!-- Footer -->
+            <footer class="bg-white border-t border-cyan-100 py-6 px-8 mt-auto w-full">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-2 max-w-[1600px] mx-auto">
+                    <p class="text-[11px] text-indigo-400 font-black uppercase tracking-tight">
+                        &copy; 2026 <span class="text-cyan-600">Chemistry Arcade</span> — Mabini College v2.5.0
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest">Support Lab</a>
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest border-l pl-4 border-indigo-100">Atomic Logs</a>
+                    </div>
+                </div>
+            </footer>
+        </div><!-- /overflow-y-auto -->
+    </main>
+</div><!-- /flex wrapper -->
+
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: ADD MATERIAL
+════════════════════════════════════════════════════ -->
+<div id="modalAddMaterial" class="re-modal">
+    <div class="re-modal-box p-0">
+        <div class="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
+            <h3 class="font-black text-indigo-900 text-base flex items-center gap-2">
+                <i class="fas fa-upload text-cyan-500"></i> Upload Learning Material
+            </h3>
+            <button onclick="closeModal('modalAddMaterial')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="p-5 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Title *</label>
+                <input type="text" id="matTitle" maxlength="255" placeholder="e.g., Atomic Structure Notes" class="fi">
+                <p id="errMatTitle" class="text-red-500 text-xs mt-1 hidden">Title is required.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Topic *</label>
+                <select id="matTopicId" class="fi">
+                    <option value="">— Select Topic —</option>
+                    <% allTopics.forEach(function(t) { %>
+                    <option value="<%= t.topic_id %>"><%= t.topic_name %> (Q<%= t.quarter_number %> — <%= t.subject_name %>)</option>
+                    <% }) %>
+                </select>
+                <p id="errMatTopic" class="text-red-500 text-xs mt-1 hidden">Topic is required.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Material Type *</label>
+                <select id="matType" class="fi" onchange="toggleMatTypeFields()">
+                    <option value="pdf">PDF</option>
+                    <option value="word">Word Document</option>
+                    <option value="img">Image</option>
+                    <option value="video">Video</option>
+                    <option value="presentation">Presentation (PPT)</option>
+                    <option value="link">External Link</option>
+                </select>
+            </div>
+            <!-- File upload (shown for non-link types) -->
+            <div id="matFileWrap">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Upload File *</label>
+                <div class="border-2 border-dashed border-cyan-200 rounded-xl p-5 text-center cursor-pointer hover:border-cyan-400 transition"
+                    onclick="document.getElementById('matFile').click()">
+                    <i class="fas fa-cloud-upload-alt text-3xl text-cyan-300 mb-2 block"></i>
+                    <p class="text-sm font-bold text-slate-400">Click to browse or drop file here</p>
+                    <p class="text-xs text-slate-300 mt-1">Max 20MB</p>
+                </div>
+                <input type="file" id="matFile" class="hidden" onchange="showMatFileName(this)">
+                <p id="matFileLabel" class="text-xs text-slate-500 mt-1.5 hidden"></p>
+                <p id="errMatFile" class="text-red-500 text-xs mt-1 hidden">File is required for this type.</p>
+            </div>
+            <!-- URL input (shown for link type) -->
+            <div id="matUrlWrap" class="hidden">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">URL *</label>
+                <input type="url" id="matUrl" placeholder="https://…" class="fi">
+                <p id="errMatUrl" class="text-red-500 text-xs mt-1 hidden">A valid URL is required for Link type.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="matLocked" class="accent-cyan-500" checked>
+                    <span class="text-sm font-bold text-slate-600">Lock material (hidden from students)</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeModal('modalAddMaterial')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition">Cancel</button>
+                <button onclick="submitAddMaterial()"
+                    class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md">
+                    <i class="fas fa-upload mr-1"></i> Upload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: EDIT MATERIAL
+════════════════════════════════════════════════════ -->
+<div id="modalEditMaterial" class="re-modal">
+    <div class="re-modal-box p-0">
+        <div class="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
+            <h3 class="font-black text-indigo-900 text-base flex items-center gap-2">
+                <i class="fas fa-pen text-cyan-500"></i> Edit Material
+            </h3>
+            <button onclick="closeModal('modalEditMaterial')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="p-5 space-y-4">
+            <input type="hidden" id="editMatId">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Title *</label>
+                <input type="text" id="editMatTitle" maxlength="255" class="fi">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Re-assign to Topic</label>
+                <select id="editMatTopicId" class="fi">
+                    <% allTopics.forEach(function(t) { %>
+                    <option value="<%= t.topic_id %>"><%= t.topic_name %> (Q<%= t.quarter_number %> — <%= t.subject_name %>)</option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="editMatLocked" class="accent-cyan-500">
+                    <span class="text-sm font-bold text-slate-600">Locked (hidden from students)</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeModal('modalEditMaterial')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition">Cancel</button>
+                <button onclick="submitEditMaterial()"
+                    class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md">
+                    <i class="fas fa-save mr-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: ADD FORUM
+════════════════════════════════════════════════════ -->
+<div id="modalAddForum" class="re-modal">
+    <div class="re-modal-box re-modal-box-sm p-0">
+        <div class="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
+            <h3 class="font-black text-indigo-900 text-base flex items-center gap-2">
+                <i class="fas fa-plus text-indigo-500"></i> New Forum Board
+            </h3>
+            <button onclick="closeModal('modalAddForum')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="p-5 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Forum Title *</label>
+                <input type="text" id="forumTitle" maxlength="255" placeholder="e.g., Quarter 1 — Open Discussion" class="fi">
+                <p id="errForumTitle" class="text-red-500 text-xs mt-1 hidden">Title is required.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Linked Topic *</label>
+                <select id="forumTopicId" class="fi">
+                    <option value="">— Select Topic —</option>
+                    <% allTopics.forEach(function(t) { %>
+                    <option value="<%= t.topic_id %>"><%= t.topic_name %> (Q<%= t.quarter_number %>)</option>
+                    <% }) %>
+                </select>
+                <p id="errForumTopic" class="text-red-500 text-xs mt-1 hidden">Topic is required.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Content / Description</label>
+                <textarea id="forumContent" rows="3" maxlength="2000" placeholder="Optional introduction or instructions…" class="fi resize-none"></textarea>
+            </div>
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="forumPinned" class="accent-indigo-500">
+                    <span class="text-sm font-bold text-slate-600">Pin this forum</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeModal('modalAddForum')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition">Cancel</button>
+                <button onclick="submitAddForum()"
+                    class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md">
+                    <i class="fas fa-plus mr-1"></i> Create Forum
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: EDIT FORUM
+════════════════════════════════════════════════════ -->
+<div id="modalEditForum" class="re-modal">
+    <div class="re-modal-box re-modal-box-sm p-0">
+        <div class="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
+            <h3 class="font-black text-indigo-900 text-base flex items-center gap-2">
+                <i class="fas fa-pen text-indigo-500"></i> Edit Forum Board
+            </h3>
+            <button onclick="closeModal('modalEditForum')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="p-5 space-y-4">
+            <input type="hidden" id="editForumId">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Forum Title *</label>
+                <input type="text" id="editForumTitle" maxlength="255" class="fi">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Content / Description</label>
+                <textarea id="editForumContent" rows="3" maxlength="2000" class="fi resize-none"></textarea>
+            </div>
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="editForumPinned" class="accent-indigo-500">
+                    <span class="text-sm font-bold text-slate-600">Pin this forum</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeModal('modalEditForum')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition">Cancel</button>
+                <button onclick="submitEditForum()"
+                    class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md">
+                    <i class="fas fa-save mr-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: CONFIRM (generic double-confirm)
+════════════════════════════════════════════════════ -->
+<div id="modalConfirmRE" class="re-modal">
+    <div class="re-modal-box re-modal-box-sm p-8 text-center">
+        <div id="reConfirmIcon" class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl"></div>
+        <h3 id="reConfirmTitle" class="font-black text-indigo-900 text-base mb-2"></h3>
+        <p  id="reConfirmDesc"  class="text-sm text-slate-500 mb-6 leading-relaxed"></p>
+        <div class="flex gap-3 justify-center">
+            <button onclick="closeModal('modalConfirmRE')"
+                class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition">Cancel</button>
+            <button id="reConfirmBtn"
+                class="px-5 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-90 transition shadow-md">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="reToast"><i id="reToastIcon" class="fas"></i> <span id="reToastMsg"></span></div>
+
+<!-- ════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════ -->
+<script>
+// ─── Sidebar ───────────────────────────────────────────
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    document.getElementById('sidebarOverlay').classList.toggle('hidden');
+}
+
+// ─── Tabs ──────────────────────────────────────────────
+function switchTab(id, btn) {
+    document.querySelectorAll('.re-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.re-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+}
+
+
+// ── Auto-activate tab from URL query param ──
+    // Usage: /admin/resources_engagement?tab=pillar2  (Forum Moderation)
+    (function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetTab = urlParams.get('tab');
+        if (targetTab) {
+            const targetPane = document.getElementById(targetTab);
+            // re-tab buttons use onclick="switchTab('pillar2',this)"
+            const targetBtn = document.querySelector(`[onclick="switchTab('${targetTab}',this)"]`);
+            if (targetPane && targetBtn) {
+                // Use the existing switchTab which handles .re-pane and .re-tab
+                switchTab(targetTab, targetBtn);
+                setTimeout(() => targetPane.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+            }
+        }
+    })();
+
+// ─── Accordion ─────────────────────────────────────────
+function toggleAccordion(btn) {
+    const body = btn.nextElementSibling;
+    body.classList.toggle('open');
+    btn.classList.toggle('open');
+}
+
+// ─── Forum replies drill-down ──────────────────────────
+function toggleForumReplies(fId) {
+    const el  = document.getElementById('forumReplies' + fId);
+    const ch  = document.getElementById('forumChevron' + fId);
+    if (!el) return;
+    el.classList.toggle('hidden');
+    ch && ch.classList.toggle('rotate-180');
+}
+
+// ─── Modals ─────────────────────────────────────────────
+function openModal(id) {
+    document.getElementById(id).classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    document.body.style.overflow = '';
+}
+document.querySelectorAll('.re-modal').forEach(o => {
+    o.addEventListener('click', function(e) { if (e.target === o) closeModal(o.id); });
+});
+
+// ─── Toast ──────────────────────────────────────────────
+function showToast(msg, type) {
+    type = type || 'info';
+    const t = document.getElementById('reToast');
+    const i = document.getElementById('reToastIcon');
+    document.getElementById('reToastMsg').textContent = msg;
+    var icons = { ok:'fa-check-circle', err:'fa-circle-xmark', warn:'fa-triangle-exclamation', info:'fa-circle-info' };
+    i.className = 'fas ' + (icons[type] || 'fa-circle-info');
+    t.className = 'show ' + type;
+    setTimeout(function() { t.className = ''; }, 3600);
+}
+
+// ─── Generic confirm ────────────────────────────────────
+function showConfirm(opts) {
+    document.getElementById('reConfirmIcon').className = 'w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl ' + (opts.iconBg || 'bg-red-50');
+    document.getElementById('reConfirmIcon').innerHTML = '<i class="' + opts.icon + ' ' + (opts.iconColor || 'text-red-500') + '"></i>';
+    document.getElementById('reConfirmTitle').textContent = opts.title || 'Confirm';
+    document.getElementById('reConfirmDesc').textContent  = opts.desc  || '';
+    var btn = document.getElementById('reConfirmBtn');
+    btn.textContent = opts.btnLabel || 'Confirm';
+    btn.className = 'px-5 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-90 transition shadow-md ' + (opts.btnColor || 'bg-red-600');
+    btn.onclick = opts.onConfirm;
+    openModal('modalConfirmRE');
+}
+
+// ─── Material type field toggle ──────────────────────────
+function toggleMatTypeFields() {
+    var type = document.getElementById('matType').value;
+    var isLink = type === 'link';
+    document.getElementById('matFileWrap').classList.toggle('hidden', isLink);
+    document.getElementById('matUrlWrap').classList.toggle('hidden', !isLink);
+}
+
+function showMatFileName(input) {
+    var lbl = document.getElementById('matFileLabel');
+    if (input.files && input.files[0]) {
+        lbl.textContent = 'Selected: ' + input.files[0].name;
+        lbl.classList.remove('hidden');
+    }
+}
+
+// ─── Material search filter ──────────────────────────────
+function filterMaterials() {
+    var q = document.getElementById('matSearch').value.toLowerCase().trim();
+    document.querySelectorAll('.mat-item').forEach(function(card) {
+        card.style.display = (!q || card.dataset.search.includes(q)) ? '' : 'none';
+    });
+}
+
+// ─── Interaction log search ──────────────────────────────
+function filterInteractions() {
+    var q = document.getElementById('interactionSearch').value.toLowerCase().trim();
+    document.querySelectorAll('.interaction-row').forEach(function(row) {
+        row.style.display = (!q || row.dataset.search.includes(q)) ? '' : 'none';
+    });
+}
+
+// ══════════════════════════════════════════════════
+// SECTION 1: MATERIALS
+// ══════════════════════════════════════════════════
+
+async function submitAddMaterial() {
+    var title   = document.getElementById('matTitle').value.trim();
+    var topicId = document.getElementById('matTopicId').value;
+    var type    = document.getElementById('matType').value;
+    var locked  = document.getElementById('matLocked').checked ? 1 : 0;
+    var valid   = true;
+
+    if (!title)   { document.getElementById('errMatTitle').classList.remove('hidden'); valid = false; }
+    else            document.getElementById('errMatTitle').classList.add('hidden');
+    if (!topicId) { document.getElementById('errMatTopic').classList.remove('hidden'); valid = false; }
+    else            document.getElementById('errMatTopic').classList.add('hidden');
+
+    if (type === 'link') {
+        var url = document.getElementById('matUrl').value.trim();
+        if (!url) { document.getElementById('errMatUrl').classList.remove('hidden'); valid = false; }
+        else        document.getElementById('errMatUrl').classList.add('hidden');
+        if (!valid) return;
+
+        try {
+            var res  = await fetch('/admin/re/materials', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ title, topic_id:topicId, material_type:type, file_path_or_url:url, is_locked:locked }) });
+            var data = await res.json();
+            if (data.success) { showToast('Material created!', 'ok'); closeModal('modalAddMaterial'); setTimeout(function(){ location.reload(); }, 1200); }
+            else showToast(data.message || 'Failed.', 'err');
+        } catch(_) { showToast('Network error.', 'err'); }
+
+    } else {
+        var file = document.getElementById('matFile').files[0];
+        if (!file) { document.getElementById('errMatFile').classList.remove('hidden'); valid = false; }
+        else         document.getElementById('errMatFile').classList.add('hidden');
+        if (!valid) return;
+
+        var fd = new FormData();
+        fd.append('title', title);
+        fd.append('topic_id', topicId);
+        fd.append('material_type', type);
+        fd.append('is_locked', locked);
+        fd.append('material_file', file);
+
+        try {
+            var res  = await fetch('/admin/re/materials', { method:'POST', body:fd });
+            var data = await res.json();
+            if (data.success) { showToast('Material uploaded!', 'ok'); closeModal('modalAddMaterial'); setTimeout(function(){ location.reload(); }, 1200); }
+            else showToast(data.message || 'Failed.', 'err');
+        } catch(_) { showToast('Network error.', 'err'); }
+    }
+}
+
+function openEditMaterial(m) {
+    document.getElementById('editMatId').value      = m.material_id;
+    document.getElementById('editMatTitle').value   = m.title || '';
+    document.getElementById('editMatTopicId').value = m.topic_id || '';
+    document.getElementById('editMatLocked').checked = !!m.is_locked;
+    openModal('modalEditMaterial');
+}
+
+async function submitEditMaterial() {
+    var id      = document.getElementById('editMatId').value;
+    var title   = document.getElementById('editMatTitle').value.trim();
+    var topicId = document.getElementById('editMatTopicId').value;
+    var locked  = document.getElementById('editMatLocked').checked ? 1 : 0;
+    if (!title) { showToast('Title is required.', 'warn'); return; }
+
+    try {
+        var res  = await fetch('/admin/re/materials/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ title, topic_id:topicId, is_locked:locked }) });
+        var data = await res.json();
+        if (data.success) { showToast('Material updated!', 'ok'); closeModal('modalEditMaterial'); setTimeout(function(){ location.reload(); }, 1200); }
+        else showToast(data.message || 'Failed.', 'err');
+    } catch(_) { showToast('Network error.', 'err'); }
+}
+
+function toggleMatLock(id, currentLocked) {
+    var newVal = currentLocked ? 0 : 1;
+    var label  = currentLocked ? 'Unlock' : 'Lock';
+    showConfirm({
+        icon:'fas fa-lock', iconBg: currentLocked ? 'bg-emerald-50' : 'bg-amber-50',
+        iconColor: currentLocked ? 'text-emerald-500' : 'text-amber-500',
+        title: label + ' this material?',
+        desc : currentLocked ? 'Students will be able to access this material.' : 'Students will no longer see this material.',
+        btnLabel: label, btnColor: currentLocked ? 'bg-emerald-500' : 'bg-amber-500',
+        onConfirm: async function() {
+            closeModal('modalConfirmRE');
+            try {
+                var res  = await fetch('/admin/re/materials/' + id + '/toggle-lock', { method:'POST' });
+                var data = await res.json();
+                if (data.success) { showToast('Material ' + label.toLowerCase() + 'ed.', 'ok'); setTimeout(function(){ location.reload(); }, 1000); }
+                else showToast(data.message || 'Failed.', 'err');
+            } catch(_) { showToast('Network error.', 'err'); }
+        }
+    });
+}
+
+function confirmDeleteMaterial(id, name) {
+    showConfirm({
+        icon:'fas fa-trash', iconBg:'bg-red-50', iconColor:'text-red-500',
+        title: 'Delete "' + name + '"?',
+        desc : 'This permanently removes the file from the server and database. This cannot be undone.',
+        btnLabel:'Delete', btnColor:'bg-red-600',
+        onConfirm: async function() {
+            closeModal('modalConfirmRE');
+            try {
+                var res  = await fetch('/admin/re/materials/' + id, { method:'DELETE' });
+                var data = await res.json();
+                if (data.success) { showToast('Material deleted.', 'ok'); setTimeout(function(){ location.reload(); }, 1200); }
+                else showToast(data.message || 'Failed.', 'err');
+            } catch(_) { showToast('Network error.', 'err'); }
+        }
+    });
+}
+
+// ══════════════════════════════════════════════════
+// SECTION 2: FORUMS
+// ══════════════════════════════════════════════════
+
+async function submitAddForum() {
+    var title   = document.getElementById('forumTitle').value.trim();
+    var topicId = document.getElementById('forumTopicId').value;
+    var content = document.getElementById('forumContent').value.trim();
+    var pinned  = document.getElementById('forumPinned').checked ? 1 : 0;
+    var valid   = true;
+
+    if (!title)   { document.getElementById('errForumTitle').classList.remove('hidden'); valid = false; }
+    else            document.getElementById('errForumTitle').classList.add('hidden');
+    if (!topicId) { document.getElementById('errForumTopic').classList.remove('hidden'); valid = false; }
+    else            document.getElementById('errForumTopic').classList.add('hidden');
+    if (!valid) return;
+
+    try {
+        var res  = await fetch('/admin/re/forums', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ title, topic_id:topicId, forum_content:content, is_pinned:pinned }) });
+        var data = await res.json();
+        if (data.success) { showToast('Forum board created!', 'ok'); closeModal('modalAddForum'); setTimeout(function(){ location.reload(); }, 1200); }
+        else showToast(data.message || 'Failed.', 'err');
+    } catch(_) { showToast('Network error.', 'err'); }
+}
+
+function openEditForum(f) {
+    document.getElementById('editForumId').value      = f.forum_id;
+    document.getElementById('editForumTitle').value   = f.title || '';
+    document.getElementById('editForumContent').value = f.forum_content || '';
+    document.getElementById('editForumPinned').checked = !!f.is_pinned;
+    openModal('modalEditForum');
+}
+
+async function submitEditForum() {
+    var id      = document.getElementById('editForumId').value;
+    var title   = document.getElementById('editForumTitle').value.trim();
+    var content = document.getElementById('editForumContent').value.trim();
+    var pinned  = document.getElementById('editForumPinned').checked ? 1 : 0;
+    if (!title) { showToast('Title is required.', 'warn'); return; }
+
+    try {
+        var res  = await fetch('/admin/re/forums/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ title, forum_content:content, is_pinned:pinned }) });
+        var data = await res.json();
+        if (data.success) { showToast('Forum updated!', 'ok'); closeModal('modalEditForum'); setTimeout(function(){ location.reload(); }, 1200); }
+        else showToast(data.message || 'Failed.', 'err');
+    } catch(_) { showToast('Network error.', 'err'); }
+}
+
+function confirmDeleteForum(id, name) {
+    showConfirm({
+        icon:'fas fa-trash', iconBg:'bg-red-50', iconColor:'text-red-500',
+        title: 'Delete forum "' + name + '"?',
+        desc : 'All replies in this forum will also be deleted. This cannot be undone.',
+        btnLabel:'Delete Forum', btnColor:'bg-red-600',
+        onConfirm: async function() {
+            closeModal('modalConfirmRE');
+            try {
+                var res  = await fetch('/admin/re/forums/' + id, { method:'DELETE' });
+                var data = await res.json();
+                if (data.success) { showToast('Forum deleted.', 'ok'); setTimeout(function(){ location.reload(); }, 1200); }
+                else showToast(data.message || 'Failed.', 'err');
+            } catch(_) { showToast('Network error.', 'err'); }
+        }
+    });
+}
+
+function confirmDeleteReply(replyId, forumId) {
+    showConfirm({
+        icon:'fas fa-trash', iconBg:'bg-red-50', iconColor:'text-red-500',
+        title: 'Delete this reply?',
+        desc : 'This reply and all its child replies will be permanently removed.',
+        btnLabel:'Delete Reply', btnColor:'bg-red-600',
+        onConfirm: async function() {
+            closeModal('modalConfirmRE');
+            try {
+                var res  = await fetch('/admin/re/replies/' + replyId, { method:'DELETE' });
+                var data = await res.json();
+                if (data.success) { showToast('Reply deleted.', 'ok'); setTimeout(function(){ location.reload(); }, 1200); }
+                else showToast(data.message || 'Failed.', 'err');
+            } catch(_) { showToast('Network error.', 'err'); }
+        }
+    });
+}
+</script>
+<!-- ═══════════════════════════════════════════════════════
+     NOTIFICATION PANEL — Reusable across all admin pages
+     Fetches from GET /admin/notifications on open.
+═══════════════════════════════════════════════════════ -->
+
+<!-- Backdrop -->
+<div id="notifBackdrop" class="fixed inset-0 z-[998] hidden" onclick="closeNotifPanel()"></div>
+
+<!-- Slide-in Panel -->
+<div id="notifPanel"
+     class="fixed top-0 right-0 h-full w-full max-w-sm z-[999] flex flex-col
+            bg-white border-l border-cyan-100 shadow-2xl
+            transform translate-x-full transition-transform duration-300 ease-in-out">
+
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-cyan-100 bg-gradient-to-r from-indigo-950 to-indigo-900 flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                <i class="fas fa-bell text-cyan-400"></i>
+            </div>
+            <div>
+                <p class="text-sm font-black text-white tracking-tight">Notifications</p>
+                <p class="text-[10px] text-indigo-400 font-semibold" id="notifSubtitle">Loading…</p>
+            </div>
+        </div>
+        <button onclick="closeNotifPanel()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+            <i class="fas fa-times text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="flex gap-0 border-b border-cyan-100 overflow-x-auto flex-shrink-0 bg-slate-50" id="notifTabs">
+        <button class="notif-tab active px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-cyan-500 text-cyan-600 transition" data-tab="all">All</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="alerts">Alerts</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="activity">Activity</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="live">Live</button>
+    </div>
+
+    <!-- Scrollable Body -->
+    <div id="notifBody" class="flex-1 overflow-y-auto p-4 space-y-3" style="scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent;">
+        <!-- Skeleton loader -->
+        <div id="notifSkeleton" class="space-y-3">
+            <% for(let i=0;i<5;i++) { %>
+            <div class="animate-pulse flex gap-3 items-start">
+                <div class="w-8 h-8 rounded-lg bg-slate-200 flex-shrink-0"></div>
+                <div class="flex-1 space-y-1.5">
+                    <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <!-- Actual content injected by JS -->
+        <div id="notifContent" class="hidden space-y-3"></div>
+    </div>
+
+    <!-- Panel Footer -->
+    <div class="px-5 py-3 border-t border-cyan-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
+        <p class="text-[10px] text-slate-400 font-semibold">Auto-refreshes every 60s</p>
+        <button onclick="loadNotifications()" class="text-[11px] font-black text-cyan-600 hover:text-cyan-800 flex items-center gap-1 transition">
+            <i class="fas fa-rotate-right text-[10px]"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<style>
+    .notif-tab.active { border-bottom-color: #06b6d4 !important; color: #0891b2 !important; }
+    .notif-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; transition: border-color 0.15s, box-shadow 0.15s; }
+    .notif-item:hover { border-color: #06b6d4; box-shadow: 0 4px 12px rgba(6,182,212,0.08); }
+    .notif-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+    .notif-title { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.35; }
+    .notif-sub { font-size: 10.5px; color: #64748b; margin-top: 1px; }
+    .notif-time { font-size: 10px; color: #94a3b8; white-space: nowrap; margin-left: auto; padding-left: 6px; flex-shrink: 0; }
+    .notif-section-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; padding: 4px 0 6px; }
+    .notif-link { font-size: 10.5px; color: #06b6d4; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .notif-link:hover { color: #0891b2; }
+</style>
+
+<script>
+(function() {
+    let _notifData   = null;
+    let _activeTab   = 'all';
+    let _refreshTimer = null;
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return '';
+        const diff = (Date.now() - new Date(dateStr)) / 1000;
+        if (diff < 60)   return 'just now';
+        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+        return Math.floor(diff/86400) + 'd ago';
+    }
+
+    function fmtDate(dateStr) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    window.toggleNotifPanel = function() {
+        const panel    = document.getElementById('notifPanel');
+        const backdrop = document.getElementById('notifBackdrop');
+        const isOpen   = !panel.classList.contains('translate-x-full');
+        if (isOpen) { closeNotifPanel(); return; }
+        panel.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        loadNotifications();
+        _refreshTimer = setInterval(loadNotifications, 60000);
+    };
+
+    window.closeNotifPanel = function() {
+        document.getElementById('notifPanel').classList.add('translate-x-full');
+        document.getElementById('notifBackdrop').classList.add('hidden');
+        document.body.style.overflow = '';
+        clearInterval(_refreshTimer);
+    };
+
+    window.loadNotifications = async function() {
+        document.getElementById('notifSkeleton').classList.remove('hidden');
+        document.getElementById('notifContent').classList.add('hidden');
+        try {
+            const res  = await fetch('/admin/notifications');
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            _notifData = data;
+            updateBell(data.total);
+            renderTab(_activeTab);
+        } catch(e) {
+            document.getElementById('notifContent').innerHTML =
+                '<div class="py-10 text-center text-slate-400 text-xs">Failed to load notifications.</div>';
+            document.getElementById('notifContent').classList.remove('hidden');
+            document.getElementById('notifSkeleton').classList.add('hidden');
+        }
+    };
+
+    function updateBell(count) {
+        const dot   = document.getElementById('notifDot');
+        const badge = document.getElementById('notifCount');
+        if (count > 0) {
+            dot.classList.remove('hidden');
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.classList.remove('hidden');
+        } else {
+            dot.classList.add('hidden');
+            badge.classList.add('hidden');
+        }
+        document.getElementById('notifSubtitle').textContent =
+            count > 0 ? count + ' item' + (count !== 1 ? 's' : '') + ' need attention' : 'All clear';
+    }
+
+    function renderTab(tab) {
+        _activeTab = tab;
+        const d = _notifData;
+        if (!d) return;
+
+        let html = '';
+
+        // ── ALL tab ──
+        if (tab === 'all' || tab === 'alerts') {
+            const alertItems = [
+                ...d.expiredInvites.map(i => ({
+                    icon: 'fas fa-envelope-circle-check', iconBg: 'bg-rose-50', iconColor: 'text-rose-500',
+                    title: 'Expired Invitation',
+                    sub: i.email + ' · ' + (i.role || 'Unknown role'),
+                    time: fmtDate(i.expires_at),
+                    link: '/admin/user_access_control', linkLabel: 'View UAC'
+                })),
+                ...d.flaggedStudents.map(s => ({
+                    icon: 'fas fa-flag', iconBg: 'bg-amber-50', iconColor: 'text-amber-500',
+                    title: 'Flagged Student',
+                    sub: s.full_name + (s.assessment_name ? ' · ' + s.assessment_name : ''),
+                    time: '',
+                    link: '/admin/user_access_control', linkLabel: 'View Student'
+                })),
+                ...d.lockedPastDue.map(a => ({
+                    icon: 'fas fa-lock', iconBg: 'bg-orange-50', iconColor: 'text-orange-500',
+                    title: 'Assessment Past Due & Locked',
+                    sub: a.assessment_name + ' · ' + (a.subject_name || ''),
+                    time: fmtDate(a.due_date),
+                    link: '/admin/gaming_question_bank', linkLabel: 'Manage'
+                })),
+                ...d.overdueDeadlines.map(e => ({
+                    icon: 'fas fa-calendar-xmark', iconBg: 'bg-red-50', iconColor: 'text-red-500',
+                    title: 'Overdue Deadline',
+                    sub: e.event_title + (e.subject_name ? ' · ' + e.subject_name : ''),
+                    time: fmtDate(e.event_date),
+                    link: '/admin/academic_management', linkLabel: 'View'
+                })),
+                ...d.pendingQuestions.map(q => ({
+                    icon: 'fas fa-robot', iconBg: 'bg-indigo-50', iconColor: 'text-indigo-500',
+                    title: 'AI Question Awaiting Approval',
+                    sub: q.question_text.substring(0, 55) + (q.question_text.length > 55 ? '…' : ''),
+                    time: timeAgo(q.created_at),
+                    link: '/admin/gaming_question_bank', linkLabel: 'Review'
+                })),
+            ];
+
+            if (tab === 'alerts' || tab === 'all') {
+                if (alertItems.length === 0) {
+                    if (tab === 'alerts') html += emptyState('fa-shield-halved', 'No alerts', 'Everything looks good!');
+                } else {
+                    if (tab === 'all') html += '<div class="notif-section-label"><i class="fas fa-triangle-exclamation mr-1 text-rose-400"></i>Alerts Requiring Action</div>';
+                    alertItems.forEach(item => { html += notifItem(item); });
+                }
+            }
+        }
+
+        // ── ACTIVITY tab (pending & new users) ──
+        if (tab === 'activity' || tab === 'all') {
+            const actItems = [
+                ...d.pendingInvites.map(i => ({
+                    icon: 'fas fa-paper-plane', iconBg: 'bg-cyan-50', iconColor: 'text-cyan-500',
+                    title: 'Pending Invitation',
+                    sub: i.email + ' · ' + (i.role || ''),
+                    time: timeAgo(i.created_at),
+                    link: '/admin/user_access_control', linkLabel: 'View'
+                })),
+                ...d.newUsers.map(u => ({
+                    icon: 'fas fa-user-plus', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500',
+                    title: 'New ' + u.role + ' Registered',
+                    sub: u.full_name,
+                    time: timeAgo(u.created_at),
+                    link: '/admin/user_access_control', linkLabel: 'View Profile'
+                })),
+            ];
+
+            if (tab === 'activity') {
+                if (actItems.length === 0) html += emptyState('fa-clock-rotate-left', 'No recent activity', 'No new users or pending invites.');
+                else actItems.forEach(item => { html += notifItem(item); });
+            } else if (tab === 'all' && actItems.length > 0) {
+                html += '<div class="notif-section-label mt-2"><i class="fas fa-bolt mr-1 text-cyan-400"></i>Recent Activity</div>';
+                actItems.forEach(item => { html += notifItem(item); });
+            }
+        }
+
+        // ── LIVE tab (active sessions) ──
+        if (tab === 'live' || tab === 'all') {
+            if (tab === 'live') {
+                if (d.activeSessions.length === 0) {
+                    html += emptyState('fa-gamepad', 'No live sessions', 'No students are playing right now.');
+                } else {
+                    d.activeSessions.forEach(s => {
+                        html += notifItem({
+                            icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
+                            title: s.student_name + ' is playing',
+                            sub: s.assessment_name + ' · ' + s.player_mode,
+                            time: timeAgo(s.start_time),
+                            link: null
+                        });
+                    });
+                }
+            } else if (tab === 'all' && d.activeSessions.length > 0) {
+                html += '<div class="notif-section-label mt-2"><i class="fas fa-circle text-green-400 mr-1"></i>Live Sessions (' + d.activeSessions.length + ')</div>';
+                d.activeSessions.slice(0, 3).forEach(s => {
+                    html += notifItem({
+                        icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
+                        title: s.student_name + ' is playing',
+                        sub: s.assessment_name + ' · ' + s.player_mode,
+                        time: timeAgo(s.start_time),
+                        link: null
+                    });
+                });
+            }
+        }
+
+        if (tab === 'all' && html === '') {
+            html = emptyState('fa-bell-slash', 'All clear!', 'No alerts or pending items.');
+        }
+
+        document.getElementById('notifContent').innerHTML = html;
+        document.getElementById('notifContent').classList.remove('hidden');
+        document.getElementById('notifSkeleton').classList.add('hidden');
+    }
+
+    function notifItem(item) {
+        return '<div class="notif-item">' +
+            '<div class="notif-icon ' + item.iconBg + ' ' + item.iconColor + '">' +
+                '<i class="' + item.icon + '"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<p class="notif-title">' + item.title + '</p>' +
+                '<p class="notif-sub truncate">' + item.sub + '</p>' +
+                (item.link ? '<a href="' + item.link + '" class="notif-link">' + item.linkLabel + ' →</a>' : '') +
+            '</div>' +
+            (item.time ? '<span class="notif-time">' + item.time + '</span>' : '') +
+        '</div>';
+    }
+
+    function emptyState(icon, title, sub) {
+        return '<div class="py-10 text-center">' +
+            '<i class="fas ' + icon + ' text-3xl text-slate-200 mb-3 block"></i>' +
+            '<p class="text-sm font-bold text-slate-400">' + title + '</p>' +
+            '<p class="text-xs text-slate-300 mt-1">' + sub + '</p>' +
+        '</div>';
+    }
+
+    // Tab switching
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.notif-tab').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.notif-tab').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                renderTab(btn.dataset.tab);
+            });
+        });
+
+        // Auto-poll bell count every 2 minutes even when panel is closed
+        setInterval(async function() {
+            try {
+                const res  = await fetch('/admin/notifications');
+                const data = await res.json();
+                if (data.success) updateBell(data.total);
+            } catch(_) {}
+        }, 120000);
+    });
+})();
+</script>
+
+</body>
+</html>

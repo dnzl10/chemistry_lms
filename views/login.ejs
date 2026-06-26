@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Chemistry Arcade LMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Sora', sans-serif; box-sizing: border-box; }
+
+        body {
+            background-color: #000; /* Ito ang "blackish" na sisilip sa likod */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 32px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background Layers */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            opacity: 0.50; /* Mas mababa, mas madilim dahil mas lilitaw ang black body */
+            background-image: url('/assets/lab_bg_1.jpg');
+            background-size: cover;
+            background-position: center;
+            z-index: -2;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg,
+                rgba(10, 15, 40, 0.72) 0%,
+                rgba(20, 10, 50, 0.60) 50%,
+                rgba(10, 20, 50, 0.72) 100%);
+            backdrop-filter: blur(2px);
+            z-index: -1;
+        }
+
+        /* Card */
+        .login-card {
+            display: flex;
+            width: 100%;
+            max-width: 1020px;
+            min-height: 620px;
+            background: #fff;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 32px 100px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08);
+            animation: cardIn 0.65s cubic-bezier(.22,1,.36,1) both;
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(32px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Left Panel */
+        .left-panel {
+            flex: 0 0 460px;
+            padding: 52px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            animation: fadeLeft 0.7s 0.1s cubic-bezier(.22,1,.36,1) both;
+        }
+
+        @keyframes fadeLeft {
+            from { opacity: 0; transform: translateX(-18px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .welcome-heading { font-size: 30px; font-weight: 800; color: #1a1d2e; margin-bottom: 8px; }
+        .welcome-sub { font-size: 13.5px; color: #8a94a6; margin-bottom: 34px; }
+
+        .btn-google {
+            display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px;
+            border: 1.5px solid #e4e7f0; border-radius: 12px; font-size: 13.5px; font-weight: 600; color: #1a1d2e;
+            text-decoration: none; background: #fff; transition: all 0.18s;
+        }
+        .btn-google:hover { background: #f7f8fc; border-color: #c5cadc; box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+
+        .divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; color: #bcc3d4; font-size: 12px; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e8eaf2; }
+
+        .field-label { display: block; font-size: 12.5px; font-weight: 600; color: #4a5168; margin-bottom: 7px; }
+        .field-input {
+            width: 100%; padding: 13px 16px; border: 1.5px solid #e4e7f0; border-radius: 12px;
+            font-size: 13.5px; color: #1a1d2e; outline: none; transition: all 0.18s;
+        }
+        .field-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3.5px rgba(99,102,241,0.12); }
+
+        .pw-wrap { position: relative; }
+        .pw-toggle { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #bcc3d4; border:none; background:none; cursor:pointer; }
+
+        .btn-submit {
+            width: 100%; padding: 14px; background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%);
+            color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 6px 22px rgba(99,102,241,0.38); transition: all 0.15s;
+        }
+        .btn-submit:hover { transform: translateY(-1px); filter: brightness(1.06); }
+
+        /* Right Panel & Dynamic Content */
+        .right-panel {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #0a0f28;
+            border-radius: 0 28px 28px 0;
+        }
+
+        .slide-container {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .slide-container.active {
+            opacity: 1;
+            z-index: 2;
+        }
+
+        .right-photo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .right-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(10,15,40,0.1) 0%, rgba(10,15,40,0.85) 100%);
+            z-index: 1;
+        }
+
+        .testimonial-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(255,255,255,0.13);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.26);
+            border-radius: 20px;
+            padding: 22px 24px;
+            margin: 0 24px 28px;
+            width: calc(100% - 48px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+        }
+
+        .testimonial-text { font-size: 12.5px; color: #fff; line-height: 1.65; font-weight: 500; margin-bottom: 14px; }
+        .reviewer { display: flex; align-items: center; gap: 10px; }
+        .reviewer-avatar-placeholder {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #06b6d4, #6366f1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; color: #fff; border: 1.5px solid rgba(255,255,255,0.3);
+        }
+        .reviewer-name { font-size: 13px; font-weight: 700; color: #fff; }
+        .reviewer-role { font-size: 11px; color: rgba(255,255,255,0.65); }
+        .star { color: #fbbf24; font-size: 12px; }
+
+        @media (max-width: 760px) {
+            .right-panel { display: none; }
+            .left-panel { flex: 1; padding: 40px 28px; }
+            .login-card { max-width: 480px; }
+        }
+
+        .reviewer-avatar {
+            width: 50px;           /* Adjust size as needed */
+            height: 50px;          /* Must be same as width */
+            border-radius: 50%;    /* This makes it a circle */
+            object-fit: cover;     /* Prevents stretching if image isn't square */
+            display: block;
+        }
+
+        /* Optional: Center the image inside the placeholder */
+        .reviewer-avatar-placeholder {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            overflow: hidden;      /* Clips anything outside the circle */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <!-- LEFT PANEL -->
+        <div class="left-panel">
+            <div class="logo-wrap flex items-center gap-2 mb-8">
+                <img src="/assets/logo.png" alt="Logo" class="w-14 h-16 object-contain">
+                <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                    Elem<span class="text-indigo-950">enta</span>
+                </h1>
+            </div>
+
+            <h1 class="welcome-heading">Welcome Back 👋</h1>
+            <p class="welcome-sub">Sign in to continue managing your projects with ease.</p>
+
+            <a href="/auth/google" class="btn-google mb-4">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                Login with Google
+            </a>
+
+            <div class="divider">Or</div>
+
+            <form action="/login" method="POST" class="flex flex-col gap-4">
+                <div>
+                    <label class="field-label">Gmail Address</label>
+                    <input type="email" name="email" required placeholder="Enter your email" class="field-input">
+                </div>
+                <div>
+                    <label class="field-label">Password</label>
+                    <div class="pw-wrap">
+                        <input type="password" id="pw-field" name="password" required placeholder="Enter password" class="field-input">
+                        <button type="button" class="pw-toggle" onclick="togglePw()">
+                            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit mt-2">Login to System</button>
+            </form>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="right-panel" id="slides-wrapper">
+            <!-- JavaScript will inject slides here -->
+        </div>
+    </div>
+
+    <script>
+        // Password Toggle Logic
+        function togglePw() {
+            const field = document.getElementById('pw-field');
+            const icon = document.getElementById('eye-icon');
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+            } else {
+                field.type = 'password';
+                icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+            }
+        }
+
+        // Dynamic Right Panel Logic
+        const slidesData = [
+            {
+                img: '/assets/lab_bg_2.jpg',
+                text: "The elements, if arranged according to their atomic weights, exhibit an apparent periodicity of properties.",
+                name: "Dmitri Mendeleev",
+                role: "Father of the Periodic Table",
+                initial: "/assets/profile_1_login.jpg"
+            },
+            {
+                img: '/assets/lab_bg_3.jpg',
+                text: "Nothing in life is to be feared, it is only to be understood. Now is the time to understand more.",
+                name: "Marie Curie",
+                role: "Nobel Laureate in Physics & Chemistry",
+                initial: "/assets/profile_2_login.jpg"
+            },
+            {
+                img: '/assets/lab_bg_4.jpg',
+                text: "Every aspect of the world today, even politics and international relations, is affected by chemistry.",
+                name: "Linus Pauling",
+                role: "Quantum Chemist & Activist",
+                initial: "/assets/profile_3_login.jpg"
+            }
+        ];
+
+        let currentSlide = 0;
+        const wrapper = document.getElementById('slides-wrapper');
+
+        function initSlides() {
+            // Create all slides upfront for smooth transitions
+            slidesData.forEach((data, index) => {
+                const slideDiv = document.createElement('div');
+                slideDiv.className = `slide-container ${index === 0 ? 'active' : ''}`;
+                slideDiv.innerHTML = `
+                    <img src="${data.img}" alt="" class="right-photo">
+                    <div class="right-overlay"></div>
+                    <div class="testimonial-card">
+                        <p class="testimonial-text">"${data.text}"</p>
+                        <div class="reviewer">
+                            <div class="reviewer-avatar-placeholder">
+                                <img src="${data.initial}" alt="Profile Picture" class="reviewer-avatar">
+                            </div>
+                            <div>
+                                <div class="reviewer-name">${data.name}</div>
+                                <div class="reviewer-role">${data.role}</div>
+                            </div>
+                            <div class="stars ml-auto flex gap-1">
+                                <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                wrapper.appendChild(slideDiv);
+            });
+        }
+
+        function rotateSlides() {
+            const slides = document.querySelectorAll('.slide-container');
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % slides.length;
+            slides[currentSlide].classList.add('active');
+        }
+
+        // Run
+        initSlides();
+        setInterval(rotateSlides, 5000); // 5 seconds
+    </script>
+</body>
+</html>

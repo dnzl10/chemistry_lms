@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission Briefing | Chemistry Arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* ── RESET ────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+
+        /* ── CSS VARS ─────────────────────────────────────────── */
+        :root {
+            --c1:    #00ffe0;
+            --c2:    #0ea5e9;
+            --c3:    #a855f7;
+            --c-exp: #facc15;
+            --bg:    #050810;
+            --bg2:   #080d1a;
+            --panel: rgba(8,13,26,0.88);
+            --border: rgba(0,255,224,0.18);
+            --text:  #e2e8f0;
+            --text2: #64748b;
+            --r: 20px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* ── BACKGROUND GRID ──────────────────────────────────── */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,255,224,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,224,0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-glow {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-glow::before {
+            content: '';
+            position: absolute;
+            width: 600px; height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,255,224,0.07) 0%, transparent 70%);
+            top: -200px; left: -200px;
+        }
+        .bg-glow::after {
+            content: '';
+            position: absolute;
+            width: 500px; height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 70%);
+            bottom: -150px; right: -100px;
+        }
+
+        /* ── FLOATING ICONS ───────────────────────────────────── */
+        .float-icon {
+            position: fixed;
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 0;
+            font-size: 14rem;
+            color: var(--c1);
+        }
+        .float-icon.fi-1 { top: -4rem; left: -4rem; animation: floatSpin 22s linear infinite; }
+        .float-icon.fi-2 { bottom: -3rem; right: -3rem; font-size: 12rem; color: var(--c2); animation: floatSpin 18s linear infinite reverse; }
+        .float-icon.fi-3 { top: 30%; right: -2rem; font-size: 9rem; color: var(--c3); animation: floatDrift 6s ease-in-out infinite; }
+        @keyframes floatSpin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes floatDrift { 0%,100%{ transform: translateY(0) rotate(10deg); } 50%{ transform: translateY(-20px) rotate(10deg); } }
+
+        /* ── MAIN CARD ────────────────────────────────────────── */
+        .card {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 860px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 32px;
+            padding: 44px 48px 36px;
+            backdrop-filter: blur(24px);
+            box-shadow: 0 0 80px rgba(0,255,224,0.06), 0 32px 80px rgba(0,0,0,0.6);
+            animation: cardIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        @keyframes cardIn {
+            from { opacity:0; transform: scale(0.92) translateY(20px); }
+            to   { opacity:1; transform: scale(1)    translateY(0); }
+        }
+        /* Accent line top */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 10%; right: 10%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--c1), var(--c2), transparent);
+            border-radius: 0 0 2px 2px;
+        }
+
+        /* ── HEADER ───────────────────────────────────────────── */
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+        .header-titles .eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--c1);
+            margin-bottom: 4px;
+        }
+        .header-titles h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.4rem;
+            font-weight: 800;
+            line-height: 1;
+            color: #fff;
+        }
+        .header-titles h1 span {
+            background: linear-gradient(90deg, var(--c1), var(--c2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        /* Student tag */
+        .student-tag {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,255,224,0.06);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            padding: 6px 14px 6px 6px;
+        }
+        .student-avatar {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--c1);
+        }
+        .student-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            max-width: 130px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── GRID OF CARDS ────────────────────────────────────── */
+        .guide-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .guide-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: var(--r);
+            padding: 16px 18px;
+            transition: border-color 0.25s ease, background 0.25s ease;
+            animation: itemIn 0.5s ease both;
+        }
+        .guide-item:nth-child(1) { animation-delay: 0.1s; }
+        .guide-item:nth-child(2) { animation-delay: 0.18s; }
+        .guide-item:nth-child(3) { animation-delay: 0.26s; }
+        .guide-item:nth-child(4) { animation-delay: 0.34s; }
+        @keyframes itemIn {
+            from { opacity:0; transform:translateY(12px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .guide-item:hover {
+            border-color: rgba(0,255,224,0.22);
+            background: rgba(0,255,224,0.04);
+        }
+
+        .guide-num {
+            flex-shrink: 0;
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            background: rgba(0,255,224,0.10);
+            border: 1px solid rgba(0,255,224,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--c1);
+        }
+        .guide-body h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        .guide-body p {
+            font-size: 12.5px;
+            line-height: 1.6;
+            color: var(--text2);
+        }
+        .accent-cyan   { color: var(--c1);  font-weight: 700; }
+        .accent-blue   { color: var(--c2);  font-weight: 700; }
+        .accent-purple { color: var(--c3);  font-weight: 700; }
+        .accent-yellow { color: var(--c-exp); font-weight: 700; }
+
+        /* ── ASSESSMENT BADGE ROW ─────────────────────────────── */
+        .badge-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            animation: itemIn 0.5s 0.05s ease both;
+        }
+        .badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 99px;
+            border: 1px solid;
+        }
+        .badge-type  { border-color: rgba(0,255,224,0.35); color: var(--c1); background: rgba(0,255,224,0.07); }
+        .badge-items { border-color: rgba(14,165,233,0.35); color: var(--c2); background: rgba(14,165,233,0.07); }
+        .badge-timer { border-color: rgba(250,204,21,0.35); color: var(--c-exp); background: rgba(250,204,21,0.06); }
+
+        /* ── TTS STATUS BAR ───────────────────────────────────── */
+        #tts-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 99px;
+            background: rgba(0,255,224,0.06);
+            border: 1px solid rgba(0,255,224,0.18);
+            margin-bottom: 22px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+        #tts-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+        .tts-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--c1);
+            animation: ttsPulse 0.8s ease-in-out infinite;
+        }
+        @keyframes ttsPulse {
+            0%,100%{ transform: scale(1); opacity:1; }
+            50%    { transform: scale(1.8); opacity:0.3; }
+        }
+        #tts-bar span {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--c1);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        #tts-replay-btn {
+            margin-left: auto;
+            background: rgba(0,255,224,0.10);
+            border: 1px solid rgba(0,255,224,0.25);
+            color: var(--c1);
+            border-radius: 99px;
+            padding: 3px 12px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        #tts-replay-btn:hover { background: rgba(0,255,224,0.2); }
+
+        /* ── ENTER TO START SECTION ───────────────────────────── */
+        .start-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding-top: 24px;
+            animation: itemIn 0.5s 0.45s ease both;
+        }
+        .start-row {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+        .enter-key {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, var(--c1), var(--c2));
+            border-radius: 14px;
+            color: #000;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            box-shadow: 0 0 28px rgba(0,255,224,0.35);
+            animation: enterPulse 2s ease-in-out infinite;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.15s ease;
+        }
+        .enter-key:hover { transform: scale(1.04); }
+        .enter-key:active { transform: scale(0.97); }
+        @keyframes enterPulse {
+            0%,100%{ box-shadow: 0 0 28px rgba(0,255,224,0.35); }
+            50%    { box-shadow: 0 0 48px rgba(0,255,224,0.60); }
+        }
+        .start-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: 0.04em;
+        }
+        .start-note {
+            font-size: 10px;
+            color: var(--text2);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ── PROGRESS BAR (visual timer hint for TTS) ─────────── */
+        #tts-progress-wrap {
+            height: 2px;
+            background: rgba(0,255,224,0.08);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+            display: none;
+        }
+        #tts-progress-bar {
+            height: 100%;
+            background: var(--c1);
+            width: 100%;
+            border-radius: 2px;
+            transform-origin: left;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<i class="fas fa-atom float-icon fi-1"></i>
+<i class="fas fa-microscope float-icon fi-2"></i>
+<i class="fas fa-dna float-icon fi-3"></i>
+
+<%
+    /* ── Server-side computed values ─────────────────────────── */
+    var assessmentName = assessment.assessment_name || 'Assessment';
+    var assessmentType = assessment.assessment_type || '';
+    var timerType      = assessment.timer_type      || 'Global';
+    var durationMins   = assessment.duration_minutes || 30;
+    var timeLimit      = assessment.time_limit       || 30; /* per-item seconds */
+    var totalQ         = total || 0;
+    var easyCount      = dist.easy      || 0;
+    var avgCount       = dist.average   || 0;
+    var hardCount      = dist.difficult || 0;
+
+    /* Timer display string */
+    var timerDisplay = timerType === 'Global'
+        ? durationMins + ' minute' + (durationMins !== 1 ? 's' : '')
+        : timeLimit + ' second' + (timeLimit !== 1 ? 's' : '');
+    var timerSuffix = timerType === 'Global'
+        ? 'for the whole assessment'
+        : 'per question';
+
+    /* Student name */
+    var studentName = (user.first_name || '') + ' ' + (user.last_name || '');
+    var profilePic  = user.profile_pic ? '/uploads/' + user.profile_pic : '/uploads/default_avatar.png';
+%>
+
+<div class="card">
+
+    <!-- Header -->
+    <div class="card-header">
+        <div class="header-titles">
+            <div class="eyebrow">⚗ Mission Briefing</div>
+            <h1>How to <span>Play</span></h1>
+        </div>
+        <div class="student-tag">
+            <img class="student-avatar"
+                 src="<%= profilePic %>"
+                 onerror="this.src='/uploads/default_avatar.png'"
+                 alt="avatar">
+            <span class="student-name"><%= studentName.trim() %></span>
+        </div>
+    </div>
+
+    <!-- Assessment badges -->
+    <div class="badge-row">
+        <span class="badge badge-type"><%= assessmentType %></span>
+        <span class="badge badge-items"><%= totalQ %> Questions</span>
+        <span class="badge badge-timer">
+            <i class="fas fa-clock" style="margin-right:4px"></i>
+            <%= timerType === 'Global' ? 'Global Timer' : 'Per-Item Timer' %>
+        </span>
+    </div>
+
+    <!-- TTS bar -->
+    <div id="tts-bar">
+        <div class="tts-dot"></div>
+        <span id="tts-label">Reading briefing…</span>
+        <button id="tts-replay-btn" onclick="replayTTS()">
+            <i class="fas fa-redo" style="margin-right:4px"></i>Replay
+        </button>
+    </div>
+
+    <!-- Guide cards grid -->
+    <div class="guide-grid">
+
+        <!-- 1: Questions -->
+        <div class="guide-item">
+            <div class="guide-num">1</div>
+            <div class="guide-body">
+                <h3><%= totalQ %> Questions</h3>
+                <p>
+                    Mixed Difficulty:<br>
+                    <span class="accent-cyan"><%= easyCount %> Easy</span>,
+                    <span class="accent-blue"><%= avgCount %> Average</span>,
+                    <span class="accent-purple"><%= hardCount %> Difficult</span>.
+                </p>
+            </div>
+        </div>
+
+        <!-- 2: Timer (dynamic based on timer_type) -->
+        <div class="guide-item">
+            <div class="guide-num">2</div>
+            <div class="guide-body">
+                <h3>Rapid Response</h3>
+                <% if (timerType === 'Global') { %>
+                    <p>
+                        You only have
+                        <span class="accent-yellow"><%= durationMins %> minute<%= durationMins !== 1 ? 's' : '' %></span>
+                        for the whole assessment. Think fast!
+                    </p>
+                <% } else { %>
+                    <p>
+                        You only have
+                        <span class="accent-yellow"><%= timeLimit %> second<%= timeLimit !== 1 ? 's' : '' %></span>
+                        per question. Think fast!
+                    </p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- 3: Controls -->
+        <div class="guide-item">
+            <div class="guide-num">3</div>
+            <div class="guide-body">
+                <h3>Arcade Controls</h3>
+                <p>
+                    Use physical buttons
+                    <span class="accent-cyan" style="font-family:'JetBrains Mono',monospace">A, B, C, D</span>
+                    and Element buttons to select your answer. Press
+                    <span class="accent-cyan" style="font-family:'JetBrains Mono',monospace">Enter</span>
+                    to confirm. Always check the instruction for every question!
+                </p>
+            </div>
+        </div>
+
+        <!-- 4: EXP -->
+        <div class="guide-item">
+            <div class="guide-num">4</div>
+            <div class="guide-body">
+                <h3>EXP Rewards</h3>
+                <p>
+                    Correct answers grant
+                    <span class="accent-yellow">EXP</span>.
+                    Accumulate points to climb the
+                    <span class="accent-cyan">Leaderboard</span>!
+                </p>
+            </div>
+        </div>
+
+    </div><!-- /guide-grid -->
+
+    <!-- Start section -->
+    <div class="start-section">
+        <div class="start-row">
+            <button class="enter-key" onclick="startMission()">
+                PRESS Enter
+            </button>
+            <span class="start-label">To Start Mission</span>
+        </div>
+        <p class="start-note">System Note: Session will be recorded upon starting.</p>
+    </div>
+
+</div><!-- /card -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+'use strict';
+
+/* ── EJS-injected data ──────────────────────────────── */
+var TOKEN       = "<%= user.qr_code_token %>";
+var TIMER_TYPE  = "<%= timerType %>";
+var ASSESSMENT_NAME = "<%= assessmentName.replace(/"/g,'&quot;') %>";
+var TOTAL_Q     = <%= totalQ %>;
+var EASY_COUNT  = <%= easyCount %>;
+var AVG_COUNT   = <%= avgCount %>;
+var HARD_COUNT  = <%= hardCount %>;
+var DURATION    = <%= durationMins %>;
+var TIME_LIMIT  = <%= timeLimit %>;
+var STUDENT_NAME= "<%= studentName.trim().replace(/"/g,'&quot;') %>";
+
+/* ── TTS ────────────────────────────────────────────── */
+var ttsUtterance = null;
+var ttsBar       = document.getElementById('tts-bar');
+var ttsLabel     = document.getElementById('tts-label');
+var ttsPlaying   = false;
+
+function buildSpeechText() {
+    var lines = [];
+    lines.push('Mission Briefing for ' + STUDENT_NAME + '.');
+    lines.push('Assessment: ' + ASSESSMENT_NAME + '.');
+    lines.push('Number 1. ' + TOTAL_Q + ' questions. Mixed difficulty: ' +
+        EASY_COUNT + ' Easy, ' + AVG_COUNT + ' Average, ' + HARD_COUNT + ' Difficult.');
+
+    if (TIMER_TYPE === 'Global') {
+        lines.push('Number 2. Rapid Response. You only have ' +
+            DURATION + ' minute' + (DURATION !== 1 ? 's' : '') +
+            ' for the whole assessment. Think fast!');
+    } else {
+        lines.push('Number 2. Rapid Response. You only have ' +
+            TIME_LIMIT + ' second' + (TIME_LIMIT !== 1 ? 's' : '') +
+            ' per question. Think fast!');
+    }
+
+    lines.push('Number 3. Arcade Controls. Use physical buttons A, B, C, D and element buttons to select your answer. Press Enter to confirm. Always check the instruction for every question!');
+    lines.push('Number 4. EXP Rewards. Correct answers grant EXP. Accumulate points to climb the Leaderboard!');
+    lines.push('Press Enter on your physical controller to start the mission.');
+    return lines.join(' ');
+}
+
+function speakBriefing(onEnd) {
+    if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
+    speechSynthesis.cancel();
+
+    var text = buildSpeechText();
+    ttsUtterance       = new SpeechSynthesisUtterance(text);
+    ttsUtterance.lang  = 'en-US';
+    ttsUtterance.rate  = 0.92;
+    ttsUtterance.pitch = 1.0;
+    ttsUtterance.volume= 1.0;
+
+    ttsBar.classList.add('visible');
+    ttsLabel.textContent = 'Reading briefing…';
+    ttsPlaying = true;
+
+    ttsUtterance.onend = function() {
+        ttsLabel.textContent = 'Briefing complete — press Enter to start.';
+        ttsPlaying = false;
+        if (onEnd) onEnd();
+    };
+    ttsUtterance.onerror = function() {
+        ttsBar.classList.remove('visible');
+        ttsPlaying = false;
+        if (onEnd) onEnd();
+    };
+    speechSynthesis.speak(ttsUtterance);
+}
+
+function replayTTS() {
+    speakBriefing();
+}
+
+function stopTTS() {
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    ttsPlaying = false;
+}
+
+/* ── NAVIGATION ─────────────────────────────────────── */
+function startMission() {
+    stopTTS();
+    window.location.href = '/arcade/game/' + TOKEN;
+}
+
+/* ── KEYBOARD SUPPORT ───────────────────────────────── */
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        startMission();
+    }
+    if (e.key === 'Escape') {
+        stopTTS();
+        window.location.href = '/arcade/standby';
+    }
+    // R key = replay TTS
+    if (e.key === 'r' || e.key === 'R') {
+        replayTTS();
+    }
+});
+
+/* ── SOCKET.IO — ESP32 Enter button ─────────────────── */
+var socket = io();
+socket.emit('register-player', '<%= user.user_id %>');
+
+// autoSpeakDone prevents double-fire
+var autoSpeakDone = false;
+function tryAutoSpeak() {
+    if (autoSpeakDone) return;
+    autoSpeakDone = true;
+    speakBriefing();
+}
+
+socket.on('connect', function() {
+    // Re-register on reconnect
+    socket.emit('register-player', '<%= user.user_id %>');
+});
+
+socket.on('esp32-press', function(data) {
+    if (!data || !data.symbol) return;
+    var sym = String(data.symbol).toUpperCase().trim();
+
+    // Any physical button press = user gesture → unblock TTS autoplay
+    tryAutoSpeak();
+
+    if (sym === 'ENTER') { startMission(); return; }
+    if (sym === 'REPEAT' || sym === 'R') { replayTTS(); return; }
+});
+
+/* ── KEYBOARD / CLICK FALLBACK ──────────────────────── */
+document.addEventListener('click', tryAutoSpeak, { once: true });
+
+window.addEventListener('keydown', function autoKey(e) {
+    tryAutoSpeak();
+    if (e.key === 'Enter')  { e.preventDefault(); startMission(); }
+    if (e.key === 'Escape') { stopTTS(); window.location.href = '/arcade/standby'; }
+    if (e.key === 'r' || e.key === 'R') { replayTTS(); }
+    window.removeEventListener('keydown', autoKey);
+});
+
+/* ── DESKTOP FALLBACK: attempt on load ──────────────── */
+// Chromium (which runs most arcade kiosk browsers) allows speechSynthesis
+// on window.onload without a user gesture in many configurations.
+// The autoSpeakDone flag prevents double-fire if socket/click beats this.
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        if (!autoSpeakDone) {
+            try {
+                speakBriefing();
+                autoSpeakDone = true;
+            } catch(e) {
+                // Blocked by browser policy — TTS will fire on first interaction
+                console.warn('[TTS] Auto-speak blocked. Waiting for user gesture.');
+            }
+        }
+    }, 700);
+});
+</script>
+</body>
+</html>

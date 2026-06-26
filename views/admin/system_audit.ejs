@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Audit | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdfa;
+            background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-card { background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); }
+
+        /* Stat card hover */
+        .stat-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.10); }
+
+        /* Alert pulse */
+        .pulse-badge { animation: pulseRing 2s infinite; }
+        @keyframes pulseRing {
+            0%,100% { opacity:1; }
+            50%      { opacity:0.45; }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+        /* Scrollable table containers */
+        .table-scroll { max-height: 320px; overflow-y: auto; }
+        .table-scroll::-webkit-scrollbar { width: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius:2px; }
+
+        /* Nav active state */
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4, #6366f1) !important;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+
+        /* Section fade-in */
+        .fade-in { animation: fadeUp 0.35s ease both; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        /* Live dot */
+        .live-dot {
+            width:8px; height:8px; border-radius:50%;
+            background:#22c55e;
+            box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+            animation: livePulse 1.6s infinite;
+            display:inline-block;
+        }
+        @keyframes livePulse {
+            0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+            70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+
+        /* Log row hover */
+        .log-row { transition: background 0.12s; }
+        .log-row:hover { background: #f8faff; }
+
+        /* Audit section tab */
+        .audit-tab { cursor: pointer; transition: all 0.18s; border-bottom: 2px solid transparent; }
+        .audit-tab.active { border-bottom-color: #6366f1; color: #4f46e5; font-weight: 700; }
+
+        /* Role badge */
+        .role-admin   { background:#fef2f2; color:#dc2626; }
+        .role-teacher { background:#eff6ff; color:#2563eb; }
+        .role-student { background:#f0fdf4; color:#16a34a; }
+
+        /* Action badge */
+        .action-create { background:#d1fae5; color:#059669; }
+        .action-delete { background:#fee2e2; color:#dc2626; }
+        .action-edit   { background:#e0f2fe; color:#0369a1; }
+        .action-toggle { background:#fef9c3; color:#92400e; }
+        .action-export { background:#ede9fe; color:#6d28d9; }
+        .action-invite { background:#fce7f3; color:#be185d; }
+        .action-approve{ background:#d1fae5; color:#065f46; }
+        .action-reject { background:#fee2e2; color:#991b1b; }
+        .action-other  { background:#f1f5f9; color:#475569; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <!-- Overlay (mobile) -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()"
+         class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside id="sidebar" class="bg-indigo-950 text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-800/50">
+
+        <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+            <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+            <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                Elem<span class="text-white">enta</span>
+            </h1>
+            <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Admin Console</p>
+        </div>
+
+        <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Main Interface</p>
+                <div class="space-y-1">
+                    <a href="/admin/dashboard"
+                    class="flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white hover:bg-white/10 group">
+                        <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-bold tracking-tight text-sm">Main Dashboard</span>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Administrative</p>
+                <div class="space-y-1">
+                    <a href="/admin/user_access_control"
+                    class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-users w-5 text-sky-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">User & Access Control</span>
+                    </a>
+                    <a href="/admin/academic_management"
+                    class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-graduation-cap w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Academic Management</span>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Learning Assets</p>
+                <div class="space-y-1">
+                    <a href="/admin/gaming_question_bank"
+                    class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-gamepad w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Gaming & Q-Bank</span>
+                    </a>
+                    <a href="/admin/resources_engagement"
+                    class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-lightbulb w-5 text-lime-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Resources & Engagement</span>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">System Health</p>
+                <div class="space-y-1">
+                    <a href="/admin/reports_monitoring"
+                    class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-chart-line w-5 text-blue-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Reports & Monitoring</span>
+                    </a>
+                    <a href="/admin/system_audit"
+                    class="nav-active flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-fingerprint w-5 text-indigo-300 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">System Audit</span>
+                    </a>
+                </div>
+            </div>
+
+        </nav>
+
+        <div class="p-4 border-t border-indigo-800">
+            <a href="/logout"
+            class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+                <i class="fas fa-right-from-bracket w-5"></i> Log Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- ===================== MAIN CONTENT ===================== -->
+    <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- TOP HEADER -->
+        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">
+                        Welcome, Admin <%= user.last_name %>!
+                    </h2>
+                    <p class="text-xs text-slate-400 hidden sm:block">
+                        <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
+                        System operational &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 md:gap-6">
+                <!-- Notification bell -->
+                <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
+                    <i class="far fa-bell text-xl text-cyan-600"></i>
+                    <span id="notifDot" class="absolute top-2 right-2 flex h-2.5 w-2.5 hidden">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <span id="notifCount" class="absolute -top-0.5 -right-0.5 hidden bg-rose-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center"></span>
+                </div>
+
+                <!-- Admin profile -->
+                <div class="flex items-center gap-3 pl-4 border-l border-cyan-100">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-[10px] uppercase font-black text-rose-500 tracking-widest">Administrator</p>
+                    </div>
+                    <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
+                         class="w-10 h-10 rounded-xl object-cover ring-2 ring-rose-400 shadow-sm">
+                </div>
+            </div>
+        </header>
+
+        <!-- SCROLLABLE CONTENT -->
+        <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
+            <div class="p-4 md:p-8 flex-1 fade-in">
+
+                <!-- ══════════════════════════════════════════
+                     PAGE HEADER
+                ══════════════════════════════════════════ -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <div class="flex items-center gap-3 mb-1">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow">
+                                <i class="fas fa-fingerprint text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl font-black text-indigo-900 tracking-tight leading-none">System Audit</h1>
+                                <p class="text-xs text-slate-400 font-semibold mt-0.5">Full traceability of all admin &amp; user actions in the system</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Export button -->
+                    <a href="/admin/system_audit/export" target="_blank"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-black rounded-xl shadow hover:shadow-lg transition hover:opacity-90">
+                        <i class="fas fa-file-excel"></i> Export Audit Log
+                    </a>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 1 — KPI SNAPSHOT CARDS
+                ══════════════════════════════════════════ -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
+                    <!-- Total Log Entries -->
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-indigo-100 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                                <i class="fas fa-list-check text-indigo-500 text-base"></i>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-indigo-300">Total</span>
+                        </div>
+                        <p class="text-3xl font-black text-indigo-900"><%= auditStats.totalLogs.toLocaleString() %></p>
+                        <p class="text-xs text-slate-400 font-semibold mt-1">Log Entries</p>
+                    </div>
+
+                    <!-- Admin Actions -->
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-rose-100 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
+                                <i class="fas fa-user-shield text-rose-500 text-base"></i>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-rose-300">Admin</span>
+                        </div>
+                        <p class="text-3xl font-black text-rose-600"><%= auditStats.adminActions.toLocaleString() %></p>
+                        <p class="text-xs text-slate-400 font-semibold mt-1">Admin Actions</p>
+                    </div>
+
+                    <!-- Teacher Actions -->
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-sky-100 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center">
+                                <i class="fas fa-chalkboard-teacher text-sky-500 text-base"></i>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-sky-300">Teacher</span>
+                        </div>
+                        <p class="text-3xl font-black text-sky-600"><%= auditStats.teacherActions.toLocaleString() %></p>
+                        <p class="text-xs text-slate-400 font-semibold mt-1">Teacher Actions</p>
+                    </div>
+
+                    <!-- Student Actions -->
+                    <div class="stat-card glass-card rounded-2xl p-5 border border-emerald-100 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                <i class="fas fa-user-graduate text-emerald-500 text-base"></i>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-emerald-300">Student</span>
+                        </div>
+                        <p class="text-3xl font-black text-emerald-600"><%= auditStats.studentActions.toLocaleString() %></p>
+                        <p class="text-xs text-slate-400 font-semibold mt-1">Student Actions</p>
+                    </div>
+
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 2 — ACTIVITY CHART + TOP ACTORS
+                ══════════════════════════════════════════ -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+                    <!-- Activity Over Time Chart -->
+                    <div class="lg:col-span-2 glass-card rounded-2xl border border-indigo-100 shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-sm">Audit Activity — Last 14 Days</h3>
+                                <p class="text-[11px] text-slate-400 font-semibold">Number of log entries recorded per day</p>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-wider text-indigo-300 bg-indigo-50 px-2 py-1 rounded-lg">Bar Chart</span>
+                        </div>
+                        <div style="height:200px;">
+                            <canvas id="auditActivityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Top Most Active Actors -->
+                    <div class="glass-card rounded-2xl border border-violet-100 shadow-sm p-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i class="fas fa-trophy text-amber-400 text-sm"></i>
+                            <h3 class="font-black text-indigo-900 text-sm">Most Active Users</h3>
+                        </div>
+                        <div class="space-y-3 table-scroll custom-scrollbar">
+                            <% if (topActors && topActors.length > 0) { %>
+                                <% topActors.forEach((actor, i) => { %>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black
+                                        <%= i === 0 ? 'bg-amber-100 text-amber-600' : i === 1 ? 'bg-slate-100 text-slate-500' : i === 2 ? 'bg-orange-100 text-orange-500' : 'bg-indigo-50 text-indigo-400' %>">
+                                        <%= i + 1 %>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-indigo-900 truncate"><%= actor.actor_name || 'Unknown' %></p>
+                                        <p class="text-[10px] text-slate-400"><%= actor.actor_role %></p>
+                                    </div>
+                                    <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg"><%= actor.action_count %></span>
+                                </div>
+                                <% }) %>
+                            <% } else { %>
+                                <p class="text-xs text-slate-400 text-center py-6">No data available</p>
+                            <% } %>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 3 — ACTION BREAKDOWN CARDS
+                ══════════════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border border-slate-100 shadow-sm p-6 mb-8">
+                    <div class="flex items-center gap-2 mb-5">
+                        <i class="fas fa-layer-group text-indigo-400 text-sm"></i>
+                        <h3 class="font-black text-indigo-900 text-sm">Action Type Breakdown</h3>
+                        <span class="text-[10px] text-slate-400 font-semibold ml-1">— all-time frequency of each action</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        <% if (actionBreakdown && actionBreakdown.length > 0) { %>
+                            <% actionBreakdown.forEach(a => { %>
+                            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center hover:border-indigo-200 transition">
+                                <p class="text-xl font-black text-indigo-800"><%= a.cnt %></p>
+                                <p class="text-[10px] font-black text-slate-500 uppercase tracking-wide mt-1 truncate" title="<%= a.action %>"><%= a.action.replace(/_/g,' ') %></p>
+                            </div>
+                            <% }) %>
+                        <% } else { %>
+                            <p class="col-span-6 text-xs text-slate-400 text-center py-4">No action data found.</p>
+                        <% } %>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 4 — FILTERABLE FULL AUDIT LOG
+                ══════════════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border border-indigo-100 shadow-sm p-6 mb-8">
+
+                    <!-- Section header + filters -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-scroll text-indigo-400 text-sm"></i>
+                            <h3 class="font-black text-indigo-900 text-sm">Full Activity Log</h3>
+                            <span class="text-[10px] text-slate-400 font-semibold">(<%= auditStats.totalLogs.toLocaleString() %> entries)</span>
+                        </div>
+
+                        <!-- Filter controls -->
+                        <form method="GET" action="/admin/system_audit" class="flex flex-wrap gap-2 items-center">
+                            <!-- Search -->
+                            <div class="relative">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
+                                <input type="text" name="search" value="<%= filters.search || '' %>"
+                                       placeholder="Search description…"
+                                       class="pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-400 bg-slate-50 w-44">
+                            </div>
+                            <!-- Role filter -->
+                            <select name="role" class="text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400 bg-slate-50">
+                                <option value="">All Roles</option>
+                                <option value="Admin"   <%= filters.role === 'Admin'   ? 'selected' : '' %>>Admin</option>
+                                <option value="Teacher" <%= filters.role === 'Teacher' ? 'selected' : '' %>>Teacher</option>
+                                <option value="Student" <%= filters.role === 'Student' ? 'selected' : '' %>>Student</option>
+                            </select>
+                            <!-- Action filter -->
+                            <select name="action" class="text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400 bg-slate-50">
+                                <option value="">All Actions</option>
+                                <% if (actionBreakdown && actionBreakdown.length > 0) { %>
+                                    <% actionBreakdown.forEach(a => { %>
+                                    <option value="<%= a.action %>" <%= filters.action === a.action ? 'selected' : '' %>><%= a.action.replace(/_/g,' ') %></option>
+                                    <% }) %>
+                                <% } %>
+                            </select>
+                            <!-- Date from -->
+                            <input type="date" name="from" value="<%= filters.from || '' %>"
+                                   class="text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400 bg-slate-50">
+                            <!-- Date to -->
+                            <input type="date" name="to" value="<%= filters.to || '' %>"
+                                   class="text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400 bg-slate-50">
+                            <button type="submit"
+                                    class="px-4 py-2 bg-indigo-600 text-white text-xs font-black rounded-xl hover:bg-indigo-700 transition">
+                                <i class="fas fa-filter mr-1"></i>Filter
+                            </button>
+                            <a href="/admin/system_audit"
+                               class="px-3 py-2 bg-slate-100 text-slate-500 text-xs font-black rounded-xl hover:bg-slate-200 transition">
+                                <i class="fas fa-times"></i>
+                            </a>
+                        </form>
+                    </div>
+
+                    <!-- Log table -->
+                    <div class="table-scroll custom-scrollbar rounded-xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="bg-indigo-950 text-white sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase">#</th>
+                                    <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase">Actor</th>
+                                    <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase">Role</th>
+                                    <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase">Action</th>
+                                    <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase">Description</th>
+                                    <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase whitespace-nowrap">Date &amp; Time</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 bg-white">
+                                <% if (logs && logs.length > 0) { %>
+                                    <% logs.forEach(log => {
+                                        const actionClass =
+                                            /CREATE|GENERATE|UPLOAD|IMPORT|ENROLL|APPROVE|BULK_IMPORT/.test(log.action) ? 'action-create' :
+                                            /DELETE|REVOKE|REJECT/.test(log.action)                                   ? 'action-delete' :
+                                            /EDIT|UPDATE|RESET/.test(log.action)                                      ? 'action-edit'   :
+                                            /TOGGLE|ACTIVATE|LOCK/.test(log.action)                                   ? 'action-toggle' :
+                                            /EXPORT|GENERATE_TEST/.test(log.action)                                   ? 'action-export' :
+                                            /INVITE|SEND_INVITE|BULK_INVITE/.test(log.action)                         ? 'action-invite' :
+                                            /APPROVE/.test(log.action)                                                 ? 'action-approve': 'action-other';
+                                        const roleClass =
+                                            log.actor_role === 'Admin'   ? 'role-admin'   :
+                                            log.actor_role === 'Teacher' ? 'role-teacher' : 'role-student';
+                                    %>
+                                    <tr class="log-row">
+                                        <td class="px-4 py-3 text-slate-400 font-semibold"><%= log.log_id %></td>
+                                        <td class="px-4 py-3">
+                                            <div class="font-bold text-indigo-900 truncate max-w-[120px]" title="<%= log.actor_name %>">
+                                                <%= log.actor_name || '—' %>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black <%= roleClass %>">
+                                                <%= log.actor_role %>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-black whitespace-nowrap <%= actionClass %>">
+                                                <%= log.action.replace(/_/g, ' ') %>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-500 max-w-[280px] truncate" title="<%= log.description %>">
+                                            <%= log.description || '—' %>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-400 whitespace-nowrap font-semibold">
+                                            <%= new Date(log.created_at).toLocaleString('en-PH', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                <% } else { %>
+                                    <tr>
+                                        <td colspan="6" class="text-center py-12 text-slate-300">
+                                            <i class="fas fa-scroll text-4xl block mb-3"></i>
+                                            <p class="font-bold text-slate-400">No log entries match your filters.</p>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <% if (totalPages > 1) { %>
+                    <div class="flex items-center justify-between mt-4">
+                        <p class="text-[11px] text-slate-400 font-semibold">
+                            Showing page <strong><%= currentPage %></strong> of <strong><%= totalPages %></strong>
+                            &nbsp;·&nbsp; <%= auditStats.totalLogs.toLocaleString() %> total entries
+                        </p>
+                        <div class="flex gap-1">
+                            <% if (currentPage > 1) { %>
+                            <a href="/admin/system_audit?page=<%= currentPage - 1 %>&search=<%= filters.search || '' %>&role=<%= filters.role || '' %>&action=<%= filters.action || '' %>&from=<%= filters.from || '' %>&to=<%= filters.to || '' %>"
+                               class="px-3 py-1.5 text-xs font-black bg-slate-100 text-slate-500 rounded-lg hover:bg-indigo-100 transition">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            <% } %>
+                            <%
+                                const startP = Math.max(1, currentPage - 2);
+                                const endP   = Math.min(totalPages, currentPage + 2);
+                                for (let p = startP; p <= endP; p++) {
+                            %>
+                            <a href="/admin/system_audit?page=<%= p %>&search=<%= filters.search || '' %>&role=<%= filters.role || '' %>&action=<%= filters.action || '' %>&from=<%= filters.from || '' %>&to=<%= filters.to || '' %>"
+                               class="px-3 py-1.5 text-xs font-black rounded-lg transition <%= p === currentPage ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-500 hover:bg-indigo-100' %>">
+                                <%= p %>
+                            </a>
+                            <% } %>
+                            <% if (currentPage < totalPages) { %>
+                            <a href="/admin/system_audit?page=<%= currentPage + 1 %>&search=<%= filters.search || '' %>&role=<%= filters.role || '' %>&action=<%= filters.action || '' %>&from=<%= filters.from || '' %>&to=<%= filters.to || '' %>"
+                               class="px-3 py-1.5 text-xs font-black bg-slate-100 text-slate-500 rounded-lg hover:bg-indigo-100 transition">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% } %>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 5 — USER ACCOUNT HEALTH OVERVIEW
+                ══════════════════════════════════════════ -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+                    <!-- Pending & Expired Invitations -->
+                    <div class="glass-card rounded-2xl border border-rose-100 shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center">
+                                    <i class="fas fa-envelope-open-text text-rose-500 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-black text-indigo-900 text-sm">Invitation Health</h3>
+                                    <p class="text-[10px] text-slate-400 font-semibold">Pending, expired &amp; used invites</p>
+                                </div>
+                            </div>
+                            <a href="/admin/user_access_control" class="text-[10px] font-black text-cyan-600 hover:text-cyan-800 transition">
+                                Manage → 
+                            </a>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+                                <p class="text-2xl font-black text-amber-600"><%= inviteHealth.pending %></p>
+                                <p class="text-[10px] font-black text-amber-500 uppercase mt-1">Pending</p>
+                            </div>
+                            <div class="bg-rose-50 rounded-xl p-3 text-center border border-rose-100">
+                                <p class="text-2xl font-black text-rose-600"><%= inviteHealth.expired %></p>
+                                <p class="text-[10px] font-black text-rose-500 uppercase mt-1">Expired</p>
+                            </div>
+                            <div class="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
+                                <p class="text-2xl font-black text-emerald-600"><%= inviteHealth.used %></p>
+                                <p class="text-[10px] font-black text-emerald-500 uppercase mt-1">Used</p>
+                            </div>
+                        </div>
+                        <!-- Recent pending invitations list -->
+                        <div class="space-y-2 table-scroll custom-scrollbar">
+                            <% if (recentInvites && recentInvites.length > 0) { %>
+                                <% recentInvites.forEach(inv => { %>
+                                <div class="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center
+                                        <%= inv.is_used ? 'bg-emerald-50' : (new Date(inv.expires_at) < new Date() ? 'bg-rose-50' : 'bg-amber-50') %>">
+                                        <i class="fas <%= inv.is_used ? 'fa-check text-emerald-500' : (new Date(inv.expires_at) < new Date() ? 'fa-clock text-rose-400' : 'fa-paper-plane text-amber-400') %> text-xs"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-indigo-900 truncate"><%= inv.email %></p>
+                                        <p class="text-[10px] text-slate-400"><%= inv.role %> &nbsp;·&nbsp; Expires: <%= inv.expires_at ? new Date(inv.expires_at).toLocaleDateString('en-PH') : 'N/A' %></p>
+                                    </div>
+                                    <span class="text-[10px] font-black px-2 py-0.5 rounded-full
+                                        <%= inv.is_used ? 'bg-emerald-100 text-emerald-700' : (new Date(inv.expires_at) < new Date() ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600') %>">
+                                        <%= inv.is_used ? 'Used' : (new Date(inv.expires_at) < new Date() ? 'Expired' : 'Pending') %>
+                                    </span>
+                                </div>
+                                <% }) %>
+                            <% } else { %>
+                                <p class="text-xs text-slate-400 text-center py-4">No invitations found.</p>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Flagged Students -->
+                    <div class="glass-card rounded-2xl border border-amber-100 shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                                    <i class="fas fa-flag text-amber-500 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-black text-indigo-900 text-sm">Flagged Students</h3>
+                                    <p class="text-[10px] text-slate-400 font-semibold">Students with a pending flagged assessment</p>
+                                </div>
+                            </div>
+                            <span class="text-xs font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                                <%= flaggedStudents.length %> flagged
+                            </span>
+                        </div>
+                        <div class="space-y-2 table-scroll custom-scrollbar">
+                            <% if (flaggedStudents && flaggedStudents.length > 0) { %>
+                                <% flaggedStudents.forEach(s => { %>
+                                <div class="flex items-center gap-3 bg-amber-50/60 rounded-xl px-3 py-2.5 border border-amber-100">
+                                    <img src="/profile_uploads/<%= s.profile_pic || 'default_avatar.png' %>"
+                                         class="w-8 h-8 rounded-lg object-cover ring-2 ring-amber-200 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-indigo-900 truncate"><%= s.first_name %> <%= s.last_name %></p>
+                                        <p class="text-[10px] text-slate-400 truncate">
+                                            <i class="fas fa-gamepad mr-1 text-amber-400"></i><%= s.assessment_name || 'Unknown Assessment' %>
+                                        </p>
+                                    </div>
+                                    <div class="text-right flex-shrink-0">
+                                        <p class="text-[10px] font-black text-amber-600">Lv. <%= s.current_level %></p>
+                                        <p class="text-[10px] text-slate-400"><%= (s.total_exp || 0).toLocaleString() %> EXP</p>
+                                    </div>
+                                </div>
+                                <% }) %>
+                            <% } else { %>
+                                <div class="flex flex-col items-center justify-center py-8 text-center">
+                                    <i class="fas fa-shield-halved text-3xl text-emerald-200 mb-2"></i>
+                                    <p class="text-sm font-bold text-slate-400">No flagged students</p>
+                                    <p class="text-[11px] text-slate-300">All students are clear</p>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 6 — QUESTION BANK AUDIT
+                ══════════════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border border-indigo-100 shadow-sm p-6 mb-8">
+                    <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+                                <i class="fas fa-flask text-indigo-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-sm">Question Bank Status</h3>
+                                <p class="text-[10px] text-slate-400 font-semibold">Verification pipeline — Pending, Approved, Rejected</p>
+                            </div>
+                        </div>
+                        <a href="/admin/gaming_question_bank" class="text-[10px] font-black text-cyan-600 hover:text-cyan-800 transition">
+                            Review Queue →
+                        </a>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+                            <p class="text-2xl font-black text-indigo-800"><%= questionStats.total %></p>
+                            <p class="text-[10px] font-black text-slate-500 uppercase mt-1">Total Questions</p>
+                        </div>
+                        <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
+                            <p class="text-2xl font-black text-amber-600"><%= questionStats.pending %></p>
+                            <p class="text-[10px] font-black text-amber-500 uppercase mt-1">Pending Review</p>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-center">
+                            <p class="text-2xl font-black text-emerald-600"><%= questionStats.approved %></p>
+                            <p class="text-[10px] font-black text-emerald-500 uppercase mt-1">Approved</p>
+                        </div>
+                        <div class="bg-rose-50 border border-rose-100 rounded-xl p-4 text-center">
+                            <p class="text-2xl font-black text-rose-600"><%= questionStats.rejected %></p>
+                            <p class="text-[10px] font-black text-rose-500 uppercase mt-1">Rejected</p>
+                        </div>
+                    </div>
+
+                    <!-- Pending questions needing approval -->
+                    <% if (pendingQuestions && pendingQuestions.length > 0) { %>
+                    <p class="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-2">
+                        <i class="fas fa-clock mr-1"></i> Questions Awaiting Review
+                    </p>
+                    <div class="table-scroll custom-scrollbar rounded-xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="bg-slate-50 border-b border-slate-100">
+                                <tr>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-black uppercase text-slate-400">#</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-black uppercase text-slate-400">Question</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-black uppercase text-slate-400">Topic</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-black uppercase text-slate-400">Teacher</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-black uppercase text-slate-400">Difficulty</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-black uppercase text-slate-400">Type</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 bg-white">
+                                <% pendingQuestions.forEach(q => { %>
+                                <tr class="log-row">
+                                    <td class="px-4 py-2.5 text-slate-400 font-semibold"><%= q.question_id %></td>
+                                    <td class="px-4 py-2.5 text-indigo-900 font-semibold max-w-[220px] truncate" title="<%= q.question_text %>">
+                                        <%= q.question_text.length > 60 ? q.question_text.substring(0,60) + '…' : q.question_text %>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-slate-500"><%= q.topic_name || '—' %></td>
+                                    <td class="px-4 py-2.5 text-slate-500"><%= q.teacher_name || '—' %></td>
+                                    <td class="px-4 py-2.5">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                            <%= q.difficulty === 'Easy' ? 'bg-emerald-100 text-emerald-700' : q.difficulty === 'Average' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700' %>">
+                                            <%= q.difficulty %>
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-slate-500 text-[10px]"><%= q.input_mode.replace(/_/g,' ') %></td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 7 — ACTIVE SESSIONS MONITOR
+                ══════════════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border border-violet-100 shadow-sm p-6 mb-8">
+                    <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+                                <i class="fas fa-gamepad text-violet-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-sm">Live &amp; Recent Arcade Sessions</h3>
+                                <p class="text-[10px] text-slate-400 font-semibold">All active_sessions records — Ongoing &amp; Finished</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="live-dot"></span>
+                            <span class="text-[10px] font-black text-emerald-600"><%= sessionStats.ongoing %> live</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 mb-5">
+                        <div class="bg-violet-50 border border-violet-100 rounded-xl p-3 text-center">
+                            <p class="text-xl font-black text-violet-700"><%= sessionStats.total %></p>
+                            <p class="text-[10px] font-black text-violet-500 uppercase">Total Sessions</p>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
+                            <p class="text-xl font-black text-emerald-700"><%= sessionStats.ongoing %></p>
+                            <p class="text-[10px] font-black text-emerald-500 uppercase">Ongoing</p>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
+                            <p class="text-xl font-black text-slate-700"><%= sessionStats.finished %></p>
+                            <p class="text-[10px] font-black text-slate-500 uppercase">Finished</p>
+                        </div>
+                    </div>
+
+                    <div class="table-scroll custom-scrollbar rounded-xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="bg-violet-950 text-white sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Student</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Assessment</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Mode</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Progress</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Score</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Started</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 bg-white">
+                                <% if (activeSessions && activeSessions.length > 0) { %>
+                                    <% activeSessions.forEach(s => { %>
+                                    <tr class="log-row">
+                                        <td class="px-4 py-3 font-bold text-indigo-900"><%= s.student_name %></td>
+                                        <td class="px-4 py-3 text-slate-500 max-w-[160px] truncate" title="<%= s.assessment_name %>"><%= s.assessment_name %></td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                                <%= s.player_mode === 'Duel' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700' %>">
+                                                <%= s.player_mode %>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-500">Item <%= s.current_item_index %> / <%= s.total_items %></td>
+                                        <td class="px-4 py-3 font-black text-indigo-700"><%= s.accumulated_score %></td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                                <%= s.session_status === 'Ongoing' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500' %>">
+                                                <%= s.session_status %>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-400 whitespace-nowrap">
+                                            <%= new Date(s.start_time).toLocaleString('en-PH', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                <% } else { %>
+                                    <tr><td colspan="7" class="text-center py-8 text-slate-300">
+                                        <i class="fas fa-gamepad text-3xl block mb-2"></i>
+                                        <p class="font-bold text-slate-400">No arcade sessions recorded.</p>
+                                    </td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 8 — COMPETITIVE MATCH LOG
+                ══════════════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border border-amber-100 shadow-sm p-6 mb-8">
+                    <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                                <i class="fas fa-swords text-amber-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-sm">Competitive Match Log</h3>
+                                <p class="text-[10px] text-slate-400 font-semibold">All 1v1 duel records from competitive_matches</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-xl border border-amber-100">
+                            <%= matchStats.totalMatches %> total matches
+                        </span>
+                    </div>
+
+                    <div class="table-scroll custom-scrollbar rounded-xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="bg-amber-950 text-white sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Match #</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Player 1</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Player 2</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Score</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Winner</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Assessment</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 bg-white">
+                                <% if (competitiveMatches && competitiveMatches.length > 0) { %>
+                                    <% competitiveMatches.forEach(m => { %>
+                                    <tr class="log-row">
+                                        <td class="px-4 py-3 text-slate-400 font-semibold">#<%= m.match_id %></td>
+                                        <td class="px-4 py-3 font-bold text-indigo-900"><%= m.p1_name || '—' %></td>
+                                        <td class="px-4 py-3 font-bold text-indigo-900"><%= m.p2_name || '—' %></td>
+                                        <td class="px-4 py-3 font-black text-slate-600"><%= m.p1_score %> — <%= m.p2_score %></td>
+                                        <td class="px-4 py-3">
+                                            <% if (m.winner_name) { %>
+                                            <span class="flex items-center gap-1 text-amber-700 font-black">
+                                                <i class="fas fa-crown text-amber-400 text-[10px]"></i><%= m.winner_name %>
+                                            </span>
+                                            <% } else { %>
+                                            <span class="text-slate-400">—</span>
+                                            <% } %>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-500 max-w-[140px] truncate"><%= m.assessment_name || '—' %></td>
+                                        <td class="px-4 py-3 text-slate-400 whitespace-nowrap">
+                                            <%= new Date(m.match_date).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' }) %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                <% } else { %>
+                                    <tr><td colspan="7" class="text-center py-8 text-slate-300">
+                                        <i class="fas fa-swords text-3xl block mb-2"></i>
+                                        <p class="font-bold text-slate-400">No competitive matches recorded yet.</p>
+                                    </td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 9 — SCHOOL YEAR & CLASS OVERVIEW
+                ══════════════════════════════════════════ -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+                    <!-- School Years -->
+                    <div class="glass-card rounded-2xl border border-cyan-100 shadow-sm p-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <div class="w-8 h-8 rounded-xl bg-cyan-50 flex items-center justify-center">
+                                <i class="fas fa-calendar-alt text-cyan-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-sm">School Years</h3>
+                                <p class="text-[10px] text-slate-400 font-semibold">All SY records &amp; active status</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <% if (schoolYears && schoolYears.length > 0) { %>
+                                <% schoolYears.forEach(sy => { %>
+                                <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+                                    <div>
+                                        <p class="text-sm font-black text-indigo-900">SY <%= sy.sy_range %></p>
+                                        <p class="text-[10px] text-slate-400">Created: <%= new Date(sy.created_at).toLocaleDateString('en-PH') %></p>
+                                    </div>
+                                    <% if (sy.is_active) { %>
+                                    <span class="flex items-center gap-1.5 text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
+                                        <span class="live-dot w-1.5 h-1.5"></span> Active
+                                    </span>
+                                    <% } else { %>
+                                    <span class="text-[10px] font-black text-slate-400 bg-slate-100 px-3 py-1 rounded-full">Inactive</span>
+                                    <% } %>
+                                </div>
+                                <% }) %>
+                            <% } else { %>
+                                <p class="text-xs text-slate-400 text-center py-4">No school years configured.</p>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Classes Summary -->
+                    <div class="glass-card rounded-2xl border border-emerald-100 shadow-sm p-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <div class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                <i class="fas fa-school text-emerald-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-sm">Classes Overview</h3>
+                                <p class="text-[10px] text-slate-400 font-semibold">All classes with teacher &amp; enrollment counts</p>
+                            </div>
+                        </div>
+                        <div class="table-scroll custom-scrollbar space-y-2">
+                            <% if (classesSummary && classesSummary.length > 0) { %>
+                                <% classesSummary.forEach(cls => { %>
+                                <div class="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-users text-emerald-600 text-xs"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-indigo-900 truncate"><%= cls.class_name %></p>
+                                        <p class="text-[10px] text-slate-400 truncate">
+                                            <i class="fas fa-chalkboard-user mr-1"></i><%= cls.teacher_name || 'No Teacher' %>
+                                            &nbsp;·&nbsp; <i class="fas fa-book mr-1"></i><%= cls.subject_name || 'No Subject' %>
+                                        </p>
+                                    </div>
+                                    <div class="text-right flex-shrink-0">
+                                        <p class="text-sm font-black text-emerald-700"><%= cls.enrolled_count %></p>
+                                        <p class="text-[10px] text-slate-400">students</p>
+                                    </div>
+                                </div>
+                                <% }) %>
+                            <% } else { %>
+                                <p class="text-xs text-slate-400 text-center py-4">No classes found.</p>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 10 — LEARNING MATERIAL ACCESS LOG
+                ══════════════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border border-lime-100 shadow-sm p-6 mb-8">
+                    <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-lime-50 flex items-center justify-center">
+                                <i class="fas fa-file-lines text-lime-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-sm">Material Access Log</h3>
+                                <p class="text-[10px] text-slate-400 font-semibold">Recent student_material_interactions — viewed &amp; downloaded</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="text-center">
+                                <p class="text-lg font-black text-lime-700"><%= materialStats.totalViews %></p>
+                                <p class="text-[10px] font-black text-slate-400 uppercase">Views</p>
+                            </div>
+                            <div class="w-px bg-slate-100"></div>
+                            <div class="text-center">
+                                <p class="text-lg font-black text-indigo-700"><%= materialStats.totalDownloads %></p>
+                                <p class="text-[10px] font-black text-slate-400 uppercase">Downloads</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-scroll custom-scrollbar rounded-xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="bg-lime-900 text-white sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Student</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Material</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Type</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Action</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 bg-white">
+                                <% if (materialInteractions && materialInteractions.length > 0) { %>
+                                    <% materialInteractions.forEach(mi => { %>
+                                    <tr class="log-row">
+                                        <td class="px-4 py-2.5 font-bold text-indigo-900"><%= mi.student_name %></td>
+                                        <td class="px-4 py-2.5 text-slate-600 max-w-[160px] truncate" title="<%= mi.material_title %>"><%= mi.material_title %></td>
+                                        <td class="px-4 py-2.5">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-600">
+                                                <%= mi.material_type %>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2.5">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                                <%= mi.interaction_type === 'downloaded' ? 'bg-indigo-100 text-indigo-700' : 'bg-lime-100 text-lime-700' %>">
+                                                <i class="fas <%= mi.interaction_type === 'downloaded' ? 'fa-download' : 'fa-eye' %> mr-1"></i><%= mi.interaction_type %>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-slate-400 whitespace-nowrap">
+                                            <%= new Date(mi.interacted_at).toLocaleString('en-PH', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                <% } else { %>
+                                    <tr><td colspan="5" class="text-center py-8 text-slate-300">
+                                        <p class="font-bold text-slate-400">No material interactions logged.</p>
+                                    </td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════
+                     SECTION 11 — FORUM ACTIVITY AUDIT
+                ══════════════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border border-sky-100 shadow-sm p-6 mb-8">
+                    <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-sky-50 flex items-center justify-center">
+                                <i class="fas fa-comments text-sky-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-indigo-900 text-sm">Forum Activity</h3>
+                                <p class="text-[10px] text-slate-400 font-semibold">Recent forum replies &amp; engagement summary</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="text-center">
+                                <p class="text-lg font-black text-sky-700"><%= forumStats.totalTopics %></p>
+                                <p class="text-[10px] font-black text-slate-400 uppercase">Topics</p>
+                            </div>
+                            <div class="w-px bg-slate-100"></div>
+                            <div class="text-center">
+                                <p class="text-lg font-black text-indigo-700"><%= forumStats.totalReplies %></p>
+                                <p class="text-[10px] font-black text-slate-400 uppercase">Replies</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 table-scroll custom-scrollbar">
+                        <% if (forumStats.recentReplies && forumStats.recentReplies.length > 0) { %>
+                            <% forumStats.recentReplies.forEach(r => { %>
+                            <div class="flex items-start gap-3 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+                                <div class="w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-comment text-sky-500 text-xs"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-xs font-bold text-indigo-900"><%= r.user_name %></p>
+                                        <span class="text-[10px] text-slate-400">replied in</span>
+                                        <p class="text-[10px] font-bold text-sky-600 truncate max-w-[140px]"><%= r.forum_title %></p>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-0.5 truncate"><%= r.reply_content.substring(0, 80) %><%= r.reply_content.length > 80 ? '…' : '' %></p>
+                                </div>
+                                <p class="text-[10px] text-slate-400 whitespace-nowrap flex-shrink-0">
+                                    <%= new Date(r.created_at).toLocaleString('en-PH', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) %>
+                                </p>
+                            </div>
+                            <% }) %>
+                        <% } else { %>
+                            <p class="text-xs text-slate-400 text-center py-6">No forum replies recorded.</p>
+                        <% } %>
+                    </div>
+                </div>
+
+            </div><!-- end .p-4 -->
+
+            <!-- FOOTER -->
+            <footer class="bg-white border-t border-cyan-100 py-6 px-8 mt-auto w-full">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-2 max-w-[1600px] mx-auto">
+                    <p class="text-[11px] text-indigo-400 font-black uppercase tracking-tight">
+                        &copy; 2026 <span class="text-cyan-600">Chemistry Arcade</span> — Mabini College v2.5.0
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest">Support Lab</a>
+                        <a href="#" class="text-[11px] font-black text-indigo-300 hover:text-cyan-600 transition uppercase tracking-widest border-l pl-4 border-indigo-100">Atomic Logs</a>
+                    </div>
+                </div>
+            </footer>
+        </div><!-- end overflow-y-auto -->
+    </main>
+</div><!-- end flex wrapper -->
+
+<!-- ===================== SCRIPTS ===================== -->
+<script>
+    // Sidebar toggle
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
+
+    // ── Audit Activity Chart (14 days) ──
+    const auditCtx = document.getElementById('auditActivityChart').getContext('2d');
+    new Chart(auditCtx, {
+        type: 'bar',
+        data: {
+            labels: <%- JSON.stringify(activityChart.labels) %>,
+            datasets: [
+                {
+                    label: 'Admin',
+                    data: <%- JSON.stringify(activityChart.adminCounts) %>,
+                    backgroundColor: 'rgba(244,63,94,0.70)',
+                    borderColor: '#f43f5e',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                },
+                {
+                    label: 'Teacher',
+                    data: <%- JSON.stringify(activityChart.teacherCounts) %>,
+                    backgroundColor: 'rgba(6,182,212,0.70)',
+                    borderColor: '#06b6d4',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                },
+                {
+                    label: 'Student',
+                    data: <%- JSON.stringify(activityChart.studentCounts) %>,
+                    backgroundColor: 'rgba(34,197,94,0.70)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: { font: { family: 'Plus Jakarta Sans', size: 10, weight: '700' }, color: '#64748b', boxWidth: 10 }
+                },
+                tooltip: {
+                    backgroundColor: '#1e1b4b',
+                    titleColor: '#c7d2fe',
+                    bodyColor: '#e0e7ff',
+                    cornerRadius: 10,
+                    padding: 10,
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    grid: { display: false },
+                    ticks: { font: { family: 'Plus Jakarta Sans', weight: '700', size: 9 }, color: '#94a3b8' }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.04)' },
+                    ticks: {
+                        font: { family: 'Plus Jakarta Sans', size: 9 }, color: '#94a3b8',
+                        stepSize: 1,
+                        callback: (v) => Number.isInteger(v) ? v : ''
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     NOTIFICATION PANEL — Reusable across all admin pages
+═══════════════════════════════════════════════════════ -->
+
+<!-- Backdrop -->
+<div id="notifBackdrop" class="fixed inset-0 z-[998] hidden" onclick="closeNotifPanel()"></div>
+
+<!-- Slide-in Panel -->
+<div id="notifPanel"
+     class="fixed top-0 right-0 h-full w-full max-w-sm z-[999] flex flex-col
+            bg-white border-l border-cyan-100 shadow-2xl
+            transform translate-x-full transition-transform duration-300 ease-in-out">
+
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-cyan-100 bg-gradient-to-r from-indigo-950 to-indigo-900 flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                <i class="fas fa-bell text-cyan-400"></i>
+            </div>
+            <div>
+                <p class="text-sm font-black text-white tracking-tight">Notifications</p>
+                <p class="text-[10px] text-indigo-400 font-semibold" id="notifSubtitle">Loading…</p>
+            </div>
+        </div>
+        <button onclick="closeNotifPanel()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+            <i class="fas fa-times text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="flex gap-0 border-b border-cyan-100 overflow-x-auto flex-shrink-0 bg-slate-50" id="notifTabs">
+        <button class="notif-tab active px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-cyan-500 text-cyan-600 transition" data-tab="all">All</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="alerts">Alerts</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="activity">Activity</button>
+        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="live">Live</button>
+    </div>
+
+    <!-- Scrollable Body -->
+    <div id="notifBody" class="flex-1 overflow-y-auto p-4 space-y-3" style="scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent;">
+        <div id="notifSkeleton" class="space-y-3">
+            <% for(let i=0;i<5;i++) { %>
+            <div class="animate-pulse flex gap-3 items-start">
+                <div class="w-8 h-8 rounded-lg bg-slate-200 flex-shrink-0"></div>
+                <div class="flex-1 space-y-1.5">
+                    <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <div id="notifContent" class="hidden space-y-3"></div>
+    </div>
+
+    <!-- Panel Footer -->
+    <div class="px-5 py-3 border-t border-cyan-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
+        <p class="text-[10px] text-slate-400 font-semibold">Auto-refreshes every 60s</p>
+        <button onclick="loadNotifications()" class="text-[11px] font-black text-cyan-600 hover:text-cyan-800 flex items-center gap-1 transition">
+            <i class="fas fa-rotate-right text-[10px]"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<style>
+    .notif-tab.active { border-bottom-color: #06b6d4 !important; color: #0891b2 !important; }
+    .notif-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; transition: border-color 0.15s, box-shadow 0.15s; }
+    .notif-item:hover { border-color: #06b6d4; box-shadow: 0 4px 12px rgba(6,182,212,0.08); }
+    .notif-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+    .notif-title { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.35; }
+    .notif-sub { font-size: 10.5px; color: #64748b; margin-top: 1px; }
+    .notif-time { font-size: 10px; color: #94a3b8; white-space: nowrap; margin-left: auto; padding-left: 6px; flex-shrink: 0; }
+    .notif-section-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; padding: 4px 0 6px; }
+    .notif-link { font-size: 10.5px; color: #06b6d4; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .notif-link:hover { color: #0891b2; }
+</style>
+
+<script>
+(function() {
+    let _notifData   = null;
+    let _activeTab   = 'all';
+    let _refreshTimer = null;
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return '';
+        const diff = (Date.now() - new Date(dateStr)) / 1000;
+        if (diff < 60)   return 'just now';
+        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+        return Math.floor(diff/86400) + 'd ago';
+    }
+
+    function fmtDate(dateStr) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    window.toggleNotifPanel = function() {
+        const panel    = document.getElementById('notifPanel');
+        const backdrop = document.getElementById('notifBackdrop');
+        const isOpen   = !panel.classList.contains('translate-x-full');
+        if (isOpen) { closeNotifPanel(); return; }
+        panel.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        loadNotifications();
+        _refreshTimer = setInterval(loadNotifications, 60000);
+    };
+
+    window.closeNotifPanel = function() {
+        document.getElementById('notifPanel').classList.add('translate-x-full');
+        document.getElementById('notifBackdrop').classList.add('hidden');
+        document.body.style.overflow = '';
+        clearInterval(_refreshTimer);
+    };
+
+    window.loadNotifications = async function() {
+        document.getElementById('notifSkeleton').classList.remove('hidden');
+        document.getElementById('notifContent').classList.add('hidden');
+        try {
+            const res  = await fetch('/admin/notifications');
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            _notifData = data;
+            updateBell(data.total);
+            renderTab(_activeTab);
+        } catch(e) {
+            document.getElementById('notifContent').innerHTML =
+                '<div class="py-10 text-center text-slate-400 text-xs">Failed to load notifications.</div>';
+            document.getElementById('notifContent').classList.remove('hidden');
+            document.getElementById('notifSkeleton').classList.add('hidden');
+        }
+    };
+
+    function updateBell(count) {
+        const dot   = document.getElementById('notifDot');
+        const badge = document.getElementById('notifCount');
+        if (count > 0) {
+            dot.classList.remove('hidden');
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.classList.remove('hidden');
+        } else {
+            dot.classList.add('hidden');
+            badge.classList.add('hidden');
+        }
+        document.getElementById('notifSubtitle').textContent =
+            count > 0 ? count + ' item' + (count !== 1 ? 's' : '') + ' need attention' : 'All clear';
+    }
+
+    function renderTab(tab) {
+        _activeTab = tab;
+        const d = _notifData;
+        if (!d) return;
+
+        let html = '';
+
+        if (tab === 'all' || tab === 'alerts') {
+            const alertItems = [
+                ...d.expiredInvites.map(i => ({
+                    icon: 'fas fa-envelope-circle-check', iconBg: 'bg-rose-50', iconColor: 'text-rose-500',
+                    title: 'Expired Invitation',
+                    sub: i.email + ' · ' + (i.role || 'Unknown role'),
+                    time: fmtDate(i.expires_at),
+                    link: '/admin/user_access_control', linkLabel: 'View UAC'
+                })),
+                ...d.flaggedStudents.map(s => ({
+                    icon: 'fas fa-flag', iconBg: 'bg-amber-50', iconColor: 'text-amber-500',
+                    title: 'Flagged Student',
+                    sub: s.full_name + (s.assessment_name ? ' · ' + s.assessment_name : ''),
+                    time: '',
+                    link: '/admin/user_access_control', linkLabel: 'View Student'
+                })),
+                ...d.lockedPastDue.map(a => ({
+                    icon: 'fas fa-lock', iconBg: 'bg-orange-50', iconColor: 'text-orange-500',
+                    title: 'Assessment Past Due & Locked',
+                    sub: a.assessment_name + ' · ' + (a.subject_name || ''),
+                    time: fmtDate(a.due_date),
+                    link: '/admin/gaming_question_bank', linkLabel: 'Manage'
+                })),
+                ...d.overdueDeadlines.map(e => ({
+                    icon: 'fas fa-calendar-xmark', iconBg: 'bg-red-50', iconColor: 'text-red-500',
+                    title: 'Overdue Deadline',
+                    sub: e.event_title + (e.subject_name ? ' · ' + e.subject_name : ''),
+                    time: fmtDate(e.event_date),
+                    link: '/admin/academic_management', linkLabel: 'View'
+                })),
+                ...d.pendingQuestions.map(q => ({
+                    icon: 'fas fa-robot', iconBg: 'bg-indigo-50', iconColor: 'text-indigo-500',
+                    title: 'AI Question Awaiting Approval',
+                    sub: q.question_text.substring(0, 55) + (q.question_text.length > 55 ? '…' : ''),
+                    time: '#' + q.question_id,
+                    link: '/admin/gaming_question_bank', linkLabel: 'Review'
+                })),
+            ];
+
+            if (tab === 'alerts' || tab === 'all') {
+                if (alertItems.length === 0) {
+                    if (tab === 'alerts') html += emptyState('fa-shield-halved', 'No alerts', 'Everything looks good!');
+                } else {
+                    if (tab === 'all') html += '<div class="notif-section-label"><i class="fas fa-triangle-exclamation mr-1 text-rose-400"></i>Alerts Requiring Action</div>';
+                    alertItems.forEach(item => { html += notifItem(item); });
+                }
+            }
+        }
+
+        if (tab === 'activity' || tab === 'all') {
+            const actItems = [
+                ...d.pendingInvites.map(i => ({
+                    icon: 'fas fa-paper-plane', iconBg: 'bg-cyan-50', iconColor: 'text-cyan-500',
+                    title: 'Pending Invitation',
+                    sub: i.email + ' · ' + (i.role || ''),
+                    time: timeAgo(i.created_at),
+                    link: '/admin/user_access_control', linkLabel: 'View'
+                })),
+                ...d.newUsers.map(u => ({
+                    icon: 'fas fa-user-plus', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500',
+                    title: 'New ' + u.role + ' Registered',
+                    sub: u.full_name,
+                    time: timeAgo(u.created_at),
+                    link: '/admin/user_access_control', linkLabel: 'View Profile'
+                })),
+            ];
+
+            if (tab === 'activity') {
+                if (actItems.length === 0) html += emptyState('fa-clock-rotate-left', 'No recent activity', 'No new users or pending invites.');
+                else actItems.forEach(item => { html += notifItem(item); });
+            } else if (tab === 'all' && actItems.length > 0) {
+                html += '<div class="notif-section-label mt-2"><i class="fas fa-bolt mr-1 text-cyan-400"></i>Recent Activity</div>';
+                actItems.forEach(item => { html += notifItem(item); });
+            }
+        }
+
+        if (tab === 'live' || tab === 'all') {
+            if (tab === 'live') {
+                if (d.activeSessions.length === 0) {
+                    html += emptyState('fa-gamepad', 'No live sessions', 'No students are playing right now.');
+                } else {
+                    d.activeSessions.forEach(s => {
+                        html += notifItem({
+                            icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
+                            title: s.student_name + ' is playing',
+                            sub: s.assessment_name + ' · ' + s.player_mode,
+                            time: timeAgo(s.start_time),
+                            link: null
+                        });
+                    });
+                }
+            } else if (tab === 'all' && d.activeSessions.length > 0) {
+                html += '<div class="notif-section-label mt-2"><i class="fas fa-circle text-green-400 mr-1"></i>Live Sessions (' + d.activeSessions.length + ')</div>';
+                d.activeSessions.slice(0, 3).forEach(s => {
+                    html += notifItem({
+                        icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
+                        title: s.student_name + ' is playing',
+                        sub: s.assessment_name + ' · ' + s.player_mode,
+                        time: timeAgo(s.start_time),
+                        link: null
+                    });
+                });
+            }
+        }
+
+        if (tab === 'all' && html === '') {
+            html = emptyState('fa-bell-slash', 'All clear!', 'No alerts or pending items.');
+        }
+
+        document.getElementById('notifContent').innerHTML = html;
+        document.getElementById('notifContent').classList.remove('hidden');
+        document.getElementById('notifSkeleton').classList.add('hidden');
+    }
+
+    function notifItem(item) {
+        return '<div class="notif-item">' +
+            '<div class="notif-icon ' + item.iconBg + ' ' + item.iconColor + '">' +
+                '<i class="' + item.icon + '"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<p class="notif-title">' + item.title + '</p>' +
+                '<p class="notif-sub truncate">' + item.sub + '</p>' +
+                (item.link ? '<a href="' + item.link + '" class="notif-link">' + item.linkLabel + ' →</a>' : '') +
+            '</div>' +
+            (item.time ? '<span class="notif-time">' + item.time + '</span>' : '') +
+        '</div>';
+    }
+
+    function emptyState(icon, title, sub) {
+        return '<div class="py-10 text-center">' +
+            '<i class="fas ' + icon + ' text-3xl text-slate-200 mb-3 block"></i>' +
+            '<p class="text-sm font-bold text-slate-400">' + title + '</p>' +
+            '<p class="text-xs text-slate-300 mt-1">' + sub + '</p>' +
+        '</div>';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.notif-tab').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.notif-tab').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                renderTab(btn.dataset.tab);
+            });
+        });
+
+        setInterval(async function() {
+            try {
+                const res  = await fetch('/admin/notifications');
+                const data = await res.json();
+                if (data.success) updateBell(data.total);
+            } catch(_) {}
+        }, 120000);
+    });
+})();
+</script>
+
+</body>
+</html>
