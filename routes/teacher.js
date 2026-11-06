@@ -415,10 +415,14 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
                     LEFT JOIN topics t ON a.topic_id = t.topic_id
                     LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                    JOIN classes c ON c.class_id = COALESCE(
-                        egs.class_id,
-                        (SELECT cs2.class_id FROM class_students cs2 JOIN classes c2 ON cs2.class_id = c2.class_id WHERE cs2.student_id = u1.user_id AND (q.subject_id IS NULL OR c2.subject_id = q.subject_id) AND c2.teacher_id = ? LIMIT 1)
-                    )
+                    LEFT JOIN (
+                        SELECT cs2.student_id, cs2.class_id, c2.teacher_id, c2.subject_id
+                        FROM class_students cs2
+                        JOIN classes c2 ON cs2.class_id = c2.class_id
+                        WHERE c2.teacher_id = ?
+                    ) fallback_p1 ON fallback_p1.student_id = u1.user_id
+                        AND (q.subject_id IS NULL OR fallback_p1.subject_id = q.subject_id)
+                    JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_p1.class_id)
                     JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
                     WHERE c.teacher_id = ?
                       AND (egs.play_mode = 'Versus' OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0))
@@ -464,10 +468,14 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
                     LEFT JOIN topics t ON a.topic_id = t.topic_id
                     LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                    JOIN classes c ON c.class_id = COALESCE(
-                        egs.class_id,
-                        (SELECT cs2.class_id FROM class_students cs2 JOIN classes c2 ON cs2.class_id = c2.class_id WHERE cs2.student_id = u.user_id AND (q.subject_id IS NULL OR c2.subject_id = q.subject_id) AND c2.teacher_id = ? LIMIT 1)
-                    )
+                    LEFT JOIN (
+                        SELECT cs2.student_id, cs2.class_id, c2.teacher_id, c2.subject_id
+                        FROM class_students cs2
+                        JOIN classes c2 ON cs2.class_id = c2.class_id
+                        WHERE c2.teacher_id = ?
+                    ) fallback_fp ON fallback_fp.student_id = u.user_id
+                        AND (q.subject_id IS NULL OR fallback_fp.subject_id = q.subject_id)
+                    JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_fp.class_id)
                     JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
                     WHERE c.teacher_id = ?
                       AND (egs.student_id_p2 IS NULL OR egs.student_id_p2 = 0)
@@ -478,7 +486,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                       ))
                 ) AS consolidated_feed
                 ORDER BY submitted_at DESC, score_id DESC
-                LIMIT 10`, [teacherId, teacherId, teacherId, teacherId, teacherId]),
+                LIMIT 10`, [teacherId, teacherId, teacherId, teacherId, teacherId, teacherId, teacherId]),
 
             db.query(`
                 SELECT ft.*, t.topic_name, q.subject_id
@@ -764,10 +772,14 @@ router.get('/all-activities', isTeacher, async (req, res) => {
                 LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
                 LEFT JOIN topics t ON a.topic_id = t.topic_id
                 LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                JOIN classes c ON c.class_id = COALESCE(
-                    egs.class_id,
-                    (SELECT cs2.class_id FROM class_students cs2 JOIN classes c2 ON cs2.class_id = c2.class_id WHERE cs2.student_id = u1.user_id AND (q.subject_id IS NULL OR c2.subject_id = q.subject_id) AND c2.teacher_id = ? LIMIT 1)
-                )
+                LEFT JOIN (
+                    SELECT cs2.student_id, cs2.class_id, c2.teacher_id, c2.subject_id
+                    FROM class_students cs2
+                    JOIN classes c2 ON cs2.class_id = c2.class_id
+                    WHERE c2.teacher_id = ?
+                ) fallback_p1 ON fallback_p1.student_id = u1.user_id
+                    AND (q.subject_id IS NULL OR fallback_p1.subject_id = q.subject_id)
+                JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_p1.class_id)
                 JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
                 WHERE c.teacher_id = ?
                   AND (egs.play_mode = 'Versus' OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0))
@@ -813,10 +825,14 @@ router.get('/all-activities', isTeacher, async (req, res) => {
                 LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
                 LEFT JOIN topics t ON a.topic_id = t.topic_id
                 LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                JOIN classes c ON c.class_id = COALESCE(
-                    egs.class_id,
-                    (SELECT cs2.class_id FROM class_students cs2 JOIN classes c2 ON cs2.class_id = c2.class_id WHERE cs2.student_id = u.user_id AND (q.subject_id IS NULL OR c2.subject_id = q.subject_id) AND c2.teacher_id = ? LIMIT 1)
-                )
+                LEFT JOIN (
+                    SELECT cs2.student_id, cs2.class_id, c2.teacher_id, c2.subject_id
+                    FROM class_students cs2
+                    JOIN classes c2 ON cs2.class_id = c2.class_id
+                    WHERE c2.teacher_id = ?
+                ) fallback_fp ON fallback_fp.student_id = u.user_id
+                    AND (q.subject_id IS NULL OR fallback_fp.subject_id = q.subject_id)
+                JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_fp.class_id)
                 JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
                 WHERE c.teacher_id = ?
                   AND (egs.student_id_p2 IS NULL OR egs.student_id_p2 = 0)
@@ -828,7 +844,7 @@ router.get('/all-activities', isTeacher, async (req, res) => {
             ) AS all_feed
             ORDER BY submitted_at DESC
             LIMIT 100
-        `, [teacherId, teacherId, teacherId, teacherId, teacherId]);
+        `, [teacherId, teacherId, teacherId, teacherId, teacherId, teacherId, teacherId]);
 
         const notifications = await getTeacherNotifications(db, teacherId);
 
