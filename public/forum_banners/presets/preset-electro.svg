@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-el" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#04182e" />
+      <stop offset="60%" stop-color="#082f49" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#bg-el)" />
+
+  <!-- Electrochemical Cell Center -->
+  <g transform="translate(360, 120)">
+    <!-- Beaker 1 Anode (Zn) -->
+    <rect x="0" y="80" width="140" height="150" rx="10" fill="#0369a1" opacity="0.3" stroke="#38bdf8" stroke-width="3" />
+    <rect x="40" y="30" width="30" height="170" fill="#94a3b8" stroke="#cbd5e1" stroke-width="2" />
+    <text x="55" y="225" fill="#bae6fd" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle">Zn Anode (-)</text>
+
+    <!-- Beaker 2 Cathode (Cu) -->
+    <rect x="340" y="80" width="140" height="150" rx="10" fill="#0284c7" opacity="0.3" stroke="#38bdf8" stroke-width="3" />
+    <rect x="410" y="30" width="30" height="170" fill="#d97706" stroke="#fcd34d" stroke-width="2" />
+    <text x="425" y="225" fill="#fde68a" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle">Cu Cathode (+)</text>
+
+    <!-- Salt Bridge (U-Tube) -->
+    <path d="M 110,130 L 110,60 Q 110,40 130,40 L 350,40 Q 370,40 370,60 L 370,130" fill="none" stroke="#e0e7ff" stroke-width="16" stroke-linecap="round" opacity="0.75" />
+    <text x="240" y="32" fill="#c7d2fe" font-family="sans-serif" font-size="11" font-weight="bold" text-anchor="middle">Salt Bridge (KNO₃)</text>
+
+    <!-- Wire & Voltmeter -->
+    <path d="M 55,30 L 55,-20 L 210,-20 M 270,-20 L 425,-20 L 425,30" fill="none" stroke="#facc15" stroke-width="3" />
+    <!-- Voltmeter Meter -->
+    <circle cx="240" cy="-20" r="30" fill="#0f172a" stroke="#facc15" stroke-width="3" />
+    <text x="240" y="-14" fill="#fef08a" font-family="monospace" font-size="14" font-weight="900" text-anchor="middle">1.10V</text>
+  </g>
+</svg>

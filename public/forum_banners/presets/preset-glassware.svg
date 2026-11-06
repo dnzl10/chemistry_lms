@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-glass" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#022c22" />
+      <stop offset="60%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="liquid-teal" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0f766e" stop-opacity="0.95" />
+    </linearGradient>
+    <linearGradient id="liquid-amber" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.95" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#bg-glass)" />
+  
+  <!-- Subtle Bench Horizon -->
+  <line x1="0" y1="340" x2="1200" y2="340" stroke="#047857" stroke-width="2" opacity="0.4" />
+  <rect x="0" y="340" width="1200" height="60" fill="#022c22" opacity="0.7" />
+
+  <!-- Flask 1: Erlenmeyer Flask Left -->
+  <g transform="translate(180, 140)">
+    <!-- Liquid -->
+    <path d="M 60,110 L 20,180 Q 80,195 140,180 L 100,110 Z" fill="url(#liquid-teal)" />
+    <!-- Glass Contour -->
+    <path d="M 70,20 L 70,60 L 10,180 Q 80,200 150,180 L 90,60 L 90,20" fill="none" stroke="#6ee7b7" stroke-width="3.5" stroke-linecap="round" opacity="0.85" />
+    <ellipse cx="80" cy="20" rx="10" ry="3" fill="none" stroke="#6ee7b7" stroke-width="3" />
+    <!-- Graduations -->
+    <line x1="45" y1="130" x2="65" y2="130" stroke="#a7f3d0" stroke-width="2" opacity="0.7" />
+    <line x1="38" y1="150" x2="62" y2="150" stroke="#a7f3d0" stroke-width="2" opacity="0.7" />
+    <line x1="30" y1="170" x2="58" y2="170" stroke="#a7f3d0" stroke-width="2" opacity="0.7" />
+    <!-- Bubbles -->
+    <circle cx="70" cy="155" r="4" fill="#e0e7ff" opacity="0.8" />
+    <circle cx="85" cy="140" r="3" fill="#e0e7ff" opacity="0.7" />
+    <circle cx="95" cy="165" r="5" fill="#e0e7ff" opacity="0.6" />
+    <circle cx="78" cy="120" r="3" fill="#e0e7ff" opacity="0.8" />
+  </g>
+
+  <!-- Flask 2: Round Bottom Boiling Flask Center -->
+  <g transform="translate(560, 130)">
+    <!-- Liquid -->
+    <path d="M 40,140 Q 80,180 120,140 Q 120,190 80,190 Q 40,190 40,140 Z" fill="url(#liquid-amber)" />
+    <!-- Flask Contour -->
+    <circle cx="80" cy="140" r="55" fill="none" stroke="#fcd34d" stroke-width="3.5" opacity="0.85" />
+    <path d="M 72,85 L 72,25 L 88,25 L 88,85" fill="none" stroke="#fcd34d" stroke-width="3.5" />
+    <ellipse cx="80" cy="25" rx="8" ry="3" fill="none" stroke="#fcd34d" stroke-width="3" />
+    <!-- Condensation / Vapor -->
+    <path d="M 80,15 Q 75,-5 85,-20" fill="none" stroke="#fef3c7" stroke-width="2" stroke-dasharray="3,3" opacity="0.6" />
+    <path d="M 83,15 Q 90,-5 80,-25" fill="none" stroke="#fef3c7" stroke-width="2" stroke-dasharray="3,3" opacity="0.6" />
+  </g>
+
+  <!-- Apparatus 3: Graduated Cylinder & Burette Right -->
+  <g transform="translate(940, 110)">
+    <!-- Liquid -->
+    <rect x="42" y="80" width="36" height="150" fill="url(#liquid-teal)" />
+    <!-- Cylinder Glass -->
+    <rect x="40" y="30" width="40" height="200" rx="4" fill="none" stroke="#6ee7b7" stroke-width="3" opacity="0.8" />
+    <!-- Cylinder Base -->
+    <ellipse cx="60" cy="232" rx="35" ry="8" fill="none" stroke="#6ee7b7" stroke-width="3" />
+    <!-- Scale Ticks -->
+    <line x1="42" y1="50" x2="54" y2="50" stroke="#a7f3d0" stroke-width="2" />
+    <line x1="42" y1="70" x2="60" y2="70" stroke="#a7f3d0" stroke-width="2" />
+    <line x1="42" y1="90" x2="54" y2="90" stroke="#a7f3d0" stroke-width="2" />
+    <line x1="42" y1="110" x2="60" y2="110" stroke="#a7f3d0" stroke-width="2" />
+    <line x1="42" y1="130" x2="54" y2="130" stroke="#a7f3d0" stroke-width="2" />
+    <line x1="42" y1="150" x2="60" y2="150" stroke="#a7f3d0" stroke-width="2" />
+    <line x1="42" y1="170" x2="54" y2="170" stroke="#a7f3d0" stroke-width="2" />
+    <line x1="42" y1="190" x2="60" y2="190" stroke="#a7f3d0" stroke-width="2" />
+    <line x1="42" y1="210" x2="54" y2="210" stroke="#a7f3d0" stroke-width="2" />
+  </g>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-pt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#180d2b" />
+      <stop offset="50%" stop-color="#2e1065" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="glow-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#bg-pt)" />
+  <circle cx="950" cy="200" r="280" fill="url(#glow-purple)" />
+
+  <!-- Atomic Orbital Rings Left -->
+  <g transform="translate(260, 200)" stroke="#c084fc" fill="none" opacity="0.6">
+    <!-- Nucleus -->
+    <circle cx="0" cy="0" r="16" fill="#a855f7" stroke="#e9d5ff" stroke-width="3" opacity="0.9" />
+    <!-- Orbitals -->
+    <ellipse cx="0" cy="0" rx="140" ry="45" stroke-width="2" transform="rotate(0)" />
+    <ellipse cx="0" cy="0" rx="140" ry="45" stroke-width="2" transform="rotate(60)" />
+    <ellipse cx="0" cy="0" rx="140" ry="45" stroke-width="2" transform="rotate(120)" />
+    <!-- Electrons -->
+    <circle cx="140" cy="0" r="6" fill="#38bdf8" />
+    <circle cx="-70" cy="60" r="5" fill="#f43f5e" />
+    <circle cx="70" cy="-60" r="5" fill="#38bdf8" />
+    <circle cx="-120" cy="-20" r="4" fill="#fbbf24" />
+  </g>
+
+  <!-- Periodic Table Elemental Tiles Right -->
+  <g transform="translate(620, 80)" font-family="monospace">
+    <!-- Element: C Carbon -->
+    <rect x="0" y="0" width="100" height="100" rx="16" fill="#3b0764" stroke="#a855f7" stroke-width="2.5" />
+    <text x="14" y="24" fill="#d8b4fe" font-size="12" font-weight="bold">6</text>
+    <text x="50" y="58" fill="#ffffff" font-size="34" font-weight="900" text-anchor="middle">C</text>
+    <text x="50" y="82" fill="#c084fc" font-size="11" text-anchor="middle">12.011</text>
+
+    <!-- Element: N Nitrogen -->
+    <rect x="120" y="0" width="100" height="100" rx="16" fill="#3b0764" stroke="#a855f7" stroke-width="2.5" />
+    <text x="134" y="24" fill="#d8b4fe" font-size="12" font-weight="bold">7</text>
+    <text x="170" y="58" fill="#ffffff" font-size="34" font-weight="900" text-anchor="middle">N</text>
+    <text x="170" y="82" fill="#c084fc" font-size="11" text-anchor="middle">14.007</text>
+
+    <!-- Element: O Oxygen -->
+    <rect x="240" y="0" width="100" height="100" rx="16" fill="#3b0764" stroke="#a855f7" stroke-width="2.5" />
+    <text x="254" y="24" fill="#d8b4fe" font-size="12" font-weight="bold">8</text>
+    <text x="290" y="58" fill="#ffffff" font-size="34" font-weight="900" text-anchor="middle">O</text>
+    <text x="290" y="82" fill="#c084fc" font-size="11" text-anchor="middle">15.999</text>
+
+    <!-- Element: Na Sodium -->
+    <rect x="0" y="120" width="100" height="100" rx="16" fill="#3b0764" stroke="#a855f7" stroke-width="2.5" />
+    <text x="14" y="144" fill="#d8b4fe" font-size="12" font-weight="bold">11</text>
+    <text x="50" y="178" fill="#ffffff" font-size="32" font-weight="900" text-anchor="middle">Na</text>
+    <text x="50" y="202" fill="#c084fc" font-size="11" text-anchor="middle">22.990</text>
+
+    <!-- Element: Cl Chlorine -->
+    <rect x="120" y="120" width="100" height="100" rx="16" fill="#3b0764" stroke="#a855f7" stroke-width="2.5" />
+    <text x="134" y="144" fill="#d8b4fe" font-size="12" font-weight="bold">17</text>
+    <text x="170" y="178" fill="#ffffff" font-size="32" font-weight="900" text-anchor="middle">Cl</text>
+    <text x="170" y="202" fill="#c084fc" font-size="11" text-anchor="middle">35.453</text>
+
+    <!-- Element: Au Gold -->
+    <rect x="240" y="120" width="100" height="100" rx="16" fill="#4a044e" stroke="#e879f9" stroke-width="2.5" />
+    <text x="254" y="144" fill="#f0abfc" font-size="12" font-weight="bold">79</text>
+    <text x="290" y="178" fill="#fef08a" font-size="32" font-weight="900" text-anchor="middle">Au</text>
+    <text x="290" y="202" fill="#fbcfe8" font-size="11" text-anchor="middle">196.97</text>
+  </g>
+</svg>

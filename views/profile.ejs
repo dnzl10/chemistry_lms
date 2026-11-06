@@ -19,14 +19,7 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* ── Sidebar nav active ── */
-        .nav-active {
-            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
-            color: white !important;
-            font-weight: 700;
-            box-shadow: 0 4px 16px rgba(6,182,212,.3), 0 2px 8px rgba(99,102,241,.4);
-        }
-        .nav-active i { color: white !important; }
+
 
         /* ── Main content area ── */
         #profileScroll { overflow-y: auto; flex: 1; }
@@ -56,7 +49,7 @@
             gap: 4px;
         }
         .profile-left-section-label {
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 800;
             color: #94a3b8;
             text-transform: uppercase;
@@ -68,7 +61,7 @@
             align-items: center;
             gap: 10px;
             padding: 9px 20px;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             color: #64748b;
             cursor: pointer;
@@ -99,7 +92,7 @@
             background: #ef4444;
             color: white;
             border-radius: 9999px;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 800;
             padding: 1px 6px;
             min-width: 18px;
@@ -371,6 +364,28 @@
             flex: 1;
             min-height: 0;
         }
+        .msg-back-btn {
+            display: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            border: 1.5px solid #e2e8f0;
+            background: white;
+            color: #64748b;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-right: 4px;
+        }
+        @media (max-width: 639px) {
+            .msg-modal { height: 90vh; }
+            .msg-convos { width: 100%; border-right: none; }
+            .msg-thread { display: none; }
+            .msg-body.in-thread .msg-convos { display: none; }
+            .msg-body.in-thread .msg-thread { display: flex; width: 100%; }
+            .msg-back-btn { display: flex; }
+        }
         /* Conversation list */
         .msg-convos {
             width: 230px;
@@ -523,119 +538,82 @@
         #profileToast.success { background: #064e3b; }
         #profileToast.error { background: #7f1d1d; }
     </style>
+
+    <!-- Standardized Student Navigation & Responsive Styles -->
+    <%- include('partials/student-nav-styles') %>
 </head>
 <body class="text-slate-900">
 
 <div id="profileToast"><i class="fas fa-circle-check"></i> <span id="profileToastMsg"></span></div>
 
 <div class="flex min-h-screen relative overflow-x-hidden">
-<div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden"></div>
-
-<!-- ═══════ APP SIDEBAR ═══════ -->
-<aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60" style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
-    <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
-        <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4"><i class="fas fa-times text-xl"></i></button>
-        <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
-        <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">Elem<span class="text-white">enta</span></h1>
-        <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Student Portal</p>
-    </div>
-
-    <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
-        <div>
-            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
-            <div class="space-y-1">
-                <a href="/home" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                    <i class="fas fa-house w-5 text-cyan-500 group-hover:scale-110 transition-transform"></i>
-                    <span class="font-bold tracking-tight text-base">Home</span>
-                </a>
-                <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                    <i class="fas fa-chart-line w-5 text-red-500 group-hover:scale-110 transition-transform"></i>
-                    <span class="font-bold tracking-tight text-base">Dashboard</span>
-                </a>
-            </div>
-        </div>
-        <div>
-            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
-            <div class="space-y-1">
-                <a href="/subjects" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                    <i class="fas fa-book w-5 text-orange-500 group-hover:scale-110 transition-transform"></i>
-                    <span class="font-bold tracking-tight text-base">My Subjects</span>
-                </a>
-                <a href="/events" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                    <i class="fa-solid fa-calendar-days w-5 text-violet-500 group-hover:scale-110 transition-transform"></i>
-                    <span class="font-bold tracking-tight text-base">Events</span>
-                </a>
-            </div>
-        </div>
-        <div>
-            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Community & Engagement</p>
-            <div class="space-y-1">
-                <a href="/forums" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                    <i class="fas fa-comments w-5 text-emerald-500 group-hover:scale-110 transition-transform"></i>
-                    <span class="font-bold tracking-tight text-base">Forums</span>
-                </a>
-            </div>
-        </div>
-        <div>
-            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">EXP & Rankings</p>
-            <div class="space-y-1">
-                <a href="/leaderboards" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                    <i class="fas fa-trophy w-5 text-yellow-500 group-hover:scale-110 transition-transform"></i>
-                    <span class="font-bold tracking-tight text-base">Leaderboards</span>
-                </a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
-        <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
-            <i class="fas fa-right-from-bracket w-5"></i> Log Out
-        </a>
-    </div>
-</aside>
+<!-- Standardized Student Sidebar Partial -->
+<%- include('partials/student-sidebar', { activeNav: 'profile' }) %>
 
 <!-- ═══════ MAIN ═══════ -->
 <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 transition-all duration-300">
 
     <!-- ── TOP HEADER ── -->
-    <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+    <header class="h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
         <div class="flex items-center gap-4">
-            <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 md:hidden">
+            <button onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" class="p-2 rounded-lg hover:bg-slate-100 text-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 transition">
                 <i class="fas fa-bars text-xl"></i>
             </button>
-            <div class="hidden sm:block">
-                <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">Build your space, <%= user.first_name %>!</h2>
-                <p class="text-xs text-slate-400">
-                    <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
-                    Its a great day &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
+            <div>
+                <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">
+                    Build your space, <%= user.first_name %>!
+                </h1>
+                <p class="text-xs text-slate-600 hidden sm:block font-medium">
+                    <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
+                    Student Profile &amp; Settings &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
                 </p>
             </div>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
-            <div onclick="toggleNotifications()" class="relative group cursor-pointer p-2 hover:bg-slate-100 rounded-full transition">
-                <i class="far fa-bell text-xl text-slate-600"></i>
-                <span class="absolute top-2 right-2 flex h-2.5 w-2.5">
+            <!-- Messages Navigation Button (Entry point to message-student view) -->
+            <a href="/messages" id="messagesBtn" aria-label="Open messages and conversations" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
+                <i class="far fa-comment-dots text-xl"></i>
+                <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                    Messages
+                </span>
+            </a>
+
+            <!-- Notification Button with keyboard-accessible tooltip -->
+            <button type="button" onclick="toggleNotifications()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
+                <i class="far fa-bell text-xl text-slate-700"></i>
+                <span class="absolute top-2 right-2 flex h-2.5 w-2.5 notif-badge hidden" aria-hidden="true">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
                 </span>
-            </div>
+                <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                    Notifications
+                </span>
+            </button>
+            
+            <!-- User Profile Dropdown -->
             <div class="relative">
-                <div onclick="toggleUserMenu(event)" class="flex items-center gap-3 pl-4 border-l border-slate-200 cursor-pointer hover:opacity-80 transition">
+                <button type="button" onclick="toggleUserMenu(event)" id="userMenuBtn" aria-expanded="false" aria-label="Open user profile menu" class="flex items-center gap-3 pl-4 border-l border-slate-200 hover:opacity-85 transition focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-lg">
                     <div class="text-right hidden lg:block">
                         <p class="text-sm font-bold text-slate-800 leading-none mb-1"><%= user.first_name %> <%= user.last_name %></p>
-                        <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none"><%= user.role %></p>
+                        <p class="text-xs uppercase font-bold text-slate-600 tracking-wider leading-none"><%= user.role %></p>
                     </div>
-                    <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100">
-                    <i class="fas fa-chevron-down text-[10px] text-slate-400 ml-1"></i>
-                </div>
+                    <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" alt="<%= user.first_name %>'s avatar" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100">
+                    <i class="fas fa-chevron-down text-xs text-slate-600 ml-1"></i>
+                </button>
+
                 <div id="userDropdown" class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
-                    <div class="px-4 py-3 border-b border-slate-50 lg:hidden">
-                        <p class="text-sm font-bold text-slate-800"><%= user.first_name %></p>
-                        <p class="text-[10px] text-slate-400 mt-1 uppercase"><%= user.role %></p>
+                    <div class="px-4 py-3 border-b border-slate-100 lg:hidden">
+                        <p class="text-sm font-bold text-slate-800"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-xs text-slate-600 mt-1 uppercase font-bold"><%= user.role %></p>
                     </div>
-                    <hr class="my-2 border-slate-50">
-                    <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition font-bold"><i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out</a>
+                    <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                        <i class="far fa-user w-5 text-center"></i> View Profile
+                    </a>
+                    <hr class="my-2 border-slate-100">
+                    <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition font-bold">
+                        <i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out
+                    </a>
                 </div>
             </div>
         </div>
@@ -682,18 +660,19 @@
                     <button class="profile-nav-item" onclick="openScoresModal()">
                         <i class="fas fa-star w-4 text-amber-400 text-sm"></i> Scores / Grades
                     </button>
+
                     <button class="profile-nav-item" onclick="toggleQR()">
                         <i class="fas fa-qrcode w-4 text-indigo-400 text-sm"></i> My QR Code
                     </button>
 
                     <div class="mt-auto px-4 pt-6">
                         <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white text-center">
-                            <div class="text-2xl font-black mb-0.5" id="sidebarLevelDisplay">—</div>
-                            <div class="text-[10px] font-bold uppercase tracking-widest opacity-80">Current Level</div>
+                            <div class="text-2xl font-black mb-0.5" id="sidebarLevelDisplay">Lv. <%= (locals.levelStats && levelStats.calculatedLevel) || user.current_level || 1 %> / 12</div>
+                            <div class="text-[10px] font-bold uppercase tracking-widest opacity-80" id="sidebarLevelTitle"><%= (locals.levelStats && levelStats.levelTitle) || 'Cadet' %></div>
                             <div class="mt-3 bg-white/20 rounded-full h-1.5 overflow-hidden">
-                                <div class="bg-white rounded-full h-full transition-all duration-700" id="sidebarExpBar" style="width:0%"></div>
+                                <div class="bg-white rounded-full h-full transition-all duration-700" id="sidebarExpBar" style="width:<%= (locals.levelStats && levelStats.progressPct) || 0 %>%"></div>
                             </div>
-                            <div class="text-[10px] mt-1 opacity-70" id="sidebarExpLabel">0 EXP</div>
+                            <div class="text-[10px] mt-1 opacity-70" id="sidebarExpLabel"><%= (user.total_exp || 0).toLocaleString() %> / <%= (locals.levelStats && levelStats.totalMaxExp) ? levelStats.totalMaxExp.toLocaleString() : '52,100' %> Total Max EXP</div>
                         </div>
                     </div>
                 </div>
@@ -711,6 +690,7 @@
                             <span id="sectionEmoji">🪪</span>
                         </div>
                         <div class="profile-topbar-actions">
+
                             <button class="btn-confirm" onclick="toggleEditDrawer()">
                                 <i class="fas fa-pen-nib text-xs mr-1"></i> Edit Profile
                             </button>
@@ -902,7 +882,8 @@
 
                                 <!-- QR mini card -->
                                 <div class="qr-card" id="qrOverlay" style="display:none;">
-                                    <p class="text-white font-bold text-xs mb-3 uppercase tracking-wider">My QR Code</p>
+                                    <p class="text-white font-bold text-xs mb-1 uppercase tracking-wider">Arcade & Station QR ID</p>
+                                    <p class="text-[10px] text-slate-300 mb-3">Scan at ESP32 Arcade Kiosk or Station for Player Authentication.</p>
                                     <div class="bg-white p-3 rounded-2xl">
                                         <img src="<%= qrCodeData %>" alt="QR" class="w-full h-auto">
                                     </div>
@@ -924,17 +905,17 @@
                         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
                             <div style="background:#eff6ff;border-radius:16px;padding:18px;border:1.5px solid #dbeafe;">
                                 <div style="font-size:10px;font-weight:800;color:#3b82f6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Level</div>
-                                <div style="font-size:32px;font-weight:900;color:#1e293b;" id="progLevel">—</div>
-                                <div style="font-size:11px;color:#64748b;font-weight:600;">Current</div>
+                                <div style="font-size:30px;font-weight:900;color:#1e293b;" id="progLevel">Lv. <%= (locals.levelStats && levelStats.calculatedLevel) || user.current_level || 1 %></div>
+                                <div style="font-size:11px;color:#64748b;font-weight:600;" id="progLevelSubtitle"><%= (locals.levelStats && levelStats.levelTitle) || 'Cadet' %></div>
                             </div>
                             <div style="background:#f0fdf4;border-radius:16px;padding:18px;border:1.5px solid #bbf7d0;">
                                 <div style="font-size:10px;font-weight:800;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Total EXP</div>
-                                <div style="font-size:28px;font-weight:900;color:#1e293b;" id="progExp">—</div>
-                                <div style="font-size:11px;color:#64748b;font-weight:600;">Points earned</div>
+                                <div style="font-size:30px;font-weight:900;color:#1e293b;" id="progExp"><%= (user.total_exp || 0).toLocaleString() %></div>
+                                <div style="font-size:11px;color:#64748b;font-weight:600;" id="progExpSubtitle">of <%= (locals.levelStats && levelStats.totalMaxExp) ? levelStats.totalMaxExp.toLocaleString() : '52,100' %> Max EXP (<%= (locals.levelStats && levelStats.progressPct) || 0 %>%)</div>
                             </div>
                             <div style="background:#fdf4ff;border-radius:16px;padding:18px;border:1.5px solid #e9d5ff;">
                                 <div style="font-size:10px;font-weight:800;color:#9333ea;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Assessments</div>
-                                <div style="font-size:32px;font-weight:900;color:#1e293b;" id="progAssessCount">—</div>
+                                <div style="font-size:30px;font-weight:900;color:#1e293b;" id="progAssessCount">—</div>
                                 <div style="font-size:11px;color:#64748b;font-weight:600;">Completed</div>
                             </div>
                         </div>
@@ -991,7 +972,10 @@
 <!-- ═══════════════════════════════
      MESSAGING MODAL
 ═══════════════════════════════ -->
-<div id="modalMsg" class="modal-backdrop">
+<!-- ═══════════════════════════════
+     MESSAGING MODAL
+═══════════════════════════════ -->
+<div id="modalMsg" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Messages Modal" onclick="if(event.target === this) closeModal('modalMsg')">
     <div class="msg-modal">
         <!-- Header -->
         <div class="msg-header">
@@ -1004,7 +988,7 @@
                     <p style="font-size:11px;color:#94a3b8;font-weight:500;">Private conversations</p>
                 </div>
             </div>
-            <button onclick="closeModal('modalMsg')" style="width:32px;height:32px;border-radius:9px;border:1.5px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;">
+            <button type="button" onclick="closeModal('modalMsg')" aria-label="Close messages" style="width:32px;height:32px;border-radius:9px;border:1.5px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -1058,7 +1042,7 @@
 <!-- ═══════════════════════════════
      SCORES MODAL
 ═══════════════════════════════ -->
-<div id="modalScores" class="modal-backdrop">
+<div id="modalScores" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalScoresTitle" onclick="if(event.target === this) closeModal('modalScores')">
     <div class="scores-modal">
         <!-- Header -->
         <div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:white;z-index:5;display:flex;align-items:center;justify-content:space-between;">
@@ -1067,38 +1051,42 @@
                     <i class="fas fa-star" style="color:#d97706;font-size:15px;"></i>
                 </div>
                 <div>
-                    <p style="font-size:15px;font-weight:800;color:#0f172a;">Scores &amp; Progress</p>
+                    <p id="modalScoresTitle" style="font-size:15px;font-weight:800;color:#0f172a;">Scores &amp; Progress</p>
                     <p style="font-size:11px;color:#94a3b8;font-weight:500;">All assessment results</p>
                 </div>
             </div>
-            <button onclick="closeModal('modalScores')" style="width:32px;height:32px;border-radius:9px;border:1.5px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;">
-                <i class="fas fa-times"></i>
-            </button>
+            <div style="display:flex;align-items:center;gap:8px;">
+
+                <button type="button" onclick="closeModal('modalScores')" aria-label="Close scores and progress" style="width:32px;height:32px;border-radius:9px;border:1.5px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
 
         <div style="padding:20px 24px;">
             <!-- Summary bar -->
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
                 <div style="background:#eff6ff;border-radius:14px;padding:14px 16px;border:1.5px solid #dbeafe;text-align:center;">
-                    <div style="font-size:22px;font-weight:900;color:#2563eb;" id="modalLevel">—</div>
-                    <div style="font-size:10px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.07em;">Level</div>
+                    <div style="font-size:24px;font-weight:900;color:#2563eb;" id="modalLevel">Lv. <%= (locals.levelStats && levelStats.calculatedLevel) || user.current_level || 1 %></div>
+                    <div style="font-size:10px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.07em;" id="modalLevelSubtitle"><%= (locals.levelStats && levelStats.levelTitle) || 'Level' %></div>
                 </div>
                 <div style="background:#f0fdf4;border-radius:14px;padding:14px 16px;border:1.5px solid #bbf7d0;text-align:center;">
-                    <div style="font-size:22px;font-weight:900;color:#059669;" id="modalTotalExp">—</div>
-                    <div style="font-size:10px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.07em;">Total EXP</div>
+                    <div style="font-size:24px;font-weight:900;color:#059669;" id="modalTotalExp"><%= (user.total_exp || 0).toLocaleString() %></div>
+                    <div style="font-size:10px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.07em;" id="modalExpSubtitle">of <%= (locals.levelStats && levelStats.totalMaxExp) ? levelStats.totalMaxExp.toLocaleString() : '52,100' %> Max</div>
                 </div>
                 <div style="background:#fdf4ff;border-radius:14px;padding:14px 16px;border:1.5px solid #e9d5ff;text-align:center;">
-                    <div style="font-size:22px;font-weight:900;color:#7c3aed;" id="modalAssessCount">—</div>
+                    <div style="font-size:24px;font-weight:900;color:#7c3aed;" id="modalAssessCount">—</div>
                     <div style="font-size:10px;font-weight:700;color:#9333ea;text-transform:uppercase;letter-spacing:.07em;">Assessments</div>
                 </div>
             </div>
 
             <!-- Chart -->
             <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;padding:18px;margin-bottom:20px;">
-                <p style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px;">EXP Earned per Assessment</p>
+                <p style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:12px;">EXP Earned per Assessment</p>
                 <div style="position:relative;height:160px;">
-                    <canvas id="modalExpChart"></canvas>
+                    <canvas id="modalExpChart" role="img" aria-label="EXP Earned Chart"></canvas>
                 </div>
+                <div class="sr-only" id="modalExpTable"></div>
             </div>
 
             <!-- Score list -->
@@ -1129,23 +1117,43 @@ function showToast(msg, type='success') {
 
 /* ─── Sidebar toggle ─── */
 function toggleSidebar() {
-    const s = document.getElementById('sidebar');
-    const o = document.getElementById('sidebarOverlay');
-    const hidden = s.classList.contains('-translate-x-full');
-    s.classList.toggle('-translate-x-full', !hidden);
-    o.classList.toggle('hidden', !hidden);
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const main = document.getElementById('mainContent');
+    const header = document.querySelector('header');
+    
+    if (window.innerWidth < 768) {
+        sidebar.classList.toggle('sidebar-open');
+        sidebar.classList.toggle('sidebar-collapsed');
+        overlay.classList.toggle('hidden');
+    } else {
+        sidebar.classList.toggle('sidebar-collapsed');
+        if (main) main.classList.toggle('sidebar-collapsed-main');
+        if (header) header.classList.toggle('sidebar-collapsed-header');
+    }
 }
 
 /* ─── User menu ─── */
 function toggleUserMenu(e) {
-    e.stopPropagation();
-    document.getElementById('userDropdown').classList.toggle('hidden');
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('userDropdown');
+    const btn = document.getElementById('userMenuBtn');
+    if (!dropdown) return;
+    const isExpanded = !dropdown.classList.contains('hidden');
+    dropdown.classList.toggle('hidden');
+    if (btn) btn.setAttribute('aria-expanded', !isExpanded);
 }
-document.addEventListener('click', () => {
-    const d = document.getElementById('userDropdown');
-    if (d) d.classList.add('hidden');
+
+window.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('userDropdown');
+    const btn = document.getElementById('userMenuBtn');
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        if (!dropdown.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            dropdown.classList.add('hidden');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+    }
 });
-function toggleNotifications() { /* hook to existing notification system */ }
 
 /* ─── QR toggle ─── */
 function toggleQR() {
@@ -1172,10 +1180,32 @@ function switchSection(name, btn) {
 }
 
 /* ─── Modal open/close ─── */
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) {
+    if (window.ModalManager) {
+        ModalManager.open(id);
+    } else {
+        document.getElementById(id).classList.add('open');
+    }
+}
+function closeModal(id) {
+    if (id === 'modalMsg') {
+        const draft = (document.getElementById('msgInput')?.value || '').trim();
+        if (draft && !confirm('You have an unsaved message. Are you sure you want to close?')) {
+            return;
+        }
+        document.querySelector('.msg-body')?.classList.remove('in-thread');
+        if (typeof msgPollTimer !== 'undefined' && msgPollTimer) clearInterval(msgPollTimer);
+    }
+    if (window.ModalManager) {
+        ModalManager.close(id);
+    } else {
+        document.getElementById(id).classList.remove('open');
+    }
+}
 document.querySelectorAll('.modal-backdrop').forEach(m => {
-    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+    m.addEventListener('click', e => {
+        if (e.target === m) closeModal(m.id);
+    });
 });
 
 /* ══════════════════════════════════════════
@@ -1194,16 +1224,29 @@ async function loadGameStats() {
         statsLoaded = true;
         const { summary, scores, expHistory } = data;
 
+        // Dynamic Level Progression Logic
+        const currentLevel = summary.current_level || 1;
+        const totalExp = summary.total_exp || 0;
+        const totalMaxExp = summary.total_max_exp || 52100;
+        const progressPct = summary.progress_pct !== undefined ? summary.progress_pct : Math.min(100, Math.round((totalExp / totalMaxExp) * 100));
+        const levelTitle = summary.level_title || 'Cadet';
+
         // Sidebar level bar
-        const expForNextLevel = 1000; // adjust to match server logic
-        const pct = summary.total_exp ? Math.min(100, (summary.total_exp % expForNextLevel) / expForNextLevel * 100) : 0;
-        document.getElementById('sidebarLevelDisplay').textContent = summary.current_level || 1;
-        document.getElementById('sidebarExpBar').style.width = pct + '%';
-        document.getElementById('sidebarExpLabel').textContent = (summary.total_exp || 0).toLocaleString() + ' EXP';
+        document.getElementById('sidebarLevelDisplay').textContent = 'Lv. ' + currentLevel + ' / 12';
+        const sidebarTitle = document.getElementById('sidebarLevelTitle');
+        if (sidebarTitle) sidebarTitle.textContent = levelTitle;
+        document.getElementById('sidebarExpBar').style.width = progressPct + '%';
+        document.getElementById('sidebarExpLabel').textContent = totalExp.toLocaleString() + ' / ' + totalMaxExp.toLocaleString() + ' Total Max EXP';
 
         // Progress section cards
-        document.getElementById('progLevel').textContent = summary.current_level || 1;
-        document.getElementById('progExp').textContent   = (summary.total_exp || 0).toLocaleString();
+        document.getElementById('progLevel').textContent = 'Lv. ' + currentLevel;
+        const progLevelSub = document.getElementById('progLevelSubtitle');
+        if (progLevelSub) progLevelSub.textContent = levelTitle;
+
+        document.getElementById('progExp').textContent = totalExp.toLocaleString();
+        const progExpSub = document.getElementById('progExpSubtitle');
+        if (progExpSub) progExpSub.textContent = 'of ' + totalMaxExp.toLocaleString() + ' Max EXP (' + progressPct + '%)';
+
         document.getElementById('progAssessCount').textContent = scores.length;
 
         // EXP bar chart
@@ -1259,7 +1302,13 @@ function drawExpChart(canvasId, expHistory) {
     });
 
     if (canvasId === 'expChart') expChartInst = chart;
-    else modalChartInst = chart;
+    else {
+        modalChartInst = chart;
+        const table = document.getElementById('modalExpTable');
+        if (table) {
+            table.innerHTML = `<table><caption>EXP History</caption><thead><tr><th>Assessment</th><th>EXP Gained</th></tr></thead><tbody>${expHistory.map(h => `<tr><td>${escHtml(h.label)}</td><td>${h.exp_gained}</td></tr>`).join('')}</tbody></table>`;
+        }
+    }
 }
 
 function renderScoreList(containerId, scores) {
@@ -1308,19 +1357,31 @@ async function openScoresModal() {
         if (!data.success) throw new Error('Failed');
         const { summary, scores, expHistory } = data;
 
-        document.getElementById('modalLevel').textContent      = summary.current_level || 1;
-        document.getElementById('modalTotalExp').textContent   = (summary.total_exp || 0).toLocaleString();
+        const currentLevel = summary.current_level || 1;
+        const totalExp = summary.total_exp || 0;
+        const totalMaxExp = summary.total_max_exp || 52100;
+        const progressPct = summary.progress_pct !== undefined ? summary.progress_pct : Math.min(100, Math.round((totalExp / totalMaxExp) * 100));
+        const levelTitle = summary.level_title || 'Cadet';
+
+        document.getElementById('modalLevel').textContent = 'Lv. ' + currentLevel;
+        const modalLvlSub = document.getElementById('modalLevelSubtitle');
+        if (modalLvlSub) modalLvlSub.textContent = levelTitle;
+
+        document.getElementById('modalTotalExp').textContent = totalExp.toLocaleString();
+        const modalExpSub = document.getElementById('modalExpSubtitle');
+        if (modalExpSub) modalExpSub.textContent = 'of ' + totalMaxExp.toLocaleString() + ' Max EXP (' + progressPct + '%)';
+
         document.getElementById('modalAssessCount').textContent = scores.length;
 
         drawExpChart('modalExpChart', expHistory);
         renderScoreList('modalScoreList', scores);
 
         // Also update sidebar
-        const expForNextLevel = 1000;
-        const pct = Math.min(100,(summary.total_exp % expForNextLevel) / expForNextLevel * 100);
-        document.getElementById('sidebarLevelDisplay').textContent = summary.current_level || 1;
-        document.getElementById('sidebarExpBar').style.width       = pct + '%';
-        document.getElementById('sidebarExpLabel').textContent     = (summary.total_exp || 0).toLocaleString() + ' EXP';
+        document.getElementById('sidebarLevelDisplay').textContent = 'Lv. ' + currentLevel + ' / 12';
+        const sidebarTitle = document.getElementById('sidebarLevelTitle');
+        if (sidebarTitle) sidebarTitle.textContent = levelTitle;
+        document.getElementById('sidebarExpBar').style.width = progressPct + '%';
+        document.getElementById('sidebarExpLabel').textContent = totalExp.toLocaleString() + ' / ' + totalMaxExp.toLocaleString() + ' Total Max EXP';
     } catch(e) {
         document.getElementById('modalScoreList').innerHTML =
             '<p style="color:#94a3b8;font-size:12px;text-align:center;padding:20px;">Failed to load scores.</p>';
@@ -1378,11 +1439,16 @@ async function openConvo(userId, name, pic) {
     document.getElementById('msgActiveThread').style.display   = 'flex';
 
     document.getElementById('msgThreadHeader').innerHTML = `
+        <button type="button" class="msg-back-btn" onclick="backToConvoList()" aria-label="Back to conversations">
+            <i class="fas fa-chevron-left" style="font-size:12px;"></i>
+        </button>
         <img src="/profile_uploads/${pic}" onerror="this.src='/profile_uploads/default_avatar.png'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
         <div>
             <p style="font-size:13px;font-weight:800;color:#0f172a;">${escHtml(name)}</p>
             <p style="font-size:10px;color:#94a3b8;">Private message</p>
         </div>`;
+
+    document.querySelector('.msg-body')?.classList.add('in-thread');
 
     // Highlight active convo
     document.querySelectorAll('.convo-item').forEach(el => el.classList.remove('active'));
@@ -1393,6 +1459,12 @@ async function openConvo(userId, name, pic) {
     // Start polling
     clearInterval(msgPollTimer);
     msgPollTimer = setInterval(() => fetchMessages(userId), 5000);
+}
+
+function backToConvoList() {
+    document.querySelector('.msg-body')?.classList.remove('in-thread');
+    activeConvoParter = null;
+    if (typeof msgPollTimer !== 'undefined' && msgPollTimer) clearInterval(msgPollTimer);
 }
 
 async function fetchMessages(userId) {
@@ -1476,11 +1548,16 @@ document.getElementById('modalMsg').addEventListener('click', function(e) {
         const data = await res.json();
         if (!data.success) return;
         const { summary } = data;
-        const expForNextLevel = 1000;
-        const pct = Math.min(100,(summary.total_exp % expForNextLevel) / expForNextLevel * 100);
-        document.getElementById('sidebarLevelDisplay').textContent = summary.current_level || 1;
-        document.getElementById('sidebarExpBar').style.width       = pct + '%';
-        document.getElementById('sidebarExpLabel').textContent     = (summary.total_exp||0).toLocaleString() + ' EXP';
+        const currentLevel = summary.current_level || 1;
+        const totalExp = summary.total_exp || 0;
+        const totalMaxExp = summary.total_max_exp || 52100;
+        const progressPct = summary.progress_pct !== undefined ? summary.progress_pct : Math.min(100, Math.round((totalExp / totalMaxExp) * 100));
+
+        document.getElementById('sidebarLevelDisplay').textContent = 'Lv. ' + currentLevel + ' / 12';
+        const sidebarTitle = document.getElementById('sidebarLevelTitle');
+        if (sidebarTitle) sidebarTitle.textContent = summary.level_title || 'Cadet';
+        document.getElementById('sidebarExpBar').style.width = progressPct + '%';
+        document.getElementById('sidebarExpLabel').textContent = totalExp.toLocaleString() + ' / ' + totalMaxExp.toLocaleString() + ' Total Max EXP';
     } catch(_) {}
 })();
 
@@ -1746,6 +1823,53 @@ async function saveProfile() {
         btn.innerHTML = '<i class="fas fa-save text-xs"></i> Save Changes';
     }
 }
+
+function toggleNotifications() {
+    const panel = document.getElementById('notification-panel');
+    const overlay = document.getElementById('notification-overlay');
+
+    if (!panel || !overlay) return;
+
+    if (panel.classList.contains('translate-x-full')) {
+        panel.classList.remove('translate-x-full');
+        overlay.classList.remove('hidden');
+        setTimeout(() => overlay.classList.add('opacity-100'), 10);
+        if (window.NotificationHub) {
+            NotificationHub.loadNotifications('notification-list', false);
+        }
+    } else {
+        panel.classList.add('translate-x-full');
+        overlay.classList.remove('opacity-100');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
+}
 </script>
+
+<!-- Notification Panel -->
+<div id="notification-overlay" onclick="toggleNotifications()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden transition-opacity duration-300 opacity-0"></div>
+<div id="notification-panel" class="fixed top-0 right-0 h-screen w-80 md:w-96 bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col">
+    <div class="p-5 border-b flex justify-between items-center bg-blue-600 text-white flex-shrink-0">
+        <div>
+            <h2 class="text-lg font-bold flex items-center gap-2"><i class="far fa-bell"></i> Notifications</h2>
+            <p id="notifSubtitle" class="text-[11px] text-blue-200 font-medium">Activity updates</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="NotificationHub.markAllRead('notification-list')" title="Mark all as read" class="hover:bg-blue-700 text-blue-100 hover:text-white p-2 rounded-lg transition text-xs font-bold flex items-center gap-1">
+                <i class="fas fa-check-double text-sm"></i>
+            </button>
+            <button onclick="toggleNotifications()" class="hover:bg-blue-700 p-2 rounded-lg transition"><i class="fas fa-times text-xl"></i></button>
+        </div>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 no-scrollbar" id="notification-list">
+        <div class="flex flex-col items-center justify-center h-full text-slate-400">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+            <p class="text-xs font-bold uppercase tracking-wider">Loading Updates…</p>
+        </div>
+    </div>
+</div>
+
+<!-- Universal Modal Manager Engine -->
+<script src="/js/modal-core.js"></script>
+<script src="/js/notificationHub.js"></script>
 </body>
 </html>

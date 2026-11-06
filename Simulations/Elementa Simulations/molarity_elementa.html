@@ -1,0 +1,3109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Molarity | Elementa LMS Edition</title>
+  <style>
+    :root {
+      --bg-space: #070b14;
+      --bg-surface: #0f172a;
+      --bg-panel: rgba(15, 23, 42, 0.85);
+      --bg-panel-solid: #1e293b;
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.4);
+      --border-glow: rgba(56, 189, 248, 0.25);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --secondary: #818cf8;
+      --accent: #22d3ee;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --topbar-height: 54px;
+      --tabs-height: 44px;
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* LMS TOPBAR: EXACTLY MATCHING acid-base-solutions_elementa.html */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Mode Selector Pills */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+
+    .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* Top Action Buttons */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    .action-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* SECONDARY SCREENS NAVIGATION */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .screen-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .screen-tab-btn.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+    }
+
+    .screen-tab-number {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    .equation-banner-strip {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* MAIN WORKSPACE */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 30%, #0d1527 0%, #060913 100%);
+    }
+
+    .app-view-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+    }
+
+    .app-view-container.active {
+      display: flex;
+    }
+
+    /* SIMULATION LAYOUT */
+    .sim-layout {
+      flex: 1;
+      display: flex;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .canvas-viewport-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #molarityCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* Floating Playback Bar */
+    .sim-floating-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--border-card);
+      backdrop-filter: blur(8px);
+      border-radius: 10px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .floating-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .floating-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    /* RIGHT CONTROL SIDEBAR */
+    aside.simulation-sidebar {
+      width: 380px;
+      background: rgba(10, 15, 28, 0.88);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 16px;
+      gap: 16px;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .sidebar-section {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #7dd3fc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    /* Solute Selector Dropdown & Grid */
+    .solute-select-wrap {
+      position: relative;
+    }
+
+    select.solute-dropdown {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 8px;
+      color: #fff;
+      padding: 9px 12px;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    select.solute-dropdown:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .solute-badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 6px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .solute-color-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      flex-shrink: 0;
+      box-shadow: 0 0 8px rgba(0,0,0,0.4);
+    }
+
+    .solute-prop-badge {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: #94a3b8;
+    }
+
+    /* Sliders and Steppers */
+    .slider-card {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .slider-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .slider-val-box {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 2px 8px;
+      border-radius: 5px;
+      min-width: 75px;
+      text-align: right;
+    }
+
+    .slider-track-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slider-btn {
+      width: 26px;
+      height: 26px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      flex-shrink: 0;
+    }
+
+    .slider-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: #38bdf8;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider-presets-row {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .preset-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      padding: 2px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .preset-chip:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #7dd3fc;
+    }
+
+    /* Telemetry readout card */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .telemetry-tile {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .telemetry-tile.wide {
+      grid-column: span 2;
+    }
+
+    .tile-label {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .tile-value {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .tile-value.molarity-highlight {
+      font-size: 1.2rem;
+      color: #38bdf8;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .status-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      width: fit-content;
+    }
+
+    .status-pill.unsaturated {
+      background: rgba(52, 211, 153, 0.15);
+      border: 1px solid rgba(52, 211, 153, 0.4);
+      color: #34d399;
+    }
+
+    .status-pill.saturated {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #fbbf24;
+      animation: pulseAlert 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseAlert {
+      0%, 100% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+      50% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+    }
+
+    /* Checkbox list */
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .checkbox-row input {
+      accent-color: #38bdf8;
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+    }
+
+    /* DOCUMENT SCROLLER FOR MISSIONS, QUIZ, THEORY (MATCHING ISOTOPES) */
+    .document-page-scroll {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 30px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .doc-hero {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .doc-hero-text h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .doc-hero-text p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    /* MISSIONS GRID */
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .mission-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .mission-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mission-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mission-status-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+    }
+
+    .mission-card.completed .mission-status-pill {
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+    }
+
+    .mission-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .mission-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .mission-jump-btn {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .mission-jump-btn:hover {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    /* QUIZ QUESTION CARDS */
+    .quiz-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quiz-q-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-opt-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-opt-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .quiz-opt-btn.correct {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #34d399;
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .quiz-opt-btn.wrong {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    .quiz-opt-marker {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-explanation {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 3px solid #38bdf8;
+      color: #cbd5e1;
+      display: none;
+    }
+
+    .quiz-explanation.visible {
+      display: block;
+    }
+
+    .quiz-score-banner {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* THEORY ARTICLE CARDS */
+    .theory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-content {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .theory-formula-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #7dd3fc;
+      margin-top: 6px;
+    }
+
+    /* CERTIFICATE MODAL */
+    .cert-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 550;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cert-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+      border: 2px solid rgba(234, 179, 8, 0.5);
+      border-radius: 20px;
+      padding: 36px 44px;
+      max-width: 600px;
+      width: 90vw;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(234, 179, 8, 0.25);
+      position: relative;
+    }
+
+    .cert-seal {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+      color: #fff;
+    }
+
+    .cert-h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .cert-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .cert-name-slot {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #38bdf8;
+      border-bottom: 1px dashed rgba(56, 189, 248, 0.4);
+      padding-bottom: 6px;
+      margin: 0 auto 20px;
+      max-width: 380px;
+    }
+
+    .cert-details {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .cert-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+    }
+
+    /* TOAST NOTIFICATION */
+    .toast-container {
+      position: fixed;
+      top: 66px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    .toast-msg {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 8px;
+      padding: 10px 16px;
+      color: #f8fafc;
+      font-size: 0.8rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+      animation: toastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  
+    /* ==========================================================================
+       ELEMENTA STANDARD MODALS (acid-base-solutions baseline)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    .modal-backdrop .document-page-scroll {
+      height: auto !important;
+      overflow-y: visible !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+    .modal-backdrop .doc-hero {
+      margin-bottom: 16px !important;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- LMS TOPBAR: EXACTLY MATCHING acid-base-solutions_elementa.html -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 2v7.31"></path>
+            <path d="M14 9.3V1.99"></path>
+            <path d="M8.5 2h7"></path>
+            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+            <path d="M5.52 16h12.96"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Solutions & Concentration</span>
+        <span>›</span>
+        <span class="current">Molarity</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- SECONDARY SCREENS NAVIGATION -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenMacro" onclick="switchSimScreen('macro')">
+        <span class="screen-tab-number">1</span>
+        Molarity Lab (Macro & Saturated)
+      </button>
+      <button class="screen-tab-btn" id="tabScreenMicro" onclick="switchSimScreen('micro')">
+        <span class="screen-tab-number">2</span>
+        Microscopic Ion Dynamics
+      </button>
+      <button class="screen-tab-btn" id="tabScreenDilution" onclick="switchSimScreen('dilution')">
+        <span class="screen-tab-number">3</span>
+        Conductivity & Dilution Analysis
+      </button>
+    </div>
+
+    <!-- Live Formula Banner -->
+    <div class="equation-banner-strip" id="equationBanner">
+      <span style="color:#7dd3fc; font-weight:700;">Fundamental Law:</span>
+      <span id="equationText">M = n / V (mol/L) • Dilution: M₁V₁ = M₂V₂</span>
+    </div>
+  </nav>
+
+  <!-- WORKSPACE BODY -->
+  <main class="simulation-workspace">
+
+    <!-- VIEW 1: SIMULATION LAB -->
+    <div class="app-view-container active" id="viewSim">
+      <div class="sim-layout">
+
+        <!-- Canvas Viewport -->
+        <div class="canvas-viewport-container" id="canvasContainer">
+          <canvas id="molarityCanvas"></canvas>
+
+          <!-- Floating Simulation Bar -->
+          <div class="sim-floating-bar">
+            <button class="floating-btn" id="btnPlayPause" onclick="togglePlayPause()" title="Play / Pause Simulation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" id="playPauseIcon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+            <button class="floating-btn" id="btnQuickSaturate" onclick="quickSaturateSolution()" title="Quick Saturate Solution">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"></path></svg>
+            </button>
+            <span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);" id="floatingStatusLabel">1.000 M • Unsaturated</span>
+          </div>
+        </div>
+
+        <!-- Right Control Sidebar -->
+        <aside class="simulation-sidebar">
+
+          <!-- 1. Solute Selector Section -->
+          <div class="sidebar-section">
+            <div class="section-title">
+              <span>Solute Selection</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>
+            </div>
+            <div class="solute-select-wrap">
+              <select class="solute-dropdown" id="selectSolute" onchange="onSoluteChange(this.value)">
+                <!-- Dynamically populated or standard 10 solutes -->
+              </select>
+            </div>
+            <div class="solute-badge-row">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="solute-color-swatch" id="soluteSwatch"></div>
+                <span style="font-size:0.8rem; font-weight:700; color:#fff;" id="soluteFormula">CuSO₄</span>
+              </div>
+              <div class="solute-prop-badge" id="soluteSatBadge">Sat: 1.40 M</div>
+            </div>
+          </div>
+
+          <!-- 2. Solute Amount Slider (moles) -->
+          <div class="sidebar-section">
+            <div class="slider-card">
+              <div class="slider-header">
+                <span class="slider-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="8"></circle></svg>
+                  Solute Amount (n)
+                </span>
+                <span class="slider-val-box" id="valMoles">0.500 mol</span>
+              </div>
+              <div class="slider-track-row">
+                <button class="slider-btn" onclick="adjustMoles(-0.05)">−</button>
+                <input type="range" id="rangeMoles" min="0" max="1.000" step="0.005" value="0.500" oninput="onMolesInput(this.value)">
+                <button class="slider-btn" onclick="adjustMoles(+0.05)">+</button>
+              </div>
+              <div class="slider-presets-row">
+                <button class="preset-chip" onclick="setMoles(0.200)">0.20 mol</button>
+                <button class="preset-chip" onclick="setMoles(0.500)">0.50 mol</button>
+                <button class="preset-chip" onclick="setMoles(0.800)">0.80 mol</button>
+                <button class="preset-chip" onclick="setMoles(1.000)">1.00 mol</button>
+              </div>
+            </div>
+
+            <!-- Solution Volume Slider (liters) -->
+            <div class="slider-card">
+              <div class="slider-header">
+                <span class="slider-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                  Solution Volume (V)
+                </span>
+                <span class="slider-val-box" id="valVolume">0.500 L</span>
+              </div>
+              <div class="slider-track-row">
+                <button class="slider-btn" onclick="adjustVolume(-0.05)">−</button>
+                <input type="range" id="rangeVolume" min="0.200" max="1.000" step="0.005" value="0.500" oninput="onVolumeInput(this.value)">
+                <button class="slider-btn" onclick="adjustVolume(+0.05)">+</button>
+              </div>
+              <div class="slider-presets-row">
+                <button class="preset-chip" onclick="setVolume(0.250)">0.25 L</button>
+                <button class="preset-chip" onclick="setVolume(0.500)">0.50 L</button>
+                <button class="preset-chip" onclick="setVolume(0.750)">0.75 L</button>
+                <button class="preset-chip" onclick="setVolume(1.000)">1.00 L</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Quantitative Diagnostics & Telemetry -->
+          <div class="sidebar-section">
+            <div class="section-title">Solution Diagnostics</div>
+            <div class="telemetry-grid">
+              <div class="telemetry-tile wide">
+                <span class="tile-label">Molarity (Concentration M)</span>
+                <span class="tile-value molarity-highlight" id="telemetryMolarity">1.000 M</span>
+              </div>
+              <div class="telemetry-tile">
+                <span class="tile-label">Saturation State</span>
+                <span class="status-pill unsaturated" id="telemetrySatPill">UNSATURATED</span>
+              </div>
+              <div class="telemetry-tile">
+                <span class="tile-label">Solubility Limit</span>
+                <span class="tile-value" id="telemetrySatLimit">1.400 M</span>
+              </div>
+              <div class="telemetry-tile">
+                <span class="tile-label">Dissolved Mass</span>
+                <span class="tile-value" id="telemetryDissolvedMass">79.81 g</span>
+              </div>
+              <div class="telemetry-tile">
+                <span class="tile-label">Precipitate Mass</span>
+                <span class="tile-value" id="telemetryPrecipitateMass">0.00 g</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Display Settings & View Options -->
+          <div class="sidebar-section">
+            <div class="section-title">Display & Sensory Controls</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label class="checkbox-row">
+                <input type="checkbox" id="chkShowValues" checked onchange="toggleOption('showValues', this.checked)">
+                <span>Show numerical values in formula</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="chkShowGraduations" checked onchange="toggleOption('showGraduations', this.checked)">
+                <span>Show calibrated beaker graduations</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="chkParticles" checked onchange="toggleOption('particles', this.checked)">
+                <span>Show dissolved ion shimmer & precipitate</span>
+              </label>
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+    </div>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- VIEW 2: GUIDED MISSIONS -->
+    <div class="app-view-container" id="viewMissions">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Guided Missions</h1>
+            <p>Master molarity calculations, saturation boundaries, solid precipitate deposition, dilution relations, and ionic conductivity through interactive laboratory challenges.</p>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:2rem; font-weight:800; color:#38bdf8;" id="missionsHeroScore">0 / 5</div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">Missions Completed</div>
+          </div>
+        </div>
+
+        <div class="mission-grid" id="missionsGridContainer">
+          <!-- Dynamically populated missions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- VIEW 3: ASSESSMENT QUIZ -->
+    <div class="app-view-container" id="viewQuiz">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Assessment Quiz</h1>
+            <p>Evaluate your quantitative understanding of molar concentration, solubility limits, precipitate stoichiometry, and dilution formulas.</p>
+          </div>
+          <div class="quiz-score-banner" id="quizScoreBanner">
+            <div>
+              <div style="font-size:0.75rem; text-transform:uppercase; color:#7dd3fc; font-weight:700;">Score Progress</div>
+              <div style="font-size:1.5rem; font-weight:800; color:#fff;" id="quizScoreDisplay">0 / 5 (0%)</div>
+            </div>
+            <button class="mission-jump-btn" id="btnClaimCert" style="display:none;" onclick="openCertModal()">Claim Certificate</button>
+          </div>
+        </div>
+
+        <div id="quizQuestionsContainer" style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Dynamically populated quiz questions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- VIEW 4: THEORY & FORMULAS -->
+    <div class="app-view-container" id="viewTheory">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Theory & Formulas</h1>
+            <p>Fundamental chemical principles governing molar concentration, solubility product, Beer-Lambert spectrophotometry, and aqueous solution preparation.</p>
+          </div>
+        </div>
+
+        <div class="theory-grid">
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              Definition of Molarity (M)
+            </div>
+            <div class="theory-content">
+              Molarity (also termed molar concentration) is defined as the amount of solute in moles divided by the total volume of solution in liters. It expresses how densely concentrated solute molecules or ions are in the solution.
+            </div>
+            <div class="theory-formula-box">
+              M = n<sub>solute</sub> / V<sub>solution</sub> &nbsp;&nbsp;[mol/L or M]
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"></path></svg>
+              Saturation & Precipitation Threshold
+            </div>
+            <div class="theory-content">
+              A solution is saturated when no more solute can dissolve at that temperature. Adding further solute causes solid crystals to precipitate at the bottom of the vessel. The dissolved concentration remains clamped at the saturation limit C<sub>sat</sub>.
+            </div>
+            <div class="theory-formula-box">
+              n<sub>dissolved</sub> = min(n, C<sub>sat</sub> · V), &nbsp;&nbsp;n<sub>precipitate</sub> = max(0, n − n<sub>dissolved</sub>)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+              Dilution Law (Conservation of Moles)
+            </div>
+            <div class="theory-content">
+              Adding solvent (water) increases the volume without altering the moles of dissolved solute (n₁ = n₂). Consequently, the initial and final states are related by the conservation equation M₁V₁ = M₂V₂.
+            </div>
+            <div class="theory-formula-box">
+              M₁ · V₁ = M₂ · V₂ &nbsp;⟹&nbsp; M₂ = M₁ · (V₁ / V₂)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              Beer-Lambert Color Absorbance Law
+            </div>
+            <div class="theory-content">
+              The optical absorbance A and color intensity of a colored transition metal solution are directly proportional to molar concentration c and light path length b:
+            </div>
+            <div class="theory-formula-box">
+              A = ε · b · c = −log₁₀(I / I₀)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="8"></circle></svg>
+              Electrolytic Conductivity
+            </div>
+            <div class="theory-content">
+              Solutes that dissociate completely into mobile cations and anions in aqueous solution (strong electrolytes like CuSO₄, CoCl₂, KMnO₄) conduct electricity via ion migration, causing a conductivity probe bulb to glow brightly. Non-electrolytes (like sugar drink mix) do not conduct.
+            </div>
+            <div class="theory-formula-box">
+              σ = ∑ z<sub>i</sub> · F · μ<sub>i</sub> · C<sub>i</sub> &nbsp;&nbsp;(Electrical Conductivity)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle></svg>
+              Mass to Molarity Conversion
+            </div>
+            <div class="theory-content">
+              In experimental chemistry, solute is measured on an analytical balance in grams. The mass m is converted to moles via molar mass M<sub>molar</sub>, enabling accurate solution preparation:
+            </div>
+            <div class="theory-formula-box">
+              n = m / M<sub>molar</sub>, &nbsp;&nbsp;M = m / (M<sub>molar</sub> · V)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- CERTIFICATE OF MASTERY MODAL (EXACT REPLICA OF ISOTOPES) -->
+  <div class="cert-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div class="cert-seal">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h2 class="cert-h1">Certificate of Mastery</h2>
+      <div class="cert-sub">Elementa LMS Simulation: Molarity & Aqueous Solutions</div>
+      <div class="cert-name-slot">ELEMENTA SCHOLAR</div>
+      <div class="cert-details">
+        Has successfully demonstrated mastery in calculating molar concentration, determining saturation boundaries, analyzing solid precipitate formation, applying dilution conservation ($M_1V_1 = M_2V_2$), and ionic conductivity.
+      </div>
+      <button class="cert-btn" onclick="closeCertModal()">Return to Lab</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- SIMULATION CORE ENGINE -->
+  <script>
+    /* =========================================================================
+       SOLUTES COMPREHENSIVE DATA (10 CHEMICAL SPECIES)
+       Matching PhET Molarity specifications and authentic physical properties.
+       ========================================================================= */
+    const SOLUTES = [
+      {
+        id: 'drinkMix',
+        name: 'Drink mix',
+        formula: 'Drink Mix (C₁₂H₂₂O₁₁)',
+        sat: 5.95,
+        molarMass: 342.30,
+        colorBase: [255, 35, 45],
+        lightColor: [255, 220, 225],
+        particleColor: '#ef4444',
+        cationName: 'Sucrose molecule',
+        anionName: 'Hydration shell',
+        isElectrolyte: false,
+        desc: 'Organic powder beverage mixture with extremely high aqueous solubility.'
+      },
+      {
+        id: 'cobaltIINitrate',
+        name: 'Cobalt(II) nitrate',
+        formula: 'Co(NO₃)₂',
+        sat: 5.65,
+        molarMass: 182.94,
+        colorBase: [230, 25, 55],
+        lightColor: [255, 220, 225],
+        particleColor: '#e11d48',
+        cationName: 'Co²⁺ (aq)',
+        anionName: 'NO₃⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Vivid crimson red transition metal salt, highly soluble.'
+      },
+      {
+        id: 'cobaltChloride',
+        name: 'Cobalt(II) chloride',
+        formula: 'CoCl₂',
+        sat: 4.35,
+        molarMass: 129.84,
+        colorBase: [255, 105, 120],
+        lightColor: [255, 240, 242],
+        particleColor: '#fb7185',
+        cationName: 'Co²⁺ (aq)',
+        anionName: 'Cl⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Pinkish rose aqueous hexaaquacobalt complex with notable thermal sensitivity.'
+      },
+      {
+        id: 'potassiumDichromate',
+        name: 'Potassium dichromate',
+        formula: 'K₂Cr₂O₇',
+        sat: 0.50,
+        molarMass: 294.18,
+        colorBase: [255, 127, 0],
+        lightColor: [255, 232, 210],
+        particleColor: '#f97316',
+        cationName: 'K⁺ (aq)',
+        anionName: 'Cr₂O₇²⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Intense fiery orange hexavalent chromium oxidizer with a low saturation limit.'
+      },
+      {
+        id: 'goldIIIChloride',
+        name: 'Gold(III) chloride',
+        formula: 'AuCl₃',
+        sat: 2.25,
+        molarMass: 303.33,
+        colorBase: [235, 195, 0],
+        lightColor: [255, 255, 199],
+        particleColor: '#eab308',
+        cationName: 'Au³⁺ (aq)',
+        anionName: 'Cl⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Rich amber-gold precious metal chloride salt forming yellow tetrachloroaurate.'
+      },
+      {
+        id: 'potassiumChromate',
+        name: 'Potassium chromate',
+        formula: 'K₂CrO₄',
+        sat: 3.35,
+        molarMass: 194.19,
+        colorBase: [250, 215, 0],
+        lightColor: [255, 255, 199],
+        particleColor: '#facc15',
+        cationName: 'K⁺ (aq)',
+        anionName: 'CrO₄²⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Brilliant canary-yellow tetrahedral chromate ion solution.'
+      },
+      {
+        id: 'nickelIIChloride',
+        name: 'Nickel(II) chloride',
+        formula: 'NiCl₂',
+        sat: 5.20,
+        molarMass: 129.60,
+        colorBase: [16, 185, 129],
+        lightColor: [234, 248, 238],
+        particleColor: '#10b981',
+        cationName: 'Ni²⁺ (aq)',
+        anionName: 'Cl⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Emerald green aqueous solution formed by octahedral hexaaquanickel ions.'
+      },
+      {
+        id: 'copperSulfate',
+        name: 'Copper(II) sulfate',
+        formula: 'CuSO₄',
+        sat: 1.40,
+        molarMass: 159.61,
+        colorBase: [14, 165, 233],
+        lightColor: [222, 238, 255],
+        particleColor: '#0ea5e9',
+        cationName: 'Cu²⁺ (aq)',
+        anionName: 'SO₄²⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Iconic deep sky-blue aqueous solution of copper(II) cations.'
+      },
+      {
+        id: 'potassiumPermanganate',
+        name: 'Potassium permanganate',
+        formula: 'KMnO₄',
+        sat: 0.50,
+        molarMass: 158.03,
+        colorBase: [120, 20, 140],
+        lightColor: [255, 210, 255],
+        particleColor: '#262626',
+        cationName: 'K⁺ (aq)',
+        anionName: 'MnO₄⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Intense purple-black crystals creating deep magenta/violet solutions at low concentrations.'
+      },
+      {
+        id: 'sodiumChloride',
+        name: 'Sodium chloride',
+        formula: 'NaCl',
+        sat: 6.15,
+        molarMass: 58.44,
+        colorBase: [210, 230, 245],
+        lightColor: [240, 248, 255],
+        particleColor: '#e2e8f0',
+        cationName: 'Na⁺ (aq)',
+        anionName: 'Cl⁻ (aq)',
+        isElectrolyte: true,
+        desc: 'Colorless table salt with high solubility, precipitating as white cubic crystals.'
+      }
+    ];
+
+    /* =========================================================================
+       APPLICATION STATE
+       ========================================================================= */
+    let currentAppMode = 'sim';       // 'sim' | 'missions' | 'quiz' | 'theory'
+    let currentScreen = 'macro';      // 'macro' | 'micro' | 'dilution'
+    let soundEnabled = true;
+    let isPaused = false;
+
+    // Simulation Parameters
+    let activeSolute = SOLUTES[7];    // Default: Copper(II) sulfate (CuSO4)
+    let moles = 0.500;                // 0 to 1.000 mol
+    let volume = 0.500;               // 0.200 to 1.000 L
+
+    // Display options
+    const options = {
+      showValues: true,
+      showGraduations: true,
+      particles: true
+    };
+
+    // Dilution screen extra state
+    let dilutionTargetVol = 0.800;
+
+    // Microscopic simulation particles (120 ions)
+    const microParticles = [];
+    const NUM_MICRO_PARTICLES = 120;
+
+    function initMicroParticles() {
+      microParticles.length = 0;
+      for (let i = 0; i < NUM_MICRO_PARTICLES; i++) {
+        microParticles.push({
+          x: Math.random(),
+          y: Math.random(),
+          vx: (Math.random() - 0.5) * 0.006,
+          vy: (Math.random() - 0.5) * 0.006,
+          isCation: i % 2 === 0,
+          radius: (i % 2 === 0) ? 5.5 : 7.5,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+    initMicroParticles();
+
+    /* =========================================================================
+       AUDIO SYNTHESIS (WEB AUDIO API)
+       ========================================================================= */
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.12, gainVal = 0.1) {
+      if (!soundEnabled) return;
+      try {
+        initAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playSuccessFanfare() {
+      if (!soundEnabled) return;
+      [523.25, 659.25, 783.99, 1046.50].forEach((f, idx) => {
+        setTimeout(() => playTone(f, 'triangle', 0.25, 0.15), idx * 90);
+      });
+    }
+
+    function toggleAudio() {
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      if (btn) btn.classList.toggle('active', soundEnabled);
+      showToast(soundEnabled ? 'Audio synthesis enabled' : 'Audio muted');
+    }
+
+    /* =========================================================================
+       NAVIGATION MODES: EXACT REPLICA OF ISOTOPES & ACID-BASE
+       ========================================================================= */
+    function setAppMode(modeKey) {
+      if (typeof currentAppMode !== 'undefined') currentAppMode = modeKey;
+      if (typeof appMode !== 'undefined') appMode = modeKey;
+      if (typeof state !== 'undefined' && state && state.mode !== undefined) state.mode = modeKey;
+      if (typeof state !== 'undefined' && state && state.appMode !== undefined) state.appMode = modeKey;
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+        if (typeof resizeCanvases === 'function') setTimeout(resizeCanvases, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        if (typeof updateMissionsUI === 'function') updateMissionsUI();
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        if (typeof buildQuizUI === 'function') buildQuizUI();
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    
+    function switchSimScreen(screen) {
+      currentScreen = screen;
+      document.getElementById('tabScreenMacro').classList.toggle('active', screen === 'macro');
+      document.getElementById('tabScreenMicro').classList.toggle('active', screen === 'micro');
+      document.getElementById('tabScreenDilution').classList.toggle('active', screen === 'dilution');
+
+      const eqText = document.getElementById('equationText');
+      if (screen === 'macro') {
+        eqText.textContent = 'M = n / V (mol/L) • Saturated: Q ≥ K_sp';
+      } else if (screen === 'micro') {
+        eqText.textContent = 'Molecular Hydration: Ions Surrounded by Oriented H₂O Dipoles';
+      } else if (screen === 'dilution') {
+        eqText.textContent = 'Dilution Law: M₁V₁ = M₂V₂ • Conservation of Dissolved Solute';
+      }
+      playTone(480, 'sine', 0.08, 0.08);
+      draw();
+      checkMissions();
+    }
+
+    /* =========================================================================
+       USER CONTROLS & EVENT HANDLERS
+       ========================================================================= */
+    function populateSoluteDropdown() {
+      const select = document.getElementById('selectSolute');
+      select.innerHTML = '';
+      SOLUTES.forEach((s, idx) => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        if (s.id === activeSolute.id) opt.selected = true;
+        select.appendChild(opt);
+      });
+      updateSoluteUI();
+    }
+
+    function onSoluteChange(soluteId) {
+      const found = SOLUTES.find(s => s.id === soluteId);
+      if (found) {
+        activeSolute = found;
+        updateSoluteUI();
+        playTone(420, 'sine', 0.1, 0.1);
+        draw();
+        checkMissions();
+      }
+    }
+
+    function updateSoluteUI() {
+      document.getElementById('soluteFormula').textContent = activeSolute.formula;
+      document.getElementById('soluteSatBadge').textContent = 'Sat: ' + activeSolute.sat.toFixed(2) + ' M';
+      const swatch = document.getElementById('soluteSwatch');
+      swatch.style.background = 'rgb(' + activeSolute.colorBase.join(',') + ')';
+      updateCalculations();
+    }
+
+    function onMolesInput(val) {
+      moles = Math.max(0, Math.min(1.000, parseFloat(val)));
+      document.getElementById('valMoles').textContent = moles.toFixed(3) + ' mol';
+      updateCalculations();
+      playTone(300 + moles * 400, 'sine', 0.04, 0.04);
+      draw();
+      checkMissions();
+    }
+
+    function adjustMoles(delta) {
+      const newMoles = Math.max(0, Math.min(1.000, Math.round((moles + delta) * 1000) / 1000));
+      document.getElementById('rangeMoles').value = newMoles;
+      onMolesInput(newMoles);
+    }
+
+    function setMoles(val) {
+      document.getElementById('rangeMoles').value = val;
+      onMolesInput(val);
+    }
+
+    function onVolumeInput(val) {
+      volume = Math.max(0.200, Math.min(1.000, parseFloat(val)));
+      document.getElementById('valVolume').textContent = volume.toFixed(3) + ' L';
+      updateCalculations();
+      playTone(250 + volume * 250, 'sine', 0.04, 0.04);
+      draw();
+      checkMissions();
+    }
+
+    function adjustVolume(delta) {
+      const newVol = Math.max(0.200, Math.min(1.000, Math.round((volume + delta) * 1000) / 1000));
+      document.getElementById('rangeVolume').value = newVol;
+      onVolumeInput(newVol);
+    }
+
+    function setVolume(val) {
+      document.getElementById('rangeVolume').value = val;
+      onVolumeInput(val);
+    }
+
+    function toggleOption(key, isChecked) {
+      options[key] = isChecked;
+      draw();
+    }
+
+    function quickSaturateSolution() {
+      // Set moles so that moles / volume > activeSolute.sat
+      const targetMoles = Math.min(1.000, Math.max(0.600, (activeSolute.sat * volume) + 0.150));
+      setMoles(targetMoles);
+      showToast('Solution adjusted above saturation threshold');
+    }
+
+    function togglePlayPause() {
+      isPaused = !isPaused;
+      const icon = document.getElementById('playPauseIcon');
+      if (isPaused) {
+        icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+      } else {
+        icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+      }
+    }
+
+    /* =========================================================================
+       CALCULATIONS & QUANTITATIVE TELEMETRY
+       ========================================================================= */
+    function getSolutionCalculations() {
+      const actualConcentration = moles / volume;
+      const maxDissolvedMoles = activeSolute.sat * volume;
+      const isSaturated = actualConcentration >= activeSolute.sat;
+      const dissolvedMoles = isSaturated ? maxDissolvedMoles : moles;
+      const precipitateMoles = isSaturated ? Math.max(0, moles - maxDissolvedMoles) : 0;
+      const dissolvedConcentration = isSaturated ? activeSolute.sat : actualConcentration;
+
+      const dissolvedMass = dissolvedMoles * activeSolute.molarMass;
+      const precipitateMass = precipitateMoles * activeSolute.molarMass;
+
+      return {
+        actualConcentration,
+        dissolvedConcentration,
+        isSaturated,
+        dissolvedMoles,
+        precipitateMoles,
+        dissolvedMass,
+        precipitateMass
+      };
+    }
+
+    function updateCalculations() {
+      const calc = getSolutionCalculations();
+
+      document.getElementById('telemetryMolarity').textContent = calc.dissolvedConcentration.toFixed(3) + ' M';
+      document.getElementById('telemetrySatLimit').textContent = activeSolute.sat.toFixed(3) + ' M';
+      document.getElementById('telemetryDissolvedMass').textContent = calc.dissolvedMass.toFixed(2) + ' g';
+      document.getElementById('telemetryPrecipitateMass').textContent = calc.precipitateMass.toFixed(2) + ' g';
+
+      const satPill = document.getElementById('telemetrySatPill');
+      if (calc.isSaturated) {
+        satPill.className = 'status-pill saturated';
+        satPill.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L1 21h22L12 2zm0 4l7.53 13H4.47L12 6zm-1 5v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg> SATURATED';
+      } else {
+        satPill.className = 'status-pill unsaturated';
+        satPill.innerHTML = '✓ UNSATURATED';
+      }
+
+      document.getElementById('floatingStatusLabel').textContent = 
+        calc.dissolvedConcentration.toFixed(3) + ' M • ' + (calc.isSaturated ? 'Saturated' : 'Unsaturated');
+    }
+
+    /* =========================================================================
+       HIGH-FIDELITY CANVAS RENDERING SYSTEM
+       ========================================================================= */
+    const canvas = document.getElementById('molarityCanvas');
+    const ctx = canvas.getContext('2d');
+    let canvasW = 800;
+    let canvasH = 600;
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvasContainer');
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvasW = rect.width;
+      canvasH = rect.height;
+      canvas.width = canvasW * dpr;
+      canvas.height = canvasH * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      draw();
+    });
+
+    let animFrameTime = 0;
+
+    function draw() {
+      ctx.clearRect(0, 0, canvasW, canvasH);
+
+      // Background laboratory illumination & soft grid
+      drawLabBackground();
+
+      if (currentScreen === 'macro') {
+        drawMacroScreen();
+      } else if (currentScreen === 'micro') {
+        drawMicroScreen();
+      } else if (currentScreen === 'dilution') {
+        drawDilutionScreen();
+      }
+    }
+
+    function drawLabBackground() {
+      // Radial glow behind beaker
+      const centerX = canvasW * 0.42;
+      const centerY = canvasH * 0.52;
+      const grad = ctx.createRadialGradient(centerX, centerY, 40, centerX, centerY, Math.max(canvasW, canvasH) * 0.6);
+      grad.addColorStop(0, 'rgba(30, 41, 59, 0.45)');
+      grad.addColorStop(0.6, 'rgba(15, 23, 42, 0.7)');
+      grad.addColorStop(1, 'rgba(7, 11, 20, 0.95)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvasW, canvasH);
+
+      // Laboratory benchtop surface
+      const benchY = canvasH * 0.85;
+      const benchGrad = ctx.createLinearGradient(0, benchY, 0, canvasH);
+      benchGrad.addColorStop(0, '#1e293b');
+      benchGrad.addColorStop(0.08, '#0f172a');
+      benchGrad.addColorStop(1, '#020617');
+      ctx.fillStyle = benchGrad;
+      ctx.fillRect(0, benchY, canvasW, canvasH - benchY);
+
+      // Bench surface highlight line
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, benchY);
+      ctx.lineTo(canvasW, benchY);
+      ctx.stroke();
+    }
+
+    /* -------------------------------------------------------------------------
+       SCREEN 1: MACROSCOPIC BEAKER & DYNAMIC EQUATION
+       ------------------------------------------------------------------------- */
+    function drawMacroScreen() {
+      const calc = getSolutionCalculations();
+
+      // 1. Draw PhET-style Dynamic Equation at the Top
+      drawDynamicEquation(calc);
+
+      // 2. Beaker dimensions and coordinates
+      const beakerW = Math.min(260, canvasW * 0.35);
+      const beakerH = Math.min(340, canvasH * 0.52);
+      const beakerX = (canvasW * 0.42) - (beakerW / 2);
+      const beakerY = (canvasH * 0.85) - beakerH;
+
+      // 3. Draw Beaker Liquid & Precipitate
+      drawBeaker(beakerX, beakerY, beakerW, beakerH, calc);
+
+      // 4. Saturated badge banner if saturated
+      if (calc.isSaturated) {
+        drawSaturatedBanner(beakerX, beakerY, beakerW);
+      }
+    }
+
+    function drawDynamicEquation(calc) {
+      const topY = 65;
+      const centerX = canvasW * 0.42;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Base sizes scaling with molarity, moles, and volume
+      const mSize = Math.max(20, Math.min(46, 22 + (calc.dissolvedConcentration / activeSolute.sat) * 22));
+      const nSize = Math.max(16, Math.min(38, 16 + (moles / 1.0) * 18));
+      const vSize = Math.max(16, Math.min(38, 16 + (volume / 1.0) * 18));
+
+      // Draw background equation glass plaque
+      const plaqueW = Math.min(520, canvasW * 0.65);
+      const plaqueH = 80;
+      const plaqueX = centerX - plaqueW / 2;
+      const plaqueY = topY - plaqueH / 2;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, plaqueX, plaqueY, plaqueW, plaqueH, 12, true, true);
+
+      // Left side: Molarity
+      const mCol = 'rgb(' + activeSolute.colorBase.join(',') + ')';
+      ctx.font = '800 ' + mSize + 'px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = mCol;
+      ctx.shadowColor = mCol;
+      ctx.shadowBlur = 12;
+
+      const mText = options.showValues ? calc.dissolvedConcentration.toFixed(3) + ' M' : 'Molarity';
+      const leftX = centerX - 120;
+      ctx.fillText(mText, leftX, topY);
+      ctx.shadowBlur = 0;
+
+      // Equals sign
+      ctx.font = '700 24px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('=', centerX - 25, topY);
+
+      // Right side: Numerator (Moles) / Denominator (Volume)
+      const fractionCenterX = centerX + 110;
+      const numY = topY - 18;
+      const denY = topY + 20;
+
+      // Moles
+      ctx.font = '700 ' + nSize + 'px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#38bdf8';
+      const nText = options.showValues ? moles.toFixed(3) + ' mol' : 'solute amount';
+      ctx.fillText(nText, fractionCenterX, numY);
+
+      // Fraction bar
+      const barLen = Math.max(120, Math.max(nText.length * 10, 140));
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(fractionCenterX - barLen / 2, topY);
+      ctx.lineTo(fractionCenterX + barLen / 2, topY);
+      ctx.stroke();
+
+      // Volume
+      ctx.font = '700 ' + vSize + 'px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#22d3ee';
+      const vText = options.showValues ? volume.toFixed(3) + ' L' : 'solution volume';
+      ctx.fillText(vText, fractionCenterX, denY);
+
+      ctx.restore();
+    }
+
+    function drawBeaker(x, y, w, h, calc) {
+      const liquidHeightNorm = volume; // 0.2 to 1.0 (corresponds to beaker height fraction)
+      const liquidH = (h - 30) * liquidHeightNorm;
+      const liquidY = (y + h) - liquidH;
+
+      ctx.save();
+
+      // 1. Shadow underneath beaker on bench
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(x + w/2, y + h + 2, w * 0.48, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Liquid Body
+      const cRatio = Math.min(1.0, calc.dissolvedConcentration / activeSolute.sat);
+      const alpha = 0.15 + cRatio * 0.75;
+      const [r, g, b] = activeSolute.colorBase;
+
+      // Gradient for 3D liquid cylinder depth
+      const liqGrad = ctx.createLinearGradient(x, liquidY, x + w, liquidY);
+      liqGrad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',' + (alpha * 0.9) + ')');
+      liqGrad.addColorStop(0.3, 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')');
+      liqGrad.addColorStop(0.7, 'rgba(' + r + ',' + g + ',' + b + ',' + (alpha * 1.1) + ')');
+      liqGrad.addColorStop(1, 'rgba(' + (r * 0.7) + ',' + (g * 0.7) + ',' + (b * 0.7) + ',' + alpha + ')');
+
+      // Fill liquid body
+      ctx.fillStyle = liqGrad;
+      ctx.beginPath();
+      ctx.moveTo(x + 4, liquidY);
+      ctx.lineTo(x + w - 4, liquidY);
+      ctx.lineTo(x + w - 4, y + h - 6);
+      ctx.quadraticCurveTo(x + w - 4, y + h, x + w - 16, y + h);
+      ctx.lineTo(x + 16, y + h);
+      ctx.quadraticCurveTo(x + 4, y + h, x + 4, y + h - 6);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. Liquid Top Meniscus Ellipse
+      ctx.fillStyle = 'rgba(' + (r + 20) + ',' + (g + 20) + ',' + (b + 20) + ',' + Math.min(1, alpha + 0.15) + ')';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(x + w/2, liquidY, (w - 8) / 2, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 4. Dissolved Ion Shimmer / Particle Sparkle in Liquid
+      if (options.particles && calc.dissolvedConcentration > 0) {
+        const sparkleCount = Math.floor(cRatio * 35);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        for (let i = 0; i < sparkleCount; i++) {
+          const sx = x + 12 + ((i * 37 + Math.sin(animFrameTime * 0.002 + i) * 20) % (w - 24));
+          const sy = liquidY + 12 + ((i * 43 + Math.cos(animFrameTime * 0.002 + i) * 15) % (liquidH - 24));
+          const rad = 1 + (i % 2);
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 5. Solid Precipitate at Beaker Floor
+      if (calc.isSaturated && calc.precipitateMoles > 0) {
+        drawPrecipitatePile(x + 10, y + h - 2, w - 20, calc.precipitateMoles);
+      }
+
+      // 6. Beaker Glass Outline & Reflections
+      drawGlassBeaker(x, y, w, h);
+
+      // 7. Calibrated Volume Graduations
+      if (options.showGraduations) {
+        drawBeakerGraduations(x, y, w, h);
+      }
+
+      ctx.restore();
+    }
+
+    function drawPrecipitatePile(x, baseY, w, precipMoles) {
+      ctx.save();
+      const pileHeight = Math.min(38, 8 + (precipMoles / 0.5) * 28);
+      const pColor = activeSolute.particleColor;
+
+      // Base gradient for crystal pile
+      const pileGrad = ctx.createLinearGradient(x + w/2, baseY - pileHeight, x + w/2, baseY);
+      pileGrad.addColorStop(0, pColor);
+      pileGrad.addColorStop(1, '#000000');
+
+      ctx.fillStyle = pileGrad;
+      ctx.beginPath();
+      ctx.moveTo(x, baseY);
+      ctx.quadraticCurveTo(x + w * 0.25, baseY - pileHeight * 0.8, x + w * 0.5, baseY - pileHeight);
+      ctx.quadraticCurveTo(x + w * 0.75, baseY - pileHeight * 0.8, x + w, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Individual crystal facets / grains
+      const numGrains = Math.min(60, Math.floor(15 + precipMoles * 80));
+      for (let i = 0; i < numGrains; i++) {
+        const gx = x + (i * 17) % w;
+        const gy = baseY - Math.random() * pileHeight * 0.85;
+        ctx.fillStyle = i % 2 === 0 ? pColor : '#ffffff';
+        ctx.fillRect(gx, gy, 3, 2.5);
+      }
+
+      // Precipitate label
+      ctx.font = '700 10px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#f8fafc';
+      ctx.textAlign = 'center';
+      ctx.fillText('Solid Precipitate', x + w/2, baseY - pileHeight - 6);
+
+      ctx.restore();
+    }
+
+    function drawGlassBeaker(x, y, w, h) {
+      // Glass walls outline
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      // Spout on left rim
+      ctx.moveTo(x - 8, y);
+      ctx.lineTo(x + 4, y);
+      ctx.lineTo(x + w - 4, y);
+      ctx.lineTo(x + w + 4, y);
+      // Right rim to bottom
+      ctx.moveTo(x + w, y);
+      ctx.lineTo(x + w, y + h - 10);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - 10, y + h);
+      ctx.lineTo(x + 10, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - 10);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+
+      // Top rim highlight ellipse
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(x + w/2, y, w/2, 6, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Left specular vertical glass highlight
+      const specGrad = ctx.createLinearGradient(x, y, x + 16, y);
+      specGrad.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+      specGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = specGrad;
+      ctx.fillRect(x + 4, y + 8, 12, h - 16);
+
+      // Right specular vertical glass highlight
+      const specGradR = ctx.createLinearGradient(x + w - 16, y, x + w, y);
+      specGradR.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      specGradR.addColorStop(1, 'rgba(255, 255, 255, 0.25)');
+      ctx.fillStyle = specGradR;
+      ctx.fillRect(x + w - 16, y + 8, 12, h - 16);
+    }
+
+    function drawBeakerGraduations(x, y, w, h) {
+      ctx.save();
+      ctx.font = '600 9px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = 1.2;
+      ctx.textAlign = 'left';
+
+      // 10 graduations from 0.1L to 1.0L
+      for (let i = 1; i <= 10; i++) {
+        const frac = i / 10;
+        const tickY = (y + h) - ((h - 30) * frac);
+        const isMajor = (i % 2 === 0);
+        const tickW = isMajor ? 16 : 9;
+
+        ctx.beginPath();
+        ctx.moveTo(x + 4, tickY);
+        ctx.lineTo(x + 4 + tickW, tickY);
+        ctx.stroke();
+
+        if (isMajor) {
+          ctx.fillText((frac).toFixed(1) + ' L', x + 24, tickY + 3);
+        }
+      }
+
+      ctx.fillText('1000 mL BEAKER', x + w/2 - 40, y + 24);
+      ctx.restore();
+    }
+
+    function drawSaturatedBanner(beakerX, beakerY, beakerW) {
+      ctx.save();
+      const bannerW = 160;
+      const bannerH = 28;
+      const bannerX = beakerX + beakerW / 2 - bannerW / 2;
+      const bannerY = beakerY - 38;
+
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, bannerX, bannerY, bannerW, bannerH, 6, true, true);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '800 12px ' + getComputedStyle(document.body).fontFamily;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚠️ SATURATED SOLUTION', bannerX + bannerW/2, bannerY + bannerH/2);
+      ctx.restore();
+    }
+
+    /* -------------------------------------------------------------------------
+       SCREEN 2: MICROSCOPIC ION DYNAMICS
+       ------------------------------------------------------------------------- */
+    function drawMicroScreen() {
+      const calc = getSolutionCalculations();
+
+      // Heading Banner
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = '800 20px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('Microscopic Sub-Microscopic View: Hydrated Ions in Motion', canvasW * 0.42, 45);
+
+      ctx.font = '500 13px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('Observing thermal Brownian diffusion, ion dissociation, and lattice precipitation', canvasW * 0.42, 68);
+      ctx.restore();
+
+      // Chamber coordinates
+      const chamW = Math.min(500, canvasW * 0.65);
+      const chamH = Math.min(360, canvasH * 0.65);
+      const chamX = canvasW * 0.42 - chamW / 2;
+      const chamY = 95;
+
+      // Chamber glass box
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+      ctx.lineWidth = 2;
+      roundRect(ctx, chamX, chamY, chamW, chamH, 12, true, true);
+
+      // Water background tint
+      const [r, g, b] = activeSolute.colorBase;
+      const alpha = 0.08 + (calc.dissolvedConcentration / activeSolute.sat) * 0.35;
+      ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+      ctx.fillRect(chamX + 2, chamY + 2, chamW - 4, chamH - 4);
+
+      // Active particles count proportional to concentration
+      const activeCount = Math.max(10, Math.floor((calc.dissolvedConcentration / activeSolute.sat) * NUM_MICRO_PARTICLES));
+
+      for (let i = 0; i < activeCount; i++) {
+        const p = microParticles[i];
+        if (!isPaused) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0.04 || p.x > 0.96) p.vx *= -1;
+          if (p.y < 0.04 || p.y > 0.96) p.vy *= -1;
+        }
+
+        const px = chamX + p.x * chamW;
+        const py = chamY + p.y * chamH;
+
+        // Hydration water dipole shell
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(px, py, p.radius + 6, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Ion core
+        ctx.fillStyle = p.isCation ? 'rgb(' + activeSolute.colorBase.join(',') + ')' : '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(px, py, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ion charge symbol
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 8px ' + getComputedStyle(document.body).fontFamily;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.isCation ? '+' : '−', px, py);
+      }
+
+      // Microscopic Legend
+      const legY = chamY + chamH + 18;
+      ctx.font = '600 12px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#e2e8f0';
+      ctx.textAlign = 'center';
+      ctx.fillText('Legend: ' + activeSolute.cationName + ' (Cation +)  •  ' + activeSolute.anionName + ' (Anion −)', canvasW * 0.42, legY);
+    }
+
+    /* -------------------------------------------------------------------------
+       SCREEN 3: CONDUCTIVITY & DILUTION ANALYSIS
+       ------------------------------------------------------------------------- */
+    function drawDilutionScreen() {
+      const calc = getSolutionCalculations();
+
+      // Heading Banner
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = '800 20px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('Analytical Suite: Electrolytic Conductivity & Dilution Law', canvasW * 0.42, 45);
+      ctx.restore();
+
+      // Beaker on left side of analytical screen
+      const beakerW = Math.min(220, canvasW * 0.3);
+      const beakerH = Math.min(300, canvasH * 0.5);
+      const beakerX = (canvasW * 0.25) - (beakerW / 2);
+      const beakerY = (canvasH * 0.85) - beakerH;
+
+      drawBeaker(beakerX, beakerY, beakerW, beakerH, calc);
+
+      // Conductivity Probe submerged in beaker
+      drawConductivityProbe(beakerX, beakerY, beakerW, beakerH, calc);
+
+      // Dilution Tool Calculator Card on right
+      drawDilutionCalculatorPanel(canvasW * 0.45, beakerY - 10, Math.min(360, canvasW * 0.38), beakerH + 20, calc);
+    }
+
+    function drawConductivityProbe(bx, by, bw, bh, calc) {
+      const probeX = bx + bw * 0.65;
+      const probeY = by + 20;
+
+      ctx.save();
+
+      // Dual electrodes into liquid
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(probeX - 12, probeY, 5, bh * 0.65);
+      ctx.fillRect(probeX + 8, probeY, 5, bh * 0.65);
+
+      // Electrode holder block
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, probeX - 22, probeY - 16, 44, 20, 4, true, true);
+
+      // Wires leading up to lightbulb
+      const bulbX = probeX + 45;
+      const bulbY = by - 35;
+
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(probeX - 10, probeY - 16);
+      ctx.lineTo(bulbX - 10, bulbY + 25);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.moveTo(probeX + 10, probeY - 16);
+      ctx.lineTo(bulbX + 10, bulbY + 25);
+      ctx.stroke();
+
+      // Conductivity Lightbulb
+      const cFactor = activeSolute.isElectrolyte ? (calc.dissolvedConcentration / 4.0) : 0;
+      const bulbGlow = Math.min(1.0, cFactor);
+
+      // Glow halo
+      if (bulbGlow > 0.05) {
+        const glowGrad = ctx.createRadialGradient(bulbX, bulbY, 5, bulbX, bulbY, 45 * bulbGlow);
+        glowGrad.addColorStop(0, 'rgba(250, 204, 21, ' + (0.9 * bulbGlow) + ')');
+        glowGrad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(bulbX, bulbY, 45 * bulbGlow, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Bulb glass
+      ctx.fillStyle = bulbGlow > 0.05 ? 'rgba(254, 240, 138, ' + (0.4 + bulbGlow * 0.6) + ')' : 'rgba(255, 255, 255, 0.2)';
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(bulbX, bulbY, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Filament
+      ctx.strokeStyle = bulbGlow > 0.05 ? '#ffffff' : '#64748b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(bulbX - 4, bulbY + 8);
+      ctx.lineTo(bulbX, bulbY - 4);
+      ctx.lineTo(bulbX + 4, bulbY + 8);
+      ctx.stroke();
+
+      // Bulb base
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(bulbX - 6, bulbY + 16, 12, 10);
+
+      // Label
+      ctx.font = '700 10px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = activeSolute.isElectrolyte ? '#fde047' : '#94a3b8';
+      ctx.textAlign = 'center';
+      ctx.fillText(activeSolute.isElectrolyte ? 'ELECTROLYTE' : 'NON-ELECTROLYTE', bulbX, bulbY + 38);
+
+      ctx.restore();
+    }
+
+    function drawDilutionCalculatorPanel(px, py, pw, ph, calc) {
+      ctx.save();
+
+      // Panel Box
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, px, py, pw, ph, 12, true, true);
+
+      // Header
+      ctx.font = '800 13px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'left';
+      ctx.fillText('Dilution Law Calculator (M₁V₁ = M₂V₂)', px + 16, py + 26);
+
+      ctx.font = '500 11px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('Simulate adding pure solvent (H₂O) to dilute the solution:', px + 16, py + 46);
+
+      // Calculation values
+      const initialM = calc.dissolvedConcentration;
+      const initialV = volume;
+      const dilutedV = Math.min(2.0, Math.max(initialV, initialV + 0.400));
+      const dilutedM = (initialM * initialV) / dilutedV;
+
+      // Table Comparison
+      const rowY1 = py + 80;
+      const rowY2 = py + 140;
+      const rowY3 = py + 200;
+
+      drawDilutionParamBox(px + 16, rowY1, pw - 32, 'Initial Stock Solution (State 1)', 
+        'M₁ = ' + initialM.toFixed(3) + ' M', 'V₁ = ' + initialV.toFixed(3) + ' L', '#38bdf8');
+
+      drawDilutionParamBox(px + 16, rowY2, pw - 32, 'Diluted Solution After Adding Water (State 2)', 
+        'M₂ = ' + dilutedM.toFixed(3) + ' M', 'V₂ = ' + dilutedV.toFixed(3) + ' L', '#34d399');
+
+      // Key Takeaway callout
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.6)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      roundRect(ctx, px + 16, rowY3, pw - 32, 60, 8, true, true);
+
+      ctx.font = '700 11px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('Notice:', px + 26, rowY3 + 22);
+
+      ctx.font = '500 11px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('Moles of solute remains strictly constant: n = M₁V₁ = M₂V₂', px + 26, rowY3 + 42);
+
+      ctx.restore();
+    }
+
+    function drawDilutionParamBox(x, y, w, title, mText, vText, col) {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, x, y, w, 48, 6, true, true);
+
+      ctx.font = '600 10px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(title, x + 10, y + 16);
+
+      ctx.font = '700 13px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = col;
+      ctx.fillText(mText, x + 10, y + 36);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText(vText, x + w - 80, y + 36);
+    }
+
+    function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    /* Animation Loop */
+    function loop(timestamp) {
+      animFrameTime = timestamp;
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    /* =========================================================================
+       5 GUIDED MISSIONS (MATCHING ISOTOPES EXPERIENCE)
+       ========================================================================= */
+    const MISSIONS = [
+      {
+        id: 1,
+        title: "Standard 1.0 M Solution Preparation",
+        desc: "In the Molarity Lab, select Copper(II) sulfate and adjust solute amount to 0.500 mol and solution volume to 0.500 L to produce an exact 1.000 M solution.",
+        done: false,
+        check: () => activeSolute.id === 'copperSulfate' && Math.abs(moles - 0.500) < 0.02 && Math.abs(volume - 0.500) < 0.02
+      },
+      {
+        id: 2,
+        title: "Dichromate Saturation & Precipitation",
+        desc: "Select Potassium dichromate (saturation 0.50 M) and configure solute amount to exceed the saturation threshold in 0.500 L to precipitate orange crystals.",
+        done: false,
+        check: () => activeSolute.id === 'potassiumDichromate' && (moles / volume) >= 0.50 && moles > (0.50 * volume)
+      },
+      {
+        id: 3,
+        title: "The Dilution Effect (Color Fading)",
+        desc: "Prepare 0.500 mol of Nickel(II) chloride in 0.200 L (2.500 M), then dilute with water to 1.000 L (0.500 M) to observe the green color attenuation.",
+        done: false,
+        check: () => activeSolute.id === 'nickelIIChloride' && volume >= 0.95 && Math.abs(moles - 0.500) < 0.05
+      },
+      {
+        id: 4,
+        title: "Aqueous Electrolyte Conductivity",
+        desc: "Switch to the Conductivity & Dilution view and select an electrolyte (e.g. Cobalt(II) nitrate) to illuminate the conductivity lightbulb.",
+        done: false,
+        check: () => currentScreen === 'dilution' && activeSolute.isElectrolyte && moles >= 0.3
+      },
+      {
+        id: 5,
+        title: "High-Solubility Super-Concentration",
+        desc: "Select Drink Mix, set solute amount to 1.000 mol in 0.200 L to achieve 5.000 M without precipitating, verifying its 5.95 M saturation limit.",
+        done: false,
+        check: () => activeSolute.id === 'drinkMix' && moles >= 0.95 && volume <= 0.25
+      }
+    ];
+
+    function checkMissions() {
+      let doneCount = 0;
+      MISSIONS.forEach(m => {
+        if (!m.done && m.check && m.check()) {
+          m.done = true;
+          playSuccessFanfare();
+          showToast('Mission Accomplished: ' + m.title + '!');
+        }
+        if (m.done) doneCount++;
+      });
+
+      const badge = document.getElementById('missionBadgeCount');
+      if (badge) badge.textContent = doneCount + '/' + MISSIONS.length;
+      const heroScore = document.getElementById('missionsHeroScore');
+      if (heroScore) heroScore.textContent = doneCount + ' / ' + MISSIONS.length;
+      updateMissionsUI();
+    }
+
+    function updateMissionsUI() {
+      const container = document.getElementById('missionsGridContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      let doneCount = 0;
+
+      MISSIONS.forEach((m, idx) => {
+        const isDone = m.done;
+        if (isDone) doneCount++;
+
+        const card = document.createElement('div');
+        card.className = 'mission-card' + (isDone ? ' completed' : '');
+        card.innerHTML = 
+          '<div class="mission-card-header">' +
+            '<div class="mission-title">' +
+              '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + (isDone ? '#34d399' : '#38bdf8') + '" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>' +
+              'Mission ' + m.id + ': ' + m.title +
+            '</div>' +
+            '<span class="mission-status-pill">' + (isDone ? 'COMPLETED' : 'IN PROGRESS') + '</span>' +
+          '</div>' +
+          '<div class="mission-desc">' + m.desc + '</div>' +
+          '<div class="mission-action-row">' +
+            '<button class="mission-jump-btn" onclick="startMission(' + m.id + ')">' +
+              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
+              (isDone ? 'Review in Lab' : 'Start Mission') +
+            '</button>' +
+            '<span style="font-size:0.75rem; color:var(--text-dim);">+20 XP</span>' +
+          '</div>';
+        container.appendChild(card);
+      });
+
+      const badge = document.getElementById('missionBadgeCount');
+      if (badge) badge.textContent = doneCount + '/' + MISSIONS.length;
+      const heroScore = document.getElementById('missionsHeroScore');
+      if (heroScore) heroScore.textContent = doneCount + ' / ' + MISSIONS.length;
+    }
+
+    function startMission(mId) {
+      setAppMode('sim');
+      if (mId === 1) {
+        switchSimScreen('macro');
+        onSoluteChange('copperSulfate');
+        setMoles(0.200);
+        setVolume(0.500);
+      } else if (mId === 2) {
+        switchSimScreen('macro');
+        onSoluteChange('potassiumDichromate');
+        setMoles(0.250);
+        setVolume(0.500);
+      } else if (mId === 3) {
+        switchSimScreen('macro');
+        onSoluteChange('nickelIIChloride');
+        setMoles(0.500);
+        setVolume(0.200);
+      } else if (mId === 4) {
+        switchSimScreen('dilution');
+        onSoluteChange('cobaltIINitrate');
+        setMoles(0.500);
+        setVolume(0.500);
+      } else if (mId === 5) {
+        switchSimScreen('macro');
+        onSoluteChange('drinkMix');
+        setMoles(0.500);
+        setVolume(0.500);
+      }
+      playTone(523.25, 'sine', 0.12, 0.1);
+      showToast('Mission ' + mId + ' loaded in Simulation Lab');
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ & LMS INTEGRATION
+       ========================================================================= */
+    const QUIZ_QUESTIONS = [
+      {
+        q: "What is the molarity of a solution containing 0.750 moles of solute dissolved in 0.250 liters of solution?",
+        opts: [
+          "0.188 M",
+          "3.000 M",
+          "1.500 M",
+          "0.333 M"
+        ],
+        ans: 1,
+        exp: "Molarity M = moles / volume = 0.750 mol / 0.250 L = 3.000 M (mol/L)."
+      },
+      {
+        q: "If 0.400 moles of Potassium dichromate (saturation limit = 0.50 M) is added to 0.500 L of water, what occurs?",
+        opts: [
+          "All 0.400 moles dissolve, yielding an unsaturated 0.800 M solution.",
+          "Exactly 0.250 moles dissolves (0.50 M concentration), and 0.150 moles precipitates as solid crystals.",
+          "The solution boils because dissolution of dichromate is violently exothermic.",
+          "The concentration becomes 0.200 M."
+        ],
+        ans: 1,
+        exp: "The maximum dissolved moles in 0.500 L is n_max = C_sat × V = 0.50 M × 0.500 L = 0.250 mol. The excess 0.150 mol (44.1 g) precipitates as solid crystals at the bottom."
+      },
+      {
+        q: "According to the dilution equation M₁V₁ = M₂V₂, what volume of water must be added to 0.200 L of 4.00 M stock solution to prepare a 1.00 M solution?",
+        opts: [
+          "0.800 L total volume (adding 0.600 L of water)",
+          "0.400 L total volume (adding 0.200 L of water)",
+          "1.200 L total volume (adding 1.000 L of water)",
+          "0.500 L total volume (adding 0.300 L of water)"
+        ],
+        ans: 0,
+        exp: "V₂ = (M₁V₁) / M₂ = (4.00 M × 0.200 L) / 1.00 M = 0.800 L. To reach 0.800 L from 0.200 L, exactly 0.600 L of water is added."
+      },
+      {
+        q: "Why does an aqueous solution of Copper(II) sulfate conduct electricity, whereas a solution of sugar drink mix does not?",
+        opts: [
+          "Copper sulfate molecules emit free electrons into the liquid.",
+          "Copper sulfate dissociates into mobile Cu²⁺ and SO₄²⁻ ions; sugar dissolves as neutral intact molecules.",
+          "Sugar forms an insulating rubbery coating over the metal electrodes.",
+          "Water molecules freeze solid in the presence of sugar."
+        ],
+        ans: 1,
+        exp: "Electrolytes like CuSO₄ dissociate into charged mobile ions (Cu²⁺ and SO₄²⁻) that migrate under an electric field, carrying current. Non-electrolytes remain neutral solvated molecules."
+      },
+      {
+        q: "A chemist evaporates 0.250 L of solvent from a 1.000 L beaker containing 0.500 M solution without reaching saturation. What happens to the molarity?",
+        opts: [
+          "Molarity decreases to 0.375 M.",
+          "Molarity increases to 0.667 M because moles remain constant while volume decreases to 0.750 L.",
+          "Molarity remains unchanged at 0.500 M.",
+          "The solute evaporates alongside the water."
+        ],
+        ans: 1,
+        exp: "Remaining volume = 1.000 L − 0.250 L = 0.750 L. Since moles n = 0.500 mol is unchanged, new molarity M = 0.500 mol / 0.750 L = 0.667 M."
+      }
+    ];
+
+    let quizAnswersState = [null, null, null, null, null];
+
+    function buildQuizUI() {
+      const container = document.getElementById('quizQuestionsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      QUIZ_QUESTIONS.forEach((q, qIdx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-card';
+
+        let optsHtml = '';
+        q.opts.forEach((opt, optIdx) => {
+          optsHtml += 
+            '<button class="quiz-opt-btn" id="opt_' + qIdx + '_' + optIdx + '" onclick="selectQuizOption(' + qIdx + ', ' + optIdx + ')">' +
+              '<span class="quiz-opt-marker">' + String.fromCharCode(65 + optIdx) + '</span>' +
+              '<span>' + opt + '</span>' +
+            '</button>';
+        });
+
+        card.innerHTML = 
+          '<div class="quiz-q-num">Question ' + (qIdx + 1) + ' of ' + QUIZ_QUESTIONS.length + '</div>' +
+          '<div class="quiz-q-text">' + q.q + '</div>' +
+          '<div class="quiz-options-list">' + optsHtml + '</div>' +
+          '<div class="quiz-explanation" id="exp_' + qIdx + '">' + q.exp + '</div>';
+        container.appendChild(card);
+      });
+
+      // Restore answered state if user previously answered
+      quizAnswersState.forEach((ans, qIdx) => {
+        if (ans !== null) {
+          const q = QUIZ_QUESTIONS[qIdx];
+          const isCorrect = (ans === q.ans);
+          const btn = document.getElementById('opt_' + qIdx + '_' + ans);
+          const exp = document.getElementById('exp_' + qIdx);
+          if (btn) btn.classList.add(isCorrect ? 'correct' : 'wrong');
+          if (!isCorrect) {
+            const correctBtn = document.getElementById('opt_' + qIdx + '_' + q.ans);
+            if (correctBtn) correctBtn.classList.add('correct');
+          }
+          if (exp) exp.classList.add('visible');
+        }
+      });
+      updateQuizScore();
+    }
+
+    function selectQuizOption(qIdx, optIdx) {
+      if (quizAnswersState[qIdx] !== null) return;
+      quizAnswersState[qIdx] = optIdx;
+
+      const q = QUIZ_QUESTIONS[qIdx];
+      const isCorrect = (optIdx === q.ans);
+      const btn = document.getElementById('opt_' + qIdx + '_' + optIdx);
+      const exp = document.getElementById('exp_' + qIdx);
+
+      if (isCorrect) {
+        if (btn) btn.classList.add('correct');
+        playTone(587.33, 'triangle', 0.15, 0.15);
+      } else {
+        if (btn) btn.classList.add('wrong');
+        const correctBtn = document.getElementById('opt_' + qIdx + '_' + q.ans);
+        if (correctBtn) correctBtn.classList.add('correct');
+        playTone(220, 'sawtooth', 0.2, 0.15);
+      }
+
+      if (exp) exp.classList.add('visible');
+      updateQuizScore();
+    }
+
+    function updateQuizScore() {
+      let score = 0;
+      let answeredCount = 0;
+      quizAnswersState.forEach((ans, idx) => {
+        if (ans !== null) {
+          answeredCount++;
+          if (ans === QUIZ_QUESTIONS[idx].ans) score++;
+        }
+      });
+
+      const total = QUIZ_QUESTIONS.length;
+      const pct = Math.round((score / total) * 100);
+      const display = document.getElementById('quizScoreDisplay');
+      if (display) display.textContent = score + ' / ' + total + ' (' + pct + '%)';
+
+      const certBtn = document.getElementById('btnClaimCert');
+      if (answeredCount === total) {
+        if (certBtn) certBtn.style.display = 'inline-flex';
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'ELEMENTA_SIM_SCORE',
+            sim: 'molarity',
+            score: score,
+            total: total,
+            percentage: pct
+          }, '*');
+        }
+      }
+    }
+
+    /* Certificate Modal */
+    function openCertModal() {
+      const overlay = document.getElementById('certOverlay');
+      if (overlay) overlay.classList.add('active');
+      playSuccessFanfare();
+    }
+
+    function closeCertModal() {
+      const overlay = document.getElementById('certOverlay');
+      if (overlay) overlay.classList.remove('active');
+    }
+
+    /* =========================================================================
+       ACTION BAR UTILITIES (RESET, SCREENSHOT, FULLSCREEN, TOAST)
+       ========================================================================= */
+    function resetSimulation() {
+      activeSolute = SOLUTES[7]; // CuSO4
+      moles = 0.500;
+      volume = 0.500;
+      document.getElementById('rangeMoles').value = 0.500;
+      document.getElementById('valMoles').textContent = '0.500 mol';
+      document.getElementById('rangeVolume').value = 0.500;
+      document.getElementById('valVolume').textContent = '0.500 L';
+      populateSoluteDropdown();
+      switchSimScreen('macro');
+      isPaused = false;
+      playTone(400, 'square', 0.08, 0.1);
+      showToast('Simulation reset to initial state');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function captureScreenshot() {
+      const link = document.createElement('a');
+      link.download = 'elementa_molarity_' + Date.now() + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Laboratory screenshot saved');
+    }
+
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast-msg';
+      toast.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span>' + msg + '</span>';
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, 3200);
+    }
+
+    /* =========================================================================
+       STARTUP INITIALIZATION
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      populateSoluteDropdown();
+      resizeCanvas();
+      updateCalculations();
+      if (typeof updateMissionsUI === 'function') updateMissionsUI();
+      if (typeof buildQuizUI === 'function') buildQuizUI();
+      requestAnimationFrame(loop);
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<style>
+    /* ========================================================
+       Standardized Student Side Navigation & Tree UI Styles
+       Baseline from dashboard-student.ejs
+       ======================================================== */
+    #sidebar { 
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        contain: layout;
+    }
+    #mainContent {
+        transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    header {
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Initial-load suppression: Eliminates accordion & chevrons re-animating/jittering on page navigation */
+    .tree-nav-initial-load,
+    .tree-nav-initial-load #sidebar,
+    .tree-nav-initial-load .tree-branch,
+    .tree-nav-initial-load .tree-branch-content,
+    .tree-nav-initial-load .tree-chevron,
+    .tree-nav-initial-load .tree-leaf {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    @media (min-width: 768px) {
+        #sidebar.sidebar-collapsed {
+            transform: translateX(-100%);
+        }
+        #mainContent.sidebar-collapsed-main {
+            margin-left: 0 !important;
+        }
+        header.sidebar-collapsed-header {
+            left: 0 !important;
+        }
+    }
+
+    @media (max-width: 767px) {
+        #sidebar.sidebar-collapsed { 
+            transform: translateX(-100%); 
+        }
+        #sidebar.sidebar-open { 
+            transform: translateX(0); 
+        }
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* High-contrast accessible active navigation item */
+    .nav-active {
+        background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%) !important;
+        color: #ffffff !important;
+        font-weight: 700;
+        box-shadow: 0 4px 14px rgba(6,182,212,0.35);
+    }
+    .nav-active i { color: #ffffff !important; }
+
+    /* ========================================================
+       Structured Tree Navigation Mechanics & Micro-Interactions
+       ======================================================== */
+    .tree-branch {
+        transition: background-color 0.18s ease;
+    }
+
+    .tree-branch-header {
+        position: relative;
+        cursor: pointer;
+        user-select: none;
+        outline: none;
+    }
+    .tree-branch-header:focus-visible {
+        outline: 2px solid #06b6d4;
+        outline-offset: 2px;
+    }
+
+    /* Active Branch Heading Accent */
+    .tree-branch.is-active-branch > .tree-branch-header {
+        background: rgba(99, 102, 241, 0.14);
+        color: #38bdf8;
+    }
+
+    /* Jitter-free CSS Grid accordion expansion */
+    .tree-branch .tree-branch-content {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .tree-branch.tree-expanded > .tree-branch-content {
+        grid-template-rows: 1fr;
+    }
+    .tree-branch-content > .tree-branch-inner {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Smooth 90deg chevron rotation */
+    .tree-chevron {
+        transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: center;
+    }
+    .tree-branch.tree-expanded > .tree-branch-header .tree-chevron {
+        transform: rotate(90deg);
+    }
+
+    /* Tree Branch Guide Lines & Connecting Notches */
+    .tree-branch-inner {
+        border-left: 2px solid rgba(99, 102, 241, 0.22);
+        margin-left: 1.15rem;
+        padding-left: 0.75rem;
+    }
+
+    .tree-leaf {
+        position: relative;
+    }
+    .tree-leaf::before {
+        content: '';
+        position: absolute;
+        left: -0.75rem;
+        top: 50%;
+        width: 0.55rem;
+        height: 2px;
+        background: rgba(99, 102, 241, 0.35);
+        transition: background-color 0.2s ease, width 0.2s ease;
+    }
+    .tree-leaf.nav-active::before {
+        background: #06b6d4;
+        width: 0.65rem;
+    }
+</style>

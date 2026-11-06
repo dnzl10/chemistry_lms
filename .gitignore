@@ -1,6 +1,35 @@
 node_modules/
 .env
+*.log
+scratch/
+parsed_diff_blocks.json
+recovered_diff.txt
 
-# Optional
+# OS metadata
 .DS_Store
 Thumbs.db
+
+# User upload binaries (persisted safely in Google Drive Cloud Vault)
+files/*
+!files/.gitkeep
+profile_pics/*
+!profile_pics/.gitkeep
+material_uploads/*
+!material_uploads/.gitkeep
+material_uploads/audio_notes/*
+!material_uploads/audio_notes/.gitkeep
+public/announcement_uploads/*
+!public/announcement_uploads/.gitkeep
+public/assignment_templates/*
+!public/assignment_templates/.gitkeep
+public/assignment_samples/*
+!public/assignment_samples/.gitkeep
+public/material_uploads/*
+!public/material_uploads/.gitkeep
+public/profile_uploads/*
+!public/profile_uploads/.gitkeep
+public/uploads/question_media/*
+!public/uploads/question_media/.gitkeep
+public/uploads/choice_images/*
+!public/uploads/choice_images/.gitkeep
+

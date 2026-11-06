@@ -1,0 +1,1323 @@
+<% const isAdmin=(typeof user !=='undefined' && user && (user.role==='Admin' || user.role==='admin' )); const
+    dashboardUrl=isAdmin ? '/admin/dashboard' : '/teacher/dashboard' ; const apiBase=isAdmin
+    ? '/admin/simulation-quizzes' : '/teacher/simulation-quizzes' ; %>
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Simulation Assessment Quizzes &amp; EXP Bonus | Elementa <%= isAdmin ? 'Admin' : 'Teacher' %>
+        </title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+            body {
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                background-color: #f0fdfa;
+                /* Light Cyan/Emerald tint matching teacher theme */
+                background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+                background-size: 24px 24px;
+                color: #0f172a;
+            }
+
+            .font-mono {
+                font-family: 'JetBrains Mono', monospace;
+            }
+
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+
+            /* Nav active state */
+            .nav-active {
+                background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
+                color: white !important;
+                font-weight: 700;
+                box-shadow: 0 4px 16px rgba(6, 182, 212, 0.3), 0 2px 8px rgba(99, 102, 241, 0.4);
+            }
+
+            .nav-active i {
+                color: white !important;
+            }
+
+            /* Theme Cards */
+            .theme-card {
+                background: rgba(255, 255, 255, 0.95);
+                border: 1px solid #e2e8f0;
+                border-radius: 1.25rem;
+                box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
+                transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            .theme-card:hover {
+                border-color: #38bdf8;
+                transform: translateY(-2px);
+                box-shadow: 0 12px 30px -10px rgba(14, 165, 233, 0.18);
+            }
+
+            /* Pulse Exp Badge */
+            .pulse-exp-badge {
+                animation: pulseGlow 2s infinite;
+            }
+
+            @keyframes pulseGlow {
+
+                0%,
+                100% {
+                    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+                }
+
+                50% {
+                    box-shadow: 0 0 18px rgba(245, 158, 11, 0.8);
+                }
+            }
+
+            /* Modals */
+            .modal-backdrop {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 100;
+                background: rgba(15, 23, 42, 0.6);
+                backdrop-filter: blur(5px);
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+            }
+
+            .modal-backdrop.open {
+                display: flex;
+            }
+
+            .modal-card {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 1.5rem;
+                width: 100%;
+                max-width: 950px;
+                max-height: 92vh;
+                overflow-y: auto;
+                box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.25);
+                animation: mSlideUp .22s ease-out;
+                color: #0f172a;
+            }
+
+            @keyframes mSlideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(16px) scale(0.98);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            /* Toast */
+            #sim-toast {
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                z-index: 999;
+                background: #0f172a;
+                color: white;
+                padding: 14px 22px;
+                border-radius: 14px;
+                font-size: 13px;
+                font-weight: 700;
+                box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+                transform: translateY(100px);
+                opacity: 0;
+                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                pointer-events: none;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            #sim-toast.show {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        </style>
+        <%- include('../partials/teacher-nav-styles') %>
+    </head>
+
+    <body class="text-slate-900">
+
+        <!-- Global Toast Notification -->
+        <div id="sim-toast">
+            <i class="fas fa-circle-check text-emerald-400 text-lg" id="toast-icon"></i>
+            <span id="toast-msg">Quiz saved successfully</span>
+        </div>
+
+        <div class="flex min-h-screen relative overflow-x-hidden">
+
+            <% if (isAdmin) { %>
+                <%- include('../partials/admin-sidebar', { activeNav: 'simulation_quizzes' }) %>
+                    <% } else { %>
+                        <%- include('../partials/teacher-sidebar', { activeNav: 'simulation_quizzes' }) %>
+                            <% } %>
+
+                                <!-- ===== MAIN CONTENT ===== -->
+                                <main id="mainContent"
+                                    class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+                                    <!-- Top Header Bar -->
+                                    <header
+                                        class="h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-40">
+                                        <div class="flex items-center gap-4">
+                                            <button onclick="toggleSidebar()" aria-label="Toggle navigation sidebar"
+                                                class="p-2 rounded-lg hover:bg-slate-100 text-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 transition">
+                                                <i class="fas fa-bars text-xl"></i>
+                                            </button>
+                                            <div class="hidden sm:block">
+                                                <h1
+                                                    class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">
+                                                    Simulation Quizzes</h1>
+                                                <p class="text-xs text-slate-600 font-medium">
+                                                    <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
+                                                    Customize assessment questions, set EXP bonus deadlines &amp;
+                                                    telemetry
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-3 md:gap-6">
+                                            <!-- Create Custom Quiz Button -->
+                                            <button onclick="openNewQuizModal()"
+                                                class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all">
+                                                <i class="fas fa-plus text-xs"></i>
+                                                <span>Create Custom Quiz</span>
+                                            </button>
+
+                                            <!-- Messages Navigation Button -->
+                                            <a href="<%= (typeof isAdmin !== 'undefined' && isAdmin) ? '/admin/dashboard' : '/teacher/messages' %>"
+                                                id="messagesBtn" aria-label="Open messages and conversations"
+                                                class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
+                                                <i class="far fa-comment-dots text-xl"></i>
+                                                <span
+                                                    class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                                                    Messages
+                                                </span>
+                                            </a>
+
+                                            <!-- Notification Button with keyboard-accessible tooltip -->
+                                            <button type="button" onclick="toggleNotifPanel()"
+                                                aria-label="View notifications"
+                                                class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
+                                                <i class="far fa-bell text-xl text-slate-700"></i>
+                                                <span
+                                                    class="absolute top-2 right-2 flex h-2.5 w-2.5 notif-badge <%= (typeof notifications !== 'undefined' && notifications && notifications.some(n => !n.is_read)) ? '' : 'hidden' %>"
+                                                    aria-hidden="true">
+                                                    <span
+                                                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                    <span
+                                                        class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white"></span>
+                                                </span>
+                                                <span
+                                                    class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                                                    Notifications
+                                                </span>
+                                            </button>
+
+                                            <!-- User Profile Dropdown -->
+                                            <div class="relative">
+                                                <button type="button" onclick="toggleUserMenu(event)" id="userMenuBtn"
+                                                    aria-expanded="false" aria-label="Open user profile menu"
+                                                    class="flex items-center gap-3 pl-4 border-l border-slate-200 hover:opacity-85 transition focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-lg">
+                                                    <div class="text-right hidden lg:block">
+                                                        <p class="text-sm font-bold text-slate-800 leading-none mb-1">
+                                                            <%= user.first_name %>
+                                                                <%= user.last_name %>
+                                                        </p>
+                                                        <p
+                                                            class="text-xs uppercase font-bold text-slate-600 tracking-wider leading-none">
+                                                            <%= user.role || ((typeof isAdmin !=='undefined' && isAdmin)
+                                                                ? 'Admin' : 'Teacher' ) %>
+                                                        </p>
+                                                    </div>
+                                                    <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>"
+                                                        alt="<%= user.first_name %>'s avatar"
+                                                        class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100"
+                                                        onerror="this.src='/profile_uploads/default_avatar.png'">
+                                                    <i class="fas fa-chevron-down text-xs text-slate-600 ml-1"></i>
+                                                </button>
+
+                                                <div id="userDropdown"
+                                                    class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+                                                    <div class="px-4 py-3 border-b border-slate-100 lg:hidden">
+                                                        <p class="text-sm font-bold text-slate-800">
+                                                            <%= user.first_name %>
+                                                                <%= user.last_name %>
+                                                        </p>
+                                                        <p class="text-xs text-slate-600 mt-1 uppercase font-bold">
+                                                            <%= user.role || ((typeof isAdmin !=='undefined' && isAdmin)
+                                                                ? 'Admin' : 'Teacher' ) %>
+                                                        </p>
+                                                    </div>
+                                                    <a href="<%= (typeof isAdmin !== 'undefined' && isAdmin) ? '/admin/academic_management' : '/teacher/profile' %>"
+                                                        class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                                                        <i class="far fa-user w-5 text-center"></i> View Profile
+                                                    </a>
+                                                    <hr class="my-2 border-slate-100">
+                                                    <a href="/logout"
+                                                        class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition font-bold">
+                                                        <i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </header>
+
+                                    <!-- Scrollable Dashboard Body -->
+                                    <div class="flex-1 overflow-y-auto pt-24 px-4 md:px-8 pb-16 space-y-6"
+                                        id="mainScroll">
+
+                                        <!-- Stats KPI Overview Row -->
+                                        <div id="simKpiGrid"
+                                            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            <% const activeCount=simulations.filter(s=> s.status ===
+                                                'active').length;
+                                                    const expiredCount = simulations.filter(s => s.status ===
+                                                    'expired').length;
+                                                    const totalSubmissions = simulations.reduce((acc, s) => acc +
+                                                    (s.quiz ? (s.quiz.submissions_count || 0) : 0), 0);
+                                                    %>
+                                                    <div class="theme-card p-5 flex items-center gap-4">
+                                                        <div
+                                                            class="w-12 h-12 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-cyan-600 text-xl shrink-0">
+                                                            <i class="fas fa-atom"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-2xl font-black text-slate-800">
+                                                                <%= simulations.length %>
+                                                            </div>
+                                                            <div
+                                                                class="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                                                Simulations</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="theme-card p-5 flex items-center gap-4">
+                                                        <div
+                                                            class="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 text-xl shrink-0 pulse-exp-badge">
+                                                            <i class="fas fa-bolt"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-2xl font-black text-amber-600">
+                                                                <%= activeCount %>
+                                                            </div>
+                                                            <div
+                                                                class="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                                                Active EXP Bonus Quizzes</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="theme-card p-5 flex items-center gap-4">
+                                                        <div
+                                                            class="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 text-xl shrink-0">
+                                                            <i class="fas fa-user-check"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-2xl font-black text-emerald-600">
+                                                                <%= totalSubmissions %>
+                                                            </div>
+                                                            <div
+                                                                class="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                                                Student Submissions</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="theme-card p-5 flex items-center gap-4">
+                                                        <div
+                                                            class="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 text-xl shrink-0">
+                                                            <i class="fas fa-clock"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-2xl font-black text-rose-600">
+                                                                <%= expiredCount %>
+                                                            </div>
+                                                            <div
+                                                                class="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                                                Expired Quizzes</div>
+                                                        </div>
+                                                    </div>
+                                            </div>
+
+                                            <!-- Filter & Search Controls -->
+                                            <div
+                                                class="theme-card p-4 flex flex-col md:flex-row items-center justify-between gap-3">
+                                                <div class="relative w-full md:w-80">
+                                                    <i
+                                                        class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                                    <input type="text" id="simSearchInput"
+                                                        oninput="filterSimulationCards()"
+                                                        placeholder="Search simulation (e.g. States, Atom, pH)..."
+                                                        class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors" />
+                                                </div>
+
+                                                <div class="flex items-center gap-2.5 w-full md:w-auto">
+                                                    <select id="simCategoryFilter" onchange="filterSimulationCards()"
+                                                        class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors">
+                                                        <option value="all">All Topic Categories</option>
+                                                        <option value="Atomic Structure">Atomic Structure</option>
+                                                        <option value="Chemical Bonding">Chemical Bonding</option>
+                                                        <option value="Chemical Reactions">Chemical Reactions</option>
+                                                        <option value="Solutions">Solutions</option>
+                                                        <option value="States of Matter">States of Matter &amp;
+                                                            Thermodynamics</option>
+                                                        <option value="Quantum Chemistry">Quantum Chemistry</option>
+                                                    </select>
+
+                                                    <select id="simStatusFilter" onchange="filterSimulationCards()"
+                                                        class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors">
+                                                        <option value="all">All Quiz Statuses</option>
+                                                        <option value="active">Active Bonus Quizzes</option>
+                                                        <option value="expired">Expired Quizzes</option>
+                                                        <option value="none">Default Practice Only</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <!-- Simulations Grid (20 Simulations) -->
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+                                                id="simulationsGrid">
+                                                <% simulations.forEach(function(sim) { %>
+                                                    <div class="theme-card flex flex-col overflow-hidden sim-card group"
+                                                        data-slug="<%= sim.slug %>"
+                                                        data-title="<%= sim.title.toLowerCase() %>"
+                                                        data-category="<%= sim.category.toLowerCase() %>"
+                                                        data-status="<%= sim.status %>">
+
+                                                        <!-- Thumbnail Preview -->
+                                                        <div
+                                                            class="relative h-44 bg-slate-100 overflow-hidden border-b border-slate-200">
+                                                            <img src="<%= sim.thumb %>" alt="<%= sim.title %>"
+                                                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                                onerror="this.src='/assets/logo.png'; this.classList.add('p-8','object-contain');" />
+
+                                                            <!-- Category Badge -->
+                                                            <span
+                                                                class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/95 text-slate-700 border border-slate-200/80 shadow-xs backdrop-blur-md">
+                                                                <%= sim.category.split('&')[0].trim() %>
+                                                            </span>
+
+                                                            <!-- Status Badge -->
+                                                            <% if (sim.status==='active' ) { %>
+                                                                <span
+                                                                    class="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-md pulse-exp-badge">
+                                                                    ⚡ EXP Bonus Active
+                                                                </span>
+                                                                <% } else if (sim.status==='expired' ) { %>
+                                                                    <span
+                                                                        class="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-xs backdrop-blur-md">
+                                                                        ⚠️ Expired
+                                                                    </span>
+                                                                    <% } else { %>
+                                                                        <span
+                                                                            class="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-xs backdrop-blur-md">
+                                                                            Default (0 EXP)
+                                                                        </span>
+                                                                        <% } %>
+                                                        </div>
+
+                                                        <!-- Card Content -->
+                                                        <div class="p-4 flex-1 flex flex-col justify-between">
+                                                            <div>
+                                                                <h3
+                                                                    class="font-bold text-slate-900 text-sm mb-1 line-clamp-1">
+                                                                    <%= sim.title %>
+                                                                </h3>
+
+                                                                <% if (sim.quiz) { %>
+                                                                    <div
+                                                                        class="space-y-1.5 my-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">
+                                                                        <div
+                                                                            class="flex items-center justify-between text-slate-600">
+                                                                            <span><i
+                                                                                    class="fas fa-list-check text-cyan-600 mr-1.5"></i>Questions:</span>
+                                                                            <span class="font-bold text-slate-900">
+                                                                                <%= sim.quiz.question_count %> items
+                                                                            </span>
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex items-center justify-between text-slate-600">
+                                                                            <span><i
+                                                                                    class="fas fa-bolt text-amber-500 mr-1.5"></i>Reward:</span>
+                                                                            <span class="font-bold text-amber-600">+<%=
+                                                                                    sim.quiz.total_bonus_exp %>
+                                                                                    EXP</span>
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex items-center justify-between text-slate-600">
+                                                                            <span><i
+                                                                                    class="fas fa-users text-emerald-600 mr-1.5"></i>Submissions:</span>
+                                                                            <span class="font-bold text-emerald-600">
+                                                                                <%= sim.quiz.submissions_count %>
+                                                                                    students
+                                                                            </span>
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex items-center justify-between text-slate-500 pt-1.5 border-t border-slate-200 text-[10px]">
+                                                                            <span><i class="fas fa-clock mr-1"></i>Due
+                                                                                Date:</span>
+                                                                            <span class="font-medium text-slate-700">
+                                                                                <%= new
+                                                                                    Date(sim.quiz.expires_at).toLocaleDateString()
+                                                                                    %>
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <% } else { %>
+                                                                        <p
+                                                                            class="text-xs text-slate-500 line-clamp-2 my-2.5">
+                                                                            No custom quiz active. Students currently
+                                                                            answer default practice questions without
+                                                                            EXP bonus.
+                                                                        </p>
+                                                                        <% } %>
+                                                            </div>
+
+                                                            <!-- Action Buttons -->
+                                                            <div
+                                                                class="pt-3 border-t border-slate-100 flex items-center gap-2">
+                                                                <button type="button"
+                                                                    onclick="openQuizEditorModal('<%= sim.slug %>', <%= sim.quiz ? sim.quiz.quiz_id : 'null' %>)"
+                                                                    class="flex-1 py-2 px-3 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-indigo-200 hover:border-transparent">
+                                                                    <i class="fas fa-edit text-[11px]"></i>
+                                                                    <span>
+                                                                        <%= sim.quiz ? 'Edit Quiz' : 'Create Quiz' %>
+                                                                    </span>
+                                                                </button>
+
+                                                                <% if (sim.quiz) { %>
+                                                                    <button type="button"
+                                                                        onclick="openTelemetryModal(<%= sim.quiz.quiz_id %>, '<%= sim.title %>')"
+                                                                        class="py-2 px-3 bg-cyan-50 hover:bg-cyan-500 text-cyan-700 hover:text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-cyan-200 hover:border-transparent"
+                                                                        title="View student telemetry & score analytics">
+                                                                        <i class="fas fa-chart-line text-[11px]"></i>
+                                                                    </button>
+                                                                    <% } %>
+
+                                                                        <a href="/Simulations/Elementa%20Simulations/<%= sim.slug %>_elementa.html"
+                                                                            target="_blank"
+                                                                            class="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs transition-colors flex items-center justify-center border border-slate-200"
+                                                                            title="Preview interactive simulation in new tab">
+                                                                            <i
+                                                                                class="fas fa-external-link-alt text-[11px]"></i>
+                                                                        </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <% }); %>
+                                            </div>
+
+                                        </div>
+                                </main>
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- 1. INTERACTIVE QUIZ AUTHORING MODAL (LIGHT THEME)                     -->
+        <!-- ===================================================================== -->
+        <div class="modal-backdrop" id="quizEditorModal">
+            <div class="modal-card">
+                <!-- Modal Header -->
+                <div class="p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-cyan-600">
+                            <i class="fas fa-flask-vial"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900" id="modalEditorTitle">Configure Simulation
+                                Assessment Quiz</h2>
+                            <p class="text-xs text-slate-500" id="modalEditorSub">Set questions, due date, and EXP
+                                rewards</p>
+                        </div>
+                    </div>
+                    <button onclick="closeModal('quizEditorModal')"
+                        class="text-slate-400 hover:text-slate-700 text-xl p-1 transition">&times;</button>
+                </div>
+
+                <!-- Form Body -->
+                <form id="quizEditorForm" onsubmit="handleSaveQuiz(event)" class="p-6 space-y-6">
+                    <input type="hidden" id="editQuizId" name="quiz_id" value="" />
+                    <input type="hidden" id="editSimSlug" name="simulation_slug" value="" />
+
+                    <!-- Row 1: Title & Target Simulation -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Simulation</label>
+                            <input type="text" id="displaySimName" readonly
+                                class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-cyan-700 outline-none cursor-not-allowed" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Quiz Title *</label>
+                            <input type="text" id="editQuizTitle" required
+                                placeholder="e.g. Thermodynamics Principles Assessment"
+                                class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" />
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Instructions, Due Date, and EXP Reward -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Due Date &amp; Time
+                                (Expiration) *</label>
+                            <input type="datetime-local" id="editExpiresAt" required
+                                class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">EXP Award Per Question</label>
+                            <input type="number" id="editExpPerQuestion" min="5" max="100" value="20"
+                                oninput="calculateTotalBonusExp()"
+                                class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-amber-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Total EXP Bonus
+                                (Calculated)</label>
+                            <div id="displayTotalBonusExp"
+                                class="px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-extrabold text-amber-700 flex items-center justify-between">
+                                <span>Total Bonus:</span>
+                                <span id="totalBonusVal">+100 EXP</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Instructions / Description
+                            (Optional)</label>
+                        <textarea id="editDescription" rows="2"
+                            placeholder="Provide guidelines for students before they take this simulation quiz..."
+                            class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"></textarea>
+                    </div>
+
+                    <!-- Dynamic Questions Section -->
+                    <div class="pt-4 border-t border-slate-200">
+                        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900">Questions List</h3>
+                                <p class="text-xs text-slate-500">Add 5, 10, or custom items across Multiple Choice,
+                                    True/False, Identification, and Problem Solving.</p>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="addQuestion('multiple_choice')"
+                                    class="px-3 py-1.5 bg-cyan-50 hover:bg-cyan-100 text-xs font-bold text-cyan-700 rounded-lg border border-cyan-200 transition">
+                                    + Multiple Choice
+                                </button>
+                                <button type="button" onclick="addQuestion('true_false')"
+                                    class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-xs font-bold text-emerald-700 rounded-lg border border-emerald-200 transition">
+                                    + True / False
+                                </button>
+                                <button type="button" onclick="addQuestion('identification')"
+                                    class="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-xs font-bold text-purple-700 rounded-lg border border-purple-200 transition">
+                                    + Identification
+                                </button>
+                                <button type="button" onclick="addQuestion('problem_solving')"
+                                    class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-xs font-bold text-amber-700 rounded-lg border border-amber-200 transition">
+                                    + Problem-Solving
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="questionsContainer" class="space-y-4">
+                            <!-- Dynamic Question Cards rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer Actions -->
+                    <div
+                        class="pt-6 border-t border-slate-200 flex items-center justify-between sticky bottom-0 bg-white py-4 -mb-6 px-2">
+                        <button type="button" onclick="closeModal('quizEditorModal')"
+                            class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">
+                            Cancel
+                        </button>
+                        <button type="submit" id="saveQuizSubmitBtn"
+                            class="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white font-extrabold rounded-xl text-xs shadow-md hover:shadow-lg transition flex items-center gap-2">
+                            <i class="fas fa-save"></i>
+                            <span>Save &amp; Activate Assessment Quiz</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- 2. STUDENT TELEMETRY & ANALYTICS MODAL (LIGHT THEME)                  -->
+        <!-- ===================================================================== -->
+        <div class="modal-backdrop" id="telemetryModal">
+            <div class="modal-card" style="max-width: 1050px;">
+                <div class="p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900" id="telemetryModalTitle">Student Telemetry
+                                &amp; Score Audit</h2>
+                            <p class="text-xs text-slate-500" id="telemetryModalSub">Assessment Quiz submission logs and
+                                itemized accuracy</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <a id="btnExportCsv" href="#" download
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white font-bold text-xs rounded-xl border border-emerald-200 hover:border-transparent transition">
+                            <i class="fas fa-file-csv"></i> Export CSV Gradebook
+                        </a>
+                        <button onclick="closeModal('telemetryModal')"
+                            class="text-slate-400 hover:text-slate-700 text-xl p-1 transition">&times;</button>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <!-- Analytics KPI Row -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5" id="telemetryKpiRow">
+                        <!-- Injected by JS -->
+                    </div>
+
+                    <!-- Question Accuracy Distribution -->
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                        <h4
+                            class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-2">
+                            <i class="fas fa-bullseye text-cyan-600"></i>
+                            Question Difficulty &amp; Concept Accuracy
+                        </h4>
+                        <div id="questionAccuracyContainer" class="space-y-2.5">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Student Submissions Table -->
+                    <div class="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4
+                                class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                                <i class="fas fa-users text-emerald-600"></i>
+                                Student Submissions Log
+                            </h4>
+                            <span id="submissionsCountBadge"
+                                class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">0
+                                Submissions</span>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/80">
+                                        <th class="py-2.5 px-3">Student Name</th>
+                                        <th class="py-2.5 px-3">LRN / Section</th>
+                                        <th class="py-2.5 px-3">Submitted At</th>
+                                        <th class="py-2.5 px-3">Score Breakdown</th>
+                                        <th class="py-2.5 px-3">EXP Gained</th>
+                                        <th class="py-2.5 px-3">Total Profile EXP</th>
+                                        <th class="py-2.5 px-3 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="telemetrySubmissionsTbody" class="divide-y divide-slate-100">
+                                    <!-- Injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- 3. STUDENT SUBMISSION DETAIL DRILL-DOWN MODAL                        -->
+        <!-- ===================================================================== -->
+        <div class="modal-backdrop" id="submissionDetailModal" style="z-index: 110;">
+            <div class="modal-card" style="max-width: 650px;">
+                <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900" id="subDetailStudentName">Student Submission
+                            Details</h3>
+                        <p class="text-xs text-slate-500" id="subDetailMeta"></p>
+                    </div>
+                    <button onclick="closeModal('submissionDetailModal')"
+                        class="text-slate-400 hover:text-slate-700 text-xl">&times;</button>
+                </div>
+                <div class="p-5 space-y-3" id="subDetailList">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+        </div>
+
+        <% if (!isAdmin) { %>
+            <%- include('../partials/teacher-nav-scripts') %>
+                <% } else { %>
+                    <script>
+                        function toggleSidebar() {
+                            const sidebar = document.getElementById('sidebar');
+                            const overlay = document.getElementById('sidebarOverlay');
+                            if (sidebar) sidebar.classList.toggle('-translate-x-full');
+                            if (overlay) overlay.classList.toggle('hidden');
+                        }
+                    </script>
+                    <% } %>
+
+                        <script type="application/json"
+                            id="sim-quizzes-sync-data"><%- JSON.stringify(simulations || []).replace(/<\//g, '<\\/') %></script>
+                        <script>
+                            // Global State
+                            let SIMULATIONS = JSON.parse(document.getElementById('sim-quizzes-sync-data').textContent || '[]');
+                            const API_BASE = '<%= apiBase %>';
+                            let questionsList = [];
+
+                            function showToast(msg, icon = 'fa-circle-check', color = 'text-emerald-500') {
+                                const toast = document.getElementById('sim-toast');
+                                const msgEl = document.getElementById('toast-msg');
+                                const iconEl = document.getElementById('toast-icon');
+                                if (!toast) return;
+
+                                msgEl.textContent = msg;
+                                iconEl.className = `fas ${icon} ${color} text-lg`;
+                                toast.classList.add('show');
+                                setTimeout(() => toast.classList.remove('show'), 3500);
+                            }
+
+                            function openModal(id) {
+                                const m = document.getElementById(id);
+                                if (m) m.classList.add('open');
+                            }
+
+                            function closeModal(id) {
+                                const m = document.getElementById(id);
+                                if (m) m.classList.remove('open');
+                            }
+
+                            function filterSimulationCards() {
+                                const search = (document.getElementById('simSearchInput').value || '').toLowerCase().trim();
+                                const cat = document.getElementById('simCategoryFilter').value.toLowerCase();
+                                const status = document.getElementById('simStatusFilter').value;
+
+                                document.querySelectorAll('.sim-card').forEach(card => {
+                                    const title = card.getAttribute('data-title') || '';
+                                    const cardCat = card.getAttribute('data-category') || '';
+                                    const cardStatus = card.getAttribute('data-status') || '';
+
+                                    const matchesSearch = !search || title.includes(search) || cardCat.includes(search);
+                                    const matchesCat = (cat === 'all') || cardCat.includes(cat);
+                                    const matchesStatus = (status === 'all') || (cardStatus === status);
+
+                                    if (matchesSearch && matchesCat && matchesStatus) {
+                                        card.style.display = 'flex';
+                                    } else {
+                                        card.style.display = 'none';
+                                    }
+                                });
+                            }
+
+                            function openNewQuizModal() {
+                                if (SIMULATIONS.length > 0) {
+                                    openQuizEditorModal(SIMULATIONS[0].slug, null);
+                                }
+                            }
+
+                            // Opens editor modal for a simulation
+                            async function openQuizEditorModal(slug, quizId) {
+                                const sim = SIMULATIONS.find(s => s.slug === slug);
+                                if (!sim) return;
+
+                                document.getElementById('editQuizId').value = quizId || '';
+                                document.getElementById('editSimSlug').value = slug;
+                                document.getElementById('displaySimName').value = sim.title;
+                                document.getElementById('modalEditorTitle').textContent = quizId ? `Edit Assessment Quiz: ${sim.title}` : `Create Assessment Quiz: ${sim.title}`;
+
+                                questionsList = [];
+
+                                if (quizId) {
+                                    // Load existing quiz details from API
+                                    try {
+                                        const res = await fetch(`${API_BASE}/api/quiz/${quizId}`);
+                                        const data = await res.json();
+                                        if (data.success && data.quiz) {
+                                            document.getElementById('editQuizTitle').value = data.quiz.title;
+                                            document.getElementById('editDescription').value = data.quiz.description || '';
+                                            document.getElementById('editExpPerQuestion').value = data.quiz.exp_per_question || 20;
+
+                                            // Format datetime-local
+                                            if (data.quiz.expires_at) {
+                                                const d = new Date(data.quiz.expires_at);
+                                                d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                                                document.getElementById('editExpiresAt').value = d.toISOString().slice(0, 16);
+                                            }
+
+                                            questionsList = (data.questions || []).map(q => {
+                                                let opts = q.options_json;
+                                                if (typeof opts === 'string') {
+                                                    try { opts = JSON.parse(opts); } catch (e) { opts = []; }
+                                                }
+                                                return {
+                                                    question_id: q.question_id,
+                                                    question_text: q.question_text,
+                                                    question_type: q.question_type,
+                                                    options: opts || ['', '', '', ''],
+                                                    correct_answer: q.correct_answer,
+                                                    tolerance: q.tolerance,
+                                                    accepted_synonyms: q.accepted_synonyms,
+                                                    explanation: q.explanation || '',
+                                                    exp_value: q.exp_value || 20
+                                                };
+                                            });
+                                        }
+                                    } catch (err) {
+                                        console.error('Error fetching quiz details:', err);
+                                    }
+                                } else {
+                                    // Defaults for new quiz
+                                    document.getElementById('editQuizTitle').value = `${sim.title}: Assessment Quiz`;
+                                    document.getElementById('editDescription').value = `Answer these 5 conceptual and quantitative items to earn EXP Bonus.`;
+                                    document.getElementById('editExpPerQuestion').value = 20;
+
+                                    // Default due date: 7 days in future
+                                    const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                                    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                                    document.getElementById('editExpiresAt').value = d.toISOString().slice(0, 16);
+
+                                    // Seed with 5 template questions
+                                    questionsList = [
+                                        { question_text: '', question_type: 'multiple_choice', options: ['', '', '', ''], correct_answer: '0', explanation: '' },
+                                        { question_text: '', question_type: 'multiple_choice', options: ['', '', '', ''], correct_answer: '0', explanation: '' },
+                                        { question_text: '', question_type: 'true_false', options: ['True', 'False'], correct_answer: 'true', explanation: '' },
+                                        { question_text: '', question_type: 'identification', correct_answer: '', accepted_synonyms: '', explanation: '' },
+                                        { question_text: '', question_type: 'problem_solving', correct_answer: '', tolerance: 0.1, explanation: '' }
+                                    ];
+                                }
+
+                                renderQuestionsBuilder();
+                                calculateTotalBonusExp();
+                                openModal('quizEditorModal');
+                            }
+
+                            function addQuestion(type = 'multiple_choice') {
+                                const q = {
+                                    question_text: '',
+                                    question_type: type,
+                                    options: type === 'multiple_choice' ? ['', '', '', ''] : (type === 'true_false' ? ['True', 'False'] : []),
+                                    correct_answer: type === 'multiple_choice' ? '0' : (type === 'true_false' ? 'true' : ''),
+                                    tolerance: type === 'problem_solving' ? 0.1 : 0,
+                                    accepted_synonyms: '',
+                                    explanation: '',
+                                    exp_value: parseInt(document.getElementById('editExpPerQuestion').value, 10) || 20
+                                };
+                                questionsList.push(q);
+                                renderQuestionsBuilder();
+                                calculateTotalBonusExp();
+                            }
+
+                            function removeQuestion(idx) {
+                                if (questionsList.length <= 1) {
+                                    alert('A quiz must have at least 1 question.');
+                                    return;
+                                }
+                                questionsList.splice(idx, 1);
+                                renderQuestionsBuilder();
+                                calculateTotalBonusExp();
+                            }
+
+                            function calculateTotalBonusExp() {
+                                const baseExp = parseInt(document.getElementById('editExpPerQuestion').value, 10) || 20;
+                                // Synchronize all questions with the updated baseExp
+                                questionsList.forEach(q => {
+                                    q.exp_value = baseExp;
+                                });
+                                const total = questionsList.length * baseExp;
+                                document.getElementById('totalBonusVal').textContent = `+${total} EXP`;
+                            }
+
+                            function renderQuestionsBuilder() {
+                                const container = document.getElementById('questionsContainer');
+                                container.innerHTML = '';
+
+                                questionsList.forEach((q, idx) => {
+                                    const card = document.createElement('div');
+                                    card.className = 'p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3';
+
+                                    let typeOptionsHtml = '';
+                                    if (q.question_type === 'multiple_choice') {
+                                        const letters = ['A', 'B', 'C', 'D'];
+                                        typeOptionsHtml = `
+                    <div class="space-y-2 mt-2">
+                        <label class="text-[11px] font-bold text-slate-600">Options (Select radio for correct answer):</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${(q.options || ['', '', '', '']).map((opt, oIdx) => `
+                                <div class="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200">
+                                    <input type="radio" name="correct_mc_${idx}" value="${oIdx}" ${String(q.correct_answer) === String(oIdx) ? 'checked' : ''}
+                                           onchange="questionsList[${idx}].correct_answer = '${oIdx}'"
+                                           class="text-cyan-600 focus:ring-0 cursor-pointer" />
+                                    <span class="text-xs font-bold text-slate-500 w-4">${letters[oIdx]}</span>
+                                    <input type="text" value="${escapeHtml(opt)}" placeholder="Option ${letters[oIdx]}"
+                                           oninput="questionsList[${idx}].options[${oIdx}] = this.value"
+                                           class="flex-1 bg-transparent text-xs text-slate-800 outline-none" />
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                                    } else if (q.question_type === 'true_false') {
+                                        typeOptionsHtml = `
+                    <div class="flex items-center gap-4 mt-2">
+                        <label class="text-[11px] font-bold text-slate-600">Correct Answer:</label>
+                        <label class="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+                            <input type="radio" name="correct_tf_${idx}" value="true" ${String(q.correct_answer).toLowerCase() === 'true' ? 'checked' : ''}
+                                   onchange="questionsList[${idx}].correct_answer = 'true'" class="text-emerald-600" />
+                            <span>True</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+                            <input type="radio" name="correct_tf_${idx}" value="false" ${String(q.correct_answer).toLowerCase() === 'false' ? 'checked' : ''}
+                                   onchange="questionsList[${idx}].correct_answer = 'false'" class="text-rose-600" />
+                            <span>False</span>
+                        </label>
+                    </div>
+                `;
+                                    } else if (q.question_type === 'identification') {
+                                        typeOptionsHtml = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600">Expected Correct Term *</label>
+                            <input type="text" value="${escapeHtml(q.correct_answer || '')}" placeholder="e.g. Sublimation"
+                                   oninput="questionsList[${idx}].correct_answer = this.value"
+                                   class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600">Accepted Synonyms (comma-separated)</label>
+                            <input type="text" value="${escapeHtml(q.accepted_synonyms || '')}" placeholder="e.g. phase transition, gas to solid"
+                                   oninput="questionsList[${idx}].accepted_synonyms = this.value"
+                                   class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                        </div>
+                    </div>
+                `;
+                                    } else if (q.question_type === 'problem_solving') {
+                                        typeOptionsHtml = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600">Numerical Solution *</label>
+                            <input type="text" value="${escapeHtml(q.correct_answer || '')}" placeholder="e.g. 298.15"
+                                   oninput="questionsList[${idx}].correct_answer = this.value"
+                                   class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600">Allowable Tolerance (±)</label>
+                            <input type="number" step="any" value="${q.tolerance !== undefined ? q.tolerance : 0.1}"
+                                   oninput="questionsList[${idx}].tolerance = parseFloat(this.value) || 0"
+                                   class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                        </div>
+                    </div>
+                `;
+                                    }
+
+                                    card.innerHTML = `
+                <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center">${idx + 1}</span>
+                        <span class="text-xs font-bold text-slate-700 capitalize">${q.question_type.replace('_', ' ')}</span>
+                    </div>
+                    <button type="button" onclick="removeQuestion(${idx})" class="text-slate-400 hover:text-rose-600 text-xs font-bold p-1 transition">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-bold text-slate-600">Question Prompt *</label>
+                    <textarea rows="2" placeholder="Enter problem statement or question..."
+                              oninput="questionsList[${idx}].question_text = this.value"
+                              class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 mt-1">${escapeHtml(q.question_text || '')}</textarea>
+                </div>
+
+                ${typeOptionsHtml}
+
+                <div class="pt-2 border-t border-slate-200">
+                    <label class="text-[11px] font-bold text-slate-600">Educational Explanation (Shown in review)</label>
+                    <input type="text" value="${escapeHtml(q.explanation || '')}" placeholder="Explain why the answer is correct..."
+                           oninput="questionsList[${idx}].explanation = this.value"
+                           class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 mt-1" />
+                </div>
+            `;
+                                    container.appendChild(card);
+                                });
+                            }
+
+                            async function handleSaveQuiz(event) {
+                                event.preventDefault();
+                                const btn = document.getElementById('saveQuizSubmitBtn');
+
+                                // Validation
+                                for (let i = 0; i < questionsList.length; i++) {
+                                    const q = questionsList[i];
+                                    if (!q.question_text.trim()) {
+                                        alert(`Question #${i + 1} has an empty prompt.`);
+                                        return;
+                                    }
+                                    if (q.question_type === 'multiple_choice') {
+                                        const emptyOpt = (q.options || []).some(o => !String(o).trim());
+                                        if (emptyOpt) {
+                                            alert(`Question #${i + 1} has empty Multiple Choice options.`);
+                                            return;
+                                        }
+                                    } else if (!String(q.correct_answer).trim()) {
+                                        alert(`Question #${i + 1} is missing a correct answer.`);
+                                        return;
+                                    }
+                                }
+
+                                const baseExp = parseInt(document.getElementById('editExpPerQuestion').value, 10) || 20;
+                                questionsList.forEach(q => {
+                                    q.exp_value = baseExp;
+                                });
+
+                                const payload = {
+                                    quiz_id: document.getElementById('editQuizId').value || null,
+                                    simulation_slug: document.getElementById('editSimSlug').value,
+                                    title: document.getElementById('editQuizTitle').value,
+                                    description: document.getElementById('editDescription').value,
+                                    expires_at: document.getElementById('editExpiresAt').value,
+                                    exp_per_question: baseExp,
+                                    questions: questionsList
+                                };
+
+                                btn.disabled = true;
+                                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
+                                try {
+                                    const res = await fetch(`${API_BASE}/save`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(payload)
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                        showToast('Assessment Quiz saved and activated successfully!', 'fa-circle-check', 'text-emerald-500');
+                                        closeModal('quizEditorModal');
+                                        setTimeout(() => window.location.reload(), 1000);
+                                        await refreshSimulationQuizzesContent();
+                                    } else {
+                                        alert(data.error || 'Failed to save quiz.');
+                                    }
+                                } catch (err) {
+                                    console.error('Save quiz error:', err);
+                                    alert('Network error while saving quiz.');
+                                } finally {
+                                    btn.disabled = false;
+                                    btn.innerHTML = `<i class="fas fa-save"></i> <span>Save &amp; Activate Assessment Quiz</span>`;
+                                }
+                            }
+
+                            window.refreshSimulationQuizzesContent = async function () {
+                                try {
+                                    const res = await fetch(window.location.href, {
+                                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                                        cache: 'no-store'
+                                    });
+                                    if (!res.ok) return;
+                                    const html = await res.text();
+                                    const parser = new DOMParser();
+                                    const newDoc = parser.parseFromString(html, 'text/html');
+
+                                    ['simKpiGrid', 'simulationsGrid'].forEach(id => {
+                                        const curEl = document.getElementById(id);
+                                        const newEl = newDoc.getElementById(id);
+                                        if (curEl && newEl) {
+                                            curEl.innerHTML = newEl.innerHTML;
+                                        }
+                                    });
+
+                                    const syncEl = newDoc.getElementById('sim-quizzes-sync-data');
+                                    if (syncEl) {
+                                        try {
+                                            const updatedSims = JSON.parse(syncEl.textContent);
+                                            if (Array.isArray(updatedSims)) {
+                                                SIMULATIONS = updatedSims;
+                                            }
+                                        } catch (pe) {
+                                            console.warn('Error parsing sim-quizzes-sync-data:', pe);
+                                        }
+                                    }
+
+                                    if (typeof filterSimulationCards === 'function') {
+                                        filterSimulationCards();
+                                    }
+                                } catch (err) {
+                                    console.error('Error refreshing simulation quizzes content:', err);
+                                }
+                            };
+
+                            // Opens Telemetry & Student Analytics modal
+                            async function openTelemetryModal(quizId, simTitle) {
+                                document.getElementById('telemetryModalTitle').textContent = `Student Telemetry: ${simTitle}`;
+                                document.getElementById('btnExportCsv').href = `${API_BASE}/export-csv/${quizId}`;
+                                openModal('telemetryModal');
+
+                                try {
+                                    const res = await fetch(`${API_BASE}/api/analytics/${quizId}`);
+                                    const data = await res.json();
+                                    if (!data.success) {
+                                        alert(data.error || 'Failed to load telemetry analytics.');
+                                        return;
+                                    }
+
+                                    // KPIs
+                                    const kpiRow = document.getElementById('telemetryKpiRow');
+                                    kpiRow.innerHTML = `
+                <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-xl font-black text-slate-800">${data.kpis.totalSubmissions}</div>
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Submissions</div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-cyan-50 border border-cyan-200">
+                    <div class="text-xl font-black text-cyan-700">${data.kpis.avgPercentage}%</div>
+                    <div class="text-[10px] font-bold text-cyan-600 uppercase">Class Average</div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div class="text-xl font-black text-emerald-700">${data.kpis.perfectScores}</div>
+                    <div class="text-[10px] font-bold text-emerald-600 uppercase">Perfect (100%)</div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                    <div class="text-xl font-black text-amber-600">+${data.kpis.totalExpGranted}</div>
+                    <div class="text-[10px] font-bold text-amber-700 uppercase">Total EXP Awarded</div>
+                </div>
+            `;
+
+                                    // Question Accuracy
+                                    const qContainer = document.getElementById('questionAccuracyContainer');
+                                    qContainer.innerHTML = '';
+                                    (data.questionStats || []).forEach((qs, idx) => {
+                                        const color = qs.accuracy_percentage >= 70 ? 'bg-emerald-500' : (qs.accuracy_percentage >= 40 ? 'bg-amber-500' : 'bg-rose-500');
+                                        qContainer.innerHTML += `
+                    <div>
+                        <div class="flex items-center justify-between text-xs mb-1">
+                            <span class="text-slate-700 font-medium truncate max-w-[80%]"><strong>Q${idx + 1}:</strong> ${escapeHtml(qs.question_text)}</span>
+                            <span class="font-bold text-slate-900">${qs.accuracy_percentage}% (${qs.correct_count}/${qs.total_attempts})</span>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                            <div class="${color} h-full" style="width: ${qs.accuracy_percentage}%;"></div>
+                        </div>
+                    </div>
+                `;
+                                    });
+
+                                    // Submissions Table
+                                    const tbody = document.getElementById('telemetrySubmissionsTbody');
+                                    document.getElementById('submissionsCountBadge').textContent = `${data.submissions.length} Submissions`;
+                                    tbody.innerHTML = '';
+
+                                    if (data.submissions.length === 0) {
+                                        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500 italic">No student submissions recorded yet.</td></tr>`;
+                                    } else {
+                                        data.submissions.forEach(sub => {
+                                            const subDate = new Date(sub.submitted_at).toLocaleString();
+                                            const tr = document.createElement('tr');
+                                            tr.className = 'hover:bg-slate-50 transition';
+                                            tr.innerHTML = `
+                        <td class="py-3 px-3 font-semibold text-slate-900">${escapeHtml(sub.first_name)} ${escapeHtml(sub.last_name)}</td>
+                        <td class="py-3 px-3 text-slate-600">${sub.lrn_number || 'N/A'} <span class="text-slate-400">(${sub.section || 'All'})</span></td>
+                        <td class="py-3 px-3 text-slate-500">${subDate}</td>
+                        <td class="py-3 px-3">
+                            <span class="font-bold ${sub.percentage >= 60 ? 'text-emerald-600' : 'text-rose-600'}">
+                                ${sub.correct_count} / ${sub.total_questions} (${sub.percentage}%)
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 font-black text-amber-600">+${sub.exp_earned} EXP</td>
+                        <td class="py-3 px-3 text-slate-700">${sub.current_profile_exp || 0} EXP (Lvl ${sub.current_level || 1})</td>
+                        <td class="py-3 px-3 text-right">
+                            <button type="button" onclick="openSubmissionDrillDown(${JSON.stringify(sub).replace(/"/g, '&quot;')})"
+                                    class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-cyan-700 font-bold rounded-lg text-[11px] transition border border-slate-200">
+                                Inspect Answers
+                            </button>
+                        </td>
+                    `;
+                                            tbody.appendChild(tr);
+                                        });
+                                    }
+
+                                } catch (err) {
+                                    console.error('Error loading telemetry:', err);
+                                }
+                            }
+
+                            function openSubmissionDrillDown(sub) {
+                                document.getElementById('subDetailStudentName').textContent = `${sub.first_name} ${sub.last_name}'s Answers`;
+                                document.getElementById('subDetailMeta').textContent = `Score: ${sub.correct_count}/${sub.total_questions} (${sub.percentage}%) • Earned +${sub.exp_earned} EXP on ${new Date(sub.submitted_at).toLocaleString()}`;
+
+                                const list = document.getElementById('subDetailList');
+                                list.innerHTML = '';
+
+                                let breakdowns = [];
+                                try {
+                                    breakdowns = typeof sub.answers_payload === 'string' ? JSON.parse(sub.answers_payload) : sub.answers_payload;
+                                } catch (e) { }
+
+                                breakdowns.forEach((b, idx) => {
+                                    const isCor = b.is_correct;
+
+                                    // Resolve human-friendly student answer
+                                    let studentAnsText = b.student_answer_display;
+                                    if (!studentAnsText) {
+                                        if (b.student_answer !== null && b.student_answer !== undefined && String(b.student_answer).trim() !== '') {
+                                            const letters = ['A', 'B', 'C', 'D', 'E'];
+                                            const sIdx = parseInt(b.student_answer, 10);
+                                            if (b.question_type === 'multiple_choice' && !isNaN(sIdx) && sIdx >= 0 && sIdx < 5) {
+                                                const optText = (b.options_json && b.options_json[sIdx]) ? ` (${b.options_json[sIdx]})` : '';
+                                                studentAnsText = `Option ${letters[sIdx] || (sIdx + 1)}${optText}`;
+                                            } else if (b.question_type === 'true_false') {
+                                                const sBool = String(b.student_answer).trim().toLowerCase();
+                                                studentAnsText = (sBool === 'true' || sBool === '1') ? 'True' : 'False';
+                                            } else {
+                                                studentAnsText = String(b.student_answer).trim();
+                                            }
+                                        } else {
+                                            studentAnsText = 'No answer';
+                                        }
+                                    }
+
+                                    // Resolve human-friendly correct answer
+                                    let correctAnsText = b.correct_answer_display;
+                                    if (!correctAnsText) {
+                                        const letters = ['A', 'B', 'C', 'D', 'E'];
+                                        const cIdx = parseInt(b.correct_answer, 10);
+                                        if (b.question_type === 'multiple_choice' && !isNaN(cIdx) && cIdx >= 0 && cIdx < 5) {
+                                            const optText = (b.options_json && b.options_json[cIdx]) ? ` (${b.options_json[cIdx]})` : '';
+                                            correctAnsText = `Option ${letters[cIdx] || (cIdx + 1)}${optText}`;
+                                        } else if (b.question_type === 'true_false') {
+                                            const cBool = String(b.correct_answer).trim().toLowerCase();
+                                            correctAnsText = (cBool === 'true' || cBool === '1') ? 'True' : 'False';
+                                        } else {
+                                            correctAnsText = String(b.correct_answer ?? '').trim();
+                                        }
+                                    }
+
+                                    list.innerHTML += `
+                <div class="p-3.5 rounded-xl ${isCor ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-rose-50 border border-rose-200 text-rose-900'} text-xs">
+                    <div class="font-bold text-slate-900 mb-1">Question ${idx + 1}: ${escapeHtml(b.question_text)}</div>
+                    <div>Student Answer: <strong class="${isCor ? 'text-emerald-700' : 'text-rose-700'}">${escapeHtml(studentAnsText)}</strong></div>
+                    <div>Correct Answer: <strong class="text-slate-800">${escapeHtml(correctAnsText)}</strong></div>
+                    ${b.explanation ? `<div class="text-[11px] text-slate-500 mt-1 italic">ℹ️ ${escapeHtml(b.explanation)}</div>` : ''}
+                </div>
+            `;
+                                });
+
+                                openModal('submissionDetailModal');
+                            }
+
+                            function escapeHtml(str) {
+                                if (!str) return '';
+                                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+                            }
+                        </script>
+
+                        <%- include('../partials/notification-panel') %>
+                            <%- include('../partials/teacher-nav-scripts') %>
+    </body>
+
+    </html>

@@ -1,0 +1,4123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Density | Elementa LMS Edition</title>
+  <style>
+    :root {
+      --bg-space: #070b14;
+      --bg-surface: #0f172a;
+      --bg-panel: rgba(15, 23, 42, 0.85);
+      --bg-panel-solid: #1e293b;
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.4);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --secondary: #818cf8;
+      --accent: #22d3ee;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --topbar-height: 54px;
+      --tabs-height: 44px;
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* TOPBAR: EXACT REPLICA OF acid-base-solutions_elementa.html */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Mode Selector Pills */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+
+    .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* Top Action Buttons */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    .action-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* SECONDARY SCREENS NAVIGATION */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .screen-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .screen-tab-btn.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+    }
+
+    .screen-tab-number {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .equation-banner-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-card);
+    }
+
+    /* WORKSPACE BODY */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .app-view-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+    }
+
+    .app-view-container.active {
+      display: flex;
+    }
+
+    /* SIMULATION LAB LAYOUT */
+    .sim-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .canvas-container {
+      position: relative;
+      background: radial-gradient(circle at 50% 40%, #0d1527 0%, #060913 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas#densityCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* RIGHT SIDEBAR CONTROLS */
+    aside.simulation-sidebar {
+      background: rgba(13, 19, 35, 0.95);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 16px;
+      gap: 14px;
+    }
+
+    .sidebar-section {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #7dd3fc;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Form Controls */
+    .custom-select {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      outline: none;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .custom-select:focus {
+      border-color: #38bdf8;
+    }
+
+    .segmented-control {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 3px;
+    }
+
+    .segment-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .segment-btn:hover {
+      color: #fff;
+    }
+
+    .segment-btn.active {
+      background: #0284c7;
+      color: #fff;
+      box-shadow: 0 0 8px rgba(2, 132, 199, 0.4);
+    }
+
+    /* Slider Row */
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .slider-val {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+      transition: transform 0.1s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Diagnostics Table */
+    .diag-table {
+      width: 100%;
+      font-size: 0.78rem;
+      border-collapse: collapse;
+    }
+
+    .diag-table tr {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .diag-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .diag-table td {
+      padding: 5px 0;
+    }
+
+    .diag-table td.label {
+      color: var(--text-muted);
+    }
+
+    .diag-table td.value {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    /* Checkbox Group */
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      accent-color: #0284c7;
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+    }
+
+    /* Floating Legend Overlay on Canvas */
+    .canvas-hud-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 10px 14px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.78rem;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-title {
+      font-weight: 700;
+      color: #38bdf8;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .hud-stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      font-family: var(--font-mono);
+      color: #cbd5e1;
+    }
+
+    /* Density Table Modal / Drawer */
+    .density-table-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .density-table-modal.active {
+      display: flex;
+    }
+
+    .density-table-box {
+      background: #0f172a;
+      border: 1px solid var(--border-accent);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 620px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .density-table-header {
+      padding: 16px 20px;
+      background: rgba(30, 41, 59, 0.8);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .density-table-header h3 {
+      font-size: 1.05rem;
+      color: #f8fafc;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-close-modal {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      display: flex;
+    }
+
+    .btn-close-modal:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .density-table-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .ref-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .ref-table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: #7dd3fc;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-weight: 700;
+    }
+
+    .ref-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #cbd5e1;
+    }
+
+    .ref-table tr:hover {
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .ref-table td.val {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    /* DOCUMENT SCROLLER FOR MISSIONS, QUIZ, THEORY */
+    .document-page-scroll {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 30px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .doc-hero {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .doc-hero-text h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .doc-hero-text p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    /* MISSIONS GRID */
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .mission-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .mission-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mission-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mission-status-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+    }
+
+    .mission-card.completed .mission-status-pill {
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+    }
+
+    .mission-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .mission-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .mission-jump-btn {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .mission-jump-btn:hover {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    /* QUIZ QUESTION CARDS */
+    .quiz-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quiz-q-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-opt-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-opt-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .quiz-opt-btn.correct {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #34d399;
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .quiz-opt-btn.wrong {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    .quiz-opt-marker {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-explanation {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 3px solid #38bdf8;
+      color: #cbd5e1;
+      display: none;
+    }
+
+    .quiz-explanation.visible {
+      display: block;
+    }
+
+    .quiz-score-banner {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* THEORY ARTICLE CARDS */
+    .theory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-content {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .theory-formula-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #7dd3fc;
+      margin-top: 6px;
+    }
+
+    /* CERTIFICATE MODAL */
+    .cert-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 250;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cert-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+      border: 2px solid rgba(234, 179, 8, 0.5);
+      border-radius: 20px;
+      padding: 36px 44px;
+      max-width: 600px;
+      width: 90vw;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(234, 179, 8, 0.25);
+      position: relative;
+    }
+
+    .cert-seal {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+      color: #fff;
+    }
+
+    .cert-h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .cert-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .cert-name-slot {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #38bdf8;
+      border-bottom: 1px dashed rgba(56, 189, 248, 0.4);
+      padding-bottom: 6px;
+      margin: 0 auto 20px;
+      max-width: 380px;
+    }
+
+    .cert-details {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .cert-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+    }
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  
+    /* ==========================================================================
+       ELEMENTA STANDARD MODALS (acid-base-solutions baseline)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    .modal-backdrop .document-page-scroll {
+      height: auto !important;
+      overflow-y: visible !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+    .modal-backdrop .doc-hero {
+      margin-bottom: 16px !important;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- LMS TOPBAR: EXACTLY MATCHING acid-base-solutions_elementa.html -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Physics</span>
+        <span>›</span>
+        <span>Fluids & Mechanics</span>
+        <span>›</span>
+        <span class="current">Density</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn" title="Density Reference Table" onclick="openDensityTableModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+        Density Table
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- SECONDARY SCREENS NAVIGATION -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenIntro" onclick="switchSimScreen('intro')">
+        <span class="screen-tab-number">1</span>
+        Intro (Single Block)
+      </button>
+      <button class="screen-tab-btn" id="tabScreenCompare" onclick="switchSimScreen('compare')">
+        <span class="screen-tab-number">2</span>
+        Compare Blocks
+      </button>
+      <button class="screen-tab-btn" id="tabScreenMystery" onclick="switchSimScreen('mystery')">
+        <span class="screen-tab-number">3</span>
+        Mystery Lab
+      </button>
+      <button class="screen-tab-btn" id="tabScreenBuoyancy" onclick="switchSimScreen('buoyancy')">
+        <span class="screen-tab-number">4</span>
+        Fluid Buoyancy
+      </button>
+    </div>
+
+    <!-- Live Status Banner -->
+    <div class="equation-banner-strip" id="equationBanner">
+      <span style="color:#7dd3fc; font-weight:700;">Active Fluid:</span>
+      <span id="screenStatusFluid">Water (ρ = 1.00 kg/L) | Pool Volume: 100.00 L</span>
+    </div>
+  </nav>
+
+  <!-- WORKSPACE BODY -->
+  <main class="simulation-workspace">
+
+    <!-- VIEW 1: SIMULATION LAB -->
+    <div class="app-view-container active" id="viewSim">
+      <div class="sim-layout">
+        <!-- Interactive Canvas Viewport -->
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="densityCanvas"></canvas>
+
+          <!-- Floating HUD on Canvas -->
+          <div class="canvas-hud-overlay" id="canvasHud">
+            <div class="hud-title">Tank Displacement</div>
+            <div class="hud-stat"><span>Base Fluid:</span> <span>100.00 L</span></div>
+            <div class="hud-stat"><span>Displaced:</span> <span id="hudDisplaced">0.00 L</span></div>
+            <div class="hud-stat"><span>Total Pool:</span> <span id="hudTotalPool" style="color:#38bdf8; font-weight:700;">100.00 L</span></div>
+          </div>
+        </div>
+
+        <!-- Right Diagnostic Sidebar -->
+        <aside class="simulation-sidebar">
+          
+          <!-- Screen 1: Intro Controls -->
+          <div id="controlsIntro" class="screen-controls-group">
+            <div class="sidebar-section">
+              <div class="section-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                Material Selection
+              </div>
+              <select class="custom-select" id="selectIntroMaterial" onchange="onIntroMaterialChange(this.value)">
+                <option value="WOOD">Wood (0.40 kg/L)</option>
+                <option value="STYROFOAM">Styrofoam (0.15 kg/L)</option>
+                <option value="ICE">Ice (0.92 kg/L)</option>
+                <option value="BRICK">Brick (2.00 kg/L)</option>
+                <option value="ALUMINUM" selected>Aluminum (2.70 kg/L)</option>
+                <option value="CUSTOM">Custom Material...</option>
+              </select>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="section-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line></svg>
+                Block Dimensions
+              </div>
+
+              <div class="slider-row">
+                <div class="slider-header">
+                  <span>Mass (m)</span>
+                  <span class="slider-val" id="valIntroMass">5.00 kg</span>
+                </div>
+                <input type="range" id="sliderIntroMass" min="0.5" max="15.0" step="0.25" value="5.00" oninput="onIntroMassInput(this.value)">
+              </div>
+
+              <div class="slider-row">
+                <div class="slider-header">
+                  <span>Volume (V)</span>
+                  <span class="slider-val" id="valIntroVolume">5.00 L</span>
+                </div>
+                <input type="range" id="sliderIntroVolume" min="0.5" max="10.0" step="0.25" value="5.00" oninput="onIntroVolumeInput(this.value)">
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="section-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Block Telemetry
+              </div>
+              <table class="diag-table">
+                <tr><td class="label">Calculated Density (ρ)</td><td class="value" id="diagDensity">1.00 kg/L</td></tr>
+                <tr><td class="label">Scale Reading</td><td class="value" id="diagScale">0.00 kg</td></tr>
+                <tr><td class="label">Submerged Fraction</td><td class="value" id="diagSubmerged">0%</td></tr>
+                <tr><td class="label">Buoyancy State</td><td class="value" id="diagState" style="color:#34d399;">Floats</td></tr>
+              </table>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="section-title">Visual Overlays</div>
+              <label class="checkbox-row">
+                <input type="checkbox" id="chkShowVectors" onchange="redrawCanvas()">
+                Show Force Vectors (Gravity & Buoyancy)
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="chkShowLabel" checked onchange="redrawCanvas()">
+                Show Block Mass & Volume Tag
+              </label>
+            </div>
+          </div>
+
+          <!-- Screen 2: Compare Controls -->
+          <div id="controlsCompare" class="screen-controls-group" style="display:none;">
+            <div class="sidebar-section">
+              <div class="section-title">Comparison Mode</div>
+              <div class="segmented-control">
+                <button class="segment-btn active" id="btnCmpSameMass" onclick="setCompareMode('sameMass')">Same Mass</button>
+                <button class="segment-btn" id="btnCmpSameVol" onclick="setCompareMode('sameVolume')">Same Vol</button>
+                <button class="segment-btn" id="btnCmpSameDensity" onclick="setCompareMode('sameDensity')">Same ρ</button>
+                <button class="segment-btn" id="btnCmpRandom" onclick="setCompareMode('random')">Random</button>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="section-title">Current Set Details</div>
+              <div id="compareSetDescription" style="font-size:0.8rem; color:var(--text-muted); line-height:1.5;">
+                All 5 blocks share the same mass of <strong>5.00 kg</strong>, but have different materials & densities. Observe how volume varies inversely with density!
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="section-title">Blocks in Set</div>
+              <table class="diag-table" id="compareBlocksTable">
+                <!-- Dynamically generated rows -->
+              </table>
+            </div>
+          </div>
+
+          <!-- Screen 3: Mystery Controls -->
+          <div id="controlsMystery" class="screen-controls-group" style="display:none;">
+            <div class="sidebar-section">
+              <div class="section-title">Mystery Block Set</div>
+              <div class="segmented-control">
+                <button class="segment-btn active" id="btnMystSet1" onclick="setMysterySet('set1')">Set 1</button>
+                <button class="segment-btn" id="btnMystSet2" onclick="setMysterySet('set2')">Set 2</button>
+                <button class="segment-btn" id="btnMystSet3" onclick="setMysterySet('set3')">Set 3</button>
+                <button class="segment-btn" id="btnMystRandom" onclick="setMysterySet('random')">Random</button>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="section-title">Identify Mystery Materials</div>
+              <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">
+                Weigh each block on the scale, submerge it to find its volume, then look up the density in the <strong>Density Table</strong>:
+              </p>
+              
+              <div id="mysteryIdentificationList" style="display:flex; flex-direction:column; gap:8px;">
+                <!-- Dynamically populated rows A-E with dropdown and check button -->
+              </div>
+
+              <button class="mission-jump-btn" style="width:100%; margin-top:8px; padding:8px;" onclick="checkAllMysteryAnswers()">
+                Verify All Guesses
+              </button>
+              <div id="mysteryFeedback" style="font-size:0.8rem; text-align:center; font-weight:700; display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Screen 4: Buoyancy & Fluids Controls -->
+          <div id="controlsBuoyancy" class="screen-controls-group" style="display:none;">
+            <div class="sidebar-section">
+              <div class="section-title">Tank Fluid Medium</div>
+              <select class="custom-select" id="selectTankFluid" onchange="onTankFluidChange(this.value)">
+                <option value="GASOLINE">Gasoline (0.70 kg/L)</option>
+                <option value="OIL">Olive Oil (0.92 kg/L)</option>
+                <option value="WATER" selected>Water (1.00 kg/L)</option>
+                <option value="SEAWATER">Seawater (1.03 kg/L)</option>
+                <option value="HONEY">Honey (1.42 kg/L)</option>
+                <option value="MERCURY">Mercury (13.60 kg/L)</option>
+                <option value="CUSTOM">Custom Fluid...</option>
+              </select>
+
+              <div class="slider-row" id="rowCustomFluid" style="display:none; margin-top:6px;">
+                <div class="slider-header">
+                  <span>Fluid Density (ρ_f)</span>
+                  <span class="slider-val" id="valCustomFluid">1.00 kg/L</span>
+                </div>
+                <input type="range" id="sliderCustomFluid" min="0.2" max="15.0" step="0.1" value="1.0" oninput="onCustomFluidInput(this.value)">
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="section-title">Gravitational Field (g)</div>
+              <div class="segmented-control">
+                <button class="segment-btn active" id="btnGravEarth" onclick="setGravity(9.8, 'Earth')">Earth (9.8)</button>
+                <button class="segment-btn" id="btnGravMoon" onclick="setGravity(1.6, 'Moon')">Moon (1.6)</button>
+                <button class="segment-btn" id="btnGravJupiter" onclick="setGravity(24.8, 'Jupiter')">Jupiter (24.8)</button>
+                <button class="segment-btn" id="btnGravPlanetX" onclick="setGravity(5.0, 'Planet X')">Planet X (5.0)</button>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="section-title">Test Object Material</div>
+              <select class="custom-select" id="selectBuoyancyBlockMat" onchange="onBuoyancyBlockMatChange(this.value)">
+                <option value="WOOD">Wood (0.40 kg/L)</option>
+                <option value="ICE">Ice (0.92 kg/L)</option>
+                <option value="ALUMINUM">Aluminum (2.70 kg/L)</option>
+                <option value="STEEL" selected>Steel (7.80 kg/L)</option>
+                <option value="LEAD">Lead (11.34 kg/L)</option>
+                <option value="GOLD">Gold (19.32 kg/L)</option>
+              </select>
+            </div>
+          </div>
+
+        </aside>
+      </div>
+    </div>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- VIEW 2: GUIDED MISSIONS -->
+    <div class="app-view-container" id="viewMissions">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Guided Missions</h1>
+            <p>Master the physics of mass, volume, displacement, and Archimedes' buoyant force by completing these interactive lab challenges.</p>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:2rem; font-weight:800; color:#38bdf8;" id="missionsHeroScore">0 / 5</div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">Challenges Completed</div>
+          </div>
+        </div>
+
+        <div class="mission-grid" id="missionsGridContainer">
+          <!-- Dynamically populated missions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- VIEW 3: ASSESSMENT QUIZ -->
+    <div class="app-view-container" id="viewQuiz">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Assessment Quiz</h1>
+            <p>Evaluate your mastery of density, water displacement, flotation equilibrium, and apparent weight. Your score can be submitted to your LMS gradebook.</p>
+          </div>
+          <div class="quiz-score-banner" id="quizScoreBanner">
+            <div>
+              <div style="font-size:0.75rem; text-transform:uppercase; color:#7dd3fc; font-weight:700;">Score Progress</div>
+              <div style="font-size:1.5rem; font-weight:800; color:#fff;" id="quizScoreDisplay">0 / 5 (0%)</div>
+            </div>
+            <button class="mission-jump-btn" id="btnClaimCert" style="display:none;" onclick="openCertModal()">Claim Certificate</button>
+          </div>
+        </div>
+
+        <div id="quizQuestionsContainer" style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Dynamically populated quiz questions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- VIEW 4: THEORY & FORMULAS -->
+    <div class="app-view-container" id="viewTheory">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Theory & Formulas</h1>
+            <p>Comprehensive pedagogical reference on mass density, buoyant force, Archimedes' principle, and flotation equilibrium.</p>
+          </div>
+        </div>
+
+        <div class="theory-grid">
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              Definition of Density
+            </div>
+            <div class="theory-content">
+              Density ($
+ho$) is the mass of a substance per unit of volume. It represents how tightly packed matter is within a physical object and is an <strong>intensive property</strong> that does not depend on the total quantity of material present.
+            </div>
+            <div class="theory-formula-box">
+              ρ = m / V &nbsp;&nbsp;[kg/L = g/cm³ = 1000 kg/m³]
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+              Archimedes' Principle
+            </div>
+            <div class="theory-content">
+              Any object wholly or partially immersed in a fluid is buoyed up by a force equal to the weight of the fluid displaced by the object. The volume of fluid displaced ΔV directly equals the submerged portion of the object.
+            </div>
+            <div class="theory-formula-box">
+              F<sub>b</sub> = ρ<sub>fluid</sub> · V<sub>submerged</sub> · g
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"></path></svg>
+              Flotation Equilibrium
+            </div>
+            <div class="theory-content">
+              For a floating object in static equilibrium, upward buoyant force balances downward gravitational weight (F<sub>b</sub> = F<sub>g</sub>). Therefore, the fraction of the object submerged equals the ratio of the object's density to the fluid's density:
+            </div>
+            <div class="theory-formula-box">
+              V<sub>submerged</sub> / V<sub>object</sub> = ρ<sub>object</sub> / ρ<sub>fluid</sub>
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle></svg>
+              Apparent Weight on a Scale
+            </div>
+            <div class="theory-content">
+              When a sinking block rests on a scale beneath the fluid surface, the scale measures the normal contact force F<sub>N</sub>, which equals the true gravitational weight minus the buoyant support force.
+            </div>
+            <div class="theory-formula-box">
+              W<sub>apparent</sub> = m·g − F<sub>b</sub> = (m − ρ<sub>f</sub>·V)·g
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- DENSITY REFERENCE TABLE MODAL -->
+  <div class="density-table-modal" id="modalDensityTable">
+    <div class="density-table-box">
+      <div class="density-table-header">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          Material Density Reference Table
+        </h3>
+        <button class="btn-close-modal" onclick="closeDensityTableModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="density-table-body">
+        <table class="ref-table">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>State</th>
+              <th>Density (kg/L)</th>
+              <th>Behavior in Water</th>
+            </tr>
+          </thead>
+          <tbody id="refTableTbody">
+            <!-- Dynamically populated reference table -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CERTIFICATE OF MASTERY MODAL -->
+  <div class="cert-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div class="cert-seal">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h2 class="cert-h1">Certificate of Mastery</h2>
+      <div class="cert-sub">Elementa LMS Simulation: Density & Archimedes' Principle</div>
+      <div class="cert-name-slot">ELEMENTA SCHOLAR</div>
+      <div class="cert-details">
+        Has successfully demonstrated mastery in calculating density, measuring volume displacement, analyzing flotation equilibrium, and determining unknown materials.
+      </div>
+      <button class="cert-btn" onclick="closeCertModal()">Return to Lab</button>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       ELEMENTA DENSITY SIMULATION ENGINE
+       Fully self-contained, offline-compatible, high-fidelity physics simulation.
+       ========================================================================= */
+
+    // Canonical Material Densities (in kg/L = g/cm^3)
+    const MATERIALS = {
+      STYROFOAM: { name: 'Styrofoam', density: 0.15, color: '#f1f5f9', border: '#cbd5e1', pattern: 'dots' },
+      WOOD: { name: 'Wood', density: 0.40, color: '#b45309', border: '#78350f', pattern: 'grain' },
+      GASOLINE: { name: 'Gasoline', density: 0.70, color: '#fef08a', border: '#ca8a04', state: 'liquid' },
+      APPLE: { name: 'Apple', density: 0.83, color: '#ef4444', border: '#b91c1c' },
+      OIL: { name: 'Olive Oil', density: 0.92, color: '#a3e635', border: '#65a30d', state: 'liquid' },
+      ICE: { name: 'Ice', density: 0.92, color: '#bae6fd', border: '#7dd3fc', pattern: 'ice' },
+      HUMAN: { name: 'Human Body', density: 0.95, color: '#fbcfe8', border: '#f472b6' },
+      WATER: { name: 'Water', density: 1.00, color: '#38bdf8', border: '#0284c7', state: 'liquid' },
+      SEAWATER: { name: 'Seawater', density: 1.03, color: '#0ea5e9', border: '#0369a1', state: 'liquid' },
+      HONEY: { name: 'Honey', density: 1.42, color: '#f59e0b', border: '#d97706', state: 'liquid' },
+      PVC: { name: 'PVC Plastic', density: 1.44, color: '#93c5fd', border: '#3b82f6' },
+      BRICK: { name: 'Brick', density: 2.00, color: '#dc2626', border: '#991b1b', pattern: 'brick' },
+      ALUMINUM: { name: 'Aluminum', density: 2.70, color: '#cbd5e1', border: '#94a3b8', pattern: 'metal' },
+      GLASS: { name: 'Glass', density: 2.70, color: '#99f6e4', border: '#2dd4bf' },
+      CONCRETE: { name: 'Concrete', density: 3.15, color: '#94a3b8', border: '#64748b' },
+      DIAMOND: { name: 'Diamond', density: 3.51, color: '#67e8f9', border: '#06b6d4' },
+      TITANIUM: { name: 'Titanium', density: 4.50, color: '#64748b', border: '#334155', pattern: 'metal' },
+      STEEL: { name: 'Steel', density: 7.80, color: '#475569', border: '#1e293b', pattern: 'metal' },
+      COPPER: { name: 'Copper', density: 8.96, color: '#ea580c', border: '#9a3412', pattern: 'metal' },
+      SILVER: { name: 'Silver', density: 10.49, color: '#e2e8f0', border: '#94a3b8', pattern: 'metal' },
+      LEAD: { name: 'Lead', density: 11.34, color: '#334155', border: '#0f172a', pattern: 'metal' },
+      MERCURY: { name: 'Mercury', density: 13.60, color: '#e2e8f0', border: '#64748b', state: 'liquid' },
+      GOLD: { name: 'Gold', density: 19.32, color: '#eab308', border: '#a16207', pattern: 'metal' },
+      PLATINUM: { name: 'Platinum', density: 21.45, color: '#f8fafc', border: '#cbd5e1', pattern: 'metal' }
+    };
+
+    // Tank Fluids
+    const FLUIDS = {
+      GASOLINE: { name: 'Gasoline', density: 0.70, color: 'rgba(234, 179, 8, 0.45)', surfaceColor: '#facc15' },
+      OIL: { name: 'Olive Oil', density: 0.92, color: 'rgba(163, 230, 53, 0.45)', surfaceColor: '#a3e635' },
+      WATER: { name: 'Water', density: 1.00, color: 'rgba(56, 189, 248, 0.45)', surfaceColor: '#38bdf8' },
+      SEAWATER: { name: 'Seawater', density: 1.03, color: 'rgba(14, 165, 233, 0.50)', surfaceColor: '#0284c7' },
+      HONEY: { name: 'Honey', density: 1.42, color: 'rgba(217, 119, 6, 0.65)', surfaceColor: '#f59e0b' },
+      MERCURY: { name: 'Mercury', density: 13.60, color: 'rgba(148, 163, 184, 0.92)', surfaceColor: '#cbd5e1' },
+      CUSTOM: { name: 'Custom Fluid', density: 1.00, color: 'rgba(56, 189, 248, 0.45)', surfaceColor: '#38bdf8' }
+    };
+
+    // State Variables
+    let currentScreen = 'intro'; // 'intro', 'compare', 'mystery', 'buoyancy'
+    let currentAppMode = 'sim';   // 'sim', 'missions', 'quiz', 'theory'
+    let audioEnabled = true;
+    let audioCtx = null;
+
+    // Simulation Physics State
+    let activeFluidKey = 'WATER';
+    let currentGravity = 9.8; // m/s^2
+    let gravityName = 'Earth';
+    let baseTankVolume = 100.00; // Liters
+    let currentTotalVolume = 100.00;
+
+    // Canvas & Geometry
+    const canvas = document.getElementById('densityCanvas');
+    const ctx = canvas.getContext('2d');
+    let canvasW = 800;
+    let canvasH = 600;
+
+    // World bounds in canvas pixels
+    const floorY = 530;
+    const tank = {
+      x: 360,
+      y: 190,
+      w: 320,
+      h: 340,
+      wallThick: 12,
+      baseWaterLevelY: 260 // when 100 L is in tank
+    };
+
+    // Scale device
+    const scale = {
+      x: 100,
+      y: 470,
+      w: 180,
+      h: 60,
+      reading: 0.00
+    };
+
+    // Active Blocks array (updated per screen)
+    let blocks = [];
+    let draggedBlock = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    // Intro Screen block state
+    let introBlock = {
+      id: 'intro_block',
+      label: 'Aluminum',
+      materialKey: 'ALUMINUM',
+      mass: 5.00,       // kg
+      volume: 5.00,     // L
+      density: 2.70,    // kg/L
+      x: 150,
+      y: 350,
+      vx: 0,
+      vy: 0,
+      w: 80,
+      h: 80,
+      color: '#cbd5e1',
+      border: '#94a3b8',
+      isCustom: false
+    };
+
+    // Compare Screen mode: 'sameMass', 'sameVolume', 'sameDensity', 'random'
+    let compareMode = 'sameMass';
+
+    // Mystery Screen set: 'set1', 'set2', 'set3', 'random'
+    let mysterySet = 'set1';
+    const mysteryAnswers = {
+      set1: { A: 'APPLE', B: 'WOOD', C: 'DIAMOND', D: 'LEAD', E: 'GOLD' },
+      set2: { A: 'ICE', B: 'ALUMINUM', C: 'STEEL', D: 'COPPER', E: 'PLATINUM' },
+      set3: { A: 'STYROFOAM', B: 'BRICK', C: 'TITANIUM', D: 'GLASS', E: 'CONCRETE' },
+      random: { A: 'WOOD', B: 'ICE', C: 'ALUMINUM', D: 'STEEL', E: 'GOLD' }
+    };
+    let studentMysteryGuesses = { A: '', B: '', C: '', D: '', E: '' };
+
+    /* =========================================================================
+       AUDIO SYNTHESIZER
+       ========================================================================= */
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, vol = 0.1) {
+      if (!audioEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playSplashSound() {
+      if (!audioEnabled) return;
+      playTone(180, 'triangle', 0.25, 0.12);
+      setTimeout(() => playTone(320, 'sine', 0.2, 0.08), 40);
+    }
+
+    function playClackSound() {
+      if (!audioEnabled) return;
+      playTone(280, 'square', 0.05, 0.08);
+    }
+
+    function playSuccessFanfare() {
+      if (!audioEnabled) return;
+      playTone(440, 'triangle', 0.1, 0.12);
+      setTimeout(() => playTone(554.37, 'triangle', 0.1, 0.12), 100);
+      setTimeout(() => playTone(659.25, 'triangle', 0.2, 0.15), 200);
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      if (audioEnabled) {
+        btn.classList.add('active');
+        playTone(440, 'sine', 0.1, 0.1);
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+
+    /* =========================================================================
+       CANVAS INITIALIZATION & RESIZE
+       ========================================================================= */
+    function resizeCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvasW = rect.width;
+      canvasH = rect.height;
+      canvas.width = canvasW * dpr;
+      canvas.height = canvasH * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+
+      // Single source of truth for workbench floor level
+      const floorY = canvasH - 70;
+
+      // Tank dimensions & position: rests flush on the workbench table
+      tank.w = Math.min(360, Math.max(300, canvasW * 0.38));
+      tank.h = Math.min(340, Math.max(260, canvasH * 0.50));
+      tank.x = Math.max(320, canvasW - tank.w - 50);
+      tank.y = floorY - tank.h; // Bottom of tank sits on workbench
+      tank.wallThick = 12;
+      
+      // Nominal 100 L water level: fills inside from bottom up to ~28% below top rim
+      tank.baseWaterLevelY = tank.y + Math.round(tank.h * 0.28);
+
+      // Digital Balance: sits flush on the workbench table next to tank
+      scale.w = Math.min(190, Math.max(150, canvasW * 0.20));
+      scale.h = 50;
+      scale.x = Math.max(40, tank.x - scale.w - 70);
+      scale.y = floorY - scale.h; // Bottom of scale sits on workbench
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      redrawCanvas();
+    });
+
+    /* =========================================================================
+       BLOCK GENERATION HELPERS
+       ========================================================================= */
+    function calcBlockDim(volLiters) {
+      // Scale visual size relative to volume (0.5 L -> ~44px, 5.0 L -> ~76px, 10 L -> ~96px)
+      const baseSide = Math.pow(volLiters, 1/3) * 44;
+      return Math.round(Math.max(36, Math.min(120, baseSide)));
+    }
+
+    function buildIntroBlock() {
+      const mat = MATERIALS[introBlock.materialKey] || MATERIALS.ALUMINUM;
+      if (!introBlock.isCustom) {
+        introBlock.density = mat.density;
+        introBlock.mass = +(introBlock.volume * introBlock.density).toFixed(2);
+      } else {
+        introBlock.density = +(introBlock.mass / introBlock.volume).toFixed(2);
+      }
+      const side = calcBlockDim(introBlock.volume);
+      introBlock.w = side;
+      introBlock.h = side;
+      introBlock.color = mat.color;
+      introBlock.border = mat.border;
+      introBlock.label = mat.name;
+      blocks = [introBlock];
+      updateIntroSidebar();
+    }
+
+    function buildCompareBlocks() {
+      blocks = [];
+      const startX = 50;
+      const startY = 100;
+
+      if (compareMode === 'sameMass') {
+        const mass = 5.00;
+        const set = [
+          { key: 'STYROFOAM', label: 'Styrofoam' },
+          { key: 'WOOD', label: 'Wood' },
+          { key: 'ICE', label: 'Ice' },
+          { key: 'BRICK', label: 'Brick' },
+          { key: 'ALUMINUM', label: 'Aluminum' }
+        ];
+        set.forEach((item, i) => {
+          const mat = MATERIALS[item.key];
+          const vol = +(mass / mat.density).toFixed(2);
+          const side = calcBlockDim(vol);
+          blocks.push({
+            id: 'cmp_' + i,
+            label: item.label,
+            materialKey: item.key,
+            mass: mass,
+            volume: vol,
+            density: mat.density,
+            x: startX + (i % 3) * 90,
+            y: startY + Math.floor(i / 3) * 110,
+            vx: 0,
+            vy: 0,
+            w: side,
+            h: side,
+            color: mat.color,
+            border: mat.border
+          });
+        });
+      } else if (compareMode === 'sameVolume') {
+        const vol = 5.00;
+        const side = calcBlockDim(vol);
+        const set = [
+          { key: 'STYROFOAM', label: 'Styrofoam' },
+          { key: 'WOOD', label: 'Wood' },
+          { key: 'ICE', label: 'Ice' },
+          { key: 'BRICK', label: 'Brick' },
+          { key: 'ALUMINUM', label: 'Aluminum' }
+        ];
+        set.forEach((item, i) => {
+          const mat = MATERIALS[item.key];
+          const mass = +(vol * mat.density).toFixed(2);
+          blocks.push({
+            id: 'cmp_' + i,
+            label: item.label,
+            materialKey: item.key,
+            mass: mass,
+            volume: vol,
+            density: mat.density,
+            x: startX + (i % 3) * 90,
+            y: startY + Math.floor(i / 3) * 110,
+            vx: 0,
+            vy: 0,
+            w: side,
+            h: side,
+            color: mat.color,
+            border: mat.border
+          });
+        });
+      } else if (compareMode === 'sameDensity') {
+        const density = 0.50; // kg/L (Floats at 50% submerged in water)
+        const vols = [1.0, 2.5, 4.0, 6.0, 8.0];
+        vols.forEach((vol, i) => {
+          const mass = +(vol * density).toFixed(2);
+          const side = calcBlockDim(vol);
+          blocks.push({
+            id: 'cmp_' + i,
+            label: '#' + (i + 1),
+            materialKey: 'WOOD',
+            mass: mass,
+            volume: vol,
+            density: density,
+            x: startX + (i % 3) * 90,
+            y: startY + Math.floor(i / 3) * 110,
+            vx: 0,
+            vy: 0,
+            w: side,
+            h: side,
+            color: '#b45309',
+            border: '#78350f'
+          });
+        });
+      } else if (compareMode === 'random') {
+        const matKeys = ['STYROFOAM', 'WOOD', 'ICE', 'BRICK', 'ALUMINUM', 'STEEL', 'COPPER'];
+        for (let i = 0; i < 5; i++) {
+          const k = matKeys[i % matKeys.length];
+          const mat = MATERIALS[k];
+          const vol = +(2.0 + Math.random() * 6.0).toFixed(2);
+          const mass = +(vol * mat.density).toFixed(2);
+          const side = calcBlockDim(vol);
+          blocks.push({
+            id: 'cmp_' + i,
+            label: 'Block ' + String.fromCharCode(65 + i),
+            materialKey: k,
+            mass: mass,
+            volume: vol,
+            density: mat.density,
+            x: startX + (i % 3) * 90,
+            y: startY + Math.floor(i / 3) * 110,
+            vx: 0,
+            vy: 0,
+            w: side,
+            h: side,
+            color: mat.color,
+            border: mat.border
+          });
+        }
+      }
+      updateCompareSidebar();
+    }
+
+    function buildMysteryBlocks() {
+      blocks = [];
+      const setKeys = mysteryAnswers[mysterySet] || mysteryAnswers.set1;
+      const letters = ['A', 'B', 'C', 'D', 'E'];
+      const mysteryColors = ['#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#10b981'];
+
+      letters.forEach((letter, i) => {
+        const matKey = setKeys[letter];
+        const mat = MATERIALS[matKey] || MATERIALS.ALUMINUM;
+        // Randomize volume between 2.0 and 5.0 L for student problem solving
+        const vol = +(2.0 + (i * 0.7)).toFixed(2);
+        const mass = +(vol * mat.density).toFixed(2);
+        const side = calcBlockDim(vol);
+
+        blocks.push({
+          id: 'myst_' + letter,
+          label: letter,
+          mysteryLetter: letter,
+          trueMaterialKey: matKey,
+          mass: mass,
+          volume: vol,
+          density: mat.density,
+          x: 60 + (i % 3) * 90,
+          y: 160 + Math.floor(i / 3) * 110,
+          vx: 0,
+          vy: 0,
+          w: side,
+          h: side,
+          color: mysteryColors[i],
+          border: 'rgba(255, 255, 255, 0.4)',
+          isMystery: true
+        });
+      });
+      populateMysterySidebar();
+    }
+
+    function buildBuoyancyBlocks() {
+      const matKey = document.getElementById('selectBuoyancyBlockMat').value || 'STEEL';
+      const mat = MATERIALS[matKey] || MATERIALS.STEEL;
+      const vol = 5.00;
+      const mass = +(vol * mat.density).toFixed(2);
+      const side = calcBlockDim(vol);
+      blocks = [{
+        id: 'buoy_block',
+        label: mat.name,
+        materialKey: matKey,
+        mass: mass,
+        volume: vol,
+        density: mat.density,
+        x: 140,
+        y: 280,
+        vx: 0,
+        vy: 0,
+        w: side,
+        h: side,
+        color: mat.color,
+        border: mat.border
+      }];
+    }
+
+    /* =========================================================================
+       PHYSICS ENGINE & SIMULATION LOOP
+       ========================================================================= */
+    let lastTime = performance.now();
+
+    function updatePhysics(dt) {
+      const activeFluid = FLUIDS[activeFluidKey] || FLUIDS.WATER;
+      const rhoFluid = activeFluid.density;
+      const effectiveFloorY = canvasH - 70;
+
+      // 1. Calculate displaced volume in tank
+      let totalDisplacedLiters = 0;
+      const tankFluidBottomY = tank.y + tank.h - tank.wallThick;
+      
+      // Compute dynamic fluid surface based on displacement
+      // Water column depth for 100 L is from tank.baseWaterLevelY to tankFluidBottomY
+      const pxPerLiter = Math.max(1.2, (tankFluidBottomY - tank.baseWaterLevelY) / 100.0);
+      
+      blocks.forEach(b => {
+        // Check if inside tank boundaries horizontally
+        const tankInnerLeft = tank.x + tank.wallThick;
+        const tankInnerRight = tank.x + tank.w - tank.wallThick;
+        
+        if (b.x + b.w > tankInnerLeft && b.x < tankInnerRight) {
+          const fluidSurfaceY = tank.baseWaterLevelY - (totalDisplacedLiters * pxPerLiter);
+          if (b.y + b.h > fluidSurfaceY && b.y < tankFluidBottomY) {
+            const submergedH = Math.min(b.h, Math.max(0, b.y + b.h - fluidSurfaceY));
+            const subFraction = Math.min(1.0, submergedH / b.h);
+            const subLiters = b.volume * subFraction;
+            totalDisplacedLiters += subLiters;
+          }
+        }
+      });
+
+      currentTotalVolume = +(baseTankVolume + totalDisplacedLiters).toFixed(2);
+      const dynamicFluidY = tank.baseWaterLevelY - (totalDisplacedLiters * pxPerLiter);
+
+      // Update HUD
+      document.getElementById('hudDisplaced').textContent = totalDisplacedLiters.toFixed(2) + ' L';
+      document.getElementById('hudTotalPool').textContent = currentTotalVolume.toFixed(2) + ' L';
+
+      // 2. Scale force detection
+      let scaleWeightKg = 0.00;
+      const scaleTopY = scale.y;
+      const scaleLeft = scale.x;
+      const scaleRight = scale.x + scale.w;
+
+      // 3. Integrate forces for each block
+      blocks.forEach(b => {
+        if (b === draggedBlock) {
+          b.vx = 0;
+          b.vy = 0;
+          return;
+        }
+
+        let fx = 0;
+        let fy = b.mass * currentGravity; // Gravity downward
+
+        // Fluid interaction
+        const tankInnerLeft = tank.x + tank.wallThick;
+        const tankInnerRight = tank.x + tank.w - tank.wallThick;
+        const inTankX = (b.x + b.w > tankInnerLeft && b.x < tankInnerRight);
+
+        if (inTankX && (b.y + b.h > dynamicFluidY) && (b.y < tankFluidBottomY)) {
+          const submergedH = Math.min(b.h, Math.max(0, b.y + b.h - dynamicFluidY));
+          const subFraction = Math.min(1.0, submergedH / b.h);
+          const subVolume = b.volume * subFraction;
+
+          // Buoyant force: Fb = rho_fluid * V_submerged * g
+          const buoyantForce = rhoFluid * subVolume * currentGravity;
+          fy -= buoyantForce;
+
+          // Liquid viscosity damping
+          fy -= b.vy * 4.5;
+          fx -= b.vx * 3.0;
+
+          // Sound trigger on entering fluid
+          if (!b.wasInWater && b.vy > 10) {
+            playSplashSound();
+          }
+          b.wasInWater = true;
+        } else {
+          // Air damping
+          fy -= b.vy * 0.1;
+          fx -= b.vx * 0.1;
+          b.wasInWater = false;
+        }
+
+        // Numerical integration
+        const ax = fx / b.mass;
+        const ay = fy / b.mass;
+        b.vx += ax * dt;
+        b.vy += ay * dt;
+        b.x += b.vx * dt * 20;
+        b.y += b.vy * dt * 20;
+
+        // Collision with Scale Platform
+        if (b.x + b.w > scaleLeft && b.x < scaleRight) {
+          if (b.y + b.h >= scaleTopY && b.y + b.h <= scaleTopY + 25 && b.vy >= 0) {
+            b.y = scaleTopY - b.h;
+            b.vy = 0;
+            b.vx *= 0.7;
+            scaleWeightKg += b.mass;
+          }
+        }
+
+        // Collision with Tank Interior
+        if (inTankX) {
+          // Bottom of tank
+          if (b.y + b.h >= tankFluidBottomY) {
+            b.y = tankFluidBottomY - b.h;
+            b.vy = 0;
+            b.vx *= 0.6;
+          }
+          // Lateral walls
+          if (b.x < tankInnerLeft) {
+            b.x = tankInnerLeft;
+            b.vx = -b.vx * 0.2;
+          }
+          if (b.x + b.w > tankInnerRight) {
+            b.x = tankInnerRight - b.w;
+            b.vx = -b.vx * 0.2;
+          }
+        } else {
+          // Floor outside tank
+          if (b.y + b.h >= effectiveFloorY) {
+            b.y = effectiveFloorY - b.h;
+            b.vy = 0;
+            b.vx *= 0.7;
+          }
+        }
+
+        // Canvas outer boundary clamping
+        if (b.x < 10) { b.x = 10; b.vx = 0; }
+        if (b.x + b.w > canvasW - 10) { b.x = canvasW - 10 - b.w; b.vx = 0; }
+        if (b.y < 10) { b.y = 10; b.vy = 0; }
+      });
+
+      // Update scale reading
+      scale.reading = +scaleWeightKg.toFixed(2);
+      if (currentScreen === 'intro') {
+        document.getElementById('diagScale').textContent = scale.reading.toFixed(2) + ' kg';
+        updateIntroTelemetry(dynamicFluidY);
+      }
+
+      // Check active missions
+      checkMissionsCriteria(dynamicFluidY);
+    }
+
+        /* =========================================================================
+       PHOTOREALISTIC 3D CANVAS RENDERING ENGINE
+       Surpassing original PhET illustration with lifelike textures, 3D perspective,
+       material realism, tempered glass aquarium, and digital analytical scale.
+       ========================================================================= */
+
+    // Helper: Draw 3D Isometric / Oblique Faces
+    function get3DDepth(w, h) {
+      return {
+        dx: Math.round(w * 0.26),
+        dy: Math.round(h * 0.20)
+      };
+    }
+
+    // Realistic Laboratory Tabletop & Environment
+    function drawGridFloor() {
+      const effectiveFloorY = canvasH - 70;
+
+      // Soft ambient overhead laboratory light on the back wall
+      const wallGlow = ctx.createRadialGradient(canvasW * 0.5, canvasH * 0.4, 50, canvasW * 0.5, canvasH * 0.4, canvasW * 0.7);
+      wallGlow.addColorStop(0, '#0f172a');
+      wallGlow.addColorStop(0.6, '#090d16');
+      wallGlow.addColorStop(1, '#04070d');
+      ctx.fillStyle = wallGlow;
+      ctx.fillRect(0, 0, canvasW, effectiveFloorY);
+
+      // Laboratory Tabletop Surface (Heavy Polished Slate / Epoxy Resin Bench)
+      const benchTopGrad = ctx.createLinearGradient(0, effectiveFloorY - 6, 0, effectiveFloorY);
+      benchTopGrad.addColorStop(0, '#1e293b');
+      benchTopGrad.addColorStop(1, '#334155');
+      ctx.fillStyle = benchTopGrad;
+      ctx.fillRect(0, effectiveFloorY - 6, canvasW, 6);
+
+      // Specular highlight line along table edge
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, effectiveFloorY - 6);
+      ctx.lineTo(canvasW, effectiveFloorY - 6);
+      ctx.stroke();
+
+      // Front Face of Laboratory Bench
+      const benchFrontGrad = ctx.createLinearGradient(0, effectiveFloorY, 0, canvasH);
+      benchFrontGrad.addColorStop(0, '#1e293b');
+      benchFrontGrad.addColorStop(0.15, '#0f172a');
+      benchFrontGrad.addColorStop(1, '#020617');
+      ctx.fillStyle = benchFrontGrad;
+      ctx.fillRect(0, effectiveFloorY, canvasW, canvasH - effectiveFloorY);
+
+      // Laser-engraved Metric Measurement Scale on table edge
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.font = '8px "Fira Code", monospace';
+      ctx.lineWidth = 1;
+      for (let x = 20; x < canvasW - 20; x += 20) {
+        const isMajor = (x % 100 === 0);
+        const tickH = isMajor ? 12 : 6;
+        ctx.beginPath();
+        ctx.moveTo(x, effectiveFloorY);
+        ctx.lineTo(x, effectiveFloorY + tickH);
+        ctx.stroke();
+        if (isMajor && x < canvasW - 60) {
+          ctx.fillText((x / 10).toFixed(0) + ' cm', x + 3, effectiveFloorY + 11);
+        }
+      }
+
+      // Soft grounding ambient occlusion under the tank and scale
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(tank.x + tank.w / 2, effectiveFloorY, tank.w * 0.52, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.ellipse(scale.x + scale.w / 2, effectiveFloorY, scale.w * 0.55, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Modern High-Precision Laboratory Benchtop Balance
+    function drawScale() {
+      const sx = scale.x;
+      const sy = scale.y;
+      const sw = scale.w;
+      const sh = scale.h;
+
+      ctx.save();
+
+      // Rubber Vibration-Damping Feet
+      ctx.fillStyle = '#090d16';
+      ctx.beginPath();
+      ctx.roundRect(sx + 14, sy + sh - 2, 22, 6, [0, 0, 4, 4]);
+      ctx.roundRect(sx + sw - 36, sy + sh - 2, 22, 6, [0, 0, 4, 4]);
+      ctx.fill();
+
+      // Main Instrument Chassis (Matte Slate Polymer Body with Chamfers)
+      const bodyGrad = ctx.createLinearGradient(sx, sy, sx, sy + sh);
+      bodyGrad.addColorStop(0, '#334155');
+      bodyGrad.addColorStop(0.08, '#1e293b');
+      bodyGrad.addColorStop(0.9, '#0f172a');
+      bodyGrad.addColorStop(1, '#020617');
+
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.roundRect(sx, sy + 10, sw, sh - 10, 8);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Brushed Stainless Steel Weighing Pan (Top Platform with 3D Depth)
+      const panX = sx + 8;
+      const panY = sy;
+      const panW = sw - 16;
+      const panH = 14;
+
+      // Pan shadow onto chassis
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(panX + 2, panY + panH, panW - 4, 4);
+
+      // Pan Rim (Thickness)
+      const panRimGrad = ctx.createLinearGradient(panX, panY, panX, panY + panH);
+      panRimGrad.addColorStop(0, '#94a3b8');
+      panRimGrad.addColorStop(0.5, '#64748b');
+      panRimGrad.addColorStop(1, '#334155');
+      ctx.fillStyle = panRimGrad;
+      ctx.beginPath();
+      ctx.roundRect(panX, panY + 4, panW, panH - 4, 3);
+      ctx.fill();
+
+      // Pan Top Surface (Concentric Brushed Stainless Steel)
+      const panTopGrad = ctx.createLinearGradient(panX, panY, panX + panW, panY);
+      panTopGrad.addColorStop(0, '#cbd5e1');
+      panTopGrad.addColorStop(0.2, '#f8fafc');
+      panTopGrad.addColorStop(0.5, '#94a3b8');
+      panTopGrad.addColorStop(0.8, '#e2e8f0');
+      panTopGrad.addColorStop(1, '#64748b');
+      ctx.fillStyle = panTopGrad;
+      ctx.beginPath();
+      ctx.roundRect(panX, panY, panW, 6, 3);
+      ctx.fill();
+
+      // Center Concentric Target Ring on Stainless Steel Pan
+      ctx.strokeStyle = 'rgba(71, 85, 105, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(panX + panW / 2, panY + 3, panW * 0.22, 2, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Digital Screen Bezel (Recessed Instrument Window)
+      const dX = sx + Math.round(sw * 0.16);
+      const dY = sy + 24;
+      const dW = Math.round(sw * 0.68);
+      const dH = 30;
+
+      ctx.fillStyle = '#050b14';
+      ctx.beginPath();
+      ctx.roundRect(dX, dY, dW, dH, 5);
+      ctx.fill();
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Backlit LCD Inner Glow
+      const lcdGlow = ctx.createRadialGradient(dX + dW / 2, dY + dH / 2, 5, dX + dW / 2, dY + dH / 2, dW * 0.6);
+      lcdGlow.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
+      lcdGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = lcdGlow;
+      ctx.fillRect(dX + 2, dY + 2, dW - 4, dH - 4);
+
+      // Glass Specular Reflection across LCD Screen
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(dX + 6, dY + dH - 6);
+      ctx.lineTo(dX + dW - 12, dY + 6);
+      ctx.stroke();
+
+      // Segment Digits Glow & Readout
+      ctx.shadowColor = 'rgba(52, 211, 153, 0.6)';
+      ctx.shadowBlur = 8;
+      ctx.font = '700 16px "Fira Code", monospace';
+      ctx.fillStyle = '#34d399';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(scale.reading.toFixed(2), dX + dW - 28, dY + dH / 2 + 1);
+
+      // Unit Indicator ("kg")
+      ctx.font = '600 10px "Fira Code", monospace';
+      ctx.fillStyle = '#10b981';
+      ctx.fillText('kg', dX + dW - 8, dY + dH / 2 + 2);
+
+      // Status indicator dots (Stable / Tare)
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = scale.reading > 0.001 ? '#34d399' : '#64748b';
+      ctx.beginPath();
+      ctx.arc(dX + 12, dY + 12, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '600 7px sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'left';
+      ctx.fillText('STABLE', dX + 18, dY + 13);
+
+      // Tactile Zero / Tare Membrane Buttons
+      const btnTareX = sx + sw - 28;
+      const btnTareY = sy + sh - 18;
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.arc(btnTareX, btnTareY, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.stroke();
+      ctx.font = '600 6px sans-serif';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.textAlign = 'center';
+      ctx.fillText('TARE', btnTareX, btnTareY + 2);
+
+      // Brand Micro-Badge
+      ctx.font = '700 7px sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.textAlign = 'left';
+      ctx.fillText('ELEMENTA BALANCES', dX, sy + sh - 8);
+
+      ctx.restore();
+    }
+
+    // Tempered Float-Glass Aquarium with Depth, Refraction & Graduated Markings
+    function drawTank(fluidLevelY) {
+      const activeFluid = FLUIDS[activeFluidKey] || FLUIDS.WATER;
+      const tx = tank.x;
+      const ty = tank.y;
+      const tw = tank.w;
+      const th = tank.h;
+      const wall = tank.wallThick;
+      const depthY = 22; // 3D perspective top rim depth
+
+      ctx.save();
+
+      // 1. Tank Background Float Glass (Behind water)
+      const backGlassGrad = ctx.createLinearGradient(tx, ty, tx + tw, ty + th);
+      backGlassGrad.addColorStop(0, 'rgba(15, 23, 42, 0.65)');
+      backGlassGrad.addColorStop(1, 'rgba(2, 6, 23, 0.85)');
+      ctx.fillStyle = backGlassGrad;
+      ctx.fillRect(tx, ty, tw, th);
+
+      // Diagonal Laboratory Lighting Reflections on Back Wall
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 18;
+      ctx.beginPath();
+      ctx.moveTo(tx + 40, ty);
+      ctx.lineTo(tx, ty + 80);
+      ctx.moveTo(tx + 180, ty);
+      ctx.lineTo(tx + 60, ty + 240);
+      ctx.stroke();
+
+      // 2. Liquid Fluid Body
+      const fluidTop = Math.max(ty + 10, fluidLevelY);
+      const fluidBottom = ty + th - wall;
+      const fluidH = Math.max(0, fluidBottom - fluidTop);
+
+      if (fluidH > 0) {
+        // Deep Fluid Gradient
+        const fluidGrad = ctx.createLinearGradient(tx, fluidTop, tx, fluidBottom);
+        if (activeFluidKey === 'MERCURY') {
+          fluidGrad.addColorStop(0, '#cbd5e1');
+          fluidGrad.addColorStop(0.3, '#94a3b8');
+          fluidGrad.addColorStop(0.8, '#475569');
+          fluidGrad.addColorStop(1, '#1e293b');
+        } else if (activeFluidKey === 'GASOLINE') {
+          fluidGrad.addColorStop(0, 'rgba(253, 224, 71, 0.45)');
+          fluidGrad.addColorStop(1, 'rgba(202, 138, 4, 0.7)');
+        } else if (activeFluidKey === 'HONEY') {
+          fluidGrad.addColorStop(0, 'rgba(245, 158, 11, 0.7)');
+          fluidGrad.addColorStop(1, 'rgba(180, 83, 9, 0.9)');
+        } else if (activeFluidKey === 'OIL') {
+          fluidGrad.addColorStop(0, 'rgba(163, 230, 53, 0.5)');
+          fluidGrad.addColorStop(1, 'rgba(101, 163, 13, 0.75)');
+        } else {
+          // Water / Seawater / Default
+          fluidGrad.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+          fluidGrad.addColorStop(0.4, 'rgba(14, 165, 233, 0.55)');
+          fluidGrad.addColorStop(1, 'rgba(3, 105, 161, 0.75)');
+        }
+
+        ctx.fillStyle = fluidGrad;
+        ctx.fillRect(tx + wall, fluidTop, tw - wall * 2, fluidH);
+
+        // Subsurface Caustic Lighting Ribbons
+        if (activeFluidKey !== 'MERCURY') {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let cy = fluidTop + 25; cy < fluidBottom - 20; cy += 45) {
+            ctx.moveTo(tx + wall + 20, cy);
+            ctx.bezierCurveTo(tx + tw * 0.35, cy - 8, tx + tw * 0.65, cy + 8, tx + tw - wall - 20, cy);
+          }
+          ctx.stroke();
+        }
+
+        // Realistic 3D Elliptical Surface Meniscus (Waterline Ring)
+        ctx.fillStyle = activeFluidKey === 'MERCURY' ? 'rgba(226, 232, 240, 0.95)' : 'rgba(125, 211, 252, 0.65)';
+        ctx.beginPath();
+        ctx.ellipse(tx + tw / 2, fluidTop, (tw - wall * 2) / 2, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = activeFluid.surfaceColor;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(tx + tw / 2, fluidTop, (tw - wall * 2) / 2, 5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Surface highlight glint
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(tx + tw / 2, fluidTop - 1, (tw - wall * 2) * 0.38, 2, 0, 0, Math.PI);
+        ctx.stroke();
+      }
+
+      // 3. Thick Tempered Glass Walls & Beveled Float-Glass Edges
+      // Left Glass Wall
+      const leftWallGrad = ctx.createLinearGradient(tx, ty, tx + wall, ty);
+      leftWallGrad.addColorStop(0, 'rgba(34, 197, 94, 0.35)'); // Float glass green edge
+      leftWallGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.25)');
+      leftWallGrad.addColorStop(1, 'rgba(15, 23, 42, 0.4)');
+      ctx.fillStyle = leftWallGrad;
+      ctx.fillRect(tx, ty, wall, th);
+
+      // Right Glass Wall
+      const rightWallGrad = ctx.createLinearGradient(tx + tw - wall, ty, tx + tw, ty);
+      rightWallGrad.addColorStop(0, 'rgba(15, 23, 42, 0.4)');
+      rightWallGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.25)');
+      rightWallGrad.addColorStop(1, 'rgba(34, 197, 94, 0.35)');
+      ctx.fillStyle = rightWallGrad;
+      ctx.fillRect(tx + tw - wall, ty, wall, th);
+
+      // Bottom Glass Base
+      const bottomWallGrad = ctx.createLinearGradient(tx, ty + th - wall, tx, ty + th);
+      bottomWallGrad.addColorStop(0, 'rgba(15, 23, 42, 0.5)');
+      bottomWallGrad.addColorStop(1, 'rgba(34, 197, 94, 0.35)');
+      ctx.fillStyle = bottomWallGrad;
+      ctx.fillRect(tx, ty + th - wall, tw, wall);
+
+      // Front Tempered Glass Specular Sheen (Reflections of Lab Window)
+      const glassSheen = ctx.createLinearGradient(tx, ty, tx + tw * 0.7, ty + th);
+      glassSheen.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+      glassSheen.addColorStop(0.08, 'rgba(255, 255, 255, 0.02)');
+      glassSheen.addColorStop(0.2, 'transparent');
+      glassSheen.addColorStop(0.6, 'rgba(255, 255, 255, 0.05)');
+      glassSheen.addColorStop(0.7, 'transparent');
+      ctx.fillStyle = glassSheen;
+      ctx.fillRect(tx, ty, tw, th);
+
+      // Outer Float Glass Border Strokes
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(tx, ty, tw, th);
+
+      // 4. Precision Laser-Etched Measurement Markings
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      const tankFluidBottomY = ty + th - wall;
+      const pxPerLiter = Math.max(1.2, (tankFluidBottomY - tank.baseWaterLevelY) / 100.0);
+
+      const markings = [
+        { vol: 115, y: tank.baseWaterLevelY - 15 * pxPerLiter, major: false },
+        { vol: 110, y: tank.baseWaterLevelY - 10 * pxPerLiter, major: true },
+        { vol: 105, y: tank.baseWaterLevelY - 5 * pxPerLiter, major: false },
+        { vol: 100, y: tank.baseWaterLevelY, major: true, baseline: true },
+        { vol: 90, y: tank.baseWaterLevelY + 10 * pxPerLiter, major: false },
+        { vol: 80, y: tank.baseWaterLevelY + 20 * pxPerLiter, major: true },
+        { vol: 70, y: tank.baseWaterLevelY + 30 * pxPerLiter, major: false },
+        { vol: 60, y: tank.baseWaterLevelY + 40 * pxPerLiter, major: true }
+      ];
+
+      markings.forEach(m => {
+        const tickLength = m.major ? 16 : 8;
+        const tickX = tx + tw - wall;
+
+        if (m.baseline) {
+          // Highlight nominal baseline volume (100 L) in warm gold
+          ctx.strokeStyle = '#fbbf24';
+          ctx.fillStyle = '#fde68a';
+          ctx.lineWidth = 2;
+        } else if (m.major) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.fillStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+        } else {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 1;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(tickX, m.y);
+        ctx.lineTo(tickX - tickLength, m.y);
+        ctx.stroke();
+
+        if (m.major) {
+          ctx.font = m.baseline ? '700 11px "Fira Code", monospace' : '600 10px "Fira Code", monospace';
+          ctx.fillText(m.vol + ' L', tickX - tickLength - 6, m.y);
+        }
+      });
+
+      // Label at bottom: "BOROSILICATE 3.3 GLASS TANK"
+      ctx.font = '600 8px sans-serif';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+      ctx.textAlign = 'center';
+      ctx.fillText('FLOAT GLASS AQUARIUM • 120L CAPACITY', tx + tw / 2, ty + th - 4);
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // PHOTOREALISTIC MATERIAL BLOCK RENDERER
+    // Renders authentic Wood, Styrofoam, Ice, Brick, Aluminum, Steel, Copper,
+    // Gold, Lead, Diamond, Apple, and Mystery Lab Blocks with 3D depth!
+    // =========================================================================
+    function drawBlock(b) {
+      const { dx, dy } = get3DDepth(b.w, b.h);
+      const bx = b.x;
+      const by = b.y;
+      const bw = b.w;
+      const bh = b.h;
+      const matKey = b.materialKey || 'ALUMINUM';
+
+      ctx.save();
+
+      // 1. Ground Contact Shadow (Soft Ambient Occlusion)
+      const effectiveFloorY = canvasH - 70;
+      const scaleTopY = scale.y;
+      let shadowY = by + bh;
+      let shadowAlpha = 0.35;
+
+      // Soft blur shadow beneath block
+      ctx.save();
+      ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(bx + bw / 2 + dx * 0.3, shadowY + 2, bw * 0.58, Math.max(4, bh * 0.12), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Special Organic Rendering: RIPE HONEYCRISP APPLE
+      if (matKey === 'APPLE') {
+        drawRealisticApple(bx, by, bw, bh);
+        drawBlockLabelAndVectors(b, bx, by, bw, bh);
+        ctx.restore();
+        return;
+      }
+
+      // 2. 3D Isometric Polygons Definition
+      // Top Face
+      const topPts = [
+        { x: bx, y: by },
+        { x: bx + dx, y: by - dy },
+        { x: bx + bw + dx, y: by - dy },
+        { x: bx + bw, y: by }
+      ];
+
+      // Right Side Face
+      const rightPts = [
+        { x: bx + bw, y: by },
+        { x: bx + bw + dx, y: by - dy },
+        { x: bx + bw + dx, y: by + bh - dy },
+        { x: bx + bw, y: by + bh }
+      ];
+
+      // 3. Render Top Face (Receives overhead ambient lab light)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(topPts[0].x, topPts[0].y);
+      topPts.forEach(pt => ctx.lineTo(pt.x, pt.y));
+      ctx.closePath();
+      ctx.clip();
+      renderMaterialTopFace(matKey, bx, by, bw, bh, dx, dy, b);
+      ctx.restore();
+
+      // Top Face Edge Highlights
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(topPts[0].x, topPts[0].y);
+      topPts.forEach(pt => ctx.lineTo(pt.x, pt.y));
+      ctx.closePath();
+      ctx.stroke();
+
+      // 4. Render Right Side Face (In angled shadow)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(rightPts[0].x, rightPts[0].y);
+      rightPts.forEach(pt => ctx.lineTo(pt.x, pt.y));
+      ctx.closePath();
+      ctx.clip();
+      renderMaterialRightFace(matKey, bx, by, bw, bh, dx, dy, b);
+      ctx.restore();
+
+      // Right Face Edge Strokes
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(rightPts[0].x, rightPts[0].y);
+      rightPts.forEach(pt => ctx.lineTo(pt.x, pt.y));
+      ctx.closePath();
+      ctx.stroke();
+
+      // 5. Render Front Face (Main vertical view)
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bw, bh, 3);
+      ctx.clip();
+      renderMaterialFrontFace(matKey, bx, by, bw, bh, b);
+      ctx.restore();
+
+      // Front Face Outer Rim & Corner Chamfers
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, bw, bh);
+
+      // Specular highlight line along front-top edge
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + bw, by);
+      ctx.stroke();
+
+      // 6. Water Submersion Appearance & Contact Ripples
+      const activeFluid = FLUIDS[activeFluidKey] || FLUIDS.WATER;
+      const tankInnerLeft = tank.x + tank.wallThick;
+      const tankInnerRight = tank.x + tank.w - tank.wallThick;
+      const inTankX = (bx + bw > tankInnerLeft && bx < tankInnerRight);
+
+      // Fluid surface based on total volume
+      const tankFluidBottomY = tank.y + tank.h - tank.wallThick;
+      const pxPerLiter = Math.max(1.2, (tankFluidBottomY - tank.baseWaterLevelY) / 100.0);
+      const displaced = currentTotalVolume - baseTankVolume;
+      const fluidLevelY = tank.baseWaterLevelY - (displaced * pxPerLiter);
+
+      // Only show submersion if within horizontal AND vertical tank bounds
+      if (inTankX && by + bh > fluidLevelY && by < tankFluidBottomY) {
+        // Submerged Part Water Overlay
+        const subTop = Math.max(by, fluidLevelY);
+        const subH = by + bh - subTop;
+        if (subH > 0) {
+          ctx.fillStyle = activeFluidKey === 'MERCURY' ? 'rgba(71, 85, 105, 0.5)' : 'rgba(14, 165, 233, 0.25)';
+          ctx.fillRect(bx, subTop, bw, subH);
+        }
+
+        // Water Contact Ellipse Ripple encircling the block
+        if (fluidLevelY >= by && fluidLevelY <= by + bh) {
+          ctx.strokeStyle = activeFluid.surfaceColor;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.ellipse(bx + bw / 2, fluidLevelY, bw * 0.58, 4.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(bx + bw / 2, fluidLevelY, bw * 0.42, 2.5, 0, 0, Math.PI);
+          ctx.stroke();
+        }
+      }
+
+      // 7. Labels & Force Vectors
+      drawBlockLabelAndVectors(b, bx, by, bw, bh);
+
+      ctx.restore();
+    }
+
+    // Material Front Face Renderers
+    function renderMaterialFrontFace(matKey, x, y, w, h, b) {
+      if (b.isMystery) {
+        renderMysteryBlockFront(b, x, y, w, h);
+        return;
+      }
+
+      switch (matKey) {
+        case 'WOOD':
+          // Natural Oak / Pine Wood Grain with Rings & Fibers
+          const woodGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+          woodGrad.addColorStop(0, '#d97706');
+          woodGrad.addColorStop(0.35, '#b45309');
+          woodGrad.addColorStop(0.7, '#92400e');
+          woodGrad.addColorStop(1, '#78350f');
+          ctx.fillStyle = woodGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Flowing Wood Annual Rings
+          ctx.strokeStyle = 'rgba(69, 26, 3, 0.45)';
+          ctx.lineWidth = 2.2;
+          for (let i = 8; i < h; i += 12) {
+            ctx.beginPath();
+            ctx.moveTo(x, y + i);
+            ctx.bezierCurveTo(x + w * 0.35, y + i - 6, x + w * 0.65, y + i + 5, x + w, y + i - 2);
+            ctx.stroke();
+          }
+
+          // Fine longitudinal wood pores & fibers
+          ctx.strokeStyle = 'rgba(254, 243, 199, 0.18)';
+          ctx.lineWidth = 1;
+          for (let i = 4; i < h; i += 6) {
+            ctx.beginPath();
+            ctx.moveTo(x + 5, y + i);
+            ctx.lineTo(x + w - 5, y + i + 1);
+            ctx.stroke();
+          }
+
+          // Subtle wood knot
+          ctx.fillStyle = 'rgba(69, 26, 3, 0.6)';
+          ctx.beginPath();
+          ctx.ellipse(x + w * 0.72, y + h * 0.4, 7, 4, 0.3, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+
+        case 'STYROFOAM':
+          // Expanded Polystyrene Beads (Pure white EPS foam)
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(x, y, w, h);
+
+          // Hundreds of packed spherical polystyrene beads
+          const beadR = Math.max(3, Math.round(w * 0.05));
+          for (let by = y + beadR; by < y + h; by += beadR * 1.8) {
+            for (let bx = x + beadR; bx < x + w; bx += beadR * 1.8) {
+              const offsetX = (Math.sin(by * 11) * beadR * 0.3);
+              const curX = bx + offsetX;
+              if (curX < x + w - 2 && by < y + h - 2) {
+                // Bead shadow ring
+                ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+                ctx.beginPath();
+                ctx.arc(curX, by, beadR, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bead spherical core
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(curX - 0.5, by - 0.5, beadR - 0.8, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+          }
+          break;
+
+        case 'ICE':
+          // Translucent Crystalline Ice Cube with Glacial Cleavage Planes
+          const iceGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+          iceGrad.addColorStop(0, 'rgba(224, 242, 254, 0.9)');
+          iceGrad.addColorStop(0.4, 'rgba(186, 230, 253, 0.75)');
+          iceGrad.addColorStop(0.8, 'rgba(125, 211, 252, 0.8)');
+          iceGrad.addColorStop(1, 'rgba(56, 189, 248, 0.85)');
+          ctx.fillStyle = iceGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Internal Glacial Fractures & Cleavage Cracks
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(x + 10, y + 15);
+          ctx.lineTo(x + w * 0.45, y + h * 0.55);
+          ctx.lineTo(x + w * 0.8, y + h * 0.4);
+          ctx.moveTo(x + w * 0.45, y + h * 0.55);
+          ctx.lineTo(x + w * 0.35, y + h - 12);
+          ctx.stroke();
+
+          // Frozen Air Micro-Bubbles
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+          const bubbles = [
+            { rx: 0.25, ry: 0.3, r: 2.5 },
+            { rx: 0.6, ry: 0.25, r: 1.8 },
+            { rx: 0.5, ry: 0.7, r: 3.2 },
+            { rx: 0.75, ry: 0.75, r: 2.0 },
+            { rx: 0.3, ry: 0.8, r: 1.5 }
+          ];
+          bubbles.forEach(bb => {
+            ctx.beginPath();
+            ctx.arc(x + w * bb.rx, y + h * bb.ry, bb.r, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          break;
+
+        case 'BRICK':
+          // Fired Clay Terracotta Brick
+          const brickGrad = ctx.createLinearGradient(x, y, x, y + h);
+          brickGrad.addColorStop(0, '#dc2626');
+          brickGrad.addColorStop(0.5, '#b91c1c');
+          brickGrad.addColorStop(1, '#7f1d1d');
+          ctx.fillStyle = brickGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Clay Pores & Mineral Specks
+          ctx.fillStyle = 'rgba(69, 10, 10, 0.4)';
+          for (let i = 0; i < 40; i++) {
+            const px = x + ((i * 17) % (w - 6)) + 3;
+            const py = y + ((i * 29) % (h - 6)) + 3;
+            ctx.fillRect(px, py, 2, 2);
+          }
+          ctx.fillStyle = 'rgba(254, 202, 202, 0.3)';
+          for (let i = 0; i < 25; i++) {
+            const px = x + ((i * 23) % (w - 6)) + 3;
+            const py = y + ((i * 37) % (h - 6)) + 3;
+            ctx.fillRect(px, py, 1.5, 1.5);
+          }
+          break;
+
+        case 'ALUMINUM':
+          // Precision Milled Brushed Aluminum Ingot
+          const alGrad = ctx.createLinearGradient(x, y, x + w, y);
+          alGrad.addColorStop(0, '#94a3b8');
+          alGrad.addColorStop(0.2, '#cbd5e1');
+          alGrad.addColorStop(0.45, '#ffffff'); // High specular gloss reflection streak
+          alGrad.addColorStop(0.7, '#e2e8f0');
+          alGrad.addColorStop(1, '#64748b');
+          ctx.fillStyle = alGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Horizontal Anisotropic Brushed Lines
+          ctx.strokeStyle = 'rgba(71, 85, 105, 0.2)';
+          ctx.lineWidth = 1;
+          for (let ly = y + 3; ly < y + h; ly += 4) {
+            ctx.beginPath();
+            ctx.moveTo(x, ly);
+            ctx.lineTo(x + w, ly);
+            ctx.stroke();
+          }
+          break;
+
+        case 'STEEL':
+          // Heavy Forged Carbon Steel Billet
+          const steelGrad = ctx.createLinearGradient(x, y, x + w, y);
+          steelGrad.addColorStop(0, '#1e293b');
+          steelGrad.addColorStop(0.3, '#334155');
+          steelGrad.addColorStop(0.5, '#64748b');
+          steelGrad.addColorStop(0.8, '#475569');
+          steelGrad.addColorStop(1, '#0f172a');
+          ctx.fillStyle = steelGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Steel Machine Grain Lines
+          ctx.strokeStyle = 'rgba(203, 213, 225, 0.15)';
+          ctx.lineWidth = 1;
+          for (let ly = y + 2; ly < y + h; ly += 5) {
+            ctx.beginPath();
+            ctx.moveTo(x, ly);
+            ctx.lineTo(x + w, ly);
+            ctx.stroke();
+          }
+          break;
+
+        case 'COPPER':
+          // Polished Pure Copper Ingot
+          const cuGrad = ctx.createLinearGradient(x, y, x + w, y);
+          cuGrad.addColorStop(0, '#9a3412');
+          cuGrad.addColorStop(0.25, '#ea580c');
+          cuGrad.addColorStop(0.5, '#fed7aa'); // Warm metallic glare
+          cuGrad.addColorStop(0.75, '#c2410c');
+          cuGrad.addColorStop(1, '#7c2d12');
+          ctx.fillStyle = cuGrad;
+          ctx.fillRect(x, y, w, h);
+          break;
+
+        case 'GOLD':
+          // 24K Gold Bullion Bar
+          const auGrad = ctx.createLinearGradient(x, y, x + w, y);
+          auGrad.addColorStop(0, '#a16207');
+          auGrad.addColorStop(0.2, '#eab308');
+          auGrad.addColorStop(0.48, '#fef08a'); // High brilliance mirror reflection
+          auGrad.addColorStop(0.8, '#ca8a04');
+          auGrad.addColorStop(1, '#854d0e');
+          ctx.fillStyle = auGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Bullion Ingot Hallmark stamp
+          ctx.strokeStyle = 'rgba(113, 63, 18, 0.4)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + 8, y + 8, w - 16, h - 16);
+          break;
+
+        case 'LEAD':
+          // Heavy Dull Lead Block with Soft Matte Oxide Finish
+          const pbGrad = ctx.createLinearGradient(x, y, x, y + h);
+          pbGrad.addColorStop(0, '#475569');
+          pbGrad.addColorStop(0.5, '#334155');
+          pbGrad.addColorStop(1, '#1e293b');
+          ctx.fillStyle = pbGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Soft heavy oxidation sheen
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
+          ctx.beginPath();
+          ctx.ellipse(x + w * 0.5, y + h * 0.45, w * 0.35, h * 0.35, 0, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+
+        case 'DIAMOND':
+          // Brilliant Facet Diamond Crystal
+          const diaGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+          diaGrad.addColorStop(0, '#cffafe');
+          diaGrad.addColorStop(0.5, '#67e8f9');
+          diaGrad.addColorStop(1, '#06b6d4');
+          ctx.fillStyle = diaGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Facet geometric lines
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(x + w / 2, y);
+          ctx.lineTo(x + w, y + h / 2);
+          ctx.lineTo(x + w / 2, y + h);
+          ctx.lineTo(x, y + h / 2);
+          ctx.closePath();
+          ctx.stroke();
+          break;
+
+        default:
+          // Custom Material: High-Tech Test Block
+          const customGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+          customGrad.addColorStop(0, '#0284c7');
+          customGrad.addColorStop(0.5, '#0369a1');
+          customGrad.addColorStop(1, '#0c4a6e');
+          ctx.fillStyle = customGrad;
+          ctx.fillRect(x, y, w, h);
+
+          // Carbon fiber micro-weave grid
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.lineWidth = 1;
+          for (let gx = x; gx < x + w; gx += 8) {
+            ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + h); ctx.stroke();
+          }
+          for (let gy = y; gy < y + h; gy += 8) {
+            ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + w, gy); ctx.stroke();
+          }
+          break;
+      }
+    }
+
+    // Material Top Face Renderers (Illuminated by overhead lab lights)
+    function renderMaterialTopFace(matKey, x, y, w, h, dx, dy, b) {
+      if (b.isMystery) {
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(x, y - dy, w + dx, dy);
+        return;
+      }
+
+      switch (matKey) {
+        case 'WOOD':
+          // Wood End-Grain (Concentric Annual Rings Seen on Cut Timber End)
+          ctx.fillStyle = '#d97706';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          ctx.strokeStyle = 'rgba(69, 26, 3, 0.4)';
+          ctx.lineWidth = 1.5;
+          for (let r = 8; r < w; r += 14) {
+            ctx.beginPath();
+            ctx.ellipse(x + w * 0.4, y, r, r * 0.35, 0, Math.PI, Math.PI * 2);
+            ctx.stroke();
+          }
+          break;
+
+        case 'STYROFOAM':
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+
+        case 'ICE':
+          const iceTopGrad = ctx.createLinearGradient(x, y - dy, x + w, y);
+          iceTopGrad.addColorStop(0, '#f0f9ff');
+          iceTopGrad.addColorStop(1, '#bae6fd');
+          ctx.fillStyle = iceTopGrad;
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+
+        case 'BRICK':
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+
+        case 'ALUMINUM':
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+
+        case 'STEEL':
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+
+        case 'COPPER':
+          ctx.fillStyle = '#f97316';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+
+        case 'GOLD':
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+
+        case 'LEAD':
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+
+        default:
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(x, y - dy, w + dx, dy);
+          break;
+      }
+    }
+
+    // Material Right Side Face Renderers (In Angled 3D Shadow)
+    function renderMaterialRightFace(matKey, x, y, w, h, dx, dy, b) {
+      if (b.isMystery) {
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(x + w, y - dy, dx, h + dy);
+        return;
+      }
+
+      switch (matKey) {
+        case 'WOOD':
+          ctx.fillStyle = '#78350f';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        case 'STYROFOAM':
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        case 'ICE':
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        case 'BRICK':
+          ctx.fillStyle = '#7f1d1d';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        case 'ALUMINUM':
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        case 'STEEL':
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        case 'COPPER':
+          ctx.fillStyle = '#7c2d12';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        case 'GOLD':
+          ctx.fillStyle = '#854d0e';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        case 'LEAD':
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+
+        default:
+          ctx.fillStyle = '#0369a1';
+          ctx.fillRect(x + w, y - dy, dx, h + dy);
+          break;
+      }
+    }
+
+    // High-End Mystery Lab Specimen Block Front
+    function renderMysteryBlockFront(b, x, y, w, h) {
+      // Jewel-toned polymer casing
+      ctx.fillStyle = b.color || '#3b82f6';
+      ctx.fillRect(x, y, w, h);
+
+      // Brushed metallic chrome frame
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
+
+      // 4 Corner Metallic Screws / Rivets
+      ctx.fillStyle = '#cbd5e1';
+      const screwR = 2.5;
+      const screwPositions = [
+        { sx: x + 8, sy: y + 8 },
+        { sx: x + w - 8, sy: y + 8 },
+        { sx: x + 8, sy: y + h - 8 },
+        { sx: x + w - 8, sy: y + h - 8 }
+      ];
+      screwPositions.forEach(sc => {
+        ctx.beginPath();
+        ctx.arc(sc.sx, sc.sy, screwR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      });
+
+      // Recessed Central Metal Plate
+      const pW = w - 24;
+      const pH = h - 24;
+      const pX = x + 12;
+      const pY = y + 12;
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(pX, pY, pW, pH);
+
+      // Embossed 3D Letter Badge (A, B, C, D, E)
+      ctx.font = '800 24px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Drop shadow for 3D embossed look
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillText(b.label, pX + pW / 2 + 1.5, pY + pH / 2 + 1.5);
+
+      // Metallic Golden / Chrome letter
+      const letterGrad = ctx.createLinearGradient(pX, pY, pX + pW, pY + pH);
+      letterGrad.addColorStop(0, '#fef08a');
+      letterGrad.addColorStop(0.5, '#eab308');
+      letterGrad.addColorStop(1, '#ca8a04');
+      ctx.fillStyle = letterGrad;
+      ctx.fillText(b.label, pX + pW / 2, pY + pH / 2);
+    }
+
+    // Realistic Organic Apple Renderer (for Mystery / Compare)
+    function drawRealisticApple(x, y, w, h) {
+      const cx = x + w / 2;
+      const cy = y + h / 2 + 4;
+      const r = Math.min(w, h) * 0.44;
+
+      // Realistic Apple Skin (Ruby Red with Honeycrisp Yellow Blush)
+      const appleGrad = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.2, cx, cy, r * 1.2);
+      appleGrad.addColorStop(0, '#fef08a'); // Highlight blush
+      appleGrad.addColorStop(0.25, '#ef4444'); // Vibrant red
+      appleGrad.addColorStop(0.7, '#b91c1c');  // Deep ruby red
+      appleGrad.addColorStop(1, '#7f1d1d');    // Deep shade
+
+      // Apple Organic Heart-Spherical Silhouette
+      ctx.fillStyle = appleGrad;
+      ctx.beginPath();
+      // Left lobe
+      ctx.moveTo(cx, cy - r * 0.6);
+      ctx.bezierCurveTo(cx - r * 0.9, cy - r * 1.1, cx - r * 1.25, cy + r * 0.3, cx - r * 0.7, cy + r * 0.95);
+      // Bottom dimple
+      ctx.bezierCurveTo(cx - r * 0.3, cy + r * 1.1, cx + r * 0.3, cy + r * 1.1, cx + r * 0.7, cy + r * 0.95);
+      // Right lobe
+      ctx.bezierCurveTo(cx + r * 1.25, cy + r * 0.3, cx + r * 0.9, cy - r * 1.1, cx, cy - r * 0.6);
+      ctx.closePath();
+      ctx.fill();
+
+      // Apple Speckles (Lenticels)
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.4)';
+      for (let i = 0; i < 20; i++) {
+        const sx = cx + (Math.sin(i * 9) * r * 0.7);
+        const sy = cy + (Math.cos(i * 7) * r * 0.7);
+        ctx.fillRect(sx, sy, 1.5, 1.5);
+      }
+
+      // Wooden Stem at top
+      ctx.strokeStyle = '#582f0e';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r * 0.6);
+      ctx.bezierCurveTo(cx + 4, cy - r * 0.9, cx + 8, cy - r * 1.1, cx + 5, cy - r * 1.25);
+      ctx.stroke();
+
+      // Fresh Green Leaf
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath();
+      ctx.ellipse(cx + 10, cy - r * 1.05, 7, 3.5, Math.PI / 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Block Labels & Physics Vectors
+    function drawBlockLabelAndVectors(b, bx, by, bw, bh) {
+      const showLabels = document.getElementById('chkShowLabel') ? document.getElementById('chkShowLabel').checked : true;
+      if (showLabels && !b.isMystery) {
+        // High-legibility modern translucent pill label
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+        ctx.beginPath();
+        ctx.roundRect(bx + 4, by + bh - 24, bw - 8, 20, 4);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 10px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.label, bx + bw / 2, by + bh - 14);
+      }
+
+      // Force Vectors (Gravity & Buoyancy)
+      const showVectors = document.getElementById('chkShowVectors') && document.getElementById('chkShowVectors').checked;
+      if (showVectors) {
+        const cx = bx + bw / 2;
+        const cy = by + bh / 2;
+        const gLen = Math.min(80, b.mass * 4);
+
+        // Gravity Vector (Red downward)
+        drawArrow(cx, cy, cx, cy + gLen, '#f87171', 'Fg');
+
+        // Buoyant Vector (Cyan upward)
+        const activeFluid = FLUIDS[activeFluidKey] || FLUIDS.WATER;
+        const tankFluidBottomY = tank.y + tank.h - tank.wallThick;
+        const tankInnerLeft = tank.x + tank.wallThick;
+        const tankInnerRight = tank.x + tank.w - tank.wallThick;
+        const inTankX = (bx + bw > tankInnerLeft && bx < tankInnerRight);
+
+        // Fluid surface based on total volume
+        const pxPerLiter = Math.max(1.2, (tankFluidBottomY - tank.baseWaterLevelY) / 100.0);
+        const displaced = currentTotalVolume - baseTankVolume;
+        const fluidLevelY = tank.baseWaterLevelY - (displaced * pxPerLiter);
+
+        if (inTankX && by + bh > fluidLevelY && by < tankFluidBottomY) {
+          const submergedH = Math.min(bh, Math.max(0, by + bh - fluidLevelY));
+          const subFraction = Math.min(1.0, submergedH / bh);
+          const bLen = Math.min(80, (activeFluid.density * b.volume * subFraction) * 4);
+          drawArrow(cx, cy, cx, cy - bLen, '#38bdf8', 'Fb');
+        }
+      }
+    }
+
+    function drawArrow(x1, y1, x2, y2, color, label) {
+      if (Math.abs(y2 - y1) < 4) return;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      // Arrowhead
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const headLen = 8;
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+
+      // Label
+      ctx.font = '700 10px -apple-system, sans-serif';
+      ctx.fillText(label, x2 + 12, y2);
+    }
+
+    function redrawCanvas() {
+      ctx.clearRect(0, 0, canvasW, canvasH);
+      drawGridFloor();
+      drawScale();
+
+      // Fluid surface based on total volume
+      const tankFluidBottomY = tank.y + tank.h - tank.wallThick;
+      const pxPerLiter = Math.max(1.2, (tankFluidBottomY - tank.baseWaterLevelY) / 100.0);
+      const displaced = currentTotalVolume - baseTankVolume;
+      const fluidLevelY = tank.baseWaterLevelY - (displaced * pxPerLiter);
+
+      drawTank(fluidLevelY);
+      blocks.forEach(drawBlock);
+    }
+
+    function loop(time) {
+      const dt = Math.min(0.033, (time - lastTime) / 1000);
+      lastTime = time;
+      updatePhysics(dt);
+      redrawCanvas();
+      requestAnimationFrame(loop);
+    }
+
+    /* =========================================================================
+       MOUSE & TOUCH INTERACTION
+       ========================================================================= */
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function onPointerDown(e) {
+      const pos = getCanvasCoords(e);
+      // Iterate in reverse to grab topmost block (including 3D depth top and right faces)
+      for (let i = blocks.length - 1; i >= 0; i--) {
+        const b = blocks[i];
+        const { dx, dy } = get3DDepth(b.w, b.h);
+        if (pos.x >= b.x && pos.x <= b.x + b.w + dx && pos.y >= b.y - dy && pos.y <= b.y + b.h) {
+          draggedBlock = b;
+          dragOffsetX = pos.x - b.x;
+          dragOffsetY = pos.y - b.y;
+          // Bring to front
+          blocks.splice(i, 1);
+          blocks.push(b);
+          canvas.style.cursor = 'grabbing';
+          playClackSound();
+          break;
+        }
+      }
+    }
+
+    function onPointerMove(e) {
+      if (!draggedBlock) return;
+      const pos = getCanvasCoords(e);
+      draggedBlock.x = pos.x - dragOffsetX;
+      draggedBlock.y = pos.y - dragOffsetY;
+      draggedBlock.vx = 0;
+      draggedBlock.vy = 0;
+    }
+
+    function onPointerUp() {
+      if (draggedBlock) {
+        draggedBlock = null;
+        canvas.style.cursor = 'default';
+      }
+    }
+
+    canvas.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+
+    canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', onPointerUp);
+
+    /* =========================================================================
+       SIDEBAR & TELEMETRY UPDATES
+       ========================================================================= */
+    function updateIntroSidebar() {
+      document.getElementById('sliderIntroMass').value = introBlock.mass;
+      document.getElementById('valIntroMass').textContent = introBlock.mass.toFixed(2) + ' kg';
+      document.getElementById('sliderIntroVolume').value = introBlock.volume;
+      document.getElementById('valIntroVolume').textContent = introBlock.volume.toFixed(2) + ' L';
+      document.getElementById('diagDensity').textContent = introBlock.density.toFixed(2) + ' kg/L';
+    }
+
+    function updateIntroTelemetry(fluidLevelY) {
+      const b = introBlock;
+      const activeFluid = FLUIDS[activeFluidKey] || FLUIDS.WATER;
+      const tankInnerLeft = tank.x + tank.wallThick;
+      const tankInnerRight = tank.x + tank.w - tank.wallThick;
+      const tankFluidBottomY = tank.y + tank.h - tank.wallThick;
+      const inTankX = (b.x + b.w > tankInnerLeft && b.x < tankInnerRight);
+
+      let subPercent = 0;
+      if (inTankX && b.y + b.h > fluidLevelY) {
+        const submergedH = Math.min(b.h, Math.max(0, b.y + b.h - fluidLevelY));
+        subPercent = Math.round((submergedH / b.h) * 100);
+      }
+      document.getElementById('diagSubmerged').textContent = subPercent + '%';
+
+      const stateElem = document.getElementById('diagState');
+      if (b.density < activeFluid.density) {
+        stateElem.textContent = 'Floats';
+        stateElem.style.color = '#34d399';
+      } else if (b.density === activeFluid.density) {
+        stateElem.textContent = 'Neutrally Buoyant';
+        stateElem.style.color = '#38bdf8';
+      } else {
+        stateElem.textContent = 'Sinks';
+        stateElem.style.color = '#f87171';
+      }
+    }
+
+    function onIntroMaterialChange(matKey) {
+      introBlock.materialKey = matKey;
+      if (matKey === 'CUSTOM') {
+        introBlock.isCustom = true;
+      } else {
+        introBlock.isCustom = false;
+        const mat = MATERIALS[matKey];
+        introBlock.density = mat.density;
+        introBlock.mass = +(introBlock.volume * introBlock.density).toFixed(2);
+      }
+      buildIntroBlock();
+    }
+
+    function onIntroMassInput(val) {
+      introBlock.mass = parseFloat(val);
+      introBlock.isCustom = true;
+      document.getElementById('selectIntroMaterial').value = 'CUSTOM';
+      introBlock.density = +(introBlock.mass / introBlock.volume).toFixed(2);
+      buildIntroBlock();
+    }
+
+    function onIntroVolumeInput(val) {
+      introBlock.volume = parseFloat(val);
+      if (!introBlock.isCustom) {
+        introBlock.mass = +(introBlock.volume * introBlock.density).toFixed(2);
+      } else {
+        introBlock.density = +(introBlock.mass / introBlock.volume).toFixed(2);
+      }
+      buildIntroBlock();
+    }
+
+    /* Compare Screen Sidebar */
+    function setCompareMode(mode) {
+      compareMode = mode;
+      ['SameMass', 'SameVol', 'SameDensity', 'Random'].forEach(m => {
+        const btn = document.getElementById('btnCmp' + m);
+        if (btn) btn.classList.remove('active');
+      });
+      if (mode === 'sameMass') document.getElementById('btnCmpSameMass').classList.add('active');
+      if (mode === 'sameVolume') document.getElementById('btnCmpSameVol').classList.add('active');
+      if (mode === 'sameDensity') document.getElementById('btnCmpSameDensity').classList.add('active');
+      if (mode === 'random') document.getElementById('btnCmpRandom').classList.add('active');
+
+      const descMap = {
+        sameMass: 'All 5 blocks share the same mass of <strong>5.00 kg</strong>, but have different materials & densities. Observe how volume varies inversely with density!',
+        sameVolume: 'All 5 blocks share the same volume of <strong>5.00 L</strong>, but have different materials & masses. Observe that denser blocks are much heavier!',
+        sameDensity: 'All 5 blocks have the exact same density of <strong>0.50 kg/L</strong> despite having different masses and volumes. Notice that density is an intensive property!',
+        random: 'Random blocks of varied compositions and dimensions for comparative testing on the scale and in the water.'
+      };
+      document.getElementById('compareSetDescription').innerHTML = descMap[mode];
+      buildCompareBlocks();
+    }
+
+    function updateCompareSidebar() {
+      const tbody = document.getElementById('compareBlocksTable');
+      tbody.innerHTML = '';
+      blocks.forEach(b => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="label">${b.label}</td><td class="value">${b.mass.toFixed(1)}kg | ${b.volume.toFixed(1)}L (ρ=${b.density.toFixed(2)})</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* Mystery Screen Sidebar */
+    function setMysterySet(setKey) {
+      mysterySet = setKey;
+      ['Set1', 'Set2', 'Set3', 'Random'].forEach(s => {
+        const btn = document.getElementById('btnMyst' + s);
+        if (btn) btn.classList.remove('active');
+      });
+      if (setKey === 'set1') document.getElementById('btnMystSet1').classList.add('active');
+      if (setKey === 'set2') document.getElementById('btnMystSet2').classList.add('active');
+      if (setKey === 'set3') document.getElementById('btnMystSet3').classList.add('active');
+      if (setKey === 'random') document.getElementById('btnMystRandom').classList.add('active');
+
+      document.getElementById('mysteryFeedback').style.display = 'none';
+      buildMysteryBlocks();
+    }
+
+    function populateMysterySidebar() {
+      const container = document.getElementById('mysteryIdentificationList');
+      container.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D', 'E'];
+      
+      const candidateMats = [
+        'WOOD', 'APPLE', 'ICE', 'ALUMINUM', 'DIAMOND', 'TITANIUM', 'STEEL', 'COPPER', 'LEAD', 'GOLD', 'PLATINUM', 'STYROFOAM', 'BRICK', 'CONCRETE', 'GLASS'
+      ];
+
+      letters.forEach(letter => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; gap:8px;';
+        
+        let selectHtml = `<select class="custom-select" style="padding:4px 8px; font-size:0.75rem;" id="guessMyst_${letter}" onchange="studentMysteryGuesses['${letter}'] = this.value">
+          <option value="">Select Material for ${letter}...</option>`;
+        candidateMats.forEach(mKey => {
+          selectHtml += `<option value="${mKey}">${MATERIALS[mKey].name} (${MATERIALS[mKey].density} kg/L)</option>`;
+        });
+        selectHtml += `</select>`;
+
+        row.innerHTML = `
+          <span style="font-weight:700; color:#38bdf8; font-size:0.85rem; width:20px;">${letter}:</span>
+          ${selectHtml}
+          <span id="badgeMyst_${letter}" style="font-size:0.75rem; width:20px;"></span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function checkAllMysteryAnswers() {
+      const setKeys = mysteryAnswers[mysterySet] || mysteryAnswers.set1;
+      let correctCount = 0;
+      ['A', 'B', 'C', 'D', 'E'].forEach(letter => {
+        const guess = studentMysteryGuesses[letter];
+        const correct = setKeys[letter];
+        const badge = document.getElementById('badgeMyst_' + letter);
+        if (guess && guess === correct) {
+          badge.textContent = '✓';
+          badge.style.color = '#34d399';
+          correctCount++;
+        } else {
+          badge.textContent = '✗';
+          badge.style.color = '#f87171';
+        }
+      });
+
+      const fb = document.getElementById('mysteryFeedback');
+      fb.style.display = 'block';
+      if (correctCount === 5) {
+        fb.textContent = 'Outstanding! All 5 Mystery Blocks correctly identified!';
+        fb.style.color = '#34d399';
+        playSuccessFanfare();
+        completeMission(3); // Mission 4 complete
+      } else {
+        fb.textContent = `You got ${correctCount} / 5 correct. Check your mass & volume calculations!`;
+        fb.style.color = '#fbbf24';
+      }
+    }
+
+    /* Screen 4: Fluid Buoyancy Controls */
+    function onTankFluidChange(fluidKey) {
+      activeFluidKey = fluidKey;
+      if (fluidKey === 'CUSTOM') {
+        document.getElementById('rowCustomFluid').style.display = 'flex';
+      } else {
+        document.getElementById('rowCustomFluid').style.display = 'none';
+      }
+      const fluid = FLUIDS[fluidKey] || FLUIDS.WATER;
+      document.getElementById('screenStatusFluid').textContent = `${fluid.name} (ρ = ${fluid.density.toFixed(2)} kg/L) | Pool Volume: 100.00 L`;
+    }
+
+    function onCustomFluidInput(val) {
+      const rho = parseFloat(val);
+      FLUIDS.CUSTOM.density = rho;
+      document.getElementById('valCustomFluid').textContent = rho.toFixed(2) + ' kg/L';
+      document.getElementById('screenStatusFluid').textContent = `Custom Fluid (ρ = ${rho.toFixed(2)} kg/L) | Pool Volume: 100.00 L`;
+    }
+
+    function setGravity(g, name) {
+      currentGravity = g;
+      gravityName = name;
+      ['Earth', 'Moon', 'Jupiter', 'PlanetX'].forEach(gName => {
+        const btn = document.getElementById('btnGrav' + gName);
+        if (btn) btn.classList.remove('active');
+      });
+      if (name === 'Earth') document.getElementById('btnGravEarth').classList.add('active');
+      if (name === 'Moon') document.getElementById('btnGravMoon').classList.add('active');
+      if (name === 'Jupiter') document.getElementById('btnGravJupiter').classList.add('active');
+      if (name === 'Planet X') document.getElementById('btnGravPlanetX').classList.add('active');
+    }
+
+    function onBuoyancyBlockMatChange(matKey) {
+      buildBuoyancyBlocks();
+    }
+
+    /* =========================================================================
+       SCREEN SWITCHER & APPLICATION MODE
+       ========================================================================= */
+    function switchSimScreen(screenName) {
+      currentScreen = screenName;
+      ['Intro', 'Compare', 'Mystery', 'Buoyancy'].forEach(s => {
+        const tab = document.getElementById('tabScreen' + s);
+        if (tab) tab.classList.remove('active');
+        const ctrl = document.getElementById('controls' + s);
+        if (ctrl) ctrl.style.display = 'none';
+      });
+
+      if (screenName === 'intro') {
+        document.getElementById('tabScreenIntro').classList.add('active');
+        document.getElementById('controlsIntro').style.display = 'block';
+        buildIntroBlock();
+      } else if (screenName === 'compare') {
+        document.getElementById('tabScreenCompare').classList.add('active');
+        document.getElementById('controlsCompare').style.display = 'block';
+        buildCompareBlocks();
+      } else if (screenName === 'mystery') {
+        document.getElementById('tabScreenMystery').classList.add('active');
+        document.getElementById('controlsMystery').style.display = 'block';
+        buildMysteryBlocks();
+      } else if (screenName === 'buoyancy') {
+        document.getElementById('tabScreenBuoyancy').classList.add('active');
+        document.getElementById('controlsBuoyancy').style.display = 'block';
+        buildBuoyancyBlocks();
+      }
+    }
+
+    function setAppMode(modeKey) {
+      currentAppMode = modeKey;
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        resizeCanvas();
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    function openDensityTableModal() {
+      const modal = document.getElementById('modalDensityTable');
+      const tbody = document.getElementById('refTableTbody');
+      tbody.innerHTML = '';
+      
+      Object.keys(MATERIALS).forEach(k => {
+        const m = MATERIALS[k];
+        const tr = document.createElement('tr');
+        const stateStr = m.state === 'liquid' ? 'Liquid' : 'Solid';
+        const behavior = m.density < 1.00 ? 'Floats (Unsubmerged)' : (m.density === 1.00 ? 'Neutrally Buoyant' : 'Sinks to bottom');
+        tr.innerHTML = `
+          <td><strong>${m.name}</strong></td>
+          <td>${stateStr}</td>
+          <td class="val">${m.density.toFixed(2)} kg/L</td>
+          <td style="color:${m.density < 1.0 ? '#34d399' : '#f87171'};">${behavior}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      modal.classList.add('active');
+    }
+
+    function closeDensityTableModal() {
+      document.getElementById('modalDensityTable').classList.remove('active');
+    }
+
+    /* =========================================================================
+       5 GUIDED MISSIONS WITH REAL-TIME VERIFICATION
+       ========================================================================= */
+    const missions = [
+      {
+        title: "Mission 1: The 75% Flotation Equilibrium",
+        desc: "Configure a Custom material in the Intro screen that floats in water with exactly 75% (±2%) of its volume submerged. (Hint: Recall that V_sub / V = rho_obj / rho_water).",
+        screen: "intro",
+        check: (b, fluidY) => {
+          if (currentScreen !== 'intro') return false;
+          const rho = introBlock.density;
+          return (rho >= 0.73 && rho <= 0.77 && introBlock.wasInWater);
+        }
+      },
+      {
+        title: "Mission 2: Archimedes' 5.0 Liter Displacement",
+        desc: "Submerge a block into the pool until the total pool volume reading reaches at least 105.00 L.",
+        screen: "intro",
+        check: (b, fluidY) => {
+          return currentTotalVolume >= 105.00;
+        }
+      },
+      {
+        title: "Mission 3: Underwater Weighing & Apparent Weight",
+        desc: "Place an Aluminum or Brick block onto the digital scale platform to measure its apparent weight.",
+        screen: "intro",
+        check: (b, fluidY) => {
+          return scale.reading > 2.0;
+        }
+      },
+      {
+        title: "Mission 4: Mystery Detective",
+        desc: "Weigh, displace, and successfully identify all 5 Mystery Blocks in Mystery Lab Set 1.",
+        screen: "mystery",
+        completed: false
+      },
+      {
+        title: "Mission 5: Levitation in Mercury",
+        desc: "In Fluid Buoyancy mode, set the fluid to Mercury (13.60 kg/L) and place a Steel or Aluminum block into the tank to observe heavy metals floating on the surface!",
+        screen: "buoyancy",
+        check: (b, fluidY) => {
+          if (currentScreen !== 'buoyancy') return false;
+          if (activeFluidKey !== 'MERCURY') return false;
+          return blocks.some(b => (b.materialKey === 'STEEL' || b.materialKey === 'ALUMINUM') && b.wasInWater && b.y < tank.baseWaterLevelY + 40);
+        }
+      }
+    ];
+
+    let completedMissions = [false, false, false, false, false];
+
+    function checkMissionsCriteria(fluidY) {
+      missions.forEach((m, idx) => {
+        if (!completedMissions[idx] && m.check && m.check(blocks, fluidY)) {
+          completeMission(idx);
+        }
+      });
+    }
+
+    function completeMission(idx) {
+      if (completedMissions[idx]) return;
+      completedMissions[idx] = true;
+      playSuccessFanfare();
+      updateMissionsUI();
+    }
+
+    function updateMissionsUI() {
+      const container = document.getElementById('missionsGridContainer');
+      container.innerHTML = '';
+      let doneCount = 0;
+
+      missions.forEach((m, idx) => {
+        const isDone = completedMissions[idx];
+        if (isDone) doneCount++;
+
+        const card = document.createElement('div');
+        card.className = 'mission-card' + (isDone ? ' completed' : '');
+        card.innerHTML = `
+          <div class="mission-card-header">
+            <div class="mission-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${isDone ? '#34d399' : '#38bdf8'}" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              ${m.title}
+            </div>
+            <span class="mission-status-pill">${isDone ? 'COMPLETED' : 'IN PROGRESS'}</span>
+          </div>
+          <div class="mission-desc">${m.desc}</div>
+          <div class="mission-action-row">
+            <button class="mission-jump-btn" onclick="jumpToMissionScreen('${m.screen}')">Go to Lab</button>
+            <span style="font-size:0.75rem; color:var(--text-dim);">+20 XP</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      document.getElementById('missionBadgeCount').textContent = `${doneCount}/5`;
+      document.getElementById('missionsHeroScore').textContent = `${doneCount} / 5`;
+    }
+
+    function jumpToMissionScreen(screen) {
+      setAppMode('sim');
+      switchSimScreen(screen);
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ & LMS INTEGRATION
+       ========================================================================= */
+    const quizData = [
+      {
+        q: "1. A block of wood has a mass of 4.0 kg and a volume of 10.0 L. What is its density, and will it float in water (density = 1.0 kg/L)?",
+        opts: [
+          "0.40 kg/L; it will float with 40% submerged",
+          "2.50 kg/L; it will sink to the bottom",
+          "0.40 kg/L; it will float with 100% submerged",
+          "40.0 kg/L; it will sink immediately"
+        ],
+        answer: 0,
+        explanation: "Density = Mass / Volume = 4.0 kg / 10.0 L = 0.40 kg/L. Since 0.40 < 1.00, it floats. The submerged fraction is rho_obj / rho_water = 0.40 / 1.00 = 40%."
+      },
+      {
+        q: "2. Two solid blocks, A and B, have identical volumes of 5.0 L. Block A is made of Wood (density 0.40 kg/L) and Block B is made of Brick (density 2.00 kg/L). Which statement is true?",
+        opts: [
+          "Both blocks weigh the same because they have equal volume.",
+          "Block B has a mass of 10.0 kg, which is 5 times greater than Block A (2.0 kg).",
+          "Block A displaces 5.0 L of water when placed gently on the water surface.",
+          "Block B will float because 2.00 kg/L is close to 1.00 kg/L."
+        ],
+        answer: 1,
+        explanation: "Mass = Volume × Density. Mass of A = 5.0 L × 0.40 kg/L = 2.0 kg. Mass of B = 5.0 L × 2.00 kg/L = 10.0 kg. Block B is 5 times heavier than Block A."
+      },
+      {
+        q: "3. According to Archimedes' principle, what determines the buoyant force acting on a completely submerged object?",
+        opts: [
+          "The density of the submerged object.",
+          "The weight of the fluid displaced by the object's volume.",
+          "The depth of the object beneath the surface.",
+          "The surface area of the top face of the object."
+        ],
+        answer: 1,
+        explanation: "Archimedes' principle states that the upward buoyant force equals the weight of the displaced fluid: Fb = rho_fluid × V_submerged × g."
+      },
+      {
+        q: "4. A solid aluminum block (density = 2.70 kg/L) sinks in water (1.00 kg/L). What happens if this aluminum block is placed into a tank of liquid Mercury (density = 13.60 kg/L)?",
+        opts: [
+          "It sinks to the bottom because aluminum is a metal.",
+          "It dissolves instantly into a gas.",
+          "It floats on the surface of Mercury with only about 20% submerged.",
+          "It remains suspended at the exact center of the tank."
+        ],
+        answer: 2,
+        explanation: "Since 2.70 kg/L is much less dense than Mercury's 13.60 kg/L, the aluminum block floats high on top of the Mercury with V_sub / V = 2.70 / 13.60 ≈ 19.9% submerged!"
+      },
+      {
+        q: "5. A student measures an unknown solid block on a scale (mass = 11.34 kg) and completely submerges it in a graduated cylinder, observing a volume displacement of 1.00 L. What is the material?",
+        opts: [
+          "Aluminum",
+          "Copper",
+          "Lead",
+          "Gold"
+        ],
+        answer: 2,
+        explanation: "Density = Mass / Volume = 11.34 kg / 1.00 L = 11.34 kg/L. Looking up in the Density Table, Lead has an exact density of 11.34 kg/L."
+      }
+    ];
+
+    let quizAnswersState = Array(5).fill(null);
+
+    function buildQuizUI() {
+      const container = document.getElementById('quizQuestionsContainer');
+      container.innerHTML = '';
+
+      quizData.forEach((q, qIdx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-card';
+
+        let optsHtml = '';
+        q.opts.forEach((opt, optIdx) => {
+          optsHtml += `
+            <button class="quiz-opt-btn" id="opt_${qIdx}_${optIdx}" onclick="selectQuizOption(${qIdx}, ${optIdx})">
+              <span class="quiz-opt-marker">${String.fromCharCode(65 + optIdx)}</span>
+              <span>${opt}</span>
+            </button>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="quiz-q-num">Question ${qIdx + 1} of 5</div>
+          <div class="quiz-q-text">${q.q}</div>
+          <div class="quiz-options-list">${optsHtml}</div>
+          <div class="quiz-explanation" id="exp_${qIdx}">${q.explanation}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function selectQuizOption(qIdx, optIdx) {
+      if (quizAnswersState[qIdx] !== null) return;
+      quizAnswersState[qIdx] = optIdx;
+
+      const q = quizData[qIdx];
+      const isCorrect = optIdx === q.answer;
+      const btn = document.getElementById(`opt_${qIdx}_${optIdx}`);
+      const exp = document.getElementById(`exp_${qIdx}`);
+
+      if (isCorrect) {
+        btn.classList.add('correct');
+        playTone(587.33, 'triangle', 0.15, 0.15);
+      } else {
+        btn.classList.add('wrong');
+        const correctBtn = document.getElementById(`opt_${qIdx}_${q.answer}`);
+        if (correctBtn) correctBtn.classList.add('correct');
+        playTone(220, 'sawtooth', 0.2, 0.15);
+      }
+
+      exp.classList.add('visible');
+      updateQuizScore();
+    }
+
+    function updateQuizScore() {
+      let score = 0;
+      let answeredCount = 0;
+      quizAnswersState.forEach((ans, idx) => {
+        if (ans !== null) {
+          answeredCount++;
+          if (ans === quizData[idx].answer) score++;
+        }
+      });
+
+      const pct = Math.round((score / 5) * 100);
+      document.getElementById('quizScoreDisplay').textContent = `${score} / 5 (${pct}%)`;
+
+      if (answeredCount === 5) {
+        document.getElementById('btnClaimCert').style.display = 'block';
+        // Post grade to LMS parent window
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'ELEMENTA_SIM_SCORE',
+            sim: 'density',
+            score: score,
+            total: 5,
+            percentage: pct
+          }, '*');
+        }
+      }
+    }
+
+    /* Certificate Modal */
+    function openCertModal() {
+      document.getElementById('certOverlay').classList.add('active');
+      playSuccessFanfare();
+    }
+
+    function closeCertModal() {
+      document.getElementById('certOverlay').classList.remove('active');
+    }
+
+    /* =========================================================================
+       ACTION BAR BUTTONS (RESET, FULLSCREEN, SCREENSHOT)
+       ========================================================================= */
+    function resetSimulation() {
+      activeFluidKey = 'WATER';
+      currentGravity = 9.8;
+      gravityName = 'Earth';
+      currentTotalVolume = 100.00;
+      introBlock = {
+        id: 'intro_block',
+        label: 'Aluminum',
+        materialKey: 'ALUMINUM',
+        mass: 5.00,
+        volume: 5.00,
+        density: 2.70,
+        x: 150,
+        y: 350,
+        vx: 0,
+        vy: 0,
+        w: 80,
+        h: 80,
+        color: '#cbd5e1',
+        border: '#94a3b8',
+        isCustom: false
+      };
+      switchSimScreen(currentScreen);
+      playClackSound();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function captureScreenshot() {
+      const link = document.createElement('a');
+      link.download = 'elementa_density_simulation.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    /* =========================================================================
+       BOOTSTRAP INITIALIZATION
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      buildIntroBlock();
+      updateMissionsUI();
+      buildQuizUI();
+      requestAnimationFrame(loop);
+    });
+
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

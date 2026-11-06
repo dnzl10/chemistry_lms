@@ -1,0 +1,224 @@
+<script>
+    // ========================================================
+    // Standardized Teacher Side Navigation & Tree UI Controller
+    // Matches Student Navigation Tree Controller architecture
+    // ========================================================
+
+    const TEACHER_TREE_STORAGE_KEY = 'elementa_teacher_tree_nodes_v2';
+    const TEACHER_SIDEBAR_COLLAPSE_KEY = 'elementa_teacher_sidebar_collapsed';
+    const TEACHER_SIDEBAR_SCROLL_KEY = 'elementa_teacher_nav_scroll';
+
+    // 1. Dual-Mode Sidebar Collapse (Desktop Margin + Mobile Drawer)
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const main = document.getElementById('mainContent') || document.querySelector('main');
+        const header = document.querySelector('header');
+        
+        if (window.innerWidth < 768) {
+            if (sidebar) {
+                sidebar.classList.toggle('sidebar-open');
+                sidebar.classList.toggle('sidebar-collapsed');
+            }
+            if (overlay) {
+                overlay.classList.toggle('hidden');
+            }
+        } else {
+            if (sidebar) {
+                const isCollapsed = sidebar.classList.toggle('sidebar-collapsed');
+                if (main) main.classList.toggle('sidebar-collapsed-main', isCollapsed);
+                if (header) header.classList.toggle('sidebar-collapsed-header', isCollapsed);
+                try {
+                    localStorage.setItem(TEACHER_SIDEBAR_COLLAPSE_KEY, isCollapsed ? '1' : '0');
+                } catch (e) {}
+            }
+        }
+    }
+
+    // 2. Tree Navigation State & LocalStorage Persistence Manager
+    function getTeacherStoredTreeState() {
+        try {
+            const raw = localStorage.getItem(TEACHER_TREE_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function setTeacherStoredTreeState(stateArray) {
+        try {
+            localStorage.setItem(TEACHER_TREE_STORAGE_KEY, JSON.stringify(stateArray));
+        } catch (e) {}
+    }
+
+    // Interactive Toggle for Individual Tree Branches
+    function toggleTeacherTreeNode(branchId) {
+        const branch = document.getElementById(branchId);
+        if (!branch) return;
+
+        const isExpanded = branch.classList.toggle('tree-expanded');
+        const headerBtn = branch.querySelector('.tree-branch-header');
+        if (headerBtn) {
+            headerBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        }
+
+        // Synchronize with LocalStorage
+        const branchKey = branch.getAttribute('data-branch') || branchId.replace('branch-', '');
+        let stored = getTeacherStoredTreeState();
+        if (!Array.isArray(stored)) {
+            stored = ['main', 'academics', 'community', 'reports'];
+        }
+
+        if (isExpanded) {
+            if (!stored.includes(branchKey)) stored.push(branchKey);
+        } else {
+            stored = stored.filter(k => k !== branchKey);
+        }
+        setTeacherStoredTreeState(stored);
+    }
+
+    // 3. Tree Initialization with Auto-Expansion of Active Branch & Zero Reload Jitter
+    function initTeacherNavTree() {
+        const stored = getTeacherStoredTreeState();
+        const branches = document.querySelectorAll('.tree-branch');
+
+        branches.forEach(branch => {
+            const branchKey = branch.getAttribute('data-branch') || branch.id.replace('branch-', '');
+            const isActiveBranch = branch.classList.contains('is-active-branch');
+            const headerBtn = branch.querySelector('.tree-branch-header');
+
+            let shouldExpand = false;
+            if (stored === null) {
+                // Default first-run: keep all navigation branches expanded by default
+                shouldExpand = true;
+            } else {
+                shouldExpand = stored.includes(branchKey) || isActiveBranch;
+            }
+
+            if (shouldExpand) {
+                branch.classList.add('tree-expanded');
+                if (headerBtn) headerBtn.setAttribute('aria-expanded', 'true');
+            } else {
+                branch.classList.remove('tree-expanded');
+                if (headerBtn) headerBtn.setAttribute('aria-expanded', 'false');
+            }
+
+            // Keyboard navigation support on branch header button
+            if (headerBtn && !headerBtn.dataset.treeNavBound) {
+                headerBtn.dataset.treeNavBound = 'true';
+                headerBtn.addEventListener('keydown', function(e) {
+                    if (e.key === 'ArrowRight' && !branch.classList.contains('tree-expanded')) {
+                        toggleTeacherTreeNode(branch.id);
+                        e.preventDefault();
+                    } else if (e.key === 'ArrowLeft' && branch.classList.contains('tree-expanded')) {
+                        toggleTeacherTreeNode(branch.id);
+                        e.preventDefault();
+                    }
+                });
+            }
+        });
+
+        // 4. Persistent Scroll Position Restoration
+        const navEl = document.getElementById('teacherNavTree') || document.querySelector('#sidebar nav');
+        if (navEl && !navEl.dataset.scrollBound) {
+            navEl.dataset.scrollBound = 'true';
+            try {
+                const savedScroll = sessionStorage.getItem(TEACHER_SIDEBAR_SCROLL_KEY);
+                if (savedScroll !== null) {
+                    navEl.scrollTop = parseInt(savedScroll, 10);
+                }
+            } catch (e) {}
+
+            navEl.addEventListener('scroll', () => {
+                try {
+                    sessionStorage.setItem(TEACHER_SIDEBAR_SCROLL_KEY, navEl.scrollTop);
+                } catch (e) {}
+            }, { passive: true });
+
+            navEl.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', () => {
+                    try {
+                        sessionStorage.setItem(TEACHER_SIDEBAR_SCROLL_KEY, navEl.scrollTop);
+                    } catch (e) {}
+                });
+            });
+        }
+
+        // 5. Instant Hover Pre-fetching
+        const prefetched = new Set();
+        function prefetchUrl(url) {
+            if (!url || prefetched.has(url) || url.startsWith('http') || url.startsWith('#') || url === '/logout') return;
+            prefetched.add(url);
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = url;
+            document.head.appendChild(link);
+        }
+
+        if (navEl) {
+            navEl.querySelectorAll('a[href^="/"]').forEach(a => {
+                const href = a.getAttribute('href');
+                if (href && href !== '/logout') {
+                    a.addEventListener('mouseenter', () => prefetchUrl(href), { passive: true });
+                    a.addEventListener('touchstart', () => prefetchUrl(href), { passive: true });
+                }
+            });
+        }
+
+        // 6. Watch sidebar class changes to persist collapsed state
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && !sidebar.dataset.collapseObserver) {
+            sidebar.dataset.collapseObserver = 'true';
+            if (window.MutationObserver) {
+                const obs = new MutationObserver(() => {
+                    const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+                    try {
+                        localStorage.setItem(TEACHER_SIDEBAR_COLLAPSE_KEY, isCollapsed ? '1' : '0');
+                    } catch (e) {}
+                });
+                obs.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
+            }
+        }
+
+        // 7. Remove initial-load animation suppression smoothly after layout stabilizes
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                if (sidebar) sidebar.classList.remove('tree-nav-initial-load');
+            }, 80);
+        });
+    }
+
+    // 8. Standardized User Profile Dropdown Controller (Matches Student Portal)
+    function toggleUserMenu(event) {
+        if (event) event.stopPropagation();
+        const dropdown = document.getElementById('userDropdown');
+        const btn = document.getElementById('userMenuBtn');
+        if (!dropdown) return;
+        const isExpanded = !dropdown.classList.contains('hidden');
+        dropdown.classList.toggle('hidden');
+        if (btn) btn.setAttribute('aria-expanded', !isExpanded);
+    }
+
+    // Global outside click handler to close dropdowns
+    window.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('userDropdown');
+        const btn = document.getElementById('userMenuBtn');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            if (!btn || !btn.contains(e.target)) {
+                dropdown.classList.add('hidden');
+                if (btn) btn.setAttribute('aria-expanded', 'false');
+            }
+        }
+    });
+
+    // Auto-run on DOM Ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTeacherNavTree);
+    } else {
+        initTeacherNavTree();
+    }
+</script>
+
+<!-- Elementa Session Security Modals & Client Guardian Controller -->
+<%- include('session-modals') %>
+<script src="/js/session-guard.js"></script>

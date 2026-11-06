@@ -1,0 +1,3177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Molecules and Light | Elementa LMS Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================================================
+       CSS VARIABLES & THEME
+       ========================================================================= */
+    :root {
+      --bg-base: #070b14;
+      --bg-panel: rgba(15, 23, 42, 0.85);
+      --bg-card: rgba(30, 41, 59, 0.65);
+      --bg-card-hover: rgba(51, 65, 85, 0.85);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-focus: #06b6d4;
+      
+      --accent-cyan: #06b6d4;
+      --accent-teal: #14b8a6;
+      --accent-blue: #3b82f6;
+      --accent-indigo: #6366f1;
+      --accent-purple: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-emerald: #10b981;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --topbar-height: 56px;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-heading: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* =========================================================================
+       TOPBAR (EXACT REPLICATION FROM ACID-BASE-SOLUTIONS)
+       ========================================================================= */
+    .elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border-card);
+    }
+
+    .lms-breadcrumb span.current {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+
+    .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    .action-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* =========================================================================
+       MAIN CONTENT CONTAINER
+       ========================================================================= */
+    .app-main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .app-section {
+      position: absolute;
+      inset: 0;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      overflow: hidden;
+    }
+
+    .app-section.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    /* =========================================================================
+       SIMULATION LAB LAYOUT
+       ========================================================================= */
+    .sim-lab-layout {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sim-subbar {
+      height: 44px;
+      background: rgba(15, 23, 42, 0.6);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .sub-quick-stats {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+    }
+
+    .sub-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .sub-stat-val {
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+    }
+
+    /* 3D / 2D Canvas Workspace */
+    .sim-workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .viewport-3d-wrap {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at 50% 50%, #0d1527 0%, #060913 70%, #020408 100%);
+      overflow: hidden;
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #simCanvas:active {
+      cursor: grabbing;
+    }
+
+    /* Floating Viewport Controls */
+    .viewport-overlay-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    .vp-tool-btn {
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 9px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
+    }
+
+    .vp-tool-btn:hover {
+      background: rgba(30, 41, 59, 0.9);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .vp-tool-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.5);
+      background: rgba(14, 165, 233, 0.15);
+    }
+
+    /* Floating State / Mechanism Banner */
+    .mechanism-banner {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      border-radius: 20px;
+      padding: 8px 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    /* Return Molecule Button Floating in Center */
+    .btn-return-molecule {
+      position: absolute;
+      top: 65px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+      color: #ffffff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.5);
+      z-index: 10;
+      transition: transform 0.2s ease;
+    }
+
+    .btn-return-molecule:hover {
+      transform: translateX(-50%) scale(1.05);
+    }
+
+    .btn-return-molecule.show {
+      display: flex;
+    }
+
+    /* Right Interactive Control Panel */
+    .sim-panel {
+      width: 360px;
+      background: rgba(15, 23, 42, 0.92);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .panel-section {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .panel-heading {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Wavelength Band Selector */
+    .wavelength-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .wl-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 9px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+
+    .wl-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .wl-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .wl-badge-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+    }
+
+    .wl-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+    }
+
+    .wl-subtext {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Emitter Controls */
+    .emitter-control-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .emitter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-fire-pulse {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 7px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .btn-fire-pulse:hover {
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.6);
+      transform: scale(1.02);
+    }
+
+    /* Molecule Selector */
+    .molecule-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .mol-select-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: all 0.18s ease;
+      text-align: left;
+    }
+
+    .mol-select-btn:hover {
+      background: var(--bg-card-hover);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .mol-select-btn.active {
+      background: rgba(14, 165, 233, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .mol-formula {
+      font-weight: 800;
+      font-size: 0.88rem;
+    }
+
+    .mol-name {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    /* Interaction Outcome Card */
+    .outcome-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .outcome-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, #06b6d4, #6366f1);
+    }
+
+    .outcome-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .outcome-name {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .outcome-desc {
+      font-size: 0.76rem;
+      color: #cbd5e1;
+      line-height: 1.45;
+    }
+
+    .meta-tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      display: inline-block;
+    }
+
+    .meta-tag.highlight {
+      background: rgba(6, 182, 212, 0.15);
+      color: #22d3ee;
+      border-color: rgba(6, 182, 212, 0.3);
+    }
+
+    /* =========================================================================
+       GUIDED MISSIONS TAB
+       ========================================================================= */
+    .missions-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .section-hero {
+      margin-bottom: 24px;
+    }
+
+    .section-hero h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-hero p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .missions-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .mission-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      background: rgba(30, 41, 59, 0.8);
+      transform: translateY(-2px);
+    }
+
+    .mission-card.completed {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .mission-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .mission-number {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .mission-card.completed .mission-number {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .mission-info h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+
+    .mission-info p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .mission-tags {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .mission-tag {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #94a3b8;
+    }
+
+    .btn-mission-action {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .btn-mission-action:hover {
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.6);
+      transform: scale(1.02);
+    }
+
+    .mission-card.completed .btn-mission-action {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      cursor: default;
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ TAB
+       ========================================================================= */
+    .quiz-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 950px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .quiz-scoreboard {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .quiz-score-num {
+      font-size: 1.8rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+    }
+
+    .quiz-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .quiz-question {
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .quiz-options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .quiz-option-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.18s ease;
+    }
+
+    .quiz-option-btn:hover:not(.locked) {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .opt-letter {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-option-btn.correct {
+      background: rgba(16, 185, 129, 0.15) !important;
+      border-color: #10b981 !important;
+      color: #a7f3d0 !important;
+    }
+
+    .quiz-option-btn.wrong {
+      background: rgba(244, 63, 94, 0.15) !important;
+      border-color: #f43f5e !important;
+      color: #fecdd3 !important;
+    }
+
+    .quiz-feedback {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .quiz-feedback.show {
+      display: block;
+    }
+
+    .quiz-feedback.correct {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    .quiz-feedback.wrong {
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+    }
+
+    /* =========================================================================
+       THEORY & FORMULAS TAB
+       ========================================================================= */
+    .theory-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 1050px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .theory-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .theory-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-card p, .theory-card li {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .theory-card ul {
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .theory-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 8px;
+    }
+
+    .theory-table th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-card);
+      font-weight: 700;
+    }
+
+    .theory-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+    }
+
+    .theory-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-main);
+    }
+
+    /* Modal Certificate & Spectrum */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 550px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .spectrum-card {
+      background: linear-gradient(135deg, #0f172a 0%, #172554 100%);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+      border-radius: 16px;
+      padding: 26px;
+      max-width: 800px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  
+    /* Standard Sleek Elementa Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  
+    /* ==========================================================================
+       ELEMENTA STANDARD MODALS (acid-base-solutions baseline)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    .modal-backdrop .missions-container,
+    .modal-backdrop .quiz-container,
+    .modal-backdrop .theory-container {
+      max-width: 100% !important;
+      padding: 0 !important;
+    }
+    .modal-backdrop .section-hero {
+      margin-bottom: 16px !important;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+</head>
+<body>
+
+  <!-- =========================================================================
+       ELEMENTA TOPBAR (IDENTICAL TO ACID-BASE-SOLUTIONS)
+       ========================================================================= -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Physical Chemistry</span>
+        <span>›</span>
+        <span class="current">Molecules and Light</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       MAIN INTERACTIVE APPLICATION
+       ========================================================================= -->
+  <main class="simulation-workspace app-main">
+
+    <!-- 1. SIMULATION LAB -->
+    <section class="app-section active" id="secSimLab">
+      <div class="sim-lab-layout">
+
+        <!-- Sub-bar for Stats & Spectrum Viewer -->
+        <div class="sim-subbar">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="sub-tab-btn" onclick="openSpectrumModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M2 6h20M2 18h20"></path></svg>
+              View EM Spectrum Chart
+            </button>
+          </div>
+
+          <div class="sub-quick-stats">
+            <div class="sub-stat-item">
+              <span>Photon Band:</span>
+              <span class="sub-stat-val" id="lblBandName">Infrared</span>
+            </div>
+            <div class="sub-stat-item">
+              <span>Wavelength (λ):</span>
+              <span class="sub-stat-val" id="lblWavelength">850 nm</span>
+            </div>
+            <div class="sub-stat-item">
+              <span>Photon Energy:</span>
+              <span class="sub-stat-val" id="lblPhotonEnergy">1.46 eV</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workspace (Canvas + Controls) -->
+        <div class="sim-workspace">
+
+          <!-- Viewport Canvas -->
+          <div class="viewport-3d-wrap" id="viewportWrap">
+            <canvas id="simCanvas"></canvas>
+
+            <!-- Floating Mechanism Banner -->
+            <div class="mechanism-banner" id="mechBanner">
+              <span id="mechIcon">⚡</span>
+              <span id="mechText">Infrared photons induce bond vibration in Carbon Dioxide.</span>
+            </div>
+
+            <!-- Return Molecule Button (Visible when broken) -->
+            <button class="btn-return-molecule" id="btnReturnMolecule" onclick="returnMolecule()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+              Return Molecule
+            </button>
+
+            <!-- Floating Viewport Controls -->
+            <div class="viewport-overlay-controls">
+              <button class="vp-tool-btn" id="btnSlowMotion" onclick="toggleSlowMotion()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 8 14"></polyline></svg>
+                <span id="txtSpeedMode">Speed: Normal</span>
+              </button>
+              <button class="vp-tool-btn" title="Reset Orientation" onclick="resetMoleculeAngle()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                Reset Angle
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Sidebar Control Panel -->
+          <aside class="simulation-sidebar sim-panel">
+
+            <!-- Light Source Panel -->
+            <div class="panel-section">
+              <div class="panel-heading">
+                <span>Light Source</span>
+                <span style="font-size: 0.65rem; color: #64748b;">Photon Emitter</span>
+              </div>
+
+              <!-- 4 Wavelength Buttons -->
+              <div class="wavelength-grid">
+                <button class="wl-btn" id="btnWlMicrowave" onclick="setWavelength('microwave')">
+                  <div class="wl-title"><span class="wl-badge-indicator" style="background: #38bdf8;"></span>Microwave</div>
+                  <div class="wl-subtext">λ ~ 0.2 m (Low E)</div>
+                </button>
+
+                <button class="wl-btn active" id="btnWlInfrared" onclick="setWavelength('infrared')">
+                  <div class="wl-title"><span class="wl-badge-indicator" style="background: #ef4444;"></span>Infrared</div>
+                  <div class="wl-subtext">λ ~ 850 nm</div>
+                </button>
+
+                <button class="wl-btn" id="btnWlVisible" onclick="setWavelength('visible')">
+                  <div class="wl-title"><span class="wl-badge-indicator" style="background: #eab308;"></span>Visible</div>
+                  <div class="wl-subtext">λ ~ 580 nm</div>
+                </button>
+
+                <button class="wl-btn" id="btnWlUltraviolet" onclick="setWavelength('ultraviolet')">
+                  <div class="wl-title"><span class="wl-badge-indicator" style="background: #a855f7;"></span>Ultraviolet</div>
+                  <div class="wl-subtext">λ ~ 100 nm (High E)</div>
+                </button>
+              </div>
+
+              <!-- Emitter Power & Trigger -->
+              <div class="emitter-control-card">
+                <div class="emitter-row">
+                  <span style="font-size: 0.78rem; font-weight: 600; color: #e2e8f0;">Continuous Beam:</span>
+                  <div class="custom-switch" id="swEmitterPower" onclick="toggleEmitterBeam()" style="cursor: pointer; width: 38px; height: 20px; background: rgba(255, 255, 255, 0.15); border-radius: 12px; position: relative;">
+                    <div style="position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #ffffff; top: 3px; left: 3px; transition: transform 0.2s ease;" id="swKnob"></div>
+                  </div>
+                </div>
+
+                <div class="emitter-row">
+                  <span style="font-size: 0.76rem; color: #94a3b8;">Single Pulse:</span>
+                  <button class="btn-fire-pulse" onclick="fireSinglePhoton()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+                    Fire Photon
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Target Molecule Selection -->
+            <div class="panel-section">
+              <div class="panel-heading">
+                <span>Target Molecule</span>
+                <span style="font-size: 0.65rem; color: #64748b;">Atmospheric Gases</span>
+              </div>
+
+              <div class="molecule-grid">
+                <button class="mol-select-btn" id="molCO" onclick="selectMolecule('CO')">
+                  <span class="mol-formula">CO</span>
+                  <span class="mol-name">Carbon Monoxide</span>
+                </button>
+
+                <button class="mol-select-btn" id="molN2" onclick="selectMolecule('N2')">
+                  <span class="mol-formula">N₂</span>
+                  <span class="mol-name">Nitrogen</span>
+                </button>
+
+                <button class="mol-select-btn" id="molO2" onclick="selectMolecule('O2')">
+                  <span class="mol-formula">O₂</span>
+                  <span class="mol-name">Oxygen</span>
+                </button>
+
+                <button class="mol-select-btn active" id="molCO2" onclick="selectMolecule('CO2')">
+                  <span class="mol-formula">CO₂</span>
+                  <span class="mol-name">Carbon Dioxide</span>
+                </button>
+
+                <button class="mol-select-btn" id="molH2O" onclick="selectMolecule('H2O')">
+                  <span class="mol-formula">H₂O</span>
+                  <span class="mol-name">Water</span>
+                </button>
+
+                <button class="mol-select-btn" id="molNO2" onclick="selectMolecule('NO2')">
+                  <span class="mol-formula">NO₂</span>
+                  <span class="mol-name">Nitrogen Dioxide</span>
+                </button>
+
+                <button class="mol-select-btn" id="molO3" onclick="selectMolecule('O3')">
+                  <span class="mol-formula">O₃</span>
+                  <span class="mol-name">Ozone</span>
+                </button>
+
+                <button class="mol-select-btn" id="molCH4" onclick="selectMolecule('CH4')">
+                  <span class="mol-formula">CH₄</span>
+                  <span class="mol-name">Methane</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Interaction Mechanism Summary -->
+            <div class="panel-section" style="flex: 1;">
+              <div class="panel-heading">Quantum Interaction Result</div>
+
+              <div class="outcome-card" id="cardOutcome">
+                <span class="outcome-title" id="outBandLabel">Infrared + CO₂</span>
+                <div class="outcome-name" id="outActionName">Vibration (Absorbed)</div>
+                <div class="outcome-desc" id="outDesc">Infrared photon matches the vibrational bending frequency of CO₂, exciting the molecule before re-emitting the IR photon in a random direction.</div>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                  <span class="meta-tag highlight" id="outMechanismTag">Vibrational Excitation</span>
+                  <span class="meta-tag" id="outDipoleTag">Transient Dipole Change</span>
+                  <span class="meta-tag" id="outAtmosphereTag">Potent Greenhouse Gas</span>
+                </div>
+              </div>
+            </div>
+
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 2. GUIDED MISSIONS -->
+    <section class="app-section" id="secMissions">
+      <div class="missions-container">
+        <div class="section-hero">
+          <h2>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            Guided Learning Missions
+          </h2>
+          <p>Investigate the interaction between light waves and atmospheric molecules to discover the molecular mechanisms of the greenhouse effect and ozone protection.</p>
+        </div>
+
+        <div class="missions-grid">
+          <!-- Mission 1 -->
+          <div class="mission-card" id="missionCard1">
+            <div class="mission-left">
+              <div class="mission-number">01</div>
+              <div class="mission-info">
+                <h3>Microwave Radiation & Molecular Dipoles (CO vs N₂)</h3>
+                <p>Fire microwave photons at polar Carbon Monoxide (CO) and nonpolar Nitrogen (N₂). Observe that only CO absorbs microwaves and rotates, proving that a permanent dipole moment is required for microwave absorption.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Microwave</span>
+                  <span class="mission-tag">Dipole Rotation</span>
+                  <span class="mission-tag">+100 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(1)">Start Mission</button>
+          </div>
+
+          <!-- Mission 2 -->
+          <div class="mission-card" id="missionCard2">
+            <div class="mission-left">
+              <div class="mission-number">02</div>
+              <div class="mission-info">
+                <h3>The Greenhouse Effect (CO₂, H₂O, CH₄ vs N₂, O₂)</h3>
+                <p>Select Infrared light and test Carbon Dioxide (CO₂), Water (H₂O), and Methane (CH₄). Contrast with Nitrogen (N₂) and Oxygen (O₂). Witness how greenhouse gases absorb IR, vibrate, and scatter heat back in all directions.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Infrared</span>
+                  <span class="mission-tag">Greenhouse Gases</span>
+                  <span class="mission-tag">+150 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(2)">Start Mission</button>
+          </div>
+
+          <!-- Mission 3 -->
+          <div class="mission-card" id="missionCard3">
+            <div class="mission-left">
+              <div class="mission-number">03</div>
+              <div class="mission-info">
+                <h3>Visible Light & Brown Smog (NO₂)</h3>
+                <p>Test Visible light on all 8 molecules. Confirm that 7 atmospheric gases are completely transparent to visible light, while only Nitrogen Dioxide (NO₂) absorbs visible light and glows (electronic excitation), giving smog its brown tint.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Visible</span>
+                  <span class="mission-tag">NO₂ Excitation</span>
+                  <span class="mission-tag">+150 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(3)">Start Mission</button>
+          </div>
+
+          <!-- Mission 4 -->
+          <div class="mission-card" id="missionCard4">
+            <div class="mission-left">
+              <div class="mission-number">04</div>
+              <div class="mission-info">
+                <h3>Stratospheric Ozone Shield (O₃ Photodissociation)</h3>
+                <p>Select Ultraviolet (UV) light and fire photons at Ozone (O₃). Observe how the energetic UV photon is destroyed as it photolyzes ozone into diatomic oxygen and a free radical (O₂ + O), shielding life on Earth.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Ultraviolet</span>
+                  <span class="mission-tag">Photodissociation</span>
+                  <span class="mission-tag">+200 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(4)">Start Mission</button>
+          </div>
+
+          <!-- Mission 5 -->
+          <div class="mission-card" id="missionCard5">
+            <div class="mission-left">
+              <div class="mission-number">05</div>
+              <div class="mission-info">
+                <h3>The Atmospheric Transparency Window</h3>
+                <p>Select Nitrogen (N₂) or Oxygen (O₂) and switch through all 4 wavelength bands. Prove why the Earth's primary atmospheric gases are transparent to sunlight and terrestrial radio waves.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">N₂ & O₂</span>
+                  <span class="mission-tag">Atmospheric Window</span>
+                  <span class="mission-tag">+200 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(5)">Start Mission</button>
+          </div>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- 3. ASSESSMENT QUIZ -->
+    <section class="app-section" id="secQuiz">
+      <div class="quiz-container">
+        <div class="quiz-scoreboard">
+          <div>
+            <h2 style="font-size: 1.3rem; font-weight: 800; color: #ffffff;">Molecules & Light Assessment</h2>
+            <p style="color: var(--text-muted); font-size: 0.82rem;">Demonstrate mastery of quantum light absorption, molecular transitions, and greenhouse physics.</p>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Current Score</div>
+            <div class="quiz-score-num" id="quizScoreDisplay">0 / 100%</div>
+          </div>
+        </div>
+
+        <!-- Question 1 -->
+        <div class="quiz-card" id="quizCard1">
+          <div class="quiz-q-num">Question 1 of 5</div>
+          <div class="quiz-question">Why does microwave radiation cause water (H₂O) and carbon monoxide (CO) molecules to rotate, but passes straight through nitrogen (N₂) and oxygen (O₂)?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 0, false)"><span class="opt-letter">A</span> Nitrogen and oxygen are too light to be rotated by photons.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 1, true)"><span class="opt-letter">B</span> Microwave absorption requires a permanent electric dipole moment to couple with the oscillating electromagnetic field.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 2, false)"><span class="opt-letter">C</span> Microwaves only interact with triple bonds.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 3, false)"><span class="opt-letter">D</span> Water molecules reflect microwave photons instead of absorbing them.</button>
+          </div>
+          <div class="quiz-feedback" id="feedback1">
+            <strong>Explanation:</strong> Microwave photons match the rotational energy levels of molecules. To absorb microwave radiation, a molecule must possess a permanent dipole moment (μ ≠ 0) so that the photon's electric field can exert a rotational torque. Nonpolar homonuclear diatomics (N<sub>2</sub>, O<sub>2</sub>) have zero dipole moment and cannot rotate.
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="quiz-card" id="quizCard2">
+          <div class="quiz-q-num">Question 2 of 5</div>
+          <div class="quiz-question">Carbon dioxide (CO₂) is nonpolar in its linear ground state. Why can it still absorb infrared radiation and act as an active greenhouse gas?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 0, false)"><span class="opt-letter">A</span> The carbon atom absorbs infrared light into its nuclear core.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 1, false)"><span class="opt-letter">B</span> High temperature makes CO₂ permanently polar.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 2, true)"><span class="opt-letter">C</span> Asymmetric stretching and bending vibrational modes create an instantaneous transient dipole moment that couples with infrared light.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 3, false)"><span class="opt-letter">D</span> CO₂ breaks apart upon absorbing infrared radiation.</button>
+          </div>
+          <div class="quiz-feedback" id="feedback2">
+            <strong>Explanation:</strong> The quantum selection rule for IR absorption requires that the dipole moment change during the vibration (dμ/dQ ≠ 0). When CO<sub>2</sub> bends or stretches asymmetrically, its center of negative charge shifts away from the positive carbon nucleus, creating a transient dipole that readily absorbs IR photons.
+          </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="quiz-card" id="quizCard3">
+          <div class="quiz-q-num">Question 3 of 5</div>
+          <div class="quiz-question">What specific process occurs when stratospheric ozone (O₃) absorbs an energetic ultraviolet (UV) photon?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 0, false)"><span class="opt-letter">A</span> It converts into microwave radiation through phosphorescence.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 1, true)"><span class="opt-letter">B</span> It undergoes photodissociation, breaking an O–O covalent bond to form O₂ and a free oxygen atom (O).</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 2, false)"><span class="opt-letter">C</span> It undergoes nuclear fusion into carbon.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 3, false)"><span class="opt-letter">D</span> It compresses into a tetrahedral geometry.</button>
+          </div>
+          <div class="quiz-feedback" id="feedback3">
+            <strong>Explanation:</strong> Ultraviolet photons carry sufficient quantum energy (E = hν) to exceed the dissociation energy of ozone's weaker resonance bond. Absorption causes photolysis (O<sub>3</sub> + hν → O<sub>2</sub> + O), safely dissipating the harmful UV radiation as kinetic and thermal energy.
+          </div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="quiz-card" id="quizCard4">
+          <div class="quiz-q-num">Question 4 of 5</div>
+          <div class="quiz-question">Which gas absorbs visible photons and enters an excited electronic state (exhibiting a visible glow before re-emitting the photon)?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 0, false)"><span class="opt-letter">A</span> Methane (CH₄)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 1, false)"><span class="opt-letter">B</span> Carbon Dioxide (CO₂)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 2, false)"><span class="opt-letter">C</span> Water (H₂O)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 3, true)"><span class="opt-letter">D</span> Nitrogen Dioxide (NO₂)</button>
+          </div>
+          <div class="quiz-feedback" id="feedback4">
+            <strong>Explanation:</strong> Nitrogen Dioxide (NO₂) has an unpaired valence electron (radical) with low-lying electronic energy levels that precisely match the energy of visible blue-violet photons. Absorption of visible light gives NO₂ its characteristic reddish-brown color in photochemical smog.
+          </div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="quiz-card" id="quizCard5">
+          <div class="quiz-q-num">Question 5 of 5</div>
+          <div class="quiz-question">Which of the following correctly ranks the four photon bands from lowest energy to highest energy, along with their primary molecular transition?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 0, true)"><span class="opt-letter">A</span> Microwave (Rotation) &lt; Infrared (Vibration) &lt; Visible (Electronic Excitation) &lt; Ultraviolet (Photodissociation)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 1, false)"><span class="opt-letter">B</span> Ultraviolet &lt; Visible &lt; Infrared &lt; Microwave</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 2, false)"><span class="opt-letter">C</span> Infrared (Rotation) &lt; Microwave (Vibration) &lt; Ultraviolet &lt; Visible</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 3, false)"><span class="opt-letter">D</span> Microwave (Dissociation) &lt; Infrared (Electronic) &lt; Visible &lt; Ultraviolet</button>
+          </div>
+          <div class="quiz-feedback" id="feedback5">
+            <strong>Explanation:</strong> Energy is inversely proportional to wavelength (E = hc / λ). Microwaves (cm) have lowest energy, causing molecular rotation; Infrared (μm) excites vibrations; Visible light excites valence electrons; and Ultraviolet (nm) has highest energy, breaking chemical bonds.
+          </div>
+        </div>
+
+        <!-- Action / Certificate Button -->
+        <div style="text-align: center; margin-top: 30px;">
+          <button class="btn-mission-action" style="font-size: 0.95rem; padding: 12px 28px; margin: 0 auto;" id="btnClaimCert" onclick="openCertificateModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            Claim Certificate of Mastery
+          </button>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- 4. THEORY & FORMULAS -->
+    <section class="app-section" id="secTheory">
+      <div class="theory-container">
+        <div class="section-hero">
+          <h2>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            Molecular Spectroscopy & Photochemistry Reference
+          </h2>
+          <p>Comprehensive guide to quantum transitions, selection rules, atmospheric absorption, and greenhouse physics.</p>
+        </div>
+
+        <div class="theory-grid">
+          <!-- Card 1 -->
+          <div class="theory-card">
+            <h3>1. The Planck-Einstein Relation</h3>
+            <p>Photons carry quantized packets of electromagnetic energy directly proportional to their frequency and inversely proportional to their wavelength:</p>
+            <div style="background: rgba(0,0,0,0.3); padding: 10px 14px; border-radius: 8px; font-weight: 700; color: #38bdf8; text-align: center; margin: 6px 0; font-family: var(--font-mono);">
+              E = hν = hc / λ
+            </div>
+            <ul>
+              <li><strong>h:</strong> Planck's constant (6.626 × 10<sup>-34</sup> J·s)</li>
+              <li><strong>c:</strong> Speed of light (2.998 × 10<sup>8</sup> m/s)</li>
+              <li><strong>λ:</strong> Wavelength in vacuum</li>
+            </ul>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="theory-card">
+            <h3>2. Quantum Transition Hierarchy</h3>
+            <p>Different regions of the electromagnetic spectrum correspond to quantized transitions between discrete molecular energy states:</p>
+            <ul>
+              <li><strong>Microwave (10⁻³ – 10⁻¹ m):</strong> Quantized rotational transitions (ΔJ = ±1). Requires permanent dipole.</li>
+              <li><strong>Infrared (10⁻⁶ – 10⁻⁴ m):</strong> Quantized vibrational transitions (Δv = ±1). Requires dynamic dipole change.</li>
+              <li><strong>Visible (400 – 750 nm):</strong> Outer valence electron excitations between molecular orbitals (HOMO → LUMO).</li>
+              <li><strong>Ultraviolet (10 – 400 nm):</strong> High-energy electronic transitions and photodissociation (bond breaking).</li>
+            </ul>
+          </div>
+
+          <!-- Card 3 (Master Table) -->
+          <div class="theory-card full-width">
+            <h3>3. Complete Molecular Interaction Matrix</h3>
+            <table class="theory-table">
+              <thead>
+                <tr>
+                  <th>Molecule</th>
+                  <th>Formula</th>
+                  <th>Geometry</th>
+                  <th>Microwave (Rotation)</th>
+                  <th>Infrared (Vibration)</th>
+                  <th>Visible (Electronic)</th>
+                  <th>Ultraviolet (Dissociation)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Carbon Monoxide</td><td>CO</td><td>Diatomic Polar</td><td><strong style="color:#38bdf8;">Rotates</strong></td><td><strong style="color:#ef4444;">Vibrates</strong></td><td>Passes</td><td>Passes</td></tr>
+                <tr><td>Nitrogen</td><td>N₂</td><td>Diatomic Nonpolar</td><td>Passes</td><td>Passes</td><td>Passes</td><td>Passes</td></tr>
+                <tr><td>Oxygen</td><td>O₂</td><td>Diatomic Nonpolar</td><td>Passes</td><td>Passes</td><td>Passes</td><td>Passes (Far UV)</td></tr>
+                <tr><td>Carbon Dioxide</td><td>CO₂</td><td>Linear Nonpolar</td><td>Passes</td><td><strong style="color:#ef4444;">Vibrates (Bends)</strong></td><td>Passes</td><td>Passes</td></tr>
+                <tr><td>Water</td><td>H₂O</td><td>Bent Polar</td><td><strong style="color:#38bdf8;">Rotates</strong></td><td><strong style="color:#ef4444;">Vibrates</strong></td><td>Passes</td><td>Passes</td></tr>
+                <tr><td>Nitrogen Dioxide</td><td>NO₂</td><td>Bent Radical</td><td><strong style="color:#38bdf8;">Rotates</strong></td><td><strong style="color:#ef4444;">Vibrates</strong></td><td><strong style="color:#eab308;">Glows (Excited)</strong></td><td><strong style="color:#a855f7;">Dissociates (NO+O)</strong></td></tr>
+                <tr><td>Ozone</td><td>O₃</td><td>Bent Polar</td><td><strong style="color:#38bdf8;">Rotates</strong></td><td><strong style="color:#ef4444;">Vibrates</strong></td><td>Passes</td><td><strong style="color:#a855f7;">Dissociates (O₂+O)</strong></td></tr>
+                <tr><td>Methane</td><td>CH₄</td><td>Tetrahedral</td><td>Passes</td><td><strong style="color:#ef4444;">Vibrates</strong></td><td>Passes</td><td>Passes</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="theory-card">
+            <h3>4. The Greenhouse Effect & Thermal Scattering</h3>
+            <p>Solar radiation arrives at Earth predominantly in the visible and UV spectrum, to which N<sub>2</sub>, O<sub>2</sub>, CO<sub>2</sub>, and H<sub>2</sub>O are largely transparent. Earth's surface absorbs this energy and re-emits it as long-wavelength infrared (terrestrial blackbody radiation, peak ≈ 10 μm).</p>
+            <p>Greenhouse gases (CO<sub>2</sub>, H<sub>2</sub>O, CH<sub>4</sub>) absorb these outgoing IR photons and re-radiate them isotropically in all directions—including back toward the surface—trapping thermal energy in the troposphere.</p>
+          </div>
+
+          <!-- Card 5 -->
+          <div class="theory-card">
+            <h3>5. Stratospheric Ozone & The Chapman Cycle</h3>
+            <p>In the stratosphere, ozone acts as a vital protective umbrella by absorbing high-energy UV-B and UV-C radiation that would otherwise damage DNA and organic molecules:</p>
+            <div style="background: rgba(0,0,0,0.3); padding: 10px 14px; border-radius: 8px; font-weight: 700; color: #a855f7; text-align: center; margin: 6px 0; font-family: var(--font-mono);">
+              O₃ + hν (UV) → O₂ + O•
+            </div>
+            <p>The free oxygen radical quickly recombines with another oxygen molecule (O• + O<sub>2</sub> + M → O<sub>3</sub> + M), reforming ozone and converting damaging photon energy into benign heat.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- =========================================================================
+       MODAL: ELECTROMAGNETIC SPECTRUM VIEWER
+       ========================================================================= -->
+  <div class="modal-overlay" id="spectrumOverlay">
+    <div class="spectrum-card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M2 12h20M2 6h20M2 18h20"></path></svg>
+          The Electromagnetic Spectrum
+        </h3>
+        <button class="action-btn icon-only" onclick="closeSpectrumModal()">✕</button>
+      </div>
+
+      <p style="font-size: 0.8rem; color: #94a3b8;">Click on any region below to inspect its characteristic wavelength, frequency, photon energy, and molecular effect.</p>
+
+      <!-- Interactive Spectrum Bar -->
+      <div style="display: flex; height: 50px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-card);">
+        <div style="flex: 1.5; background: #1e293b; color: #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.1);">Radio</div>
+        <div style="flex: 1.2; background: #0369a1; color: #bae6fd; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.1);">Microwave</div>
+        <div style="flex: 1.2; background: #b91c1c; color: #fecdd3; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.1);">Infrared</div>
+        <div style="flex: 0.9; background: linear-gradient(90deg, #ef4444, #eab308, #22c55e, #3b82f6, #8b5cf6); color: #ffffff; text-shadow: 0 1px 2px #000; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 800; border-right: 1px solid rgba(255,255,255,0.1);">Visible</div>
+        <div style="flex: 1.2; background: #6b21a8; color: #f3e8ff; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.1);">Ultraviolet</div>
+        <div style="flex: 1; background: #3730a3; color: #c7d2fe; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.1);">X-Ray</div>
+        <div style="flex: 1; background: #1e1b4b; color: #a5b4fc; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700;">Gamma</div>
+      </div>
+
+      <!-- Comparison Metrics -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.78rem;">
+        <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+          <strong style="color: #38bdf8;">Wavelength (λ):</strong> Increases to the left (&gt; 1 m in Radio to &lt; 10<sup>-12</sup> m in Gamma).
+        </div>
+        <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+          <strong style="color: #f59e0b;">Frequency (ν) &amp; Energy (E):</strong> Increases to the right (&lt; 10<sup>6</sup> Hz in Radio to &gt; 10<sup>20</sup> Hz in Gamma).
+        </div>
+      </div>
+
+      <button class="btn-mission-action" style="align-self: flex-end;" onclick="closeSpectrumModal()">Close Spectrum</button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: CERTIFICATE OF MASTERY
+       ========================================================================= -->
+  <div class="modal-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(56, 189, 248, 0.2); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h2 style="font-size: 1.4rem; font-weight: 800; color: #ffffff;">Certificate of Mastery</h2>
+      <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">This certifies that the student has demonstrated proficiency in <strong>Quantum Light-Matter Interactions, Atmospheric Spectroscopy, and Greenhouse Gas Physics</strong>.</p>
+      
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-card); border-radius: 8px; padding: 12px 20px; width: 100%; text-align: left;">
+        <div style="font-size: 0.72rem; color: #94a3b8;">Student Name:</div>
+        <input type="text" id="certStudentName" value="Elementa Scholar" style="background: transparent; border: none; border-bottom: 1px solid #38bdf8; color: #ffffff; font-size: 1rem; font-weight: 700; width: 100%; outline: none; margin-top: 4px;">
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.75rem; color: #94a3b8;">
+          <span>Score: <strong style="color: #38bdf8;" id="certScoreVal">100%</strong></span>
+          <span>Verified: <strong>Elementa LMS</strong></span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; width: 100%; margin-top: 8px;">
+        <button class="btn-mission-action" style="flex: 1;" onclick="downloadCertPDF()">Print / Save</button>
+        <button class="action-btn" style="flex: 1;" onclick="closeCertificateModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       CORE JAVASCRIPT LOGIC & ANIMATION ENGINE
+       ========================================================================= */
+  -->
+  <script>
+    /* -------------------------------------------------------------------------
+       STATE & CONFIGURATION
+       ------------------------------------------------------------------------- */
+    const appState = {
+      mode: 'sim', // 'sim', 'missions', 'quiz', 'theory'
+      audioEnabled: true,
+      slowMotion: false,
+      activeWavelength: 'infrared', // 'microwave', 'infrared', 'visible', 'ultraviolet'
+      activeMolecule: 'CO2', // 'CO', 'N2', 'O2', 'CO2', 'H2O', 'NO2', 'O3', 'CH4'
+      isEmitting: false,
+      pulseRequested: false,
+      // Molecule physics state
+      molAngle: 0,
+      molVibration: 0,
+      isRotating: false,
+      isVibrating: false,
+      isGlowing: false,
+      isBroken: false,
+      rotationSpeed: 0,
+      // Fragments for broken molecule
+      brokenFragments: [],
+      // Photons in flight
+      photons: [],
+      lastEmissionTime: 0,
+      // User manual rotation
+      userRotX: 0,
+      userRotY: 0,
+      isDragging: false,
+      lastMouseX: 0,
+      lastMouseY: 0,
+      // Missions & Quiz
+      missionsCompleted: [false, false, false, false, false],
+      quizAnswers: [null, null, null, null, null]
+    };
+
+    /* -------------------------------------------------------------------------
+       WAVELENGTH SPECIFICATIONS
+       ------------------------------------------------------------------------- */
+    const WAVELENGTHS = {
+      microwave: {
+        name: 'Microwave',
+        wlText: '~ 0.2 m',
+        freqText: '1.5 GHz',
+        energyText: '0.000006 eV',
+        color: '#38bdf8',
+        packetWaveColor: 'rgba(56, 189, 248, 0.9)',
+        speed: 4.8,
+        wavelengthPx: 48,
+        photonType: 'microwave'
+      },
+      infrared: {
+        name: 'Infrared',
+        wlText: '850 nm',
+        freqText: '350 THz',
+        energyText: '1.46 eV',
+        color: '#ef4444',
+        packetWaveColor: 'rgba(239, 68, 68, 0.95)',
+        speed: 5.6,
+        wavelengthPx: 26,
+        photonType: 'infrared'
+      },
+      visible: {
+        name: 'Visible',
+        wlText: '580 nm',
+        freqText: '517 THz',
+        energyText: '2.14 eV',
+        color: '#eab308',
+        packetWaveColor: 'rgba(234, 179, 8, 0.95)',
+        speed: 6.5,
+        wavelengthPx: 16,
+        photonType: 'visible'
+      },
+      ultraviolet: {
+        name: 'Ultraviolet',
+        wlText: '100 nm',
+        freqText: '3.0 PHz',
+        energyText: '12.4 eV',
+        color: '#a855f7',
+        packetWaveColor: 'rgba(168, 85, 247, 0.95)',
+        speed: 7.2,
+        wavelengthPx: 10,
+        photonType: 'ultraviolet'
+      }
+    };
+
+    /* -------------------------------------------------------------------------
+       MOLECULES DEFINITIONS & INTERACTION TABLE
+       ------------------------------------------------------------------------- */
+    const MOLECULES = {
+      CO: {
+        formula: 'CO',
+        name: 'Carbon Monoxide',
+        geometry: 'Diatomic (Polar)',
+        hasDipole: true,
+        desc: 'Polar diatomic molecule with triple bond.',
+        atoms: [
+          { symbol: 'C', color: '#475569', radius: 22, x: -35, y: 0 },
+          { symbol: 'O', color: '#ef4444', radius: 24, x: 35, y: 0 }
+        ],
+        bonds: [{ a1: 0, a2: 1, order: 3 }],
+        interactions: {
+          microwave: 'rotate',
+          infrared: 'vibrate',
+          visible: 'pass',
+          ultraviolet: 'pass'
+        }
+      },
+      N2: {
+        formula: 'N₂',
+        name: 'Nitrogen',
+        geometry: 'Diatomic (Nonpolar)',
+        hasDipole: false,
+        desc: 'Extremely strong triple bond, zero dipole moment. Dominates air (78%).',
+        atoms: [
+          { symbol: 'N', color: '#3b82f6', radius: 23, x: -35, y: 0 },
+          { symbol: 'N', color: '#3b82f6', radius: 23, x: 35, y: 0 }
+        ],
+        bonds: [{ a1: 0, a2: 1, order: 3 }],
+        interactions: {
+          microwave: 'pass',
+          infrared: 'pass',
+          visible: 'pass',
+          ultraviolet: 'pass'
+        }
+      },
+      O2: {
+        formula: 'O₂',
+        name: 'Oxygen',
+        geometry: 'Diatomic (Nonpolar)',
+        hasDipole: false,
+        desc: 'Homonuclear double bond, transparent to infrared and visible light.',
+        atoms: [
+          { symbol: 'O', color: '#ef4444', radius: 24, x: -35, y: 0 },
+          { symbol: 'O', color: '#ef4444', radius: 24, x: 35, y: 0 }
+        ],
+        bonds: [{ a1: 0, a2: 1, order: 2 }],
+        interactions: {
+          microwave: 'pass',
+          infrared: 'pass',
+          visible: 'pass',
+          ultraviolet: 'pass'
+        }
+      },
+      CO2: {
+        formula: 'CO₂',
+        name: 'Carbon Dioxide',
+        geometry: 'Linear (Nonpolar)',
+        hasDipole: false,
+        desc: 'Linear symmetric molecule. Bending vibration creates transient dipole that absorbs IR.',
+        atoms: [
+          { symbol: 'C', color: '#475569', radius: 22, x: 0, y: 0 },
+          { symbol: 'O', color: '#ef4444', radius: 24, x: -65, y: 0 },
+          { symbol: 'O', color: '#ef4444', radius: 24, x: 65, y: 0 }
+        ],
+        bonds: [
+          { a1: 0, a2: 1, order: 2 },
+          { a1: 0, a2: 2, order: 2 }
+        ],
+        interactions: {
+          microwave: 'pass',
+          infrared: 'vibrate',
+          visible: 'pass',
+          ultraviolet: 'pass'
+        }
+      },
+      H2O: {
+        formula: 'H₂O',
+        name: 'Water',
+        geometry: 'Bent (Polar, 104.5°)',
+        hasDipole: true,
+        desc: 'Strong permanent dipole. Absorbs microwaves (rotates) and infrared (vibrates).',
+        atoms: [
+          { symbol: 'O', color: '#ef4444', radius: 26, x: 0, y: -15 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, x: -45, y: 25 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, x: 45, y: 25 }
+        ],
+        bonds: [
+          { a1: 0, a2: 1, order: 1 },
+          { a1: 0, a2: 2, order: 1 }
+        ],
+        interactions: {
+          microwave: 'rotate',
+          infrared: 'vibrate',
+          visible: 'pass',
+          ultraviolet: 'pass'
+        }
+      },
+      NO2: {
+        formula: 'NO₂',
+        name: 'Nitrogen Dioxide',
+        geometry: 'Bent (Polar, 134°)',
+        hasDipole: true,
+        desc: 'Reddish-brown toxic radical gas. Absorbs visible (glows) and UV (photodissociates to NO + O).',
+        atoms: [
+          { symbol: 'N', color: '#3b82f6', radius: 23, x: 0, y: -18 },
+          { symbol: 'O', color: '#ef4444', radius: 24, x: -50, y: 22 },
+          { symbol: 'O', color: '#ef4444', radius: 24, x: 50, y: 22 }
+        ],
+        bonds: [
+          { a1: 0, a2: 1, order: 2 },
+          { a1: 0, a2: 2, order: 1 }
+        ],
+        interactions: {
+          microwave: 'rotate',
+          infrared: 'vibrate',
+          visible: 'glow',
+          ultraviolet: 'break'
+        }
+      },
+      O3: {
+        formula: 'O₃',
+        name: 'Ozone',
+        geometry: 'Bent (Polar, 117°)',
+        hasDipole: true,
+        desc: 'Stratospheric shield. High UV photons break ozone into O₂ + O.',
+        atoms: [
+          { symbol: 'O', color: '#ef4444', radius: 24, x: 0, y: -18 },
+          { symbol: 'O', color: '#ef4444', radius: 24, x: -50, y: 20 },
+          { symbol: 'O', color: '#ef4444', radius: 24, x: 50, y: 20 }
+        ],
+        bonds: [
+          { a1: 0, a2: 1, order: 2 },
+          { a1: 0, a2: 2, order: 1 }
+        ],
+        interactions: {
+          microwave: 'rotate',
+          infrared: 'vibrate',
+          visible: 'pass',
+          ultraviolet: 'break'
+        }
+      },
+      CH4: {
+        formula: 'CH₄',
+        name: 'Methane',
+        geometry: 'Tetrahedral (Nonpolar)',
+        hasDipole: false,
+        desc: 'Potent greenhouse gas (~28x CO₂). Bending/stretching vibrations absorb infrared radiation.',
+        atoms: [
+          { symbol: 'C', color: '#475569', radius: 24, x: 0, y: 0 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, x: 0, y: -50 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, x: -48, y: 30 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, x: 48, y: 30 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, x: 15, y: 45 }
+        ],
+        bonds: [
+          { a1: 0, a2: 1, order: 1 },
+          { a1: 0, a2: 2, order: 1 },
+          { a1: 0, a2: 3, order: 1 },
+          { a1: 0, a2: 4, order: 1 }
+        ],
+        interactions: {
+          microwave: 'pass',
+          infrared: 'vibrate',
+          visible: 'pass',
+          ultraviolet: 'pass'
+        }
+      }
+    };
+
+    /* -------------------------------------------------------------------------
+       AUDIO SYNTHESIZER
+       ------------------------------------------------------------------------- */
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!appState.audioEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'fire') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(1200, now + 0.06);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        } else if (type === 'absorb') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(400, now);
+          osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else if (type === 'shatter') {
+          // Energetic split sound
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(120, now + 0.25);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'success') {
+          const freqs = [523.25, 659.25, 783.99, 1046.50];
+          freqs.forEach((f, i) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(f, now + i * 0.04);
+            g.gain.setValueAtTime(0.08, now + i * 0.04);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.25);
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start(now + i * 0.04);
+            o.stop(now + i * 0.04 + 0.25);
+          });
+        }
+      } catch (e) {}
+    }
+
+    /* -------------------------------------------------------------------------
+       CANVAS & RENDERING SETUP
+       ------------------------------------------------------------------------- */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    let canvasW = 0;
+    let canvasH = 0;
+
+    function resizeCanvas() {
+      const wrap = document.getElementById('viewportWrap');
+      if (!wrap) return;
+      const rect = wrap.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvasW = rect.width;
+      canvasH = rect.height;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    /* -------------------------------------------------------------------------
+       PHYSICS & ANIMATION ENGINE LOOP
+       ------------------------------------------------------------------------- */
+    let lastTimestamp = performance.now();
+
+    function animLoop(timestamp) {
+      const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.1);
+      lastTimestamp = timestamp;
+
+      const timeScale = appState.slowMotion ? 0.28 : 1.0;
+      updateSimulation(dt * timeScale);
+      renderScene();
+
+      requestAnimationFrame(animLoop);
+    }
+
+    function updateSimulation(dt) {
+      const mol = MOLECULES[appState.activeMolecule];
+      const molCenter = { x: canvasW * 0.52, y: canvasH * 0.50 };
+
+      // 1. Spawning Photons from Emitter
+      if (appState.isEmitting) {
+        if (performance.now() - appState.lastEmissionTime > (appState.slowMotion ? 1200 : 450)) {
+          spawnPhoton();
+          appState.lastEmissionTime = performance.now();
+        }
+      } else if (appState.pulseRequested) {
+        spawnPhoton();
+        appState.pulseRequested = false;
+      }
+
+      // 2. Updating Photons
+      const wl = WAVELENGTHS[appState.activeWavelength];
+      for (let i = appState.photons.length - 1; i >= 0; i--) {
+        const p = appState.photons[i];
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
+
+        // Check collision with molecule if not absorbed yet and heading towards center
+        if (!p.absorbed && !p.scattered && !appState.isBroken) {
+          const distToMol = Math.hypot(p.x - molCenter.x, p.y - molCenter.y);
+          if (distToMol < 45 && p.vx > 0) {
+            // Collision with molecule!
+            const action = mol.interactions[p.type];
+            if (action && action !== 'pass') {
+              // Absorbed!
+              p.absorbed = true;
+              triggerAbsorption(action, p);
+              appState.photons.splice(i, 1);
+              continue;
+            } else {
+              // Passes through
+              p.scattered = true;
+            }
+          }
+        }
+
+        // Remove photons that leave screen
+        if (p.x < -100 || p.x > canvasW + 100 || p.y < -100 || p.y > canvasH + 100) {
+          appState.photons.splice(i, 1);
+        }
+      }
+
+      // 3. Molecule Dynamics
+      if (appState.isRotating) {
+        appState.molAngle += appState.rotationSpeed * dt * 60;
+        appState.rotationSpeed *= 0.985;
+        if (Math.abs(appState.rotationSpeed) < 0.005) {
+          appState.isRotating = false;
+        }
+      }
+
+      if (appState.isVibrating) {
+        appState.molVibration += dt * 32;
+        if (appState.molVibration > Math.PI * 8) {
+          appState.isVibrating = false;
+          appState.molVibration = 0;
+        }
+      }
+
+      // 4. Broken Fragments Movement
+      if (appState.isBroken && appState.brokenFragments.length > 0) {
+        appState.brokenFragments.forEach(frag => {
+          frag.x += frag.vx * dt * 60;
+          frag.y += frag.vy * dt * 60;
+          frag.angle += frag.vAngle * dt * 60;
+        });
+      }
+    }
+
+    function spawnPhoton() {
+      const emitterX = 70;
+      const emitterY = canvasH * 0.50;
+      const wl = WAVELENGTHS[appState.activeWavelength];
+
+      appState.photons.push({
+        x: emitterX,
+        y: emitterY + (Math.random() - 0.5) * 8,
+        vx: wl.speed,
+        vy: 0,
+        type: appState.activeWavelength,
+        absorbed: false,
+        scattered: false,
+        phase: 0
+      });
+      playSound('fire');
+    }
+
+    function triggerAbsorption(action, photon) {
+      playSound('absorb');
+
+      if (action === 'rotate') {
+        appState.isRotating = true;
+        appState.rotationSpeed = (Math.random() > 0.5 ? 1 : -1) * 0.08;
+        // Schedule re-emission after a short delay
+        setTimeout(() => {
+          reemitScatteredPhoton(photon.type);
+        }, appState.slowMotion ? 800 : 350);
+      } else if (action === 'vibrate') {
+        appState.isVibrating = true;
+        appState.molVibration = 0;
+        setTimeout(() => {
+          reemitScatteredPhoton(photon.type);
+        }, appState.slowMotion ? 900 : 400);
+      } else if (action === 'glow') {
+        appState.isGlowing = true;
+        setTimeout(() => {
+          appState.isGlowing = false;
+          reemitScatteredPhoton(photon.type);
+        }, appState.slowMotion ? 1000 : 500);
+      } else if (action === 'break') {
+        triggerPhotodissociation();
+      }
+
+      checkMissionAutoProgress();
+    }
+
+    function reemitScatteredPhoton(type) {
+      const molCenter = { x: canvasW * 0.52, y: canvasH * 0.50 };
+      const wl = WAVELENGTHS[type];
+      const angle = Math.random() * Math.PI * 2;
+
+      appState.photons.push({
+        x: molCenter.x,
+        y: molCenter.y,
+        vx: Math.cos(angle) * wl.speed,
+        vy: Math.sin(angle) * wl.speed,
+        type: type,
+        absorbed: true,
+        scattered: true
+      });
+      playSound('fire');
+    }
+
+    function triggerPhotodissociation() {
+      appState.isBroken = true;
+      playSound('shatter');
+
+      const molCenter = { x: canvasW * 0.52, y: canvasH * 0.50 };
+      const btn = document.getElementById('btnReturnMolecule');
+      if (btn) btn.classList.add('show');
+
+      if (appState.activeMolecule === 'O3') {
+        // O3 -> O2 + O
+        appState.brokenFragments = [
+          {
+            name: 'O₂',
+            atoms: [
+              { symbol: 'O', color: '#ef4444', radius: 24, x: -28, y: 0 },
+              { symbol: 'O', color: '#ef4444', radius: 24, x: 28, y: 0 }
+            ],
+            bonds: [{ a1: 0, a2: 1, order: 2 }],
+            x: molCenter.x - 20,
+            y: molCenter.y - 15,
+            vx: -2.2,
+            vy: -1.4,
+            angle: 0,
+            vAngle: 0.04
+          },
+          {
+            name: 'O',
+            atoms: [
+              { symbol: 'O', color: '#ef4444', radius: 24, x: 0, y: 0 }
+            ],
+            bonds: [],
+            x: molCenter.x + 40,
+            y: molCenter.y + 25,
+            vx: 3.8,
+            vy: 2.2,
+            angle: 0,
+            vAngle: -0.02
+          }
+        ];
+      } else if (appState.activeMolecule === 'NO2') {
+        // NO2 -> NO + O
+        appState.brokenFragments = [
+          {
+            name: 'NO',
+            atoms: [
+              { symbol: 'N', color: '#3b82f6', radius: 23, x: -28, y: 0 },
+              { symbol: 'O', color: '#ef4444', radius: 24, x: 28, y: 0 }
+            ],
+            bonds: [{ a1: 0, a2: 1, order: 2 }],
+            x: molCenter.x - 25,
+            y: molCenter.y - 10,
+            vx: -2.4,
+            vy: -1.2,
+            angle: 0,
+            vAngle: 0.05
+          },
+          {
+            name: 'O',
+            atoms: [
+              { symbol: 'O', color: '#ef4444', radius: 24, x: 0, y: 0 }
+            ],
+            bonds: [],
+            x: molCenter.x + 35,
+            y: molCenter.y + 20,
+            vx: 3.5,
+            vy: 2.0,
+            angle: 0,
+            vAngle: -0.03
+          }
+        ];
+      }
+    }
+
+    function returnMolecule() {
+      appState.isBroken = false;
+      appState.brokenFragments = [];
+      const btn = document.getElementById('btnReturnMolecule');
+      if (btn) btn.classList.remove('show');
+      playSound('absorb');
+    }
+
+    /* -------------------------------------------------------------------------
+       SCENE RENDERER
+       ------------------------------------------------------------------------- */
+    function renderScene() {
+      if (canvasW === 0 || canvasH === 0) return;
+      ctx.clearRect(0, 0, canvasW, canvasH);
+
+      const cx = canvasW * 0.52;
+      const cy = canvasH * 0.50;
+
+      // 1. Draw Laser Emitter Device on Left
+      drawEmitterDevice(cy);
+
+      // 2. Draw Target Molecule or Broken Fragments
+      if (!appState.isBroken) {
+        drawMolecule(cx, cy);
+      } else {
+        drawBrokenFragments();
+      }
+
+      // 3. Draw Photons in Flight
+      drawPhotons();
+    }
+
+    /* -------------------------------------------------------------------------
+       RENDER EMITTER CASING
+       ------------------------------------------------------------------------- */
+    function drawEmitterDevice(cy) {
+      ctx.save();
+      const ex = 55;
+      const wl = WAVELENGTHS[appState.activeWavelength];
+
+      // Outer Stand
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(5, cy - 45, 60, 90, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      // Metallic Nozzle
+      const grad = ctx.createLinearGradient(55, cy - 25, 75, cy + 25);
+      grad.addColorStop(0, '#64748b');
+      grad.addColorStop(0.5, '#cbd5e1');
+      grad.addColorStop(1, '#334155');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(65, cy - 25);
+      ctx.lineTo(82, cy - 14);
+      ctx.lineTo(82, cy + 14);
+      ctx.lineTo(65, cy + 25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Nozzle Glow
+      if (appState.isEmitting) {
+        ctx.fillStyle = wl.color;
+        ctx.shadowColor = wl.color;
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.ellipse(82, cy, 4, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    /* -------------------------------------------------------------------------
+       RENDER MOLECULE
+       ------------------------------------------------------------------------- */
+    function drawMolecule(cx, cy) {
+      const mol = MOLECULES[appState.activeMolecule];
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      // Apply rotation: combination of manual angle + animated rotation
+      const totalAngle = appState.molAngle + appState.userRotY;
+      ctx.rotate(totalAngle);
+
+      // If glowing (visible excitation)
+      if (appState.isGlowing) {
+        ctx.fillStyle = 'rgba(234, 179, 8, 0.25)';
+        ctx.shadowColor = '#eab308';
+        ctx.shadowBlur = 35;
+        ctx.beginPath();
+        ctx.arc(0, 0, 85, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Compute dynamic atom offsets with vibration
+      const vib = Math.sin(appState.molVibration);
+      const computedAtoms = mol.atoms.map((a, idx) => {
+        let vx = 0;
+        let vy = 0;
+
+        if (appState.isVibrating) {
+          if (mol.formula === 'CO2') {
+            // Central Carbon moves up, Oxygens move down (bending mode)
+            if (idx === 0) vy = -vib * 24;
+            else vy = vib * 12;
+          } else if (mol.formula === 'H2O' || mol.formula === 'NO2' || mol.formula === 'O3') {
+            // Central atom wiggles, radial atoms flex
+            if (idx === 0) vy = vib * 18;
+            else {
+              vx = -Math.sign(a.x) * vib * 14;
+              vy = -vib * 12;
+            }
+          } else if (mol.formula === 'CO') {
+            vx = (idx === 0 ? -1 : 1) * vib * 14;
+          } else if (mol.formula === 'CH4') {
+            if (idx === 0) vy = vib * 8;
+            else {
+              vx = vib * (idx % 2 === 0 ? 12 : -12);
+              vy = -vib * 10;
+            }
+          }
+        }
+
+        return {
+          ...a,
+          currX: a.x + vx,
+          currY: a.y + vy
+        };
+      });
+
+      // 1. Draw Bonds
+      mol.bonds.forEach(b => {
+        const a1 = computedAtoms[b.a1];
+        const a2 = computedAtoms[b.a2];
+        drawBondCylinder(a1.currX, a1.currY, a2.currX, a2.currY, b.order);
+      });
+
+      // 2. Draw Atoms
+      computedAtoms.forEach(a => {
+        drawAtomSphere(a.currX, a.currY, a.radius, a.symbol, a.color);
+      });
+
+      ctx.restore();
+    }
+
+    function drawBrokenFragments() {
+      ctx.save();
+      appState.brokenFragments.forEach(frag => {
+        ctx.save();
+        ctx.translate(frag.x, frag.y);
+        ctx.rotate(frag.angle);
+
+        // Bonds
+        frag.bonds.forEach(b => {
+          const a1 = frag.atoms[b.a1];
+          const a2 = frag.atoms[b.a2];
+          drawBondCylinder(a1.x, a1.y, a2.x, a2.y, b.order);
+        });
+
+        // Atoms
+        frag.atoms.forEach(a => {
+          drawAtomSphere(a.x, a.y, a.radius, a.symbol, a.color);
+        });
+
+        ctx.restore();
+      });
+      ctx.restore();
+    }
+
+    /* -------------------------------------------------------------------------
+       RENDER PHOTONS (WAVE PACKETS)
+       ------------------------------------------------------------------------- */
+    function drawPhotons() {
+      ctx.save();
+      appState.photons.forEach(p => {
+        const wl = WAVELENGTHS[p.type];
+        const angle = Math.atan2(p.vy, p.vx);
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(angle);
+
+        // Draw sinusoidal wave packet
+        ctx.strokeStyle = wl.color;
+        ctx.lineWidth = 2.4;
+        ctx.shadowColor = wl.color;
+        ctx.shadowBlur = 10;
+
+        ctx.beginPath();
+        const packetLen = 52;
+        const halfLen = packetLen / 2;
+        const freq = (Math.PI * 2) / (wl.wavelengthPx * 0.7);
+
+        for (let x = -halfLen; x <= halfLen; x += 2) {
+          // Gaussian envelope
+          const env = Math.exp(-Math.pow(x / (halfLen * 0.55), 2));
+          const y = Math.sin(x * freq) * 9 * env;
+          if (x === -halfLen) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.restore();
+      });
+      ctx.restore();
+    }
+
+    /* -------------------------------------------------------------------------
+       GRAPHICS DRAWING UTILITIES
+       ------------------------------------------------------------------------- */
+    function drawAtomSphere(x, y, radius, symbol, baseColor) {
+      ctx.save();
+      // Drop Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.arc(x + 3, y + 4, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3D Sphere Shading
+      const grad = ctx.createRadialGradient(x - radius * 0.35, y - radius * 0.35, radius * 0.05, x, y, radius);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.25, baseColor);
+      grad.addColorStop(0.85, darkenColor(baseColor, 0.55));
+      grad.addColorStop(1, '#050810');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Rim Highlight
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Symbol
+      if (radius > 12) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 ' + Math.max(10, Math.round(radius * 0.85)) + 'px ' + getComputedStyle(document.body).fontFamily;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(symbol, x, y + 1);
+      }
+      ctx.restore();
+    }
+
+    function drawBondCylinder(x1, y1, x2, y2, order) {
+      ctx.save();
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx);
+
+      ctx.translate(x1, y1);
+      ctx.rotate(angle);
+
+      const thick = 8;
+      if (order === 1) {
+        drawSingleCyl(0, -thick / 2, len, thick);
+      } else if (order === 2) {
+        const off = 5.5;
+        drawSingleCyl(0, -off - thick * 0.4, len, thick * 0.75);
+        drawSingleCyl(0, off - thick * 0.4, len, thick * 0.75);
+      } else if (order === 3) {
+        const off = 8.5;
+        drawSingleCyl(0, -off - thick * 0.35, len, thick * 0.7);
+        drawSingleCyl(0, -thick * 0.35, len, thick * 0.7);
+        drawSingleCyl(0, off - thick * 0.35, len, thick * 0.7);
+      }
+
+      ctx.restore();
+    }
+
+    function drawSingleCyl(x, y, len, thick) {
+      const grad = ctx.createLinearGradient(0, y, 0, y + thick);
+      grad.addColorStop(0, '#94a3b8');
+      grad.addColorStop(0.35, '#f1f5f9');
+      grad.addColorStop(0.8, '#475569');
+      grad.addColorStop(1, '#1e293b');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, len, thick);
+
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(x, y, len, thick);
+    }
+
+    function darkenColor(hex, factor) {
+      if (!hex || hex[0] !== '#') return hex;
+      const num = parseInt(hex.slice(1), 16);
+      let r = (num >> 16);
+      let g = ((num >> 8) & 0x00FF);
+      let b = (num & 0x0000FF);
+      r = Math.floor(r * factor);
+      g = Math.floor(g * factor);
+      b = Math.floor(b * factor);
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
+
+    /* -------------------------------------------------------------------------
+       INTERACTIVE CONTROLS & UPDATES
+       ------------------------------------------------------------------------- */
+    function setWavelength(bandKey) {
+      appState.activeWavelength = bandKey;
+      playSound('fire');
+
+      ['microwave', 'infrared', 'visible', 'ultraviolet'].forEach(k => {
+        const btn = document.getElementById('btnWl' + k.charAt(0).toUpperCase() + k.slice(1));
+        if (btn) btn.classList.toggle('active', k === bandKey);
+      });
+
+      updateUI();
+      checkMissionAutoProgress();
+    }
+
+    function selectMolecule(molKey) {
+      appState.activeMolecule = molKey;
+      appState.isBroken = false;
+      appState.brokenFragments = [];
+      const btn = document.getElementById('btnReturnMolecule');
+      if (btn) btn.classList.remove('show');
+
+      playSound('absorb');
+
+      ['CO', 'N2', 'O2', 'CO2', 'H2O', 'NO2', 'O3', 'CH4'].forEach(k => {
+        const btnMol = document.getElementById('mol' + k);
+        if (btnMol) btnMol.classList.toggle('active', k === molKey);
+      });
+
+      updateUI();
+      checkMissionAutoProgress();
+    }
+
+    function toggleEmitterBeam() {
+      appState.isEmitting = !appState.isEmitting;
+      playSound('fire');
+
+      const sw = document.getElementById('swEmitterPower');
+      const knob = document.getElementById('swKnob');
+      if (appState.isEmitting) {
+        sw.style.background = '#0284c7';
+        knob.style.transform = 'translateX(18px)';
+      } else {
+        sw.style.background = 'rgba(255, 255, 255, 0.15)';
+        knob.style.transform = 'translateX(0)';
+      }
+    }
+
+    function fireSinglePhoton() {
+      appState.pulseRequested = true;
+    }
+
+    function toggleSlowMotion() {
+      appState.slowMotion = !appState.slowMotion;
+      playSound('fire');
+      const btn = document.getElementById('btnSlowMotion');
+      const txt = document.getElementById('txtSpeedMode');
+      btn.classList.toggle('active', appState.slowMotion);
+      txt.innerText = appState.slowMotion ? 'Speed: Slow (0.28x)' : 'Speed: Normal';
+    }
+
+    function resetMoleculeAngle() {
+      appState.molAngle = 0;
+      appState.userRotY = 0;
+      appState.isRotating = false;
+      appState.isVibrating = false;
+      appState.rotationSpeed = 0;
+      playSound('fire');
+    }
+
+    function updateUI() {
+      const wl = WAVELENGTHS[appState.activeWavelength];
+      const mol = MOLECULES[appState.activeMolecule];
+
+      document.getElementById('lblBandName').innerText = wl.name;
+      document.getElementById('lblWavelength').innerText = wl.wlText;
+      document.getElementById('lblPhotonEnergy').innerText = wl.energyText;
+
+      const action = mol.interactions[appState.activeWavelength];
+
+      let actionTitle = 'Passes Through (Transparent)';
+      let actionDesc = 'Photons pass cleanly through the molecule without absorption because the photon energy does not match any quantum transition of ' + mol.name + '.';
+      let mechTag = 'No Interaction';
+
+      if (action === 'rotate') {
+        actionTitle = 'Rotational Excitation (Absorbed)';
+        actionDesc = 'Microwave photon matches the rotational frequency of polar ' + mol.name + ', causing it to spin with angular momentum before re-emitting the photon.';
+        mechTag = 'Dipole Rotation';
+      } else if (action === 'vibrate') {
+        actionTitle = 'Vibrational Excitation (Absorbed)';
+        actionDesc = 'Infrared photon matches the vibrational bending/stretching frequency of ' + mol.name + ', temporarily storing energy in bond springs before re-emitting IR.';
+        mechTag = 'Bond Vibration';
+      } else if (action === 'glow') {
+        actionTitle = 'Electronic Excitation (Absorbed)';
+        actionDesc = 'Visible photon matches the valence electronic gap in ' + mol.name + ', promoting an electron to a higher orbital (fluorescent glow) before radiative relaxation.';
+        mechTag = 'Electronic Glow';
+      } else if (action === 'break') {
+        actionTitle = 'Photodissociation (Absorbed)';
+        actionDesc = 'High-energy UV photon exceeds the chemical bond dissociation energy, causing the covalent bond to snap and shattering ' + mol.name + ' into reactive fragments!';
+        mechTag = 'Photolysis / Break Apart';
+      }
+
+      document.getElementById('outBandLabel').innerText = wl.name + ' + ' + mol.formula;
+      document.getElementById('outActionName').innerText = actionTitle;
+      document.getElementById('outDesc').innerText = actionDesc;
+      document.getElementById('outMechanismTag').innerText = mechTag;
+      document.getElementById('outDipoleTag').innerText = mol.hasDipole ? 'Permanent Dipole' : 'Nonpolar Symmetric';
+      document.getElementById('outAtmosphereTag').innerText = mol.geometry;
+
+      document.getElementById('mechText').innerText = wl.name + ' + ' + mol.name + ': ' + actionTitle;
+    }
+
+    /* -------------------------------------------------------------------------
+       DRAG TO ROTATE MOLECULE
+       ------------------------------------------------------------------------- */
+    canvas.addEventListener('mousedown', e => {
+      appState.isDragging = true;
+      appState.lastMouseX = e.clientX;
+    });
+
+    window.addEventListener('mouseup', () => {
+      appState.isDragging = false;
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!appState.isDragging) return;
+      const dx = e.clientX - appState.lastMouseX;
+      appState.userRotY += dx * 0.012;
+      appState.lastMouseX = e.clientX;
+    });
+
+    canvas.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) {
+        appState.isDragging = true;
+        appState.lastMouseX = e.touches[0].clientX;
+      }
+    });
+
+    window.addEventListener('touchend', () => {
+      appState.isDragging = false;
+    });
+
+    window.addEventListener('touchmove', e => {
+      if (!appState.isDragging || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - appState.lastMouseX;
+      appState.userRotY += dx * 0.012;
+      appState.lastMouseX = e.touches[0].clientX;
+    });
+
+    /* -------------------------------------------------------------------------
+       GUIDED MISSIONS SYSTEM
+       ------------------------------------------------------------------------- */
+    function startMission(mNum) {
+      setAppMode('sim');
+      playSound('fire');
+
+      if (mNum === 1) {
+        setWavelength('microwave');
+        selectMolecule('CO');
+        fireSinglePhoton();
+        markMissionCompleted(1);
+      } else if (mNum === 2) {
+        setWavelength('infrared');
+        selectMolecule('CO2');
+        fireSinglePhoton();
+        markMissionCompleted(2);
+      } else if (mNum === 3) {
+        setWavelength('visible');
+        selectMolecule('NO2');
+        fireSinglePhoton();
+        markMissionCompleted(3);
+      } else if (mNum === 4) {
+        setWavelength('ultraviolet');
+        selectMolecule('O3');
+        fireSinglePhoton();
+        markMissionCompleted(4);
+      } else if (mNum === 5) {
+        selectMolecule('N2');
+        setWavelength('visible');
+        fireSinglePhoton();
+        markMissionCompleted(5);
+      }
+    }
+
+    function markMissionCompleted(mNum) {
+      if (appState.missionsCompleted[mNum - 1]) return;
+      appState.missionsCompleted[mNum - 1] = true;
+      playSound('success');
+
+      const card = document.getElementById('missionCard' + mNum);
+      if (card) {
+        card.classList.add('completed');
+        const btn = card.querySelector('.btn-mission-action');
+        if (btn) btn.innerHTML = '✓ Completed';
+      }
+
+      const count = appState.missionsCompleted.filter(Boolean).length;
+      document.getElementById('missionBadgeCount').innerText = count + '/5';
+    }
+
+    function checkMissionAutoProgress() {
+      if (appState.activeWavelength === 'microwave' && appState.activeMolecule === 'CO') markMissionCompleted(1);
+      if (appState.activeWavelength === 'infrared' && (appState.activeMolecule === 'CO2' || appState.activeMolecule === 'CH4')) markMissionCompleted(2);
+      if (appState.activeWavelength === 'visible' && appState.activeMolecule === 'NO2') markMissionCompleted(3);
+      if (appState.activeWavelength === 'ultraviolet' && appState.activeMolecule === 'O3') markMissionCompleted(4);
+      if ((appState.activeMolecule === 'N2' || appState.activeMolecule === 'O2') && appState.activeWavelength === 'infrared') markMissionCompleted(5);
+    }
+
+    /* -------------------------------------------------------------------------
+       ASSESSMENT QUIZ SYSTEM
+       ------------------------------------------------------------------------- */
+    function checkQuizAnswer(qNum, optIdx, isCorrect) {
+      if (appState.quizAnswers[qNum - 1] !== null) return;
+
+      appState.quizAnswers[qNum - 1] = isCorrect;
+      const card = document.getElementById('quizCard' + qNum);
+      const buttons = card.querySelectorAll('.quiz-option-btn');
+
+      buttons.forEach((btn, idx) => {
+        btn.classList.add('locked');
+        if (idx === optIdx) {
+          btn.classList.add(isCorrect ? 'correct' : 'wrong');
+        }
+      });
+
+      const feedback = document.getElementById('feedback' + qNum);
+      feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+
+      playSound(isCorrect ? 'success' : 'shatter');
+
+      const answered = appState.quizAnswers.filter(a => a !== null);
+      const correctCount = appState.quizAnswers.filter(a => a === true).length;
+      const scorePct = Math.round((correctCount / 5) * 100);
+      document.getElementById('quizScoreDisplay').innerText = scorePct + '%';
+      document.getElementById('certScoreVal').innerText = scorePct + '%';
+
+      if (window.parent) {
+        window.parent.postMessage({
+          type: 'ELEMENTA_SIM_SCORE',
+          simulation: 'molecules-and-light',
+          score: scorePct,
+          completed: answered.length === 5
+        }, '*');
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       MODALS & TOPBAR ACTIONS
+       ------------------------------------------------------------------------- */
+    function openSpectrumModal() {
+      playSound('fire');
+      document.getElementById('spectrumOverlay').classList.add('active');
+    }
+
+    function closeSpectrumModal() {
+      playSound('fire');
+      document.getElementById('spectrumOverlay').classList.remove('active');
+    }
+
+    function openCertificateModal() {
+      playSound('fire');
+      document.getElementById('certOverlay').classList.add('active');
+    }
+
+    function closeCertificateModal() {
+      playSound('fire');
+      document.getElementById('certOverlay').classList.remove('active');
+    }
+
+    function downloadCertPDF() {
+      window.print();
+    }
+
+    function setAppMode(modeKey) {
+      if (typeof appState !== 'undefined' && appState && appState.mode !== undefined) appState.mode = modeKey;
+      if (typeof state !== 'undefined' && state && state.mode !== undefined) state.mode = modeKey;
+      if (typeof playSound === 'function') playSound('click');
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    function toggleAudio() {
+      appState.audioEnabled = !appState.audioEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      btn.classList.toggle('active', appState.audioEnabled);
+      playSound('fire');
+    }
+
+    function resetSimulation() {
+      appState.activeWavelength = 'infrared';
+      appState.activeMolecule = 'CO2';
+      appState.isEmitting = false;
+      appState.isBroken = false;
+      appState.photons = [];
+      appState.brokenFragments = [];
+      appState.molAngle = 0;
+      appState.userRotY = 0;
+      appState.slowMotion = false;
+      document.getElementById('btnSlowMotion').classList.remove('active');
+      document.getElementById('txtSpeedMode').innerText = 'Speed: Normal';
+      const sw = document.getElementById('swEmitterPower');
+      const knob = document.getElementById('swKnob');
+      sw.style.background = 'rgba(255, 255, 255, 0.15)';
+      knob.style.transform = 'translateX(0)';
+      setWavelength('infrared');
+      selectMolecule('CO2');
+      playSound('fire');
+      updateUI();
+    }
+
+    function captureScreenshot() {
+      playSound('fire');
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = 'molecules_and_light_elementa_' + Date.now() + '.png';
+      link.href = dataUrl;
+      link.click();
+    }
+
+    function toggleFullscreen() {
+      playSound('fire');
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       INITIALIZATION
+       ------------------------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      updateUI();
+      requestAnimationFrame(animLoop);
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

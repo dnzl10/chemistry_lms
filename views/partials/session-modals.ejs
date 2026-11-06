@@ -1,0 +1,293 @@
+<!-- 
+  views/partials/session-modals.ejs
+  Standardized Session Security & Lifecycle Modals Component for Elementa LMS.
+  Follows the standardized modal design language across all Student, Teacher, and Admin portals:
+  - Clean, rounded-3xl white surface cards with soft shadow-2xl and slate-100 borders
+  - Standard bg-slate-900/60 backdrop with subtle blur
+  - Soft pastel icon badge with FontAwesome 6 icons
+  - Consistent typography, pill badges, and dual CTA button layouts
+-->
+
+<div id="elementaSessionModalsContainer" class="relative z-[99999]">
+
+    <!-- ======================================================= -->
+    <!-- 1. CONCURRENT LOGIN HANDSHAKE MODAL (GRANT / DENY)     -->
+    <!-- ======================================================= -->
+    <div id="sessionConcurrentModal" 
+         class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 cursor-pointer"
+         role="dialog" aria-modal="true" aria-labelledby="concurrentTitle"
+         onclick="if(event.target === this) return false;">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 text-center relative cursor-default modal-anim" onclick="event.stopPropagation()">
+            
+            <!-- Soft Pastel Icon Badge -->
+            <div class="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 text-amber-500 mx-auto flex items-center justify-center text-2xl mb-3.5 shadow-inner">
+                <i class="fas fa-triangle-exclamation"></i>
+            </div>
+
+            <!-- Standard Category Pill -->
+            <span class="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 inline-block mb-2">
+                SECURITY ALERT &bull; CONCURRENT LOGIN
+            </span>
+
+            <h3 id="concurrentTitle" class="text-lg font-black text-slate-800 tracking-tight mb-1.5">
+                New Login Attempt Detected
+            </h3>
+
+            <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                Another device is attempting to log in to your account. Granting access will transfer your active session to the new device and sign you out here.
+            </p>
+
+            <!-- Standard Details Box -->
+            <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/80 text-left mb-5 space-y-1 text-xs">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 font-bold uppercase">
+                    <span>Attempting Device</span>
+                    <span id="concurrentCountdown" class="text-amber-600 font-extrabold font-mono">59s remaining</span>
+                </div>
+                <div class="flex items-center gap-2 text-slate-800 font-bold text-sm pt-0.5">
+                    <i class="fas fa-display text-indigo-500 text-xs"></i>
+                    <span id="concurrentDeviceLabel" class="truncate">Unknown Device</span>
+                </div>
+                <div class="text-[11px] text-slate-500 pt-0.5">
+                    IP Address: <span id="concurrentIpLabel" class="font-mono text-slate-700 font-semibold">127.0.0.1</span>
+                </div>
+            </div>
+
+            <!-- Standard Action Buttons -->
+            <div class="grid grid-cols-2 gap-2.5 w-full">
+                <button id="btnDenyConcurrent" type="button"
+                        class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-200 cursor-pointer flex items-center justify-center gap-1.5">
+                    <i class="fas fa-shield text-[11px]"></i> Deny Access
+                </button>
+                <button id="btnGrantConcurrent" type="button"
+                        class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 border border-slate-200/60">
+                    <i class="fas fa-right-from-bracket text-[11px] text-rose-500"></i> Grant &amp; Exit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- 2. INACTIVITY WARNING MODAL (30-MIN IDLE COUNTDOWN)    -->
+    <!-- ======================================================= -->
+    <div id="sessionInactivityModal" 
+         class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 cursor-pointer"
+         role="dialog" aria-modal="true" aria-labelledby="inactivityTitle"
+         onclick="if(event.target === this) return false;">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 text-center relative cursor-default modal-anim" onclick="event.stopPropagation()">
+            
+            <div class="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 mx-auto flex items-center justify-center text-2xl mb-3.5 shadow-inner">
+                <i class="fas fa-clock"></i>
+            </div>
+
+            <span class="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 inline-block mb-2">
+                IDLE WARNING &bull; INACTIVITY TIMEOUT
+            </span>
+
+            <h3 id="inactivityTitle" class="text-lg font-black text-slate-800 tracking-tight mb-1.5">
+                Are You Still Studying?
+            </h3>
+
+            <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                You have been inactive for nearly 30 minutes. To protect your laboratory station and quiz progress, your session will automatically conclude in:
+            </p>
+
+            <!-- Standard Digital Countdown Container -->
+            <div class="py-3 mb-5 rounded-2xl bg-slate-900 text-cyan-400 font-mono text-3xl font-black tracking-widest text-center shadow-inner border border-slate-800">
+                <span id="idleCountdownDisplay">02:00</span>
+            </div>
+
+            <!-- Standard Action Buttons -->
+            <div class="flex flex-col gap-2 w-full">
+                <button id="btnExtendSession" type="button"
+                        class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-200 cursor-pointer flex items-center justify-center gap-1.5">
+                    <i class="fas fa-arrows-rotate text-[11px]"></i> Keep Working (Extend Session)
+                </button>
+                <button id="btnIdleLogout" type="button"
+                        class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl text-xs transition cursor-pointer">
+                    Sign Out Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- 3. ABSOLUTE SESSION LIFETIME MODAL (12-HOUR HARD CAP)  -->
+    <!-- ======================================================= -->
+    <div id="sessionMaxLifetimeModal" 
+         class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 cursor-pointer"
+         role="dialog" aria-modal="true" aria-labelledby="maxLifetimeTitle"
+         onclick="if(event.target === this) return false;">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 text-center relative cursor-default modal-anim" onclick="event.stopPropagation()">
+            
+            <div class="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 text-amber-500 mx-auto flex items-center justify-center text-2xl mb-3.5 shadow-inner">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+
+            <span class="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 inline-block mb-2">
+                CAMPUS POLICY &bull; 12-HOUR LIMIT
+            </span>
+
+            <h3 id="maxLifetimeTitle" class="text-lg font-black text-slate-800 tracking-tight mb-1.5">
+                Daily Session Limit Approaching
+            </h3>
+
+            <p class="text-xs text-slate-500 leading-relaxed mb-5">
+                In compliance with laboratory security guidelines, continuous sessions are capped at 12 hours. Your session will conclude in <span id="maxLifetimeCountdown" class="font-extrabold text-amber-600 font-mono">5:00</span>. Please complete and submit any active drills or grading tasks.
+            </p>
+
+            <div class="flex flex-col gap-2 w-full">
+                <button id="btnDismissMaxWarning" type="button"
+                        class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-200 cursor-pointer">
+                    I Understand (Save Progress)
+                </button>
+                <a href="/logout" 
+                   class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl text-xs transition text-center block">
+                    Save &amp; Sign Out Now
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- 4. ACCOUNT SUSPENSION / DEACTIVATION MODAL (LOCKED)     -->
+    <!-- ======================================================= -->
+    <div id="sessionSuspendedModal" 
+         class="fixed inset-0 z-[100000] bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4"
+         role="dialog" aria-modal="true" aria-labelledby="suspendedTitle">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 text-center relative cursor-default modal-anim">
+            
+            <div class="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 text-rose-500 mx-auto flex items-center justify-center text-2xl mb-3.5 shadow-inner">
+                <i class="fas fa-ban"></i>
+            </div>
+
+            <span class="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 inline-block mb-2">
+                ACCESS RESTRICTED &bull; ADMINISTRATIVE HOLD
+            </span>
+
+            <h3 id="suspendedTitle" class="text-lg font-black text-slate-800 tracking-tight mb-1.5">
+                Account Status Changed
+            </h3>
+
+            <p id="suspendedMessage" class="text-xs text-slate-500 leading-relaxed mb-5">
+                Your account has been deactivated or placed on administrative hold by the Senior High School administration. For questions or clearance, please visit the Academic Affairs Office or contact your STEM teacher.
+            </p>
+
+            <a href="/" 
+               class="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-rose-200 text-center block">
+                Acknowledge &amp; Exit to Portal
+            </a>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- 5. SERVER REBOOT / MAINTENANCE RECONNECT MODAL          -->
+    <!-- ======================================================= -->
+    <div id="sessionRebootModal" 
+         class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 cursor-pointer"
+         role="dialog" aria-modal="true" aria-labelledby="rebootTitle"
+         onclick="if(event.target === this) return false;">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 text-center relative cursor-default modal-anim" onclick="event.stopPropagation()">
+            
+            <div class="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 mx-auto flex items-center justify-center text-2xl mb-3.5 shadow-inner">
+                <i class="fas fa-server"></i>
+            </div>
+
+            <span class="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 inline-block mb-2">
+                SYSTEM UPDATE &bull; SERVER RECONNECT
+            </span>
+
+            <h3 id="rebootTitle" class="text-lg font-black text-slate-800 tracking-tight mb-1.5">
+                Server Reconnected
+            </h3>
+
+            <p class="text-xs text-slate-500 leading-relaxed mb-5">
+                The Elementa Chemistry Arcade engine recently completed a routine update or server restart. In-memory session state was refreshed. Please re-authenticate to synchronize your laboratory drills.
+            </p>
+
+            <a href="/login" 
+               class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-200 text-center block flex items-center justify-center gap-1.5">
+                <i class="fas fa-right-to-bracket text-xs"></i> Reconnect &amp; Log In
+            </a>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- 6. EXPLICIT MANUAL LOGOUT CONFIRMATION MODAL            -->
+    <!-- ======================================================= -->
+    <div id="sessionLogoutModal" 
+         class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 cursor-pointer"
+         role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle"
+         onclick="if(event.target === this) closeLogoutModal()">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center relative cursor-default modal-anim" onclick="event.stopPropagation()">
+            
+            <div class="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 text-rose-500 mx-auto flex items-center justify-center text-2xl mb-3.5 shadow-inner">
+                <i class="fas fa-right-from-bracket"></i>
+            </div>
+
+            <span class="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 inline-block mb-2">
+                SIGN OUT VERIFICATION
+            </span>
+
+            <h3 id="logoutModalTitle" class="text-lg font-black text-slate-800 tracking-tight mb-1.5">
+                End Active Session?
+            </h3>
+
+            <p class="text-xs text-slate-500 leading-relaxed mb-5">
+                Are you sure you want to sign out of Elementa LMS? Any unsaved chemical calculations, quiz answers, or forum drafts will be lost.
+            </p>
+
+            <div class="grid grid-cols-2 gap-2.5 w-full">
+                <button id="btnCancelLogout" type="button" onclick="closeLogoutModal()"
+                        class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer">
+                    Cancel (Stay)
+                </button>
+                <a id="btnConfirmLogout" href="/logout"
+                   class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-rose-200 flex items-center justify-center gap-1.5 text-center cursor-pointer">
+                    <i class="fas fa-right-from-bracket text-[10px]"></i> Yes, Sign Out
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Universal UI Controller for Session Modals (Standardized with Elementa Modal Manager)
+    window.ElementaSessionModals = (function () {
+        function show(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function hide(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            // Check if any other session modal is still open
+            const anyOpen = document.querySelectorAll('#elementaSessionModalsContainer > div:not(.hidden)').length > 0;
+            if (!anyOpen) {
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        function hideAll() {
+            const modals = document.querySelectorAll('#elementaSessionModalsContainer > div');
+            modals.forEach(m => {
+                m.classList.add('hidden');
+                m.classList.remove('flex');
+            });
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        return { show, hide, hideAll };
+    })();
+
+    function closeLogoutModal() {
+        window.ElementaSessionModals.hide('sessionLogoutModal');
+    }
+</script>

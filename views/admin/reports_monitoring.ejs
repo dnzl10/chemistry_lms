@@ -329,6 +329,104 @@
                     </div>
                 </div>
 
+                <!-- ── ASSIGNMENT SUBSYSTEM KPI & MONITORING CARD ── -->
+                <div class="glass-card rounded-2xl p-6 border border-indigo-100 shadow-sm mb-8 bg-gradient-to-br from-white via-indigo-50/20 to-purple-50/30">
+                    <div class="flex items-center justify-between flex-wrap gap-4 mb-5 border-b border-indigo-100/60 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-indigo-200">
+                                <i class="fas fa-file-signature"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-indigo-950 text-base">Assignment Ecosystem &amp; Deliverables Monitoring</h3>
+                                <p class="text-xs text-slate-400 font-medium">Categorical distribution, group workflows &amp; evaluation throughput</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-3 py-1 rounded-full text-xs font-black bg-indigo-100 text-indigo-800">
+                                Total Assignments: <%= assignmentMetrics.total %>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Homework & Lab Categories -->
+                        <div class="p-4 rounded-xl bg-white border border-slate-100 shadow-sm space-y-2">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Category Distribution</span>
+                            <div class="space-y-1.5">
+                                <% 
+                                    const catList = assignmentMetrics.categories || [];
+                                    const getCatCount = (name) => {
+                                        const c = catList.find(x => x.category === name);
+                                        return c ? c.cnt : 0;
+                                    };
+                                %>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Homework</span>
+                                    <span class="font-black text-blue-600"><%= getCatCount('Homework') %></span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Laboratory</span>
+                                    <span class="font-black text-emerald-600"><%= getCatCount('Laboratory') %></span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-purple-500"></span> Performance Task</span>
+                                    <span class="font-black text-purple-600"><%= getCatCount('Performance Task') %></span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Seatwork &amp; Others</span>
+                                    <span class="font-black text-amber-600"><%= getCatCount('Seatwork') + getCatCount('Others') %></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submissions Total -->
+                        <div class="p-4 rounded-xl bg-white border border-slate-100 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Student Deliverables</span>
+                                <p class="text-3xl font-black text-indigo-950 mt-1"><%= assignmentMetrics.submissions.totalSubmissions %></p>
+                            </div>
+                            <p class="text-[11px] text-slate-500 font-medium mt-2">
+                                <i class="fas fa-arrow-up-from-bracket text-indigo-500 mr-1"></i> Cumulative submitted files &amp; attempts
+                            </p>
+                        </div>
+
+                        <!-- Evaluation Pipeline -->
+                        <div class="p-4 rounded-xl bg-white border border-slate-100 shadow-sm space-y-2">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Grading Pipeline</span>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-bold text-emerald-700"><i class="fas fa-check-double mr-1"></i> Graded Deliverables</span>
+                                <span class="font-black text-emerald-600"><%= assignmentMetrics.submissions.gradedSubmissions %></span>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-bold text-amber-700"><i class="fas fa-clock mr-1"></i> Pending Evaluation</span>
+                                <span class="font-black text-amber-600"><%= assignmentMetrics.submissions.pendingSubmissions %></span>
+                            </div>
+                            <% 
+                                const totalSubs = assignmentMetrics.submissions.totalSubmissions || 0;
+                                const gradedSubs = assignmentMetrics.submissions.gradedSubmissions || 0;
+                                const gradedPct = totalSubs > 0 ? Math.round((gradedSubs / totalSubs) * 100) : 0;
+                            %>
+                            <div class="pt-1">
+                                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-gradient-to-r from-teal-500 to-indigo-600 h-full rounded-full transition-all duration-500" style="width: <%= gradedPct %>%;"></div>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400 mt-1 block text-right"><%= gradedPct %>% Evaluated</span>
+                            </div>
+                        </div>
+
+                        <!-- Collaborative / Group Submissions -->
+                        <div class="p-4 rounded-xl bg-white border border-slate-100 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Group Submissions</span>
+                                <p class="text-3xl font-black text-purple-900 mt-1"><%= assignmentMetrics.submissions.groupSubmissions %></p>
+                            </div>
+                            <p class="text-[11px] text-purple-700 font-medium mt-2">
+                                <i class="fas fa-users text-purple-500 mr-1"></i> Deliverables submitted with team synchronization
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ── MAIN LAYOUT: TABS + AUDIT SIDEBAR ── -->
                 <div class="flex flex-col xl:flex-row gap-6">
 
@@ -1350,6 +1448,10 @@ function exportAllStudentsPDF() {
     });
 })();
 </script>
+
+<!-- Elementa Session Security Modals & Client Guardian Controller -->
+<%- include('../partials/session-modals') %>
+<script src="/js/session-guard.js"></script>
 
 </body>
 </html>

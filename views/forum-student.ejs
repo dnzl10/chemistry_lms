@@ -9,19 +9,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        @media (max-width: 768px) {
-            .sidebar-collapsed { transform: translateX(-100%); }
-            .sidebar-open { transform: translateX(0); }
-        }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .nav-active {
-            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
-            color: white !important; font-weight: 700;
-            box-shadow: 0 4px 16px rgba(6,182,212,0.3), 0 2px 8px rgba(99,102,241,0.4);
-        }
-        .nav-active i { color: white !important; }
+
 
         /* ── MODAL ── */
         @keyframes modalSlideUp {
@@ -52,7 +40,7 @@
             0%   { opacity: 1; transform: translateY(0) scale(1.2); }
             100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
         }
-        .emoji-float { position: fixed; pointer-events: none; font-size: 28px;
+        .emoji-float { position: fixed; pointer-events: none; font-size: 24px;
             animation: floatUp 1.2s ease-out forwards; z-index: 9999; }
 
         /* Pulse badge */
@@ -72,100 +60,91 @@
         .pm-enter { animation: pmSlide 0.22s ease forwards; }
 
         /* Tab underline */
-        .tab-active { border-bottom: 3px solid #6366f1; color: #6366f1; font-weight: 800; }
     </style>
+
+    <!-- Standardized Student Navigation & Responsive Styles -->
+    <%- include('partials/student-nav-styles') %>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
 
-<div class="flex min-h-screen relative overflow-x-hidden">
-    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden"></div>
-
-    <!-- ══════════ SIDEBAR ══════════ -->
-    <aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60"
-        style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
-        <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
-            <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4"><i class="fas fa-times text-xl"></i></button>
-            <img src="/assets/logo.png" alt="Logo" class="w-16 h-16 object-contain mb-3">
-            <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">Elem<span class="text-white">enta</span></h1>
-            <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Student Portal</p>
-        </div>
-        <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
-            <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
-                <div class="space-y-1">
-                    <a href="/home" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fas fa-house w-5 text-cyan-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Home</span></a>
-                    <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fas fa-chart-line w-5 text-red-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Dashboard</span></a>
-                </div>
-            </div>
-            <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
-                <div class="space-y-1">
-                    <a href="/subjects" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fas fa-book w-5 text-orange-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">My Subjects</span></a>
-                    <a href="/events" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fa-solid fa-calendar-days text-lg text-violet-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Events</span></a>
-                </div>
-            </div>
-            <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Community & Engagement</p>
-                <div class="space-y-1">
-                    <a href="/forums" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group"><i class="fas fa-comments w-5 text-emerald-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Forums</span></a>
-                </div>
-            </div>
-            <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">EXP & Rankings</p>
-                <div class="space-y-1">
-                    <a href="/leaderboards" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group"><i class="fas fa-trophy w-5 text-yellow-500 group-hover:scale-110 transition-transform"></i><span class="font-bold tracking-tight text-base">Leaderboards</span></a>
-                </div>
-            </div>
-        </nav>
-        <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
-            <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold"><i class="fas fa-right-from-bracket w-5"></i> Log Out</a>
-        </div>
-    </aside>
+<div class="flex h-screen w-full overflow-hidden">
+    <!-- Standardized Student Sidebar Partial -->
+    <%- include('partials/student-sidebar', { activeNav: 'forums' }) %>
 
     <!-- ══════════ MAIN ══════════ -->
-    <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 transition-all duration-300">
+    <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden transition-all duration-300">
 
         <!-- HEADER -->
-        <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-40">
+        <header class="h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-40">
             <div class="flex items-center gap-4">
-                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 md:hidden"><i class="fas fa-bars text-xl"></i></button>
+                <button onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" class="p-2 rounded-lg hover:bg-slate-100 text-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 transition">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
                 <div>
-                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">
+                    <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">
                         Welcome, <%= user.first_name %>!
-                    </h2>
-                    <p class="text-xs text-slate-400 hidden sm:block">
-                        <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
+                    </h1>
+                    <p class="text-xs text-slate-600 hidden sm:block font-medium">
+                        <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
                         Chemistry Enthusiast &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
                     </p>
                 </div>
             </div>
+
             <div class="flex items-center gap-3 md:gap-6">
-                <div onclick="toggleNotifications()" class="relative group cursor-pointer p-2 hover:bg-slate-100 rounded-full transition">
-                    <i class="far fa-bell text-xl text-slate-600"></i>
-                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span></span>
-                </div>
+                <!-- Messages Navigation Button (Entry point to message-student view) -->
+                <a href="/messages" id="messagesBtn" aria-label="Open messages and conversations" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
+                    <i class="far fa-comment-dots text-xl"></i>
+                    <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                        Messages
+                    </span>
+                </a>
+
+                <!-- Notification Button with keyboard-accessible tooltip -->
+                <button type="button" onclick="toggleNotifications()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
+                    <i class="far fa-bell text-xl text-slate-700"></i>
+                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5 notif-badge hidden" aria-hidden="true">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
+                    </span>
+                    <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                        Notifications
+                    </span>
+                </button>
+                
+                <!-- User Profile Dropdown -->
                 <div class="relative">
-                    <div onclick="toggleUserMenu(event)" class="flex items-center gap-3 pl-4 border-l border-slate-200 cursor-pointer hover:opacity-80 transition">
+                    <button type="button" onclick="toggleUserMenu(event)" id="userMenuBtn" aria-expanded="false" aria-label="Open user profile menu" class="flex items-center gap-3 pl-4 border-l border-slate-200 hover:opacity-85 transition focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-lg">
                         <div class="text-right hidden lg:block">
                             <p class="text-sm font-bold text-slate-800 leading-none mb-1"><%= user.first_name %> <%= user.last_name %></p>
-                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none"><%= user.role %></p>
+                            <p class="text-xs uppercase font-bold text-slate-600 tracking-wider leading-none"><%= user.role %></p>
                         </div>
-                        <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100">
-                        <i class="fas fa-chevron-down text-[10px] text-slate-400 ml-1"></i>
-                    </div>
+                        <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" alt="<%= user.first_name %>'s avatar" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100">
+                        <i class="fas fa-chevron-down text-xs text-slate-600 ml-1"></i>
+                    </button>
+
                     <div id="userDropdown" class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
-                        <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition"><i class="far fa-user w-5 text-center"></i> View Profile</a>
-                        <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition font-bold"><i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out</a>
+                        <div class="px-4 py-3 border-b border-slate-100 lg:hidden">
+                            <p class="text-sm font-bold text-slate-800"><%= user.first_name %> <%= user.last_name %></p>
+                            <p class="text-xs text-slate-600 mt-1 uppercase font-bold"><%= user.role %></p>
+                        </div>
+                        <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                            <i class="far fa-user w-5 text-center"></i> View Profile
+                        </a>
+                        <hr class="my-2 border-slate-100">
+                        <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition font-bold">
+                            <i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out
+                        </a>
                     </div>
                 </div>
             </div>
         </header>
 
         <!-- PAGE BODY -->
-        <div class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden h-[calc(100vh-80px)]">
+        <div class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
 
-            <!-- LEFT SIDEBAR: Stats + Subject filter -->
-            <aside class="w-full md:w-72 bg-white border-r border-slate-200 overflow-y-auto p-5 space-y-6 flex-shrink-0 no-scrollbar">
+            <!-- LEFT SIDEBAR: Stats + Subject filter (Pinned) -->
+            <aside class="w-full md:w-72 bg-white border-r border-slate-200 overflow-y-auto p-5 space-y-6 flex-shrink-0 no-scrollbar h-full">
                 <!-- Stat card -->
                 <div class="bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full"></div>
@@ -186,23 +165,23 @@
                     <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-3">Filter by Subject</h4>
                     <div class="space-y-1">
                         <button onclick="filterBySubject('all', this)"
-                            class="subject-btn w-full flex items-center gap-3 p-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-sm transition-all">
+                            class="subject-btn w-full flex items-center gap-3 p-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-sm transition-all cursor-pointer">
                             <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100"><i class="fas fa-globe text-blue-600 text-xs"></i></span>
                             <span>All Subjects</span>
                             <span class="ml-auto text-[10px] bg-blue-100 text-blue-600 font-black px-2 py-0.5 rounded-full" id="countAll"></span>
                         </button>
                         <%
-                        // Deduplicate subjects from forums array
-                        const seenSubjects = {};
-                        forums.forEach(f => {
-                            if (f.subject_id && !seenSubjects[f.subject_id]) {
-                                seenSubjects[f.subject_id] = { subject_id: f.subject_id, subject_name: f.subject_name };
-                            }
-                        });
-                        Object.values(seenSubjects).forEach(sub => { %>
+                        // Strictly populate from officially enrolled subjects
+                        const subjectFilterList = (typeof subjects !== 'undefined' && Array.isArray(subjects) && subjects.length > 0)
+                            ? subjects
+                            : ((typeof enrolledSubjects !== 'undefined' && Array.isArray(enrolledSubjects) && enrolledSubjects.length > 0)
+                                ? enrolledSubjects
+                                : []);
+                        
+                        subjectFilterList.forEach(sub => { %>
                         <button onclick="filterBySubject('<%= sub.subject_id %>', this)"
                             data-subject="<%= sub.subject_id %>"
-                            class="subject-btn w-full flex items-center gap-3 p-3 rounded-xl text-slate-600 hover:bg-slate-50 font-semibold text-sm transition-all">
+                            class="subject-btn w-full flex items-center gap-3 p-3 rounded-xl text-slate-600 hover:bg-slate-50 font-semibold text-sm transition-all cursor-pointer">
                             <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50"><i class="fas fa-flask text-emerald-500 text-xs"></i></span>
                             <span class="truncate text-left flex-1"><%= sub.subject_name %></span>
                             <span class="ml-auto text-[10px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-full subject-count" data-for="<%= sub.subject_id %>"></span>
@@ -212,28 +191,61 @@
                 </div>
             </aside>
 
-            <!-- MAIN FORUM LIST -->
-            <section class="flex-1 bg-slate-50/60 overflow-y-auto p-4 md:p-8 no-scrollbar">
-                <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Chemistry Commons</h2>
-                        <p class="text-sm text-slate-500 mt-0.5">Engage with professors and peers — <span id="forumCountLabel" class="font-bold text-slate-700"></span></p>
+            <!-- MAIN FORUM LIST (Scrollable Discussion Feed) -->
+            <section class="flex-1 bg-slate-50/60 overflow-y-auto p-4 md:p-8 no-scrollbar h-full">
+                <div class="mb-6 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Chemistry Commons</h2>
+                            <p class="text-sm text-slate-500 mt-0.5">Engage with professors and peers — <span id="forumCountLabel" class="font-bold text-slate-700"></span></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Sort:</span>
+                            <select onchange="sortForums(this.value)" class="text-sm font-bold bg-white border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs cursor-pointer">
+                                <option value="pinned">Pinned First</option>
+                                <option value="newest">Newest</option>
+                                <option value="most_replies">Most Replies</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Sort:</span>
-                        <select onchange="sortForums(this.value)" class="text-sm font-bold bg-white border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="pinned">Pinned First</option>
-                            <option value="newest">Newest</option>
-                            <option value="most_replies">Most Replies</option>
-                        </select>
+
+                    <!-- Search Discussions Input -->
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <i class="fas fa-search text-sm"></i>
+                        </div>
+                        <input type="text"
+                               id="globalSearch"
+                               oninput="filterForumCards(this.value)"
+                               placeholder="Search discussions by topic, title, keywords, or content..."
+                               class="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-xs transition-all">
+                        <button type="button"
+                                id="clearSearchBtn"
+                                onclick="clearSearchInput()"
+                                class="hidden absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                                title="Clear search">
+                            <i class="fas fa-times-circle text-sm"></i>
+                        </button>
                     </div>
                 </div>
 
                 <div id="forumList" class="space-y-3">
-                    <% forums.forEach(forum => { %>
-                    <div class="forum-card bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
+                    <% 
+                    const enrolledSubjectIdList = (typeof subjects !== 'undefined' && Array.isArray(subjects) && subjects.length > 0)
+                        ? subjects.map(s => String(s.subject_id))
+                        : ((typeof enrolledSubjects !== 'undefined' && Array.isArray(enrolledSubjects) && enrolledSubjects.length > 0)
+                            ? enrolledSubjects.map(s => String(s.subject_id))
+                            : []);
+                    const filteredForumsList = enrolledSubjectIdList.length > 0
+                        ? forums.filter(f => enrolledSubjectIdList.includes(String(f.subject_id)))
+                        : [];
+                    filteredForumsList.forEach(forum => { %>
+                    <div class="forum-card bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer"
+                         onclick="window.location.href='/forums/view/<%= forum.forum_id %>'"
                          data-subject="<%= forum.subject_id || 'all' %>"
                          data-title="<%= (forum.title || '').toLowerCase() %>"
+                         data-topic="<%= (forum.topic_name || '').toLowerCase() %>"
+                         data-content="<%= (forum.forum_content || '').toLowerCase().replace(/"/g, '&quot;') %>"
                          data-pinned="<%= forum.is_pinned ? '1' : '0' %>"
                          data-replies="<%= forum.reply_count || 0 %>"
                          data-created="<%= forum.created_at %>">
@@ -289,10 +301,10 @@
                                         <p class="text-xl font-black text-slate-800 leading-none"><%= forum.reply_count || 0 %></p>
                                         <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Replies</p>
                                     </div>
-                                    <button onclick="openThread('<%= forum.forum_id %>')"
+                                    <a href="/forums/view/<%= forum.forum_id %>"
                                         class="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-600 transition-all shadow-sm hover:shadow-indigo-200 hover:shadow-md whitespace-nowrap">
                                         <i class="fas fa-comments text-[10px]"></i> View Discussion
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -465,8 +477,20 @@
 <div id="notification-overlay" onclick="toggleNotifications()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden transition-opacity duration-300 opacity-0"></div>
 <div id="notification-panel" class="fixed top-0 right-0 h-screen w-80 md:w-96 bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col">
     <div class="p-5 border-b flex justify-between items-center bg-blue-600 text-white flex-shrink-0">
-        <h2 class="text-lg font-bold flex items-center gap-2"><i class="far fa-bell"></i> Notifications</h2>
-        <button onclick="toggleNotifications()" class="hover:bg-blue-700 p-2 rounded-lg transition"><i class="fas fa-times text-xl"></i></button>
+        <div>
+            <h2 class="text-lg font-bold flex items-center gap-2">
+                <i class="far fa-bell"></i> Notifications
+            </h2>
+            <p id="notifSubtitle" class="text-xs text-blue-100 font-medium">Activity updates</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="NotificationHub.markAllRead('notification-list')" aria-label="Mark all notifications as read" title="Mark all as read" class="hover:bg-blue-700 text-blue-100 hover:text-white p-2 rounded-lg transition text-xs font-bold flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-white">
+                <i class="fas fa-check-double text-sm"></i>
+            </button>
+            <button onclick="toggleNotifications()" aria-label="Close notifications panel" class="hover:bg-blue-700 p-2 rounded-lg transition focus-visible:ring-2 focus-visible:ring-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
     </div>
     <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 no-scrollbar" id="notification-list">
         <div class="flex flex-col items-center justify-center h-full text-slate-400">
@@ -489,7 +513,7 @@ const CURRENT_USER = {
     role:        '<%= user.role %>'
 };
 // All forum data available for client-side operations
-const ALL_FORUMS = <%- JSON.stringify(forums) %>;
+const ALL_FORUMS = <%- JSON.stringify(filteredForumsList) %>;
 </script>
 
 <!-- ══════════════════════════════════════════════════
@@ -506,6 +530,16 @@ let currentReplies   = [];
 // ─── INIT: count badges ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     updateCounts();
+
+    // Deep link handling: redirect to canonical dedicated discussion page
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetForumId = urlParams.get('forum_id');
+    const targetReplyId = urlParams.get('reply_id') || (window.location.hash.startsWith('#reply-') ? window.location.hash.replace('#reply-', '') : null);
+
+    if (targetForumId) {
+        window.location.replace(`/forums/view/${targetForumId}${targetReplyId ? '?reply_id=' + targetReplyId + '#discussion-' + targetReplyId : ''}`);
+        return;
+    }
 });
 
 function updateCounts() {
@@ -540,22 +574,41 @@ function filterBySubject(subjectId, btn) {
         : 'subject-btn w-full flex items-center gap-3 p-3 rounded-xl bg-emerald-50 text-emerald-600 font-bold text-sm transition-all';
 }
 
+function clearSearchInput() {
+    const input = document.getElementById('globalSearch');
+    if (input) {
+        input.value = '';
+        filterForumCards('');
+        input.focus();
+    }
+}
+
 function filterForumCards(query) {
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn) {
+        clearBtn.classList.toggle('hidden', !query || query.trim().length === 0);
+    }
     applyFilters(query);
 }
 
-function applyFilters(query = document.getElementById('globalSearch').value) {
-    const q = query.toLowerCase().trim();
+function applyFilters(query) {
+    const searchInput = document.getElementById('globalSearch');
+    const q = (typeof query === 'string' ? query : (searchInput ? searchInput.value : '')).toLowerCase().trim();
     let visible = 0;
     document.querySelectorAll('.forum-card').forEach(card => {
         const matchSubject = activeSubject === 'all' || card.getAttribute('data-subject') === String(activeSubject);
-        const matchSearch  = !q || card.getAttribute('data-title').includes(q);
+        const cardTitle = (card.getAttribute('data-title') || '').toLowerCase();
+        const cardTopic = (card.getAttribute('data-topic') || '').toLowerCase();
+        const cardContent = (card.getAttribute('data-content') || '').toLowerCase();
+        const matchSearch = !q || cardTitle.includes(q) || cardTopic.includes(q) || cardContent.includes(q);
         const show = matchSubject && matchSearch;
         card.classList.toggle('hidden', !show);
         if (show) visible++;
     });
-    document.getElementById('noResults').classList.toggle('hidden', visible > 0);
-    document.getElementById('forumCountLabel').textContent = `${visible} forum${visible !== 1 ? 's' : ''} shown`;
+    const noResultsEl = document.getElementById('noResults');
+    if (noResultsEl) noResultsEl.classList.toggle('hidden', visible > 0);
+    const countLabel = document.getElementById('forumCountLabel');
+    if (countLabel) countLabel.textContent = `${visible} forum${visible !== 1 ? 's' : ''} shown`;
 }
 
 function sortForums(mode) {
@@ -572,10 +625,36 @@ function sortForums(mode) {
     cards.forEach(c => list.appendChild(c));
 }
 
+function scrollToReply(replyId) {
+    if (!replyId) return;
+    window._pendingTargetReplyId = replyId;
+    let attempts = 0;
+    const interval = setInterval(() => {
+        attempts++;
+        const el = document.getElementById('reply-' + replyId);
+        if (el) {
+            clearInterval(interval);
+            window._pendingTargetReplyId = null;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('ring-4', 'ring-indigo-400', 'bg-indigo-50/90', 'p-3', 'rounded-2xl', 'transition-all');
+            setTimeout(() => {
+                el.classList.remove('ring-4', 'ring-indigo-400', 'bg-indigo-50/90');
+            }, 3500);
+        } else if (attempts > 30) {
+            clearInterval(interval);
+            window._pendingTargetReplyId = null;
+        }
+    }, 150);
+}
+window.scrollToReply = scrollToReply;
+
 // ─── OPEN THREAD MODAL ───────────────────────────────────────────────────────
 async function openThread(forumId) {
     currentForumId = forumId;
     activeParentId = null;
+
+    // Record view asynchronously
+    fetch('/api/forum/' + forumId + '/view', { method: 'POST' }).catch(() => {});
 
     document.getElementById('activeForumId').value = forumId;
     document.getElementById('threadModal').classList.remove('hidden');
@@ -629,10 +708,12 @@ async function loadReplies() {
         renderReplies(data, document.getElementById('replySearch').value);
         updateFilesList(data);
 
-        // After first load, scroll to last reply with animation
+        // After first load, scroll to last reply with animation (unless deep-linking to a specific reply)
         if (container._firstLoad === undefined) {
             container._firstLoad = true;
-            setTimeout(() => scrollToLatest(true), 200);
+            if (!window._pendingTargetReplyId) {
+                setTimeout(() => scrollToLatest(true), 200);
+            }
         }
 
         // Check if student has replied → mark forum done
@@ -804,6 +885,11 @@ function updateFilesList(replies) {
 
 // ─── MARK FORUM DONE ─────────────────────────────────────────────────────────
 async function markForumDone(forumId) {
+    if (!forumId || window._markingDoneInProgress) return;
+    const badgeId = `done-${forumId}`;
+    if (document.getElementById(badgeId)) return; // Already marked done, exit early
+
+    window._markingDoneInProgress = true;
     try {
         await fetch('/api/forum-done', {
             method: 'POST',
@@ -811,9 +897,7 @@ async function markForumDone(forumId) {
             body: JSON.stringify({ forum_id: forumId })
         });
         // Update the card badge in the list
-        const badgeId = `done-${forumId}`;
         if (!document.getElementById(badgeId)) {
-            const card = document.querySelector(`.forum-card[data-subject]`);
             // Find the right card
             const allCards = document.querySelectorAll('.forum-card');
             allCards.forEach(c => {
@@ -829,8 +913,11 @@ async function markForumDone(forumId) {
             });
         }
         // Update modal badge
-        document.getElementById('modalDoneBadge').classList.replace('hidden','inline-flex');
-    } catch (e) { /* silent */ }
+        const modalBadge = document.getElementById('modalDoneBadge');
+        if (modalBadge) modalBadge.classList.replace('hidden','inline-flex');
+    } catch (e) { /* silent */ } finally {
+        window._markingDoneInProgress = false;
+    }
 }
 
 // ─── QUICK REACTIONS ─────────────────────────────────────────────────────────
@@ -1021,43 +1108,19 @@ function formatTimeAgo(dateStr) {
 }
 
 // ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
-async function toggleNotifications() {
+function toggleNotifications() {
     const panel   = document.getElementById('notification-panel');
     const overlay = document.getElementById('notification-overlay');
-    const list    = document.getElementById('notification-list');
+
+    if (!panel || !overlay) return;
 
     if (panel.classList.contains('translate-x-full')) {
         panel.classList.remove('translate-x-full');
         overlay.classList.remove('hidden');
         setTimeout(() => overlay.classList.add('opacity-100'), 10);
-        try {
-            const res   = await fetch('/api/notifications');
-            const notifs = await res.json();
-            list.innerHTML = '';
-            if (!notifs.length) { list.innerHTML = `<div class="flex flex-col items-center justify-center h-64 text-slate-400"><i class="fas fa-check-circle text-4xl mb-2 opacity-20"></i><p>All caught up!</p></div>`; return; }
-            notifs.forEach(n => {
-                const t = formatTimeAgo(n.created_at);
-                const cfgMap = {
-                    announcement: { icon:'fa-bullhorn',  border:'border-blue-500',   badge:'bg-blue-100 text-blue-600',   label:'Announcement' },
-                    assessment:   { icon:'fa-file-alt',  border:'border-red-500',    badge:'bg-red-100 text-red-600',     label:'Assessment'   },
-                    material:     { icon:'fa-book',      border:'border-purple-500', badge:'bg-purple-100 text-purple-600',label:'Material'    },
-                    forum_new:    { icon:'fa-comments',  border:'border-green-500',  badge:'bg-green-100 text-green-600', label:'Forum'        },
-                    forum_reply:  { icon:'fa-comments',  border:'border-green-500',  badge:'bg-green-100 text-green-600', label:'Forum'        },
-                    score:        { icon:'fa-star',      border:'border-yellow-500', badge:'bg-yellow-100 text-yellow-700',label:'Result'      },
-                };
-                const cfg = cfgMap[n.type] || { icon:'fa-info-circle', border:'border-gray-400', badge:'bg-gray-100 text-gray-600', label: n.type };
-                let extra = n.extra_info ? `<span class="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-bold ${n.extra_info.includes('EXP') ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-700'}">${n.extra_info}</span>` : '';
-                list.insertAdjacentHTML('beforeend', `
-                    <div class="bg-white p-3 rounded-lg border-l-4 ${cfg.border} shadow-sm hover:shadow-md transition cursor-pointer">
-                        <div class="flex justify-between items-start mb-1">
-                            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${cfg.badge}"><i class="fas ${cfg.icon} mr-1"></i>${cfg.label}</span>
-                            <span class="text-[10px] text-gray-400">${t}</span>
-                        </div>
-                        <p class="text-sm font-bold text-gray-800 leading-tight">${n.heading}</p>
-                        <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">${n.snippet}</p>${extra}
-                    </div>`);
-            });
-        } catch(e) { list.innerHTML = `<p class="text-center text-red-500 p-4">Failed to load.</p>`; }
+        if (window.NotificationHub) {
+            NotificationHub.loadNotifications('notification-list', false);
+        }
     } else {
         panel.classList.add('translate-x-full');
         overlay.classList.remove('opacity-100');
@@ -1069,26 +1132,40 @@ async function toggleNotifications() {
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const main = document.getElementById('mainContent');
+    const header = document.querySelector('header');
+    
     if (window.innerWidth < 768) {
-        sidebar.classList.toggle('sidebar-collapsed');
         sidebar.classList.toggle('sidebar-open');
+        sidebar.classList.toggle('sidebar-collapsed');
         overlay.classList.toggle('hidden');
     } else {
         sidebar.classList.toggle('sidebar-collapsed');
-        document.getElementById('mainContent').classList.toggle('md:ml-64');
-        document.getElementById('mainContent').classList.toggle('md:ml-0');
+        if (main) main.classList.toggle('sidebar-collapsed-main');
+        if (header) header.classList.toggle('sidebar-collapsed-header');
     }
 }
-function toggleUserMenu(e) { e.stopPropagation(); document.getElementById('userDropdown').classList.toggle('hidden'); }
-document.addEventListener('click', () => {
-    const dd = document.getElementById('userDropdown');
-    if (dd && !dd.classList.contains('hidden')) dd.classList.add('hidden');
-});
-window.addEventListener('resize', () => {
-    const s = document.getElementById('sidebar'), m = document.getElementById('mainContent');
-    if (window.innerWidth >= 768) { s.classList.remove('sidebar-collapsed','sidebar-open'); m.classList.add('md:ml-64'); }
-    else { s.classList.add('sidebar-collapsed'); m.classList.remove('md:ml-64'); }
+function toggleUserMenu(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('userDropdown');
+    const btn = document.getElementById('userMenuBtn');
+    if (!dropdown) return;
+    const isExpanded = !dropdown.classList.contains('hidden');
+    dropdown.classList.toggle('hidden');
+    if (btn) btn.setAttribute('aria-expanded', !isExpanded);
+}
+
+window.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('userDropdown');
+    const btn = document.getElementById('userMenuBtn');
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        if (!dropdown.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            dropdown.classList.add('hidden');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+    }
 });
 </script>
+<script src="/js/notificationHub.js"></script>
 </body>
 </html>

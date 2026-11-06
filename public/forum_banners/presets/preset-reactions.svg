@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-rxn" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#200611" />
+      <stop offset="60%" stop-color="#4c0519" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="curve-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f43f5e" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#bg-rxn)" />
+  
+  <!-- Reaction Energy Diagram Left -->
+  <g transform="translate(100, 80)">
+    <!-- Axes -->
+    <line x1="60" y1="240" x2="480" y2="240" stroke="#fda4af" stroke-width="2.5" opacity="0.6" />
+    <line x1="60" y1="240" x2="60" y2="30" stroke="#fda4af" stroke-width="2.5" opacity="0.6" />
+    <text x="490" y="245" fill="#fda4af" font-family="sans-serif" font-size="11" font-weight="bold">Reaction Coordinate</text>
+    <text x="50" y="20" fill="#fda4af" font-family="sans-serif" font-size="11" font-weight="bold">Potential Energy</text>
+
+    <!-- Uncatalyzed Curve -->
+    <path d="M 60,190 L 140,190 Q 220,20 280,20 Q 340,20 380,210 L 460,210" fill="none" stroke="url(#curve-grad)" stroke-width="4" stroke-linecap="round" />
+    <!-- Catalyzed Curve -->
+    <path d="M 60,190 L 140,190 Q 220,90 280,90 Q 340,90 380,210 L 460,210" fill="none" stroke="#2dd4bf" stroke-width="3" stroke-dasharray="6,4" />
+
+    <!-- Activation Energy Peak Label -->
+    <circle cx="280" cy="20" r="7" fill="#f43f5e" stroke="#fff" stroke-width="2" />
+    <text x="280" y="8" fill="#fff" font-family="sans-serif" font-size="10" font-weight="black" text-anchor="middle">TS ‡</text>
+  </g>
+
+  <!-- Large Equilibrium Arrow Right -->
+  <g transform="translate(740, 190)" fill="#fb7185">
+    <path d="M 0,-25 L 260,-25 L 230,-45 L 280,-20 L 230,5 L 260,-15 L 0,-15 Z" fill="#fda4af" />
+    <path d="M 280,25 L 20,25 L 50,45 L 0,20 L 50,-5 L 20,15 L 280,15 Z" fill="#38bdf8" />
+    <text x="140" y="-35" fill="#fecdd3" font-family="monospace" font-size="14" font-weight="bold" text-anchor="middle">k_forward</text>
+    <text x="140" y="52" fill="#bae6fd" font-family="monospace" font-size="14" font-weight="bold" text-anchor="middle">k_reverse</text>
+  </g>
+</svg>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Hardware & Kiosk Fleet Monitor | Admin Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdfa;
+            background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Nav active state */
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4, #6366f1) !important;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+
+        .glass-card { background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); border: 1px solid #e2e8f0; border-radius: 1.25rem; }
+        .live-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+            animation: livePulse 1.6s infinite;
+            display: inline-block;
+        }
+        @keyframes livePulse {
+            0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+            70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+
+        .offline-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <!-- Mobile overlay -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+    <!-- ===================== ADMIN SIDEBAR ===================== -->
+    <aside id="sidebar" class="bg-indigo-950 text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-800/50">
+        <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+            <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+            <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                Elem<span class="text-white">enta</span>
+            </h1>
+            <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Admin Console</p>
+        </div>
+
+        <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Main Interface</p>
+                <div class="space-y-1">
+                    <a href="/admin/dashboard" class="flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white hover:bg-white/10 group">
+                        <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-bold tracking-tight text-sm">Main Dashboard</span>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Administrative</p>
+                <div class="space-y-1">
+                    <a href="/admin/user_access_control" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-users w-5 text-sky-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">User & Access Control</span>
+                    </a>
+                    <a href="/admin/academic_management" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-graduation-cap w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Academic Management</span>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Learning Assets</p>
+                <div class="space-y-1">
+                    <a href="/admin/gaming_question_bank" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-gamepad w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Gaming & Q-Bank</span>
+                    </a>
+                    <a href="/admin/resources_engagement" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-lightbulb w-5 text-lime-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Resources & Engagement</span>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">System Health</p>
+                <div class="space-y-1">
+                    <a href="/admin/reports_monitoring" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-chart-line w-5 text-blue-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Reports & Monitoring</span>
+                    </a>
+                    <a href="/admin/system_audit" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-fingerprint w-5 text-indigo-300 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">System Audit</span>
+                    </a>
+                    <a href="/admin/arcade-hardware-monitor" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-white group">
+                        <i class="fas fa-server w-5 text-white group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Arcade Fleet Monitor</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-indigo-800">
+            <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+                <i class="fas fa-right-from-bracket w-5"></i> Log Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- ===================== MAIN CONTENT ===================== -->
+    <main class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- Header -->
+        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-40">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">Arcade Hardware & Kiosk Monitor</h2>
+                    <p class="text-xs text-slate-400 hidden sm:block">
+                        <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
+                        Hardware fleet operational &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 md:gap-5">
+                <div class="flex items-center gap-3 pl-3 border-l border-cyan-100">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-[10px] uppercase font-black text-cyan-500 tracking-widest">Administrator</p>
+                    </div>
+                    <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>" class="w-9 h-9 rounded-xl object-cover ring-2 ring-cyan-400" onerror="this.src='/profile_uploads/default_avatar.png'">
+                </div>
+            </div>
+        </header>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto mt-20 no-scrollbar p-4 md:p-8 space-y-6">
+
+            <!-- STATS STRIP -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-card p-5 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Registered Kiosks</p>
+                    <h3 class="text-2xl font-black text-slate-800 mt-1"><%= kiosks ? kiosks.length : 0 %> Cabinets</h3>
+                    <p class="text-[11px] text-emerald-600 font-bold mt-1">
+                        <i class="fas fa-plug-circle-check mr-1"></i> <%= kiosks.filter(k => k.status === 'online').length %> Online
+                    </p>
+                </div>
+                <div class="glass-card p-5 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Customer Attempts</p>
+                    <h3 class="text-2xl font-black text-indigo-600 mt-1"><%= stats.totalAttempts %></h3>
+                    <p class="text-[11px] text-slate-500 font-semibold mt-1">
+                        Avg RT: <strong><%= stats.avgResponseTime %>s</strong>
+                    </p>
+                </div>
+                <div class="glass-card p-5 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Fleet Accuracy Rate</p>
+                    <h3 class="text-2xl font-black text-cyan-600 mt-1"><%= stats.fleetAccuracy %>%</h3>
+                    <p class="text-[11px] text-rose-500 font-bold mt-1">
+                        <i class="fas fa-stopwatch mr-1"></i> <%= stats.totalTimeouts %> Timeouts
+                    </p>
+                </div>
+                <div class="glass-card p-5 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Unique Cadets Served</p>
+                    <h3 class="text-2xl font-black text-emerald-600 mt-1"><%= stats.totalStudents %></h3>
+                    <p class="text-[11px] text-slate-500 font-semibold mt-1">Across all districts</p>
+                </div>
+            </div>
+
+            <!-- KIOSK CABINET HARDWARE FLEET GRID -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-display text-cyan-500"></i>
+                        Cabinet Hardware Status & Sensor Diagnostics
+                    </h3>
+                    <span class="text-xs text-slate-400 font-semibold">Auto-refreshed via Godot WebSocket/Heartbeat</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <% kiosks.forEach(k => { 
+                        const isOnline = k.status === 'online';
+                    %>
+                        <div class="glass-card p-5 border <%= isOnline ? 'border-emerald-200' : 'border-slate-200' %> flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="<%= isOnline ? 'live-dot' : 'offline-dot' %>"></span>
+                                        <h4 class="text-base font-extrabold text-slate-800"><%= k.cabinet_id %></h4>
+                                    </div>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase <%= isOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600' %>">
+                                        <%= k.status %>
+                                    </span>
+                                </div>
+
+                                <div class="space-y-2 text-xs text-slate-600">
+                                    <div class="flex justify-between py-1 border-b border-slate-100">
+                                        <span class="text-slate-400">Cabinet Location:</span>
+                                        <span class="font-bold text-slate-700"><%= k.location || 'Science Hall A' %></span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-100">
+                                        <span class="text-slate-400">IP / Network Address:</span>
+                                        <span class="font-mono text-slate-700"><%= k.ip_address || '127.0.0.1' %></span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-100">
+                                        <span class="text-slate-400">TekLead USB HID Scanner:</span>
+                                        <span class="font-bold text-emerald-600"><i class="fas fa-barcode mr-1"></i> Ready (HID Mode)</span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-100">
+                                        <span class="text-slate-400">GPIO Dial Bounce Rate:</span>
+                                        <span class="font-mono font-bold text-slate-700"><%= k.gpio_bounce_rate || 0.02 %>% (Nominal)</span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-100">
+                                        <span class="text-slate-400">Offline Spool Queue:</span>
+                                        <span class="font-bold <%= k.spool_queue_count > 0 ? 'text-amber-600' : 'text-slate-700' %>">
+                                            <%= k.spool_queue_count || 0 %> records
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between py-1">
+                                        <span class="text-slate-400">Last Telemetry Heartbeat:</span>
+                                        <span class="font-semibold text-slate-500">
+                                            <%= k.last_heartbeat ? new Date(k.last_heartbeat).toLocaleTimeString() : 'Never' %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between">
+                                <span class="text-[10px] font-mono text-slate-400">App v<%= k.app_version || '1.4.0' %></span>
+                                <button onclick="alert('Ping packet dispatched to <%= k.cabinet_id %>')" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition">
+                                    <i class="fas fa-arrows-rotate mr-1"></i> Ping Check
+                                </button>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+
+            <!-- QUESTION BANK PSYCHOMETRICS: ITEM DIFFICULTY (P) & DISCRIMINATION (D) -->
+            <div class="glass-card overflow-hidden">
+                <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
+                            <i class="fas fa-chart-pie text-indigo-500"></i>
+                            Question Bank Psychometrics & Item Discrimination
+                        </h3>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">
+                            Classical Test Theory (CTT) item difficulty index $P$ and item discrimination index $D$ computed from arcade gameplay.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                <th class="py-3 px-5">Item / Customer Prompt</th>
+                                <th class="py-3 px-4">Level</th>
+                                <th class="py-3 px-4">Machine Station</th>
+                                <th class="py-3 px-4 text-center">Attempts</th>
+                                <th class="py-3 px-4 text-center">Difficulty ($P$)</th>
+                                <th class="py-3 px-4 text-center">Discrimination ($D$)</th>
+                                <th class="py-3 px-5">Psychometric Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <% if (itemPsychometrics && itemPsychometrics.length > 0) { %>
+                                <% itemPsychometrics.forEach(item => { %>
+                                    <tr class="hover:bg-slate-50 transition">
+                                        <td class="py-3.5 px-5 font-semibold text-slate-800 max-w-xs truncate" title="<%= item.prompt %>">
+                                            <%= item.prompt || 'Customer Order ' + item.id %>
+                                        </td>
+                                        <td class="py-3.5 px-4 font-bold text-slate-600">L<%= item.level %></td>
+                                        <td class="py-3.5 px-4 font-semibold text-slate-600"><%= item.machine %></td>
+                                        <td class="py-3.5 px-4 text-center font-mono font-bold text-slate-700"><%= item.attempts %></td>
+                                        <td class="py-3.5 px-4 text-center font-mono font-black <%= item.difficultyP < 0.3 ? 'text-rose-600' : (item.difficultyP > 0.85 ? 'text-blue-600' : 'text-emerald-600') %>">
+                                            <%= item.difficultyP %>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-center font-mono font-black <%= item.discriminationD >= 0.3 ? 'text-emerald-600' : 'text-amber-600' %>">
+                                            <%= item.discriminationD %>
+                                        </td>
+                                        <td class="py-3.5 px-5">
+                                            <% if (item.status === 'Optimal') { %>
+                                                <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+                                                    Optimal Item
+                                                </span>
+                                            <% } else if (item.status.includes('Difficult')) { %>
+                                                <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800">
+                                                    <%= item.status %>
+                                                </span>
+                                            <% } else { %>
+                                                <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800">
+                                                    <%= item.status %>
+                                                </span>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="py-10 text-center text-slate-400 font-semibold">
+                                        No item psychometric rows calculated yet (requires min 3 attempts per item).
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RECENT ARCADE RECONCILIATIONS -->
+            <div class="glass-card overflow-hidden">
+                <div class="p-5 border-b border-slate-200">
+                    <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-clock-rotate-left text-cyan-500"></i>
+                        Recent Arcade Session Reconciliations & Gradebook Ingestion
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                <th class="py-3 px-5">Session ID</th>
+                                <th class="py-3 px-4">Cadet</th>
+                                <th class="py-3 px-4">Cabinet</th>
+                                <th class="py-3 px-4">Game Mode</th>
+                                <th class="py-3 px-4 text-center">Score</th>
+                                <th class="py-3 px-4 text-center">Gradebook Sync</th>
+                                <th class="py-3 px-5 text-right">Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <% if (recentSessions && recentSessions.length > 0) { %>
+                                <% recentSessions.forEach(s => { %>
+                                    <tr class="hover:bg-slate-50 transition">
+                                        <td class="py-3.5 px-5 font-mono font-bold text-slate-700">#<%= s.session_id %></td>
+                                        <td class="py-3.5 px-4 font-bold text-slate-800"><%= s.p1_name || 'Cadet #' + s.student_id_p1 %></td>
+                                        <td class="py-3.5 px-4 font-semibold text-slate-600"><%= s.cabinet_id || 'KIOSK-01' %></td>
+                                        <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700"><%= s.play_mode || s.game_mode || 'Solo' %></span></td>
+                                        <td class="py-3.5 px-4 text-center font-black text-cyan-700"><%= (s.final_score_p1 !== undefined ? s.final_score_p1 : s.final_score) || 0 %> PTS</td>
+                                        <td class="py-3.5 px-4 text-center">
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                                                <i class="fas fa-check-double"></i> Synced
+                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-5 text-right text-slate-400 font-mono">
+                                            <%= new Date(s.started_at || s.played_at || Date.now()).toLocaleString() %>
+                                        </td>
+
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="py-8 text-center text-slate-400">No session reconciliations found.</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    sb.classList.toggle('-translate-x-full');
+    ov.classList.toggle('hidden');
+}
+</script>
+<!-- Elementa Session Security Modals & Client Guardian Controller -->
+<%- include('../partials/session-modals') %>
+<script src="/js/session-guard.js"></script>
+
+</body>
+</html>

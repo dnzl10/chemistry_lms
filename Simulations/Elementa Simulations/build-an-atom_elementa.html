@@ -1,0 +1,3170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Build an Atom | Elementa LMS Edition</title>
+  <style>
+    :root {
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --topbar-height: 58px;
+      --tabs-height: 48px;
+      --bg-space: #070b14;
+      --bg-surface: #0f172a;
+      --bg-panel: rgba(15, 23, 42, 0.8);
+      --bg-panel-solid: #1e293b;
+      --bg-bucket: rgba(15, 23, 42, 0.92);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.4);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --secondary: #818cf8;
+      --accent: #22d3ee;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --topbar-height: 54px;
+      --tabs-height: 44px;
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "Fira Code", Menlo, Monaco, Consolas, "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TOPBAR: EXACT REPLICA OF acid-base-solutions_elementa.html */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      background: linear-gradient(135deg, #e0f2fe 0%, #38bdf8 60%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Mode Selector Pills */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+
+    .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* Top Action Buttons */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    .action-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* SECONDARY SCREENS NAV */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .screen-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .screen-tab-btn.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #7dd3fc;
+    }
+
+    .screen-tab-number {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: var(--text-main);
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .equation-banner-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-card);
+      padding: 4px 14px;
+      border-radius: 20px;
+      color: var(--text-muted);
+    }
+
+    /* MAIN APP WORKSPACE */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* SECTIONS: SIM / MISSIONS / QUIZ / THEORY */
+    .app-view-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .app-view-container.active {
+      display: flex;
+    }
+
+    /* SIMULATION WORKSPACE LAYOUT */
+    .sim-layout {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: row;
+      background: radial-gradient(circle at 45% 45%, #0c1426 0%, #070b14 100%);
+      position: relative;
+    }
+
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #atomCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* RIGHT SIDEBAR CONTROL PANEL */
+    aside.simulation-sidebar {
+      width: 440px;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.96);
+      border-left: 1px solid var(--border-card);
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(14px);
+      z-index: 20;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* FULL 118-ELEMENT PERIODIC TABLE MATRIX */
+    .ptable-outer-wrapper {
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ptable-grid-118 {
+      display: grid;
+      grid-template-columns: repeat(18, 1fr);
+      gap: 2px;
+      width: 100%;
+    }
+
+    .ptable-f-block-grid {
+      display: grid;
+      grid-template-columns: repeat(18, 1fr);
+      gap: 2px;
+      width: 100%;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+
+    .ptable-cell {
+      aspect-ratio: 1 / 1;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.58rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.12s ease;
+      line-height: 1;
+      position: relative;
+    }
+
+    .ptable-cell.empty {
+      background: transparent;
+      border-color: transparent;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .ptable-cell:hover:not(.empty) {
+      background: rgba(56, 189, 248, 0.25);
+      color: #fff;
+      border-color: #38bdf8;
+      transform: scale(1.2);
+      z-index: 5;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+    }
+
+    .ptable-cell.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      transform: scale(1.25);
+      z-index: 10;
+    }
+
+    .ptable-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      padding: 4px 2px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .legend-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    /* Big Symbol Notation Card (Nuclide / Isotope Badge) */
+    .symbol-card {
+      background: rgba(10, 15, 28, 0.8);
+      border: 2px solid rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .symbol-inner-box {
+      width: 140px;
+      height: 140px;
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .sym-element-letter {
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      font-family: var(--font-body);
+    }
+
+    .sym-atomic-number {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ef4444; /* Protons */
+      font-family: var(--font-mono);
+    }
+
+    .sym-mass-number {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+    }
+
+    .sym-net-charge {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+    }
+
+    .sym-net-charge.pos { color: #ef4444; }
+    .sym-net-charge.neg { color: #38bdf8; }
+    .sym-net-charge.zero { color: #94a3b8; }
+
+    /* Meters & Status Bars */
+    .metric-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+    }
+
+    .metric-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .metric-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .status-pill {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .status-pill.stable {
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.4);
+    }
+
+    .status-pill.unstable {
+      background: rgba(248, 113, 113, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.4);
+    }
+
+    .status-pill.neutral {
+      background: rgba(148, 163, 184, 0.15);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    .status-pill.ion-pos {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .status-pill.ion-neg {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    /* BOTTOM PARTICLE DISPENSER BUCKETS */
+    .particle-dispensers-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 20px;
+      display: flex;
+      gap: 16px;
+      z-index: 15;
+    }
+
+    .bucket-card {
+      background: var(--bg-bucket);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      min-width: 110px;
+    }
+
+    .bucket-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .bucket-orb-interactive {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      cursor: grab;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      transition: transform 0.15s ease;
+    }
+
+    .bucket-orb-interactive:active {
+      cursor: grabbing;
+      transform: scale(0.92);
+    }
+
+    .bucket-count {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .bucket-btn-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .bucket-stepper-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bucket-stepper-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* TOP VIEW CONTROLS & CHECKBOXES */
+    .top-bench-options {
+      position: absolute;
+      top: 14px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      padding: 6px 14px;
+      border-radius: 10px;
+      backdrop-filter: blur(8px);
+      z-index: 15;
+    }
+
+    .bench-opt-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .bench-opt-toggle input {
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    .model-selector-pills {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px;
+      border-radius: 6px;
+      gap: 2px;
+    }
+
+    .model-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .model-pill-btn.active {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    /* DOCUMENT SCROLLER FOR MISSIONS, QUIZ, THEORY */
+    .document-page-scroll {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 30px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .doc-hero {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .doc-hero-text h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .doc-hero-text p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    /* MISSIONS GRID */
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .mission-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .mission-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mission-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mission-status-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+    }
+
+    .mission-card.completed .mission-status-pill {
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+    }
+
+    .mission-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .mission-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .mission-jump-btn {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .mission-jump-btn:hover {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    /* QUIZ QUESTION CARDS */
+    .quiz-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quiz-q-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-opt-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-opt-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .quiz-opt-btn.correct {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #34d399;
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .quiz-opt-btn.wrong {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    .quiz-opt-marker {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-explanation {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 3px solid #38bdf8;
+      color: #cbd5e1;
+      display: none;
+    }
+
+    .quiz-explanation.visible {
+      display: block;
+    }
+
+    .quiz-score-banner {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* THEORY ARTICLE CARDS */
+    .theory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-content {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .theory-formula-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #7dd3fc;
+      margin-top: 6px;
+    }
+
+    /* GAME CHALLENGE STAGE (Screen 3: Interactive Periodic Game) */
+    .game-viewport {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+
+    .game-challenge-card {
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px solid rgba(56, 189, 248, 0.4);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 650px;
+      width: 100%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .game-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .game-score-badge {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .game-challenge-prompt {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f8fafc;
+      text-align: center;
+    }
+
+    .game-answers-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .game-choice-btn {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 14px;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .game-choice-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+    }
+
+    /* CERTIFICATE MODAL */
+    .cert-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 250;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cert-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+      border: 2px solid rgba(234, 179, 8, 0.5);
+      border-radius: 20px;
+      padding: 36px 44px;
+      max-width: 600px;
+      width: 90vw;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(234, 179, 8, 0.25);
+      position: relative;
+    }
+
+    .cert-seal {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+      color: #fff;
+    }
+
+    .cert-h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .cert-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .cert-name-slot {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #38bdf8;
+      border-bottom: 1px dashed rgba(56, 189, 248, 0.4);
+      padding-bottom: 6px;
+      margin: 0 auto 20px;
+      max-width: 380px;
+    }
+
+    .cert-details {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .cert-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+    }
+  
+    /* Standard Sleek Elementa Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  
+    /* ==========================================================================
+       ELEMENTA STANDARD MODALS (acid-base-solutions baseline)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    .modal-backdrop .document-page-scroll {
+      height: auto !important;
+      overflow-y: visible !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+    .modal-backdrop .doc-hero {
+      margin-bottom: 16px !important;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- LMS TOPBAR: EXACTLY MATCHING acid-base-solutions_elementa.html -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(30 12 12)"></ellipse>
+            <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-30 12 12)"></ellipse>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Atomic Structure & Isotopes</span>
+        <span>›</span>
+        <span class="current">Build an Atom</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- SECONDARY SCREENS NAVIGATION -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenAtom" onclick="switchSimScreen('atom')">
+        <span class="screen-tab-number">1</span>
+        Atom Builder
+      </button>
+      <button class="screen-tab-btn" id="tabScreenSymbol" onclick="switchSimScreen('symbol')">
+        <span class="screen-tab-number">2</span>
+        Symbol & Isotope Notation
+      </button>
+      <button class="screen-tab-btn" id="tabScreenGame" onclick="switchSimScreen('game')">
+        <span class="screen-tab-number">3</span>
+        Subatomic Challenge Game
+      </button>
+    </div>
+
+    <!-- Live Element Identification Banner -->
+    <div class="equation-banner-strip" id="equationBanner">
+      <span style="color:#7dd3fc; font-weight:700;">Element:</span>
+      <span id="screenStatusElement">Hydrogen (¹H) — Neutral Atom</span>
+    </div>
+  </nav>
+
+  <!-- WORKSPACE BODY -->
+  <main class="simulation-workspace">
+
+    <!-- VIEW 1: SIMULATION LAB (Atom & Symbol Screens) -->
+    <div class="app-view-container active" id="viewSim">
+      <div class="sim-layout" id="simLayoutMain">
+        <!-- Interactive Canvas Viewport -->
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="atomCanvas"></canvas>
+
+          <!-- Top Bench Options (Bohr vs Cloud, Show element / stable) -->
+          <div class="top-bench-options">
+            <div class="model-selector-pills">
+              <button class="model-pill-btn active" id="btnModelBohr" onclick="setModelType('bohr')">Bohr Model (Orbits)</button>
+              <button class="model-pill-btn" id="btnModelCloud" onclick="setModelType('cloud')">Electron Cloud</button>
+            </div>
+
+            <label class="bench-opt-toggle">
+              <input type="checkbox" id="chkShowElement" checked onchange="toggleOpt('element')">
+              <span>Show Element</span>
+            </label>
+
+            <label class="bench-opt-toggle">
+              <input type="checkbox" id="chkShowNeutral" checked onchange="toggleOpt('neutral')">
+              <span>Neutral / Ion</span>
+            </label>
+
+            <label class="bench-opt-toggle">
+              <input type="checkbox" id="chkShowStability" checked onchange="toggleOpt('stability')">
+              <span>Stable / Unstable</span>
+            </label>
+          </div>
+
+          <!-- Bottom Particle Dispenser Buckets (Protons, Neutrons, Electrons) -->
+          <div class="particle-dispensers-dock">
+            <!-- Protons Bucket -->
+            <div class="bucket-card">
+              <span class="bucket-label" style="color:#f87171;">Protons (p⁺)</span>
+              <div class="bucket-orb-interactive" style="background:#ef4444; color:#fff;" id="dispenserProton" title="Drag or click to add Protons">
+                +
+              </div>
+              <div class="bucket-count" id="countProtons">0</div>
+              <div class="bucket-btn-row">
+                <button class="bucket-stepper-btn" onclick="addParticle('proton', -1)">−</button>
+                <button class="bucket-stepper-btn" onclick="addParticle('proton', 1)">+</button>
+              </div>
+            </div>
+
+            <!-- Neutrons Bucket -->
+            <div class="bucket-card">
+              <span class="bucket-label" style="color:#94a3b8;">Neutrons (n⁰)</span>
+              <div class="bucket-orb-interactive" style="background:#64748b; color:#fff;" id="dispenserNeutron" title="Drag or click to add Neutrons">
+                0
+              </div>
+              <div class="bucket-count" id="countNeutrons">0</div>
+              <div class="bucket-btn-row">
+                <button class="bucket-stepper-btn" onclick="addParticle('neutron', -1)">−</button>
+                <button class="bucket-stepper-btn" onclick="addParticle('neutron', 1)">+</button>
+              </div>
+            </div>
+
+            <!-- Electrons Bucket -->
+            <div class="bucket-card">
+              <span class="bucket-label" style="color:#38bdf8;">Electrons (e⁻)</span>
+              <div class="bucket-orb-interactive" style="background:#0284c7; color:#fff;" id="dispenserElectron" title="Drag or click to add Electrons">
+                −
+              </div>
+              <div class="bucket-count" id="countElectrons">0</div>
+              <div class="bucket-btn-row">
+                <button class="bucket-stepper-btn" onclick="addParticle('electron', -1)">−</button>
+                <button class="bucket-stepper-btn" onclick="addParticle('electron', 1)">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Diagnostic Sidebar -->
+        <aside class="simulation-sidebar">
+          <!-- Section 1: Complete 118 Elements Periodic Table Navigator -->
+          <div class="sidebar-section">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+              Periodic Table of Elements (1 to 118)
+            </div>
+            <div class="ptable-outer-wrapper">
+              <div class="ptable-grid-118" id="ptableGrid118">
+                <!-- Dynamically populated periods 1 to 7 -->
+              </div>
+              <div class="ptable-f-block-grid" id="ptableGridFBlock">
+                <!-- Dynamically populated Lanthanides and Actinides -->
+              </div>
+            </div>
+            <div class="ptable-legend">
+              <div class="legend-item"><span class="legend-dot" style="background:#38bdf8;"></span>Nonmetal</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#a855f7;"></span>Noble Gas</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span>Alkali Metal</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span>Transition</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span>Lanthanide/Actinide</div>
+            </div>
+          </div>
+
+          <!-- Section 2: Big Nuclide Symbol Notation -->
+          <div class="sidebar-section">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              Isotope & Nuclide Symbol
+            </div>
+            <div class="symbol-card">
+              <div class="symbol-inner-box">
+                <span class="sym-mass-number" id="boxMassNumber">1</span>
+                <span class="sym-element-letter" id="boxElementSymbol">H</span>
+                <span class="sym-atomic-number" id="boxAtomicNumber">1</span>
+                <span class="sym-net-charge zero" id="boxNetCharge">0</span>
+              </div>
+              <div style="font-size:0.95rem; font-weight:700; color:#38bdf8; margin-top:8px;" id="boxElementName">Hydrogen</div>
+            </div>
+          </div>
+
+          <!-- Section 3: Subatomic Particle Balances -->
+          <div class="sidebar-section">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              Nuclear & Charge Metrics
+            </div>
+
+            <div class="metric-row">
+              <div class="metric-label">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444;"></span>
+                Net Charge
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="metric-value" id="valNetCharge">0</span>
+                <span class="status-pill neutral" id="pillChargeState">Neutral Atom</span>
+              </div>
+            </div>
+
+            <div class="metric-row">
+              <div class="metric-label">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#f8fafc;"></span>
+                Mass Number
+              </div>
+              <div class="metric-value" id="valMassNumber">1</div>
+            </div>
+
+            <div class="metric-row">
+              <div class="metric-label">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#34d399;"></span>
+                Nuclear Stability
+              </div>
+              <span class="status-pill stable" id="pillStability">Stable</span>
+            </div>
+
+            <div class="metric-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
+              <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                <div class="metric-label">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#0284c7;"></span>
+                  Electron Configuration
+                </div>
+                <span class="status-pill" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-family:var(--font-mono); font-size:0.75rem; text-transform:none;" id="valConfigCondensed">1s¹</span>
+              </div>
+              <div style="font-size:0.75rem; color:#94a3b8; font-family:var(--font-mono); width:100%; text-align:right;" id="valElectronShells">Shells: 1</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- Screen 3: Challenge Game Viewport (Active when screen === 'game') -->
+      <div class="game-viewport" id="gameViewport" style="display:none;">
+        <div class="game-challenge-card">
+          <div class="game-card-header">
+            <div>
+              <span style="font-size:0.75rem; text-transform:uppercase; color:var(--text-dim); letter-spacing:0.05em;">Game Mode</span>
+              <h2 style="font-size:1.15rem; color:#f8fafc; font-weight:800;" id="gameLevelTitle">Level 1: Find the Element</h2>
+            </div>
+            <div class="game-score-badge" id="gameScoreBadge">Score: 0 / 5</div>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:20px; display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div class="game-challenge-prompt" id="gameChallengePrompt">
+              An atom has 6 protons, 6 neutrons, and 6 electrons. Which element is it?
+            </div>
+            <div id="gamePromptSymbolBadge" style="display:none;"></div>
+          </div>
+
+          <div class="game-answers-grid" id="gameChoicesGrid">
+            <!-- Dynamically populated 4 multiple-choice answers -->
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.8rem; color:var(--text-muted);" id="gameFeedbackText">Select the correct answer above</span>
+            <button class="action-btn" onclick="nextGameChallenge()">Next Question ➔</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- VIEW 2: GUIDED MISSIONS -->
+    <div class="app-view-container" id="viewMissions">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Atomic Architecture Guided Missions</h1>
+            <p>Construct isotopes, ions, and noble gases by balancing nuclear strong forces and Coulomb electrostatic attractions.</p>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 1.8rem; font-weight: 800; color: #38bdf8;" id="missionProgressRatio">0 / 5</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Missions Cleared</div>
+          </div>
+        </div>
+
+        <div class="mission-grid" id="missionGridContainer">
+          <!-- Dynamic Mission Cards -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- VIEW 3: ASSESSMENT QUIZ -->
+    <div class="app-view-container" id="viewQuiz">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Subatomic Physics & Chemistry Assessment</h1>
+            <p>Test your understanding of atomic number, mass number, isotopes, ions, and quantized Bohr electron configurations.</p>
+          </div>
+          <div>
+            <button class="cert-btn" id="btnCertificateTrigger" style="display:none;" onclick="openCertificate()">
+              🏆 View Certificate
+            </button>
+          </div>
+        </div>
+
+        <div class="quiz-score-banner">
+          <div>
+            <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted);">Current Evaluation</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #f8fafc;" id="quizStatusText">0 of 5 Questions Answered</div>
+          </div>
+          <button class="action-btn" onclick="resetQuiz()">Reset Quiz</button>
+        </div>
+
+        <div id="quizContainer" style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Dynamic Quiz Questions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- VIEW 4: THEORY & FORMULAS -->
+    <div class="app-view-container" id="viewTheory">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Subatomic Physics & Atomic Theory</h1>
+            <p>Essential laws governing nuclear stability, isotopic composition, Coulomb electrostatic interactions, and quantum energy shells.</p>
+          </div>
+        </div>
+
+        <div class="theory-grid">
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              Atomic Number (Z) & Identity
+            </div>
+            <div class="theory-content">
+              The atomic number (Z) equals the number of protons in an atom's nucleus. It uniquely defines the chemical identity of the element.
+              No two elements possess the same number of protons across all 118 recognized elements.
+            </div>
+            <div class="theory-formula-box">
+              Element Identity = Z = Number of Protons (1 to 118)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><circle cx="19" cy="6" r="2"></circle><circle cx="5" cy="18" r="2"></circle></svg>
+              Mass Number (A) & Isotopes
+            </div>
+            <div class="theory-content">
+              Protons and neutrons each have an approximate atomic mass of 1 u. The total mass number (A) is the sum of protons and neutrons.
+              Isotopes are atoms of the same element with different numbers of neutrons (e.g., ¹H, ²H deuterium, ³H tritium, ²³⁵U vs ²³⁸U).
+            </div>
+            <div class="theory-formula-box">
+              A = Z + N &nbsp;|&nbsp; Neutrons = A − Z
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              Net Charge & Ionization
+            </div>
+            <div class="theory-content">
+              Protons carry a +1 fundamental charge, electrons carry −1, and neutrons are electrically neutral.
+              When protons equal electrons, the atom is neutral. If electrons are lost, a positive cation forms; if electrons are gained, a negative anion forms.
+            </div>
+            <div class="theory-formula-box">
+              Net Charge = Protons − Electrons
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(45 12 12)"></ellipse><circle cx="12" cy="12" r="3"></circle></svg>
+              Bohr Electron Energy Shells
+            </div>
+            <div class="theory-content">
+              Electrons occupy discrete quantized energy levels around the nucleus. The maximum capacity for energy level n is given by 2n²:
+              <br><br>
+              • <strong>Shell 1 (n=1):</strong> Max 2 electrons<br>
+              • <strong>Shell 2 (n=2):</strong> Max 8 electrons<br>
+              • <strong>Shell 3 (n=3):</strong> Holds up to 18 electrons<br>
+              • <strong>Shell 4 (n=4):</strong> Holds up to 32 electrons
+            </div>
+            <div class="theory-formula-box">
+              Max Electrons per Shell = 2n² &nbsp;(2, 8, 18, 32)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- CERTIFICATE MODAL -->
+  <div class="cert-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div class="cert-seal">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h1 class="cert-h1">Certificate of Atomic Physics Mastery</h1>
+      <p class="cert-sub">Elementa Interactive Subatomic Architecture Lab</p>
+      <div class="cert-name-slot">Scholar of Atomic Structure</div>
+      <p class="cert-details">
+        Has successfully demonstrated consummate competence across all 118 elements in nuclear particle composition, 
+        isotopic stability, Coulomb net charge balancing, and quantized Bohr electron shell configuration.
+      </p>
+      <button class="cert-btn" onclick="closeCertificate()">Return to Laboratory</button>
+    </div>
+  </div>
+
+  <!-- EMBEDDED JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    /* =========================================================================
+       AUDIO SYNTHESIZER (Web Audio API)
+       ========================================================================= */
+    class AtomAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+      }
+
+      playProtonAdd() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(350, now);
+        osc.frequency.exponentialRampToValueAtTime(700, now + 0.08);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      playNeutronAdd() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(320, now + 0.09);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      }
+
+      playElectronAdd() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(1400, now + 0.07);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.07);
+      }
+
+      playRemove() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.09);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      }
+
+      playSuccess() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const now = this.ctx.currentTime + idx * 0.08;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        });
+      }
+    }
+
+    const atomAudio = new AtomAudioEngine();
+
+    function toggleAudio() {
+      atomAudio.enabled = !atomAudio.enabled;
+      const btn = document.getElementById('btnSoundToggle');
+      if (atomAudio.enabled) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+
+    
+    /* =========================================================================
+       COMPLETE IUPAC ELECTRON CONFIGURATIONS (Z = 1 to 118)
+       ========================================================================= */
+// Complete, accurate electron configuration mapping for all 118 elements
+const ELECTRON_CONFIGS_118 = {
+  1: { full: "1s¹", condensed: "1s¹", shells: [1] },
+  2: { full: "1s²", condensed: "1s²", shells: [2] },
+  3: { full: "1s² 2s¹", condensed: "[He] 2s¹", shells: [2, 1] },
+  4: { full: "1s² 2s²", condensed: "[He] 2s²", shells: [2, 2] },
+  5: { full: "1s² 2s² 2p¹", condensed: "[He] 2s² 2p¹", shells: [2, 3] },
+  6: { full: "1s² 2s² 2p²", condensed: "[He] 2s² 2p²", shells: [2, 4] },
+  7: { full: "1s² 2s² 2p³", condensed: "[He] 2s² 2p³", shells: [2, 5] },
+  8: { full: "1s² 2s² 2p⁴", condensed: "[He] 2s² 2p⁴", shells: [2, 6] },
+  9: { full: "1s² 2s² 2p⁵", condensed: "[He] 2s² 2p⁵", shells: [2, 7] },
+  10: { full: "1s² 2s² 2p⁶", condensed: "[He] 2s² 2p⁶", shells: [2, 8] },
+  11: { full: "1s² 2s² 2p⁶ 3s¹", condensed: "[Ne] 3s¹", shells: [2, 8, 1] },
+  12: { full: "1s² 2s² 2p⁶ 3s²", condensed: "[Ne] 3s²", shells: [2, 8, 2] },
+  13: { full: "1s² 2s² 2p⁶ 3s² 3p¹", condensed: "[Ne] 3s² 3p¹", shells: [2, 8, 3] },
+  14: { full: "1s² 2s² 2p⁶ 3s² 3p²", condensed: "[Ne] 3s² 3p²", shells: [2, 8, 4] },
+  15: { full: "1s² 2s² 2p⁶ 3s² 3p³", condensed: "[Ne] 3s² 3p³", shells: [2, 8, 5] },
+  16: { full: "1s² 2s² 2p⁶ 3s² 3p⁴", condensed: "[Ne] 3s² 3p⁴", shells: [2, 8, 6] },
+  17: { full: "1s² 2s² 2p⁶ 3s² 3p⁵", condensed: "[Ne] 3s² 3p⁵", shells: [2, 8, 7] },
+  18: { full: "1s² 2s² 2p⁶ 3s² 3p⁶", condensed: "[Ne] 3s² 3p⁶", shells: [2, 8, 8] },
+  19: { full: "1s² 2s² 2p⁶ 3s² 3p⁶ 4s¹", condensed: "[Ar] 4s¹", shells: [2, 8, 8, 1] },
+  20: { full: "1s² 2s² 2p⁶ 3s² 3p⁶ 4s²", condensed: "[Ar] 4s²", shells: [2, 8, 8, 2] },
+  21: { full: "[Ar] 3d¹ 4s²", condensed: "[Ar] 3d¹ 4s²", shells: [2, 8, 9, 2] },
+  22: { full: "[Ar] 3d² 4s²", condensed: "[Ar] 3d² 4s²", shells: [2, 8, 10, 2] },
+  23: { full: "[Ar] 3d³ 4s²", condensed: "[Ar] 3d³ 4s²", shells: [2, 8, 11, 2] },
+  24: { full: "[Ar] 3d⁵ 4s¹", condensed: "[Ar] 3d⁵ 4s¹", shells: [2, 8, 13, 1] },
+  25: { full: "[Ar] 3d⁵ 4s²", condensed: "[Ar] 3d⁵ 4s²", shells: [2, 8, 13, 2] },
+  26: { full: "[Ar] 3d⁶ 4s²", condensed: "[Ar] 3d⁶ 4s²", shells: [2, 8, 14, 2] },
+  27: { full: "[Ar] 3d⁷ 4s²", condensed: "[Ar] 3d⁷ 4s²", shells: [2, 8, 15, 2] },
+  28: { full: "[Ar] 3d⁸ 4s²", condensed: "[Ar] 3d⁸ 4s²", shells: [2, 8, 16, 2] },
+  29: { full: "[Ar] 3d¹⁰ 4s¹", condensed: "[Ar] 3d¹⁰ 4s¹", shells: [2, 8, 18, 1] },
+  30: { full: "[Ar] 3d¹⁰ 4s²", condensed: "[Ar] 3d¹⁰ 4s²", shells: [2, 8, 18, 2] },
+  31: { full: "[Ar] 3d¹⁰ 4s² 4p¹", condensed: "[Ar] 3d¹⁰ 4s² 4p¹", shells: [2, 8, 18, 3] },
+  32: { full: "[Ar] 3d¹⁰ 4s² 4p²", condensed: "[Ar] 3d¹⁰ 4s² 4p²", shells: [2, 8, 18, 4] },
+  33: { full: "[Ar] 3d¹⁰ 4s² 4p³", condensed: "[Ar] 3d¹⁰ 4s² 4p³", shells: [2, 8, 18, 5] },
+  34: { full: "[Ar] 3d¹⁰ 4s² 4p⁴", condensed: "[Ar] 3d¹⁰ 4s² 4p⁴", shells: [2, 8, 18, 6] },
+  35: { full: "[Ar] 3d¹⁰ 4s² 4p⁵", condensed: "[Ar] 3d¹⁰ 4s² 4p⁵", shells: [2, 8, 18, 7] },
+  36: { full: "[Ar] 3d¹⁰ 4s² 4p⁶", condensed: "[Ar] 3d¹⁰ 4s² 4p⁶", shells: [2, 8, 18, 8] },
+  37: { full: "[Kr] 5s¹", condensed: "[Kr] 5s¹", shells: [2, 8, 18, 8, 1] },
+  38: { full: "[Kr] 5s²", condensed: "[Kr] 5s²", shells: [2, 8, 18, 8, 2] },
+  39: { full: "[Kr] 4d¹ 5s²", condensed: "[Kr] 4d¹ 5s²", shells: [2, 8, 18, 9, 2] },
+  40: { full: "[Kr] 4d² 5s²", condensed: "[Kr] 4d² 5s²", shells: [2, 8, 18, 10, 2] },
+  41: { full: "[Kr] 4d⁴ 5s¹", condensed: "[Kr] 4d⁴ 5s¹", shells: [2, 8, 18, 12, 1] },
+  42: { full: "[Kr] 4d⁵ 5s¹", condensed: "[Kr] 4d⁵ 5s¹", shells: [2, 8, 18, 13, 1] },
+  43: { full: "[Kr] 4d⁵ 5s²", condensed: "[Kr] 4d⁵ 5s²", shells: [2, 8, 18, 13, 2] },
+  44: { full: "[Kr] 4d⁷ 5s¹", condensed: "[Kr] 4d⁷ 5s¹", shells: [2, 8, 18, 15, 1] },
+  45: { full: "[Kr] 4d⁸ 5s¹", condensed: "[Kr] 4d⁸ 5s¹", shells: [2, 8, 18, 16, 1] },
+  46: { full: "[Kr] 4d¹⁰", condensed: "[Kr] 4d¹⁰", shells: [2, 8, 18, 18] },
+  47: { full: "[Kr] 4d¹⁰ 5s¹", condensed: "[Kr] 4d¹⁰ 5s¹", shells: [2, 8, 18, 18, 1] },
+  48: { full: "[Kr] 4d¹⁰ 5s²", condensed: "[Kr] 4d¹⁰ 5s²", shells: [2, 8, 18, 18, 2] },
+  49: { full: "[Kr] 4d¹⁰ 5s² 5p¹", condensed: "[Kr] 4d¹⁰ 5s² 5p¹", shells: [2, 8, 18, 18, 3] },
+  50: { full: "[Kr] 4d¹⁰ 5s² 5p²", condensed: "[Kr] 4d¹⁰ 5s² 5p²", shells: [2, 8, 18, 18, 4] },
+  51: { full: "[Kr] 4d¹⁰ 5s² 5p³", condensed: "[Kr] 4d¹⁰ 5s² 5p³", shells: [2, 8, 18, 18, 5] },
+  52: { full: "[Kr] 4d¹⁰ 5s² 5p⁴", condensed: "[Kr] 4d¹⁰ 5s² 5p⁴", shells: [2, 8, 18, 18, 6] },
+  53: { full: "[Kr] 4d¹⁰ 5s² 5p⁵", condensed: "[Kr] 4d¹⁰ 5s² 5p⁵", shells: [2, 8, 18, 18, 7] },
+  54: { full: "[Kr] 4d¹⁰ 5s² 5p⁶", condensed: "[Kr] 4d¹⁰ 5s² 5p⁶", shells: [2, 8, 18, 18, 8] },
+  55: { full: "[Xe] 6s¹", condensed: "[Xe] 6s¹", shells: [2, 8, 18, 18, 8, 1] },
+  56: { full: "[Xe] 6s²", condensed: "[Xe] 6s²", shells: [2, 8, 18, 18, 8, 2] },
+  57: { full: "[Xe] 5d¹ 6s²", condensed: "[Xe] 5d¹ 6s²", shells: [2, 8, 18, 18, 9, 2] },
+  58: { full: "[Xe] 4f¹ 5d¹ 6s²", condensed: "[Xe] 4f¹ 5d¹ 6s²", shells: [2, 8, 18, 19, 9, 2] },
+  59: { full: "[Xe] 4f³ 6s²", condensed: "[Xe] 4f³ 6s²", shells: [2, 8, 18, 21, 8, 2] },
+  60: { full: "[Xe] 4f⁴ 6s²", condensed: "[Xe] 4f⁴ 6s²", shells: [2, 8, 18, 22, 8, 2] },
+  61: { full: "[Xe] 4f⁵ 6s²", condensed: "[Xe] 4f⁵ 6s²", shells: [2, 8, 18, 23, 8, 2] },
+  62: { full: "[Xe] 4f⁶ 6s²", condensed: "[Xe] 4f⁶ 6s²", shells: [2, 8, 18, 24, 8, 2] },
+  63: { full: "[Xe] 4f⁷ 6s²", condensed: "[Xe] 4f⁷ 6s²", shells: [2, 8, 18, 25, 8, 2] },
+  64: { full: "[Xe] 4f⁷ 5d¹ 6s²", condensed: "[Xe] 4f⁷ 5d¹ 6s²", shells: [2, 8, 18, 25, 9, 2] },
+  65: { full: "[Xe] 4f⁹ 6s²", condensed: "[Xe] 4f⁹ 6s²", shells: [2, 8, 18, 27, 8, 2] },
+  66: { full: "[Xe] 4f¹⁰ 6s²", condensed: "[Xe] 4f¹⁰ 6s²", shells: [2, 8, 18, 28, 8, 2] },
+  67: { full: "[Xe] 4f¹¹ 6s²", condensed: "[Xe] 4f¹¹ 6s²", shells: [2, 8, 18, 29, 8, 2] },
+  68: { full: "[Xe] 4f¹² 6s²", condensed: "[Xe] 4f¹² 6s²", shells: [2, 8, 18, 30, 8, 2] },
+  69: { full: "[Xe] 4f¹³ 6s²", condensed: "[Xe] 4f¹³ 6s²", shells: [2, 8, 18, 31, 8, 2] },
+  70: { full: "[Xe] 4f¹⁴ 6s²", condensed: "[Xe] 4f¹⁴ 6s²", shells: [2, 8, 18, 32, 8, 2] },
+  71: { full: "[Xe] 4f¹⁴ 5d¹ 6s²", condensed: "[Xe] 4f¹⁴ 5d¹ 6s²", shells: [2, 8, 18, 32, 9, 2] },
+  72: { full: "[Xe] 4f¹⁴ 5d² 6s²", condensed: "[Xe] 4f¹⁴ 5d² 6s²", shells: [2, 8, 18, 32, 10, 2] },
+  73: { full: "[Xe] 4f¹⁴ 5d³ 6s²", condensed: "[Xe] 4f¹⁴ 5d³ 6s²", shells: [2, 8, 18, 32, 11, 2] },
+  74: { full: "[Xe] 4f¹⁴ 5d⁴ 6s²", condensed: "[Xe] 4f¹⁴ 5d⁴ 6s²", shells: [2, 8, 18, 32, 12, 2] },
+  75: { full: "[Xe] 4f¹⁴ 5d⁵ 6s²", condensed: "[Xe] 4f¹⁴ 5d⁵ 6s²", shells: [2, 8, 18, 32, 13, 2] },
+  76: { full: "[Xe] 4f¹⁴ 5d⁶ 6s²", condensed: "[Xe] 4f¹⁴ 5d⁶ 6s²", shells: [2, 8, 18, 32, 14, 2] },
+  77: { full: "[Xe] 4f¹⁴ 5d⁷ 6s²", condensed: "[Xe] 4f¹⁴ 5d⁷ 6s²", shells: [2, 8, 18, 32, 15, 2] },
+  78: { full: "[Xe] 4f¹⁴ 5d⁹ 6s¹", condensed: "[Xe] 4f¹⁴ 5d⁹ 6s¹", shells: [2, 8, 18, 32, 17, 1] },
+  79: { full: "[Xe] 4f¹⁴ 5d¹⁰ 6s¹", condensed: "[Xe] 4f¹⁴ 5d¹⁰ 6s¹", shells: [2, 8, 18, 32, 18, 1] },
+  80: { full: "[Xe] 4f¹⁴ 5d¹⁰ 6s²", condensed: "[Xe] 4f¹⁴ 5d¹⁰ 6s²", shells: [2, 8, 18, 32, 18, 2] },
+  81: { full: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹", condensed: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹", shells: [2, 8, 18, 32, 18, 3] },
+  82: { full: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²", condensed: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²", shells: [2, 8, 18, 32, 18, 4] },
+  83: { full: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³", condensed: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³", shells: [2, 8, 18, 32, 18, 5] },
+  84: { full: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴", condensed: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴", shells: [2, 8, 18, 32, 18, 6] },
+  85: { full: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵", condensed: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵", shells: [2, 8, 18, 32, 18, 7] },
+  86: { full: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶", condensed: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶", shells: [2, 8, 18, 32, 18, 8] },
+  87: { full: "[Rn] 7s¹", condensed: "[Rn] 7s¹", shells: [2, 8, 18, 32, 18, 8, 1] },
+  88: { full: "[Rn] 7s²", condensed: "[Rn] 7s²", shells: [2, 8, 18, 32, 18, 8, 2] },
+  89: { full: "[Rn] 6d¹ 7s²", condensed: "[Rn] 6d¹ 7s²", shells: [2, 8, 18, 32, 18, 9, 2] },
+  90: { full: "[Rn] 6d² 7s²", condensed: "[Rn] 6d² 7s²", shells: [2, 8, 18, 32, 18, 10, 2] },
+  91: { full: "[Rn] 5f² 6d¹ 7s²", condensed: "[Rn] 5f² 6d¹ 7s²", shells: [2, 8, 18, 32, 20, 9, 2] },
+  92: { full: "[Rn] 5f³ 6d¹ 7s²", condensed: "[Rn] 5f³ 6d¹ 7s²", shells: [2, 8, 18, 32, 21, 9, 2] },
+  93: { full: "[Rn] 5f⁴ 6d¹ 7s²", condensed: "[Rn] 5f⁴ 6d¹ 7s²", shells: [2, 8, 18, 32, 22, 9, 2] },
+  94: { full: "[Rn] 5f⁶ 7s²", condensed: "[Rn] 5f⁶ 7s²", shells: [2, 8, 18, 32, 24, 8, 2] },
+  95: { full: "[Rn] 5f⁷ 7s²", condensed: "[Rn] 5f⁷ 7s²", shells: [2, 8, 18, 32, 25, 8, 2] },
+  96: { full: "[Rn] 5f⁷ 6d¹ 7s²", condensed: "[Rn] 5f⁷ 6d¹ 7s²", shells: [2, 8, 18, 32, 25, 9, 2] },
+  97: { full: "[Rn] 5f⁹ 7s²", condensed: "[Rn] 5f⁹ 7s²", shells: [2, 8, 18, 32, 27, 8, 2] },
+  98: { full: "[Rn] 5f¹⁰ 7s²", condensed: "[Rn] 5f¹⁰ 7s²", shells: [2, 8, 18, 32, 28, 8, 2] },
+  99: { full: "[Rn] 5f¹¹ 7s²", condensed: "[Rn] 5f¹¹ 7s²", shells: [2, 8, 18, 32, 29, 8, 2] },
+  100: { full: "[Rn] 5f¹² 7s²", condensed: "[Rn] 5f¹² 7s²", shells: [2, 8, 18, 32, 30, 8, 2] },
+  101: { full: "[Rn] 5f¹³ 7s²", condensed: "[Rn] 5f¹³ 7s²", shells: [2, 8, 18, 32, 31, 8, 2] },
+  102: { full: "[Rn] 5f¹⁴ 7s²", condensed: "[Rn] 5f¹⁴ 7s²", shells: [2, 8, 18, 32, 32, 8, 2] },
+  103: { full: "[Rn] 5f¹⁴ 7s² 7p¹", condensed: "[Rn] 5f¹⁴ 7s² 7p¹", shells: [2, 8, 18, 32, 32, 8, 3] },
+  104: { full: "[Rn] 5f¹⁴ 6d² 7s²", condensed: "[Rn] 5f¹⁴ 6d² 7s²", shells: [2, 8, 18, 32, 32, 10, 2] },
+  105: { full: "[Rn] 5f¹⁴ 6d³ 7s²", condensed: "[Rn] 5f¹⁴ 6d³ 7s²", shells: [2, 8, 18, 32, 32, 11, 2] },
+  106: { full: "[Rn] 5f¹⁴ 6d⁴ 7s²", condensed: "[Rn] 5f¹⁴ 6d⁴ 7s²", shells: [2, 8, 18, 32, 32, 12, 2] },
+  107: { full: "[Rn] 5f¹⁴ 6d⁵ 7s²", condensed: "[Rn] 5f¹⁴ 6d⁵ 7s²", shells: [2, 8, 18, 32, 32, 13, 2] },
+  108: { full: "[Rn] 5f¹⁴ 6d⁶ 7s²", condensed: "[Rn] 5f¹⁴ 6d⁶ 7s²", shells: [2, 8, 18, 32, 32, 14, 2] },
+  109: { full: "[Rn] 5f¹⁴ 6d⁷ 7s²", condensed: "[Rn] 5f¹⁴ 6d⁷ 7s²", shells: [2, 8, 18, 32, 32, 15, 2] },
+  110: { full: "[Rn] 5f¹⁴ 6d⁸ 7s²", condensed: "[Rn] 5f¹⁴ 6d⁸ 7s²", shells: [2, 8, 18, 32, 32, 16, 2] },
+  111: { full: "[Rn] 5f¹⁴ 6d⁹ 7s²", condensed: "[Rn] 5f¹⁴ 6d⁹ 7s²", shells: [2, 8, 18, 32, 32, 17, 2] },
+  112: { full: "[Rn] 5f¹⁴ 6d¹⁰ 7s²", condensed: "[Rn] 5f¹⁴ 6d¹⁰ 7s²", shells: [2, 8, 18, 32, 32, 18, 2] },
+  113: { full: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹", condensed: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹", shells: [2, 8, 18, 32, 32, 18, 3] },
+  114: { full: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²", condensed: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²", shells: [2, 8, 18, 32, 32, 18, 4] },
+  115: { full: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³", condensed: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³", shells: [2, 8, 18, 32, 32, 18, 5] },
+  116: { full: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴", condensed: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴", shells: [2, 8, 18, 32, 32, 18, 6] },
+  117: { full: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵", condensed: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵", shells: [2, 8, 18, 32, 32, 18, 7] },
+  118: { full: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶", condensed: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶", shells: [2, 8, 18, 32, 32, 18, 8] }
+};
+
+
+
+    /* =========================================================================
+       COMPLETE 118 ELEMENTS DATABASE & PERIODIC TABLE LAYOUT
+       ========================================================================= */
+    const ELEMENTS = [
+      { z: 1, s: "H", n: "Hydrogen", group: "nonmetal", sn: [0, 1], p: 1, c: 1 },
+      { z: 2, s: "He", n: "Helium", group: "noble", sn: [1, 2], p: 1, c: 18 },
+      { z: 3, s: "Li", n: "Lithium", group: "alkali", sn: [3, 4], p: 2, c: 1 },
+      { z: 4, s: "Be", n: "Beryllium", group: "alkaline", sn: [5], p: 2, c: 2 },
+      { z: 5, s: "B", n: "Boron", group: "metalloid", sn: [5, 6], p: 2, c: 13 },
+      { z: 6, s: "C", n: "Carbon", group: "nonmetal", sn: [6, 7], p: 2, c: 14 },
+      { z: 7, s: "N", n: "Nitrogen", group: "nonmetal", sn: [7, 8], p: 2, c: 15 },
+      { z: 8, s: "O", n: "Oxygen", group: "nonmetal", sn: [8, 9, 10], p: 2, c: 16 },
+      { z: 9, s: "F", n: "Fluorine", group: "halogen", sn: [10], p: 2, c: 17 },
+      { z: 10, s: "Ne", n: "Neon", group: "noble", sn: [10, 11, 12], p: 2, c: 18 },
+      { z: 11, s: "Na", n: "Sodium", group: "alkali", sn: [12], p: 3, c: 1 },
+      { z: 12, s: "Mg", n: "Magnesium", group: "alkaline", sn: [12, 13, 14], p: 3, c: 2 },
+      { z: 13, s: "Al", n: "Aluminum", group: "post-transition", sn: [14], p: 3, c: 13 },
+      { z: 14, s: "Si", n: "Silicon", group: "metalloid", sn: [14, 15, 16], p: 3, c: 14 },
+      { z: 15, s: "P", n: "Phosphorus", group: "nonmetal", sn: [16], p: 3, c: 15 },
+      { z: 16, s: "S", n: "Sulfur", group: "nonmetal", sn: [16, 17, 18, 20], p: 3, c: 16 },
+      { z: 17, s: "Cl", n: "Chlorine", group: "halogen", sn: [18, 20], p: 3, c: 17 },
+      { z: 18, s: "Ar", n: "Argon", group: "noble", sn: [18, 20, 22], p: 3, c: 18 },
+      { z: 19, s: "K", n: "Potassium", group: "alkali", sn: [20, 21, 22], p: 4, c: 1 },
+      { z: 20, s: "Ca", n: "Calcium", group: "alkaline", sn: [20, 22, 24], p: 4, c: 2 },
+      { z: 21, s: "Sc", n: "Scandium", group: "transition", sn: [24], p: 4, c: 3 },
+      { z: 22, s: "Ti", n: "Titanium", group: "transition", sn: [24, 25, 26, 27, 28], p: 4, c: 4 },
+      { z: 23, s: "V", n: "Vanadium", group: "transition", sn: [27, 28], p: 4, c: 5 },
+      { z: 24, s: "Cr", n: "Chromium", group: "transition", sn: [26, 28, 29, 30], p: 4, c: 6 },
+      { z: 25, s: "Mn", n: "Manganese", group: "transition", sn: [30], p: 4, c: 7 },
+      { z: 26, s: "Fe", n: "Iron", group: "transition", sn: [28, 30, 31, 32], p: 4, c: 8 },
+      { z: 27, s: "Co", n: "Cobalt", group: "transition", sn: [32], p: 4, c: 9 },
+      { z: 28, s: "Ni", n: "Nickel", group: "transition", sn: [30, 32, 33, 34, 36], p: 4, c: 10 },
+      { z: 29, s: "Cu", n: "Copper", group: "transition", sn: [34, 36], p: 4, c: 11 },
+      { z: 30, s: "Zn", n: "Zinc", group: "transition", sn: [34, 36, 37, 38, 40], p: 4, c: 12 },
+      { z: 31, s: "Ga", n: "Gallium", group: "post-transition", sn: [38, 40], p: 4, c: 13 },
+      { z: 32, s: "Ge", n: "Germanium", group: "metalloid", sn: [38, 40, 41, 42, 44], p: 4, c: 14 },
+      { z: 33, s: "As", n: "Arsenic", group: "metalloid", sn: [42], p: 4, c: 15 },
+      { z: 34, s: "Se", n: "Selenium", group: "nonmetal", sn: [40, 42, 43, 44, 46, 48], p: 4, c: 16 },
+      { z: 35, s: "Br", n: "Bromine", group: "halogen", sn: [44, 46], p: 4, c: 17 },
+      { z: 36, s: "Kr", n: "Krypton", group: "noble", sn: [42, 44, 46, 47, 48, 50], p: 4, c: 18 },
+      { z: 37, s: "Rb", n: "Rubidium", group: "alkali", sn: [48, 50], p: 5, c: 1 },
+      { z: 38, s: "Sr", n: "Strontium", group: "alkaline", sn: [46, 48, 49, 50], p: 5, c: 2 },
+      { z: 39, s: "Y", n: "Yttrium", group: "transition", sn: [50], p: 5, c: 3 },
+      { z: 40, s: "Zr", n: "Zirconium", group: "transition", sn: [50, 51, 52, 54, 56], p: 5, c: 4 },
+      { z: 41, s: "Nb", n: "Niobium", group: "transition", sn: [52], p: 5, c: 5 },
+      { z: 42, s: "Mo", n: "Molybdenum", group: "transition", sn: [50, 52, 53, 54, 55, 56, 58], p: 5, c: 6 },
+      { z: 43, s: "Tc", n: "Technetium", group: "transition", sn: [54, 55], p: 5, c: 7 },
+      { z: 44, s: "Ru", n: "Ruthenium", group: "transition", sn: [52, 54, 55, 56, 57, 58, 60], p: 5, c: 8 },
+      { z: 45, s: "Rh", n: "Rhodium", group: "transition", sn: [58], p: 5, c: 9 },
+      { z: 46, s: "Pd", n: "Palladium", group: "transition", sn: [56, 58, 59, 60, 62, 64], p: 5, c: 10 },
+      { z: 47, s: "Ag", n: "Silver", group: "transition", sn: [60, 62], p: 5, c: 11 },
+      { z: 48, s: "Cd", n: "Cadmium", group: "transition", sn: [58, 60, 62, 64, 66], p: 5, c: 12 },
+      { z: 49, s: "In", n: "Indium", group: "post-transition", sn: [64, 66], p: 5, c: 13 },
+      { z: 50, s: "Sn", n: "Tin", group: "post-transition", sn: [62, 64, 65, 66, 67, 68, 70, 72, 74], p: 5, c: 14 },
+      { z: 51, s: "Sb", n: "Antimony", group: "metalloid", sn: [70, 72], p: 5, c: 15 },
+      { z: 52, s: "Te", n: "Tellurium", group: "metalloid", sn: [68, 70, 72, 73, 74, 76], p: 5, c: 16 },
+      { z: 53, s: "I", n: "Iodine", group: "halogen", sn: [74], p: 5, c: 17 },
+      { z: 54, s: "Xe", n: "Xenon", group: "noble", sn: [70, 72, 74, 75, 76, 77, 78, 80, 82], p: 5, c: 18 },
+      { z: 55, s: "Cs", n: "Cesium", group: "alkali", sn: [78], p: 6, c: 1 },
+      { z: 56, s: "Ba", n: "Barium", group: "alkaline", sn: [74, 76, 78, 79, 80, 81, 82], p: 6, c: 2 },
+      { z: 57, s: "La", n: "Lanthanum", group: "lanthanide", sn: [81, 82], p: 8, c: 4 },
+      { z: 58, s: "Ce", n: "Cerium", group: "lanthanide", sn: [78, 80, 82, 84], p: 8, c: 5 },
+      { z: 59, s: "Pr", n: "Praseodymium", group: "lanthanide", sn: [82], p: 8, c: 6 },
+      { z: 60, s: "Nd", n: "Neodymium", group: "lanthanide", sn: [82, 83, 84, 85, 86, 88, 90], p: 8, c: 7 },
+      { z: 61, s: "Pm", n: "Promethium", group: "lanthanide", sn: [84], p: 8, c: 8 },
+      { z: 62, s: "Sm", n: "Samarium", group: "lanthanide", sn: [82, 86, 87, 88, 90, 92], p: 8, c: 9 },
+      { z: 63, s: "Eu", n: "Europium", group: "lanthanide", sn: [88, 90], p: 8, c: 10 },
+      { z: 64, s: "Gd", n: "Gadolinium", group: "lanthanide", sn: [88, 90, 91, 92, 93, 94, 96], p: 8, c: 11 },
+      { z: 65, s: "Tb", n: "Terbium", group: "lanthanide", sn: [94], p: 8, c: 12 },
+      { z: 66, s: "Dy", n: "Dysprosium", group: "lanthanide", sn: [90, 92, 94, 95, 96, 97, 98], p: 8, c: 13 },
+      { z: 67, s: "Ho", n: "Holmium", group: "lanthanide", sn: [98], p: 8, c: 14 },
+      { z: 68, s: "Er", n: "Erbium", group: "lanthanide", sn: [94, 96, 98, 99, 100, 102], p: 8, c: 15 },
+      { z: 69, s: "Tm", n: "Thulium", group: "lanthanide", sn: [100], p: 8, c: 16 },
+      { z: 70, s: "Yb", n: "Ytterbium", group: "lanthanide", sn: [98, 100, 101, 102, 103, 104, 106], p: 8, c: 17 },
+      { z: 71, s: "Lu", n: "Lutetium", group: "lanthanide", sn: [104, 105], p: 8, c: 18 },
+      { z: 72, s: "Hf", n: "Hafnium", group: "transition", sn: [102, 104, 105, 106, 107, 108], p: 6, c: 4 },
+      { z: 73, s: "Ta", n: "Tantalum", group: "transition", sn: [107, 108], p: 6, c: 5 },
+      { z: 74, s: "W", n: "Tungsten", group: "transition", sn: [106, 108, 109, 110, 112], p: 6, c: 6 },
+      { z: 75, s: "Re", n: "Rhenium", group: "transition", sn: [110, 112], p: 6, c: 7 },
+      { z: 76, s: "Os", n: "Osmium", group: "transition", sn: [108, 111, 112, 113, 114, 116], p: 6, c: 8 },
+      { z: 77, s: "Ir", n: "Iridium", group: "transition", sn: [114, 116], p: 6, c: 9 },
+      { z: 78, s: "Pt", n: "Platinum", group: "transition", sn: [112, 116, 117, 118, 120], p: 6, c: 10 },
+      { z: 79, s: "Au", n: "Gold", group: "transition", sn: [118], p: 6, c: 11 },
+      { z: 80, s: "Hg", n: "Mercury", group: "transition", sn: [116, 118, 119, 120, 121, 122, 124], p: 6, c: 12 },
+      { z: 81, s: "Tl", n: "Thallium", group: "post-transition", sn: [122, 124], p: 6, c: 13 },
+      { z: 82, s: "Pb", n: "Lead", group: "post-transition", sn: [122, 124, 125, 126], p: 6, c: 14 },
+      { z: 83, s: "Bi", n: "Bismuth", group: "post-transition", sn: [126], p: 6, c: 15 },
+      { z: 84, s: "Po", n: "Polonium", group: "metalloid", sn: [125, 126], p: 6, c: 16 },
+      { z: 85, s: "At", n: "Astatine", group: "halogen", sn: [125], p: 6, c: 17 },
+      { z: 86, s: "Rn", n: "Radon", group: "noble", sn: [136], p: 6, c: 18 },
+      { z: 87, s: "Fr", n: "Francium", group: "alkali", sn: [136], p: 7, c: 1 },
+      { z: 88, s: "Ra", n: "Radium", group: "alkaline", sn: [138], p: 7, c: 2 },
+      { z: 89, s: "Ac", n: "Actinium", group: "actinide", sn: [138], p: 9, c: 4 },
+      { z: 90, s: "Th", n: "Thorium", group: "actinide", sn: [142], p: 9, c: 5 },
+      { z: 91, s: "Pa", n: "Protactinium", group: "actinide", sn: [140], p: 9, c: 6 },
+      { z: 92, s: "U", n: "Uranium", group: "actinide", sn: [143, 146], p: 9, c: 7 },
+      { z: 93, s: "Np", n: "Neptunium", group: "actinide", sn: [144], p: 9, c: 8 },
+      { z: 94, s: "Pu", n: "Plutonium", group: "actinide", sn: [150], p: 9, c: 9 },
+      { z: 95, s: "Am", n: "Americium", group: "actinide", sn: [148], p: 9, c: 10 },
+      { z: 96, s: "Cm", n: "Curium", group: "actinide", sn: [151], p: 9, c: 11 },
+      { z: 97, s: "Bk", n: "Berkelium", group: "actinide", sn: [150], p: 9, c: 12 },
+      { z: 98, s: "Cf", n: "Californium", group: "actinide", sn: [153], p: 9, c: 13 },
+      { z: 99, s: "Es", n: "Einsteinium", group: "actinide", sn: [153], p: 9, c: 14 },
+      { z: 100, s: "Fm", n: "Fermium", group: "actinide", sn: [157], p: 9, c: 15 },
+      { z: 101, s: "Md", n: "Mendelevium", group: "actinide", sn: [157], p: 9, c: 16 },
+      { z: 102, s: "No", n: "Nobelium", group: "actinide", sn: [157], p: 9, c: 17 },
+      { z: 103, s: "Lr", n: "Lawrencium", group: "actinide", sn: [163], p: 9, c: 18 },
+      { z: 104, s: "Rf", n: "Rutherfordium", group: "transition", sn: [163], p: 7, c: 4 },
+      { z: 105, s: "Db", n: "Dubnium", group: "transition", sn: [163], p: 7, c: 5 },
+      { z: 106, s: "Sg", n: "Seaborgium", group: "transition", sn: [165], p: 7, c: 6 },
+      { z: 107, s: "Bh", n: "Bohrium", group: "transition", sn: [165], p: 7, c: 7 },
+      { z: 108, s: "Hs", n: "Hassium", group: "transition", sn: [169], p: 7, c: 8 },
+      { z: 109, s: "Mt", n: "Meitnerium", group: "transition", sn: [169], p: 7, c: 9 },
+      { z: 110, s: "Ds", n: "Darmstadtium", group: "transition", sn: [171], p: 7, c: 10 },
+      { z: 111, s: "Rg", n: "Roentgenium", group: "transition", sn: [171], p: 7, c: 11 },
+      { z: 112, s: "Cn", n: "Copernicium", group: "transition", sn: [173], p: 7, c: 12 },
+      { z: 113, s: "Nh", n: "Nihonium", group: "post-transition", sn: [173], p: 7, c: 13 },
+      { z: 114, s: "Fl", n: "Flerovium", group: "post-transition", sn: [175], p: 7, c: 14 },
+      { z: 115, s: "Mc", n: "Moscovium", group: "post-transition", sn: [175], p: 7, c: 15 },
+      { z: 116, s: "Lv", n: "Livermorium", group: "post-transition", sn: [177], p: 7, c: 16 },
+      { z: 117, s: "Ts", n: "Tennessine", group: "halogen", sn: [177], p: 7, c: 17 },
+      { z: 118, s: "Og", n: "Oganesson", group: "noble", sn: [176], p: 7, c: 18 }
+    ];
+
+    /* =========================================================================
+       SIMULATION STATE
+       ========================================================================= */
+    const state = {
+      screen: 'atom', // 'atom' | 'symbol' | 'game'
+      protons: 1,
+      neutrons: 0,
+      electrons: 1,
+      modelType: 'bohr', // 'bohr' | 'cloud'
+      options: {
+        element: true,
+        neutral: true,
+        stability: true
+      },
+      particlesOnCanvas: [], // Animated particle positions
+      cloudAngle: 0,
+      draggedType: null,
+      mousePos: { x: 0, y: 0 }
+    };
+
+    /* =========================================================================
+       CANVAS 2D ATOM RENDERING & PHYSICS
+       ========================================================================= */
+    const canvas = document.getElementById('atomCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = container.clientWidth * dpr;
+      canvas.height = container.clientHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function addParticle(type, delta) {
+      if (type === 'proton') {
+        const next = Math.max(0, Math.min(118, state.protons + delta));
+        if (next !== state.protons) {
+          state.protons = next;
+          if (delta > 0) atomAudio.playProtonAdd();
+          else atomAudio.playRemove();
+        }
+      } else if (type === 'neutron') {
+        const next = Math.max(0, Math.min(185, state.neutrons + delta));
+        if (next !== state.neutrons) {
+          state.neutrons = next;
+          if (delta > 0) atomAudio.playNeutronAdd();
+          else atomAudio.playRemove();
+        }
+      } else if (type === 'electron') {
+        const next = Math.max(0, Math.min(118, state.electrons + delta));
+        if (next !== state.electrons) {
+          state.electrons = next;
+          if (delta > 0) atomAudio.playElectronAdd();
+          else atomAudio.playRemove();
+        }
+      }
+      updateUI();
+      checkMissionsEvaluation();
+    }
+
+    function setModelType(mode) {
+      state.modelType = mode;
+      document.getElementById('btnModelBohr').classList.toggle('active', mode === 'bohr');
+      document.getElementById('btnModelCloud').classList.toggle('active', mode === 'cloud');
+    }
+
+    function toggleOpt(optKey) {
+      if (optKey === 'element') state.options.element = document.getElementById('chkShowElement').checked;
+      if (optKey === 'neutral') state.options.neutral = document.getElementById('chkShowNeutral').checked;
+      if (optKey === 'stability') state.options.stability = document.getElementById('chkShowStability').checked;
+      updateUI();
+    }
+
+    // Drag-and-drop from particle buckets
+    ['Proton', 'Neutron', 'Electron'].forEach(type => {
+      const el = document.getElementById(`dispenser${type}`);
+      el.addEventListener('mousedown', (e) => {
+        state.draggedType = type.toLowerCase();
+      });
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      state.mousePos = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (state.draggedType) {
+        addParticle(state.draggedType, 1);
+        state.draggedType = null;
+      }
+    });
+
+    // Particle distribution math for Bohr Shells (up to Shell 7)
+        // Real quantum electron configuration & shell population
+    function getElementElectronConfig(z, totalElectrons) {
+      if (totalElectrons === z && ELECTRON_CONFIGS_118[z]) {
+        return ELECTRON_CONFIGS_118[z];
+      }
+      // If ion (electrons != protons) or custom, dynamically fill shells
+      const capacities = [2, 8, 18, 32, 32, 18, 8];
+      const shells = [];
+      let rem = totalElectrons;
+      for (let cap of capacities) {
+        const fill = Math.min(cap, rem);
+        shells.push(fill);
+        rem -= fill;
+        if (rem <= 0) break;
+      }
+      while (shells.length < 2) shells.push(0);
+
+      // Find closest neutral config or represent as ionized
+      const baseConfig = ELECTRON_CONFIGS_118[totalElectrons];
+      const condensed = baseConfig ? baseConfig.condensed : (totalElectrons + 'e⁻');
+      return {
+        condensed: condensed,
+        shells: shells
+      };
+    }
+
+    function getElectronShellDistribution(totalElectrons) {
+      const cfg = getElementElectronConfig(state.protons, totalElectrons);
+      return cfg.shells || [0];
+    }
+
+    function renderAtomCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const cx = w * 0.44;
+      const cy = h * 0.46;
+
+      const shells = getElectronShellDistribution(state.electrons);
+      const activeShellCount = Math.max(3, shells.length);
+      const baseRadius = 65;
+      const stepRadius = Math.min(34, 180 / activeShellCount);
+
+      // Draw Bohr Orbits or Cloud
+      if (state.modelType === 'bohr') {
+        const orbits = [];
+        for (let i = 0; i < activeShellCount; i++) {
+          orbits.push(baseRadius + i * stepRadius);
+        }
+
+        orbits.forEach((r, idx) => {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+          ctx.font = '9px monospace';
+          ctx.fillText(`n=${idx + 1}`, cx + r - 16, cy - 4);
+        });
+
+        // Draw Electrons on Orbits
+        state.cloudAngle += 0.008;
+
+        shells.forEach((count, sIdx) => {
+          const r = orbits[sIdx];
+          const angleStep = (Math.PI * 2) / (count || 1);
+          const spinDir = sIdx % 2 === 0 ? 1 : -1;
+
+          for (let i = 0; i < count; i++) {
+            const angle = state.cloudAngle * spinDir + i * angleStep;
+            const ex = cx + Math.cos(angle) * r;
+            const ey = cy + Math.sin(angle) * r;
+
+            // Electron glow
+            ctx.beginPath();
+            ctx.arc(ex, ey, 7, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+            ctx.fill();
+
+            // Electron sphere
+            const eGrad = ctx.createRadialGradient(ex - 2, ey - 2, 1, ex, ey, 5);
+            eGrad.addColorStop(0, '#ffffff');
+            eGrad.addColorStop(0.4, '#38bdf8');
+            eGrad.addColorStop(1, '#0284c7');
+
+            ctx.beginPath();
+            ctx.arc(ex, ey, 5, 0, Math.PI * 2);
+            ctx.fillStyle = eGrad;
+            ctx.fill();
+
+            // Minus symbol
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('−', ex, ey);
+          }
+        });
+      } else {
+        // Quantum Electron Cloud Mode
+        const cloudRadius = Math.min(230, 60 + state.electrons * 1.5);
+        const cloudGrad = ctx.createRadialGradient(cx, cy, 20, cx, cy, cloudRadius);
+        cloudGrad.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+        cloudGrad.addColorStop(0.6, 'rgba(56, 189, 248, 0.15)');
+        cloudGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, cloudRadius, 0, Math.PI * 2);
+        ctx.fillStyle = cloudGrad;
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        const dotCount = Math.min(180, Math.max(16, state.electrons * 6));
+        for (let i = 0; i < dotCount; i++) {
+          const a = (i * 137.5 + state.cloudAngle * 20) * (Math.PI / 180);
+          const dist = 24 + Math.sqrt(i / dotCount) * (cloudRadius - 28);
+          const px = cx + Math.cos(a) * dist;
+          const py = cy + Math.sin(a) * dist;
+          ctx.fillRect(px, py, 1.5, 1.5);
+        }
+        state.cloudAngle += 0.005;
+      }
+
+      // Draw Nucleus Boundary Glow
+      const totalNucleons = state.protons + state.neutrons;
+      const displayNucleons = Math.min(90, totalNucleons); // Cap rendered spheres to prevent slowdown
+      const nucleusRadius = Math.max(26, Math.min(52, 18 + Math.sqrt(displayNucleons) * 3.5));
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, nucleusRadius + 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+      ctx.fill();
+
+      // Cluster nucleons in nucleus using Fermat spiral packing
+      const nucleonRadius = Math.max(5.5, Math.min(8.5, 8.5 - displayNucleons * 0.04));
+      for (let i = 0; i < displayNucleons; i++) {
+        const isProton = (i % totalNucleons) < state.protons;
+        const a = i * 2.39996;
+        const r = Math.sqrt(i + 0.5) * (nucleonRadius * 0.95);
+        const nx = cx + Math.cos(a) * r;
+        const ny = cy + Math.sin(a) * r;
+
+        const grad = ctx.createRadialGradient(nx - 2, ny - 2, 1, nx, ny, nucleonRadius);
+        if (isProton) {
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.35, '#ef4444');
+          grad.addColorStop(1, '#991b1b');
+        } else {
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.35, '#94a3b8');
+          grad.addColorStop(1, '#334155');
+        }
+
+        ctx.beginPath();
+        ctx.arc(nx, ny, nucleonRadius, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+        ctx.stroke();
+
+        if (displayNucleons < 40) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 8px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(isProton ? '+' : '0', nx, ny);
+        }
+      }
+
+      // Center crosshair if nucleus is empty
+      if (totalNucleons === 0) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+        ctx.font = '11px sans-serif';
+        ctx.fillText('Nucleus', cx, cy);
+      }
+
+      // Dragged particle follow cursor
+      if (state.draggedType) {
+        const mx = state.mousePos.x;
+        const my = state.mousePos.y;
+        ctx.beginPath();
+        ctx.arc(mx, my, 12, 0, Math.PI * 2);
+        ctx.fillStyle = state.draggedType === 'proton' ? '#ef4444' : state.draggedType === 'neutron' ? '#64748b' : '#0284c7';
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(state.draggedType === 'proton' ? '+' : state.draggedType === 'neutron' ? '0' : '−', mx, my);
+      }
+
+      requestAnimationFrame(renderAtomCanvas);
+    }
+
+    /* =========================================================================
+       UI UPDATES & CHEMICAL CALCULATIONS
+       ========================================================================= */
+    function updateUI() {
+      // Element info lookup across 118 elements
+      const el = ELEMENTS.find(e => e.z === state.protons) || { z: 0, s: '—', n: 'Unknown', sn: [] };
+      const massNumber = state.protons + state.neutrons;
+      const netCharge = state.protons - state.electrons;
+      const isStable = el.sn && el.sn.includes(state.neutrons);
+
+      // Counters on Buckets
+      document.getElementById('countProtons').textContent = state.protons;
+      document.getElementById('countNeutrons').textContent = state.neutrons;
+      document.getElementById('countElectrons').textContent = state.electrons;
+
+      // Symbol Box
+      document.getElementById('boxMassNumber').textContent = state.options.element ? massNumber : '?';
+      document.getElementById('boxAtomicNumber').textContent = state.options.element ? state.protons : '?';
+      document.getElementById('boxElementSymbol').textContent = state.options.element ? el.s : '?';
+      document.getElementById('boxElementName').textContent = state.options.element ? el.n : 'Unknown Nucleus';
+
+      const chargeBox = document.getElementById('boxNetCharge');
+      if (state.options.neutral) {
+        if (netCharge > 0) {
+          chargeBox.textContent = `+${netCharge}`;
+          chargeBox.className = 'sym-net-charge pos';
+        } else if (netCharge < 0) {
+          chargeBox.textContent = `${netCharge}`;
+          chargeBox.className = 'sym-net-charge neg';
+        } else {
+          chargeBox.textContent = '0';
+          chargeBox.className = 'sym-net-charge zero';
+        }
+      } else {
+        chargeBox.textContent = '?';
+        chargeBox.className = 'sym-net-charge zero';
+      }
+
+      // Net Charge & Status Pills
+      const valNetCharge = document.getElementById('valNetCharge');
+      valNetCharge.textContent = netCharge > 0 ? `+${netCharge}` : `${netCharge}`;
+
+      const pillCharge = document.getElementById('pillChargeState');
+      if (netCharge === 0) {
+        pillCharge.textContent = 'Neutral Atom';
+        pillCharge.className = 'status-pill neutral';
+      } else if (netCharge > 0) {
+        pillCharge.textContent = `Positive Ion (+${netCharge})`;
+        pillCharge.className = 'status-pill ion-pos';
+      } else {
+        pillCharge.textContent = `Negative Ion (${netCharge})`;
+        pillCharge.className = 'status-pill ion-neg';
+      }
+
+      // Mass & Stability
+      document.getElementById('valMassNumber').textContent = massNumber;
+      const pillStability = document.getElementById('pillStability');
+      if (state.options.stability) {
+        if (state.protons === 0) {
+          pillStability.textContent = 'Unstable';
+          pillStability.className = 'status-pill unstable';
+        } else {
+          pillStability.textContent = isStable ? 'Stable' : 'Unstable';
+          pillStability.className = 'status-pill ' + (isStable ? 'stable' : 'unstable');
+        }
+      } else {
+        pillStability.textContent = 'Hidden';
+        pillStability.className = 'status-pill neutral';
+      }
+
+      // Electron Configuration & Shells readout
+      const cfg = getElementElectronConfig(state.protons, state.electrons);
+      const condensedEl = document.getElementById('valConfigCondensed');
+      if (condensedEl) {
+        condensedEl.textContent = state.electrons > 0 ? cfg.condensed : 'None (0e⁻)';
+      }
+      const shells = cfg.shells || [];
+      const shellsStr = shells.map((count, idx) => `n${idx + 1}:${count}`).join(' • ');
+      document.getElementById('valElectronShells').textContent = 'Shells: ' + (shellsStr || '0');
+
+      // Status Bar
+      const statusElement = document.getElementById('screenStatusElement');
+      if (state.protons > 0) {
+        statusElement.innerHTML = `<strong style="color:#38bdf8;">${el.n} (${el.s}-${massNumber})</strong> — Z=${state.protons} • ${netCharge === 0 ? 'Neutral Atom' : (netCharge > 0 ? 'Cation' : 'Anion')}`;
+      } else {
+        statusElement.textContent = 'Add protons to build an element (Z=1 to 118)';
+      }
+
+      // Highlight Periodic Table cell
+      highlightPeriodicTableCell();
+    }
+
+    /* =========================================================================
+       COMPLETE 118 PERIODIC TABLE GRID RENDERING
+       ========================================================================= */
+    function renderPeriodicTable118() {
+      const mainGrid = document.getElementById('ptableGrid118');
+      const fGrid = document.getElementById('ptableGridFBlock');
+      mainGrid.innerHTML = '';
+      fGrid.innerHTML = '';
+
+      // Build 7 rows x 18 cols = 126 cells
+      for (let p = 1; p <= 7; p++) {
+        for (let c = 1; c <= 18; c++) {
+          const div = document.createElement('div');
+
+          // Check if placeholder for Lanthanide (P=6, C=3) or Actinide (P=7, C=3)
+          if (p === 6 && c === 3) {
+            div.className = 'ptable-cell';
+            div.textContent = '57-71';
+            div.style.fontSize = '0.45rem';
+            div.title = 'Lanthanides (Z=57 to 71)';
+            mainGrid.appendChild(div);
+            continue;
+          }
+          if (p === 7 && c === 3) {
+            div.className = 'ptable-cell';
+            div.textContent = '89-103';
+            div.style.fontSize = '0.42rem';
+            div.title = 'Actinides (Z=89 to 103)';
+            mainGrid.appendChild(div);
+            continue;
+          }
+
+          // Find element in standard positions
+          const el = ELEMENTS.find(e => e.p === p && e.c === c);
+          if (el) {
+            div.className = 'ptable-cell';
+            div.id = `ptcell-${el.z}`;
+            div.textContent = el.s;
+            div.title = `${el.n} (Z=${el.z})`;
+            setElementGroupColor(div, el.group);
+
+            div.addEventListener('click', () => selectElementByZ(el.z));
+          } else {
+            div.className = 'ptable-cell empty';
+          }
+          mainGrid.appendChild(div);
+        }
+      }
+
+      // Build F-block: Period 8 (Lanthanides) & Period 9 (Actinides)
+      // Display across 18 columns (offset by 3 empty leading cells)
+      for (let p of [8, 9]) {
+        for (let c = 1; c <= 18; c++) {
+          const div = document.createElement('div');
+          const el = ELEMENTS.find(e => e.p === p && e.c === c);
+
+          if (el) {
+            div.className = 'ptable-cell';
+            div.id = `ptcell-${el.z}`;
+            div.textContent = el.s;
+            div.title = `${el.n} (Z=${el.z})`;
+            setElementGroupColor(div, el.group);
+
+            div.addEventListener('click', () => selectElementByZ(el.z));
+          } else {
+            div.className = 'ptable-cell empty';
+          }
+          fGrid.appendChild(div);
+        }
+      }
+
+      highlightPeriodicTableCell();
+    }
+
+    function setElementGroupColor(div, group) {
+      if (group === 'noble') div.style.color = '#c084fc';
+      else if (group === 'alkali') div.style.color = '#f87171';
+      else if (group === 'alkaline') div.style.color = '#fb923c';
+      else if (group === 'halogen') div.style.color = '#34d399';
+      else if (group === 'transition') div.style.color = '#facc15';
+      else if (group === 'lanthanide' || group === 'actinide') div.style.color = '#2dd4bf';
+      else div.style.color = '#38bdf8';
+    }
+
+    function selectElementByZ(targetZ) {
+      const el = ELEMENTS.find(e => e.z === targetZ);
+      if (!el) return;
+
+      state.protons = el.z;
+      state.neutrons = el.sn[0] || Math.round(el.z * 1.2);
+      state.electrons = el.z;
+
+      atomAudio.playSuccess();
+      updateUI();
+      checkMissionsEvaluation();
+    }
+
+    function highlightPeriodicTableCell() {
+      // Remove active class from all
+      document.querySelectorAll('.ptable-cell.active').forEach(c => c.classList.remove('active'));
+
+      // Add to current
+      if (state.protons >= 1 && state.protons <= 118) {
+        const activeCell = document.getElementById(`ptcell-${state.protons}`);
+        if (activeCell) activeCell.classList.add('active');
+      }
+    }
+
+    /* =========================================================================
+       SUBATOMIC CHALLENGE GAME (Screen 3)
+       ========================================================================= */
+    const GAME_QUESTIONS = [
+      {
+        prompt: 'An atom contains 6 protons, 6 neutrons, and 6 electrons. What element is this?',
+        choices: ['Boron (B)', 'Carbon (C)', 'Nitrogen (N)', 'Oxygen (O)'],
+        correct: 1,
+        feedback: 'Correct! Atomic number Z=6 uniquely defines Carbon.'
+      },
+      {
+        prompt: 'What is the net charge of an atom with 11 protons, 12 neutrons, and 10 electrons?',
+        choices: ['-1', '0 (Neutral)', '+1', '+2'],
+        correct: 2,
+        feedback: 'Correct! 11 protons (+11) and 10 electrons (-10) gives a net charge of +1 (Sodium cation Na⁺).'
+      },
+      {
+        prompt: 'What is the total mass number (A) of a Chlorine isotope containing 17 protons and 18 neutrons?',
+        choices: ['17', '18', '35', '36'],
+        correct: 2,
+        feedback: 'Correct! Mass number A = protons + neutrons = 17 + 18 = 35 (³⁵Cl).'
+      },
+      {
+        prompt: 'What is the heaviest element currently synthesized and recognized on the periodic table (Z=118)?',
+        choices: ['Uranium (U)', 'Plutonium (Pu)', 'Oganesson (Og)', 'Tennessine (Ts)'],
+        correct: 2,
+        feedback: 'Correct! Oganesson (Og) is element 118, named in honor of physicist Yuri Oganessian.'
+      },
+      {
+        prompt: 'How many electrons can the innermost Bohr energy level (Shell 1, n=1) hold at maximum capacity?',
+        choices: ['1 electron', '2 electrons', '8 electrons', '18 electrons'],
+        correct: 1,
+        feedback: 'Correct! For n=1, maximum capacity is 2(1)² = 2 electrons (as seen in Helium).'
+      }
+    ];
+
+    let currentGameIdx = 0;
+    let gameScore = 0;
+
+    function renderGameChallenge() {
+      const q = GAME_QUESTIONS[currentGameIdx];
+      document.getElementById('gameLevelTitle').textContent = `Challenge ${currentGameIdx + 1} of ${GAME_QUESTIONS.length}`;
+      document.getElementById('gameChallengePrompt').textContent = q.prompt;
+      document.getElementById('gameScoreBadge').textContent = `Score: ${gameScore} / ${GAME_QUESTIONS.length}`;
+      document.getElementById('gameFeedbackText').textContent = 'Select an answer above';
+
+      const grid = document.getElementById('gameChoicesGrid');
+      grid.innerHTML = '';
+
+      q.choices.forEach((choice, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'game-choice-btn';
+        btn.textContent = choice;
+        btn.onclick = () => checkGameChoice(idx);
+        grid.appendChild(btn);
+      });
+    }
+
+    function checkGameChoice(chosenIdx) {
+      const q = GAME_QUESTIONS[currentGameIdx];
+      const feedback = document.getElementById('gameFeedbackText');
+      const buttons = document.querySelectorAll('.game-choice-btn');
+
+      buttons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (idx === q.correct) {
+          btn.style.background = 'rgba(52, 211, 153, 0.3)';
+          btn.style.borderColor = '#34d399';
+          btn.style.color = '#34d399';
+        } else if (idx === chosenIdx) {
+          btn.style.background = 'rgba(248, 113, 113, 0.3)';
+          btn.style.borderColor = '#f87171';
+          btn.style.color = '#f87171';
+        }
+      });
+
+      if (chosenIdx === q.correct) {
+        gameScore++;
+        atomAudio.playSuccess();
+        feedback.innerHTML = `<span style="color:#34d399;">✓ ${q.feedback}</span>`;
+      } else {
+        atomAudio.playRemove();
+        feedback.innerHTML = `<span style="color:#f87171;">✗ Incorrect. ${q.feedback}</span>`;
+      }
+      document.getElementById('gameScoreBadge').textContent = `Score: ${gameScore} / ${GAME_QUESTIONS.length}`;
+    }
+
+    function nextGameChallenge() {
+      currentGameIdx = (currentGameIdx + 1) % GAME_QUESTIONS.length;
+      renderGameChallenge();
+    }
+
+    /* =========================================================================
+       GUIDED MISSIONS SYSTEM
+       ========================================================================= */
+    const MISSIONS = [
+      {
+        id: 'mission1',
+        title: 'Mission 1: The Primordial Element (Hydrogen)',
+        desc: 'Build a neutral, stable Hydrogen atom (¹H): 1 proton, 0 neutrons, and 1 electron.',
+        check: () => state.protons === 1 && state.neutrons === 0 && state.electrons === 1,
+        isComplete: false
+      },
+      {
+        id: 'mission2',
+        title: 'Mission 2: Noble Gas Stability (Helium)',
+        desc: 'Build a neutral, stable Helium-4 atom (⁴He): 2 protons, 2 neutrons, and a filled first shell of 2 electrons.',
+        check: () => state.protons === 2 && state.neutrons === 2 && state.electrons === 2,
+        isComplete: false
+      },
+      {
+        id: 'mission3',
+        title: 'Mission 3: Organic Backbone (Carbon-12)',
+        desc: 'Synthesize Carbon-12 (¹²C): 6 protons, 6 neutrons, and 6 electrons with a neutral charge.',
+        check: () => state.protons === 6 && state.neutrons === 6 && state.electrons === 6,
+        isComplete: false
+      },
+      {
+        id: 'mission4',
+        title: 'Mission 4: Cation Formation (Lithium Ion)',
+        desc: 'Synthesize a positive Lithium cation (Li⁺): 3 protons, 4 neutrons, and 2 electrons (Net charge +1).',
+        check: () => state.protons === 3 && (state.protons - state.electrons === 1),
+        isComplete: false
+      },
+      {
+        id: 'mission5',
+        title: 'Mission 5: Heavy Actinide or Transuranic Synthesis',
+        desc: 'Construct a heavy element on the periodic table beyond Uranium (Z > 92, e.g., Plutonium, Californium, or Oganesson).',
+        check: () => state.protons > 92,
+        isComplete: false
+      }
+    ];
+
+    function checkMissionsEvaluation() {
+      let newlyCompleted = false;
+      MISSIONS.forEach(m => {
+        if (!m.isComplete && m.check()) {
+          m.isComplete = true;
+          newlyCompleted = true;
+        }
+      });
+
+      if (newlyCompleted) {
+        atomAudio.playSuccess();
+        renderMissions();
+      }
+    }
+
+    function renderMissions() {
+      const container = document.getElementById('missionGridContainer');
+      container.innerHTML = '';
+      let completedCount = 0;
+
+      MISSIONS.forEach(m => {
+        if (m.isComplete) completedCount++;
+
+        const card = document.createElement('div');
+        card.className = 'mission-card' + (m.isComplete ? ' completed' : '');
+
+        card.innerHTML = `
+          <div class="mission-card-header">
+            <div class="mission-title">
+              <span>${m.title}</span>
+            </div>
+            <span class="mission-status-pill">${m.isComplete ? '✓ Cleared' : 'In Progress'}</span>
+          </div>
+          <div class="mission-desc">${m.desc}</div>
+          <div class="mission-action-row">
+            <span style="font-size:0.75rem; font-family:var(--font-mono); color:#38bdf8;">Target Objective</span>
+            <button class="mission-jump-btn" onclick="jumpToMission()">
+              Assemble in Lab ➔
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      document.getElementById('missionBadgeCount').textContent = `${completedCount}/5`;
+      document.getElementById('missionProgressRatio').textContent = `${completedCount} / 5`;
+    }
+
+    function jumpToMission() {
+      setAppMode('sim');
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ SYSTEM & CERTIFICATE OF MASTERY
+       ========================================================================= */
+    const QUIZ_QUESTIONS = [
+      {
+        question: 'An atom possesses 8 protons, 8 neutrons, and 10 electrons. What is its chemical identity and net charge?',
+        options: [
+          'Oxygen with a -2 net charge (O²⁻ anion)',
+          'Neon with a 0 net charge (neutral atom)',
+          'Carbon with a +2 net charge (C²⁺ cation)',
+          'Oxygen with a +2 net charge (O²⁺ cation)'
+        ],
+        correct: 0,
+        explanation: '8 protons uniquely identify Oxygen (Z=8). With 10 electrons, the net charge is protons − electrons = 8 − 10 = -2, forming an oxide anion (O²⁻).'
+      },
+      {
+        question: 'What is the relationship between Carbon-12 (¹²C) and Carbon-14 (¹⁴C)?',
+        options: [
+          'They are different chemical elements with identical mass numbers',
+          'They are isotopes of carbon with the same number of protons (6) but different numbers of neutrons (6 vs 8)',
+          'Carbon-14 is a positive ion with two missing electrons',
+          'Carbon-14 has 8 protons and 6 neutrons'
+        ],
+        correct: 1,
+        explanation: 'Isotopes share identical atomic numbers Z (6 protons) but differ in neutron count (¹²C has 6 neutrons, ¹⁴C has 8 neutrons).'
+      },
+      {
+        question: 'According to the Bohr atomic model, what is the maximum number of electrons accommodated in the second energy shell (n=2)?',
+        options: [
+          '2 electrons',
+          '6 electrons',
+          '8 electrons',
+          '18 electrons'
+        ],
+        correct: 2,
+        explanation: 'Using the formula 2n², for the second shell (n=2), the maximum capacity is 2(2)² = 2 × 4 = 8 electrons.'
+      },
+      {
+        question: 'If an electrically neutral atom loses two electrons during a chemical reaction, what does it become?',
+        options: [
+          'An anion with charge -2',
+          'A cation with charge +2',
+          'An isotope with two fewer neutrons',
+          'A new element with atomic number decreased by 2'
+        ],
+        correct: 1,
+        explanation: 'Losing negatively charged electrons leaves an excess of protons, resulting in a positively charged cation (+2).'
+      },
+      {
+        question: 'What element on the complete periodic table has the highest atomic number (Z=118)?',
+        options: [
+          'Uranium (U)',
+          'Lead (Pb)',
+          'Oganesson (Og)',
+          'Tennessine (Ts)'
+        ],
+        correct: 2,
+        explanation: 'Oganesson (Og) is element 118, occupying period 7, group 18 as a synthetic noble gas.'
+      }
+    ];
+
+    let userAnswers = new Array(QUIZ_QUESTIONS.length).fill(null);
+
+    function renderQuiz() {
+      const container = document.getElementById('quizContainer');
+      container.innerHTML = '';
+
+      QUIZ_QUESTIONS.forEach((q, qIdx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-card';
+
+        let optsHtml = '';
+        q.options.forEach((opt, oIdx) => {
+          const isSelected = userAnswers[qIdx] === oIdx;
+          const isAnswered = userAnswers[qIdx] !== null;
+          let extraClass = '';
+          if (isAnswered) {
+            if (oIdx === q.correct) extraClass = 'correct';
+            else if (isSelected && oIdx !== q.correct) extraClass = 'wrong';
+          }
+
+          optsHtml += `
+            <button class="quiz-opt-btn ${extraClass}" ${isAnswered ? 'disabled' : ''} onclick="submitQuizAnswer(${qIdx}, ${oIdx})">
+              <span class="quiz-opt-marker">${String.fromCharCode(65 + oIdx)}</span>
+              <span>${opt}</span>
+            </button>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="quiz-q-num">Question ${qIdx + 1} of ${QUIZ_QUESTIONS.length}</div>
+          <div class="quiz-q-text">${q.question}</div>
+          <div class="quiz-options-list">${optsHtml}</div>
+          <div class="quiz-explanation ${userAnswers[qIdx] !== null ? 'visible' : ''}">
+            <strong>Explanation:</strong> ${q.explanation}
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      updateQuizSummary();
+    }
+
+    function submitQuizAnswer(qIdx, optIdx) {
+      if (userAnswers[qIdx] !== null) return;
+      userAnswers[qIdx] = optIdx;
+      atomAudio.playSuccess();
+      renderQuiz();
+    }
+
+    function updateQuizSummary() {
+      const answeredCount = userAnswers.filter(a => a !== null).length;
+      let correctCount = 0;
+      userAnswers.forEach((ans, idx) => {
+        if (ans === QUIZ_QUESTIONS[idx].correct) correctCount++;
+      });
+
+      const status = document.getElementById('quizStatusText');
+      status.textContent = `${answeredCount} of ${QUIZ_QUESTIONS.length} Answered (Score: ${correctCount}/${QUIZ_QUESTIONS.length})`;
+
+      const certBtn = document.getElementById('btnCertificateTrigger');
+      if (answeredCount === QUIZ_QUESTIONS.length && correctCount >= 4) {
+        certBtn.style.display = 'inline-block';
+      } else {
+        certBtn.style.display = 'none';
+      }
+
+      // LMS Integration postMessage
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'ELEMENTA_QUIZ_UPDATE',
+          simulation: 'build-an-atom',
+          answered: answeredCount,
+          correct: correctCount,
+          total: QUIZ_QUESTIONS.length
+        }, '*');
+      }
+    }
+
+    function resetQuiz() {
+      userAnswers = new Array(QUIZ_QUESTIONS.length).fill(null);
+      renderQuiz();
+    }
+
+    function openCertificate() {
+      document.getElementById('certOverlay').classList.add('active');
+    }
+
+    function closeCertificate() {
+      document.getElementById('certOverlay').classList.remove('active');
+    }
+
+    /* =========================================================================
+       NAVIGATION, SCREENS & MODES
+       ========================================================================= */
+    function setAppMode(modeKey) {
+      if (typeof currentAppMode !== 'undefined') currentAppMode = modeKey;
+      if (typeof appMode !== 'undefined') appMode = modeKey;
+      if (typeof state !== 'undefined' && state && state.mode !== undefined) state.mode = modeKey;
+      if (typeof state !== 'undefined' && state && state.appMode !== undefined) state.appMode = modeKey;
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+        if (typeof resizeCanvases === 'function') setTimeout(resizeCanvases, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    
+    function switchSimScreen(screenName) {
+      state.screen = screenName;
+      document.getElementById('tabScreenAtom').classList.toggle('active', screenName === 'atom');
+      document.getElementById('tabScreenSymbol').classList.toggle('active', screenName === 'symbol');
+      document.getElementById('tabScreenGame').classList.toggle('active', screenName === 'game');
+
+      const simLayout = document.getElementById('simLayoutMain');
+      const gameView = document.getElementById('gameViewport');
+
+      if (screenName === 'game') {
+        simLayout.style.display = 'none';
+        gameView.style.display = 'flex';
+        renderGameChallenge();
+      } else {
+        simLayout.style.display = 'flex';
+        gameView.style.display = 'none';
+        setTimeout(resizeCanvas, 40);
+      }
+    }
+
+    function resetSimulation() {
+      state.protons = 1;
+      state.neutrons = 0;
+      state.electrons = 1;
+      updateUI();
+    }
+
+    function captureScreenshot() {
+      try {
+        const link = document.createElement('a');
+        link.download = `elementa_build_an_atom_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (err) {
+        console.error('Screenshot error:', err);
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn('Fullscreen request failed:', err);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    /* =========================================================================
+       INITIALIZATION
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      renderPeriodicTable118();
+      updateUI();
+      renderMissions();
+      renderQuiz();
+      renderGameChallenge();
+      requestAnimationFrame(renderAtomCanvas);
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

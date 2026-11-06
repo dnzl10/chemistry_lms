@@ -6,23 +6,14 @@
     <title>Events & Calendar | Chemistry Arcade</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        @media (max-width: 768px) {
-            .sidebar-collapsed { transform: translateX(-100%); }
-            .sidebar-open { transform: translateX(0); }
-        }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .nav-active {
-            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
-            color: white !important;
-            font-weight: 700;
-            box-shadow: 0 4px 16px rgba(6,182,212,0.3), 0 2px 8px rgba(99,102,241,0.4);
-        }
-        .nav-active i { color: white !important; }
+
 
         /* Calendar day hover tooltip */
         .cal-day { position: relative; }
@@ -57,6 +48,9 @@
         .pill-holiday  { background: #d1fae5; color: #065f46; border-left: 3px solid #10b981; }
         .pill-due      { background: #fce7f3; color: #9d174d; border-left: 3px solid #ec4899; }
         .pill-personal { background: #e0f2fe; color: #0c4a6e; border-left: 3px solid #0284c7; }
+        .pill-assignment { background: #ccfbf1; color: #0f766e; border-left: 3px solid #0d9488; }
+        .cal-day { cursor: pointer !important; }
+        .cal-day:hover { background-color: rgba(239, 246, 255, 0.75); }
 
         /* Modal animation */
         @keyframes modalIn {
@@ -70,122 +64,257 @@
 
         /* Loading shimmer */
         @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+
+        /* ═══════════════════════════════════════════════════════════
+           7-COLUMN x 24-HOUR TIMELINE ENGINE STYLES (EventStudent.md)
+        ════════════════════════════════════════════════════════════ */
+        .timeline-day-col {
+            position: relative;
+            height: 1440px;
+            background-image: 
+                linear-gradient(to bottom, #f1f5f9 1px, transparent 1px),
+                linear-gradient(to bottom, #f8fafc 1px, transparent 1px);
+            background-size: 100% 60px, 100% 30px;
+            cursor: crosshair;
+        }
+        .timeline-hour-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background-color: #f1f5f9;
+            pointer-events: none;
+        }
+        .timeline-half-hour-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 1px;
+            border-top: 1px dashed #f8fafc;
+            pointer-events: none;
+        }
+        .timeline-gutter-label {
+            position: absolute;
+            right: 8px;
+            transform: translateY(-50%);
+            font-size: 10px;
+            font-weight: 800;
+            color: #94a3b8;
+            user-select: none;
+            line-height: 1;
+        }
+        /* Event Card Visual Density (Rule 2) */
+        .timeline-event-card {
+            position: absolute;
+            box-sizing: border-box;
+            border-radius: 8px;
+            z-index: 10;
+            overflow: hidden;
+            user-select: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            transition: box-shadow 0.15s ease, opacity 0.15s ease;
+        }
+        .timeline-event-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            z-index: 25;
+        }
+        .timeline-event-card.is-movable {
+            cursor: grab;
+        }
+        .timeline-event-card.is-movable:active {
+            cursor: grabbing;
+        }
+        .timeline-event-card.is-dragging {
+            opacity: 0.75;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            z-index: 40 !important;
+            cursor: grabbing !important;
+        }
+        /* Category Styling with 3px left stripe & 10% opacity tint */
+        .tl-cat-exam {
+            border-left: 3px solid #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.10) !important;
+            color: #991b1b !important;
+        }
+        .tl-cat-deadline {
+            border-left: 3px solid #f59e0b !important;
+            background-color: rgba(245, 158, 11, 0.10) !important;
+            color: #92400e !important;
+        }
+        .tl-cat-assignment {
+            border-left: 3px solid #0d9488 !important;
+            background-color: rgba(13, 148, 136, 0.10) !important;
+            color: #115e59 !important;
+        }
+        .tl-cat-material {
+            border-left: 3px solid #7c3aed !important;
+            background-color: rgba(124, 58, 237, 0.10) !important;
+            color: #5b21b6 !important;
+        }
+        .tl-cat-holiday {
+            border-left: 3px solid #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.10) !important;
+            color: #065f46 !important;
+        }
+        .tl-cat-due {
+            border-left: 3px solid #ec4899 !important;
+            background-color: rgba(236, 72, 153, 0.10) !important;
+            color: #9d174d !important;
+        }
+        .tl-cat-personal {
+            border-left: 3px solid #0284c7 !important;
+            background-color: rgba(14, 165, 233, 0.10) !important;
+            color: #0369a1 !important;
+        }
+        /* Duration scaling: Sub-15m micro-event (<15px) */
+        .timeline-micro-event {
+            padding: 0 !important;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        /* Duration scaling: 15m slot (15px) */
+        .timeline-15m-event {
+            padding: 0 4px !important;
+            line-height: 15px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Resize Handle (Rule 5) */
+        .timeline-resize-handle {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 7px;
+            cursor: ns-resize;
+            background: transparent;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .timeline-resize-handle::after {
+            content: '';
+            width: 18px;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 1px;
+        }
+        .timeline-resize-handle:hover {
+            background-color: rgba(0, 0, 0, 0.12);
+        }
+        /* All-Day Chip (Rule 6) */
+        .all-day-chip {
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            transition: transform 0.1s ease;
+        }
+        .all-day-chip:hover {
+            transform: translateY(-1px);
+        }
+        /* Drag Ghost Tooltip */
+        #dragCreateBadge, #dragMoveBadge {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
     </style>
+
+    <!-- Standardized Student Navigation & Responsive Styles -->
+    <%- include('partials/student-nav-styles') %>
 </head>
 <body class="bg-slate-50 text-slate-900">
 
 <div class="flex min-h-screen relative overflow-x-hidden">
-    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden"></div>
-
-    <!-- ═══════ SIDEBAR ═══════ -->
-    <aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60" style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
-        <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
-            <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4"><i class="fas fa-times text-xl"></i></button>
-            <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
-            <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">Elem<span class="text-white">enta</span></h1>
-            <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Student Portal</p>
-        </div>
-
-        <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
-            <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
-                <div class="space-y-1">
-                    <a href="/home" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                        <i class="fas fa-house w-5 text-cyan-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-bold tracking-tight text-base">Home</span>
-                    </a>
-                    <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                        <i class="fas fa-chart-line w-5 text-red-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-bold tracking-tight text-base">Dashboard</span>
-                    </a>
-                </div>
-            </div>
-            <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
-                <div class="space-y-1">
-                    <a href="/subjects" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                        <i class="fas fa-book w-5 text-orange-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-bold tracking-tight text-base">My Subjects</span>
-                    </a>
-                    <a href="/events" class="nav-active flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group">
-                        <i class="fa-solid fa-calendar-days text-lg text-violet-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-bold tracking-tight text-base">Events</span>
-                    </a>
-                </div>
-            </div>
-            <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Community & Engagement</p>
-                <div class="space-y-1">
-                    <a href="/forums" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                        <i class="fas fa-comments w-5 text-emerald-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-bold tracking-tight text-base">Forums</span>
-                    </a>
-                </div>
-            </div>
-            <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">EXP & Rankings</p>
-                <div class="space-y-1">
-                    <a href="/leaderboards" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                        <i class="fas fa-trophy w-5 text-yellow-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-bold tracking-tight text-base">Leaderboards</span>
-                    </a>
-                </div>
-            </div>
-        </nav>
-
-        <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
-            <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
-                <i class="fas fa-right-from-bracket w-5"></i> Log Out
-            </a>
-        </div>
-    </aside>
+    <!-- Standardized Student Sidebar Partial -->
+    <%- include('partials/student-sidebar', { activeNav: 'events' }) %>
 
     <!-- ═══════ MAIN ═══════ -->
     <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 transition-all duration-300">
 
         <!-- HEADER -->
-        <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+        <header class="h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-40">
             <div class="flex items-center gap-4">
-                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 md:hidden">
+                <button onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" class="p-2 rounded-lg hover:bg-slate-100 text-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 transition">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
-                <!-- Event Search Bar -->
                 <div>
-                    <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">
+                    <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">
                         Welcome, <%= user.first_name %>!
-                    </h2>
-                    <p class="text-xs text-slate-400 hidden sm:block">
-                        <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
+                    </h1>
+                    <p class="text-xs text-slate-600 hidden sm:block font-medium">
+                        <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
                         Chemistry Enthusiast &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-3 md:gap-6">
-                <div onclick="toggleNotifications()" class="relative group cursor-pointer p-2 hover:bg-slate-100 rounded-full transition">
-                    <i class="far fa-bell text-xl text-slate-600"></i>
-                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5">
+            <div class="flex items-center gap-2 sm:gap-3 md:gap-6">
+                <!-- Event Search Bar with Dropdown (positioned on left side of action buttons) -->
+                <div class="relative w-36 xs:w-48 sm:w-60 md:w-72 lg:w-80">
+                    <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                    <input type="text" id="eventSearchInput" placeholder="Search events..."
+                           oninput="handleSearch(this.value)"
+                           autocomplete="off"
+                           class="w-full pl-9 pr-3 sm:pr-4 py-2 text-xs font-semibold bg-slate-100/90 border border-slate-200/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 placeholder-slate-400 transition shadow-2xs">
+                    <div id="searchDropdown" class="hidden absolute right-0 w-72 sm:w-80 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50 max-h-80 overflow-y-auto"></div>
+                </div>
+
+                <!-- Messages Navigation Button (Entry point to message-student view) -->
+                <a href="/messages" id="messagesBtn" aria-label="Open messages and conversations" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
+                    <i class="far fa-comment-dots text-xl"></i>
+                    
+                    <!-- Tooltip with keyboard and hover accessibility -->
+                    <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                        Messages
+                    </span>
+                </a>
+
+                <!-- Notification Button with keyboard-accessible tooltip -->
+                <button type="button" onclick="toggleNotifications()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
+                    <i class="far fa-bell text-xl text-slate-700"></i>
+                    
+                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5 notif-badge hidden" aria-hidden="true">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
                     </span>
-                </div>
 
+                    <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                        Notifications
+                    </span>
+                </button>
+
+                <!-- User Profile Dropdown -->
                 <div class="relative">
-                    <div onclick="toggleUserMenu(event)" class="flex items-center gap-3 pl-4 border-l border-slate-200 cursor-pointer hover:opacity-80 transition">
+                    <button type="button" onclick="toggleUserMenu(event)" id="userMenuBtn" aria-expanded="false" aria-label="Open user profile menu" class="flex items-center gap-3 pl-4 border-l border-slate-200 hover:opacity-85 transition focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-lg">
                         <div class="text-right hidden lg:block">
                             <p class="text-sm font-bold text-slate-800 leading-none mb-1"><%= user.first_name %> <%= user.last_name %></p>
-                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none"><%= user.role %></p>
+                            <p class="text-xs uppercase font-bold text-slate-600 tracking-wider leading-none"><%= user.role %></p>
                         </div>
-                        <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100">
-                        <i class="fas fa-chevron-down text-[10px] text-slate-400 ml-1"></i>
-                    </div>
+                        <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" alt="<%= user.first_name %>'s avatar" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100">
+                        <i class="fas fa-chevron-down text-xs text-slate-600 ml-1"></i>
+                    </button>
+
                     <div id="userDropdown" class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
-                        <div class="px-4 py-3 border-b border-slate-50 lg:hidden">
-                            <p class="text-sm font-bold text-slate-800"><%= user.first_name %></p>
-                            <p class="text-[10px] text-slate-400 mt-1 uppercase"><%= user.role %></p>
+                        <div class="px-4 py-3 border-b border-slate-100 lg:hidden">
+                            <p class="text-sm font-bold text-slate-800"><%= user.first_name %> <%= user.last_name %></p>
+                            <p class="text-xs text-slate-600 mt-1 uppercase font-bold"><%= user.role %></p>
                         </div>
-                        <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition"><i class="far fa-user w-5 text-center"></i> View Profile</a>
-                        <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition font-bold"><i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out</a>
+                        <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                            <i class="far fa-user w-5 text-center"></i> View Profile
+                        </a>
+                        <hr class="my-2 border-slate-100">
+                        <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition font-bold">
+                            <i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out
+                        </a>
                     </div>
                 </div>
             </div>
@@ -202,13 +331,16 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3">
-                        <!-- View switcher -->
+                        <!-- View switcher (Week / Month / Agenda) -->
                         <div class="flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
-                            <button onclick="switchView('grid')" id="btnGrid" class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-slate-100 text-blue-600">
-                                <i class="fas fa-th-large mr-2"></i>Grid
+                            <button onclick="switchView('week')" id="btnWeek" class="px-3.5 py-2 rounded-xl text-sm font-bold transition-all bg-slate-100 text-blue-600">
+                                <i class="fas fa-calendar-week mr-1.5"></i>Week
                             </button>
-                            <button onclick="switchView('agenda')" id="btnAgenda" class="px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:bg-slate-50">
-                                <i class="fas fa-list mr-2"></i>Agenda
+                            <button onclick="switchView('grid')" id="btnGrid" class="px-3.5 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:bg-slate-50">
+                                <i class="fas fa-th-large mr-1.5"></i>Month
+                            </button>
+                            <button onclick="switchView('agenda')" id="btnAgenda" class="px-3.5 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:bg-slate-50">
+                                <i class="fas fa-list mr-1.5"></i>Agenda
                             </button>
                         </div>
 
@@ -224,6 +356,7 @@
                                 <button onclick="applyFilter('all')" class="filter-opt w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-slate-400"></span> All Types</button>
                                 <button onclick="applyFilter('Exam')" class="filter-opt w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-red-500"></span> Exam</button>
                                 <button onclick="applyFilter('Deadline')" class="filter-opt w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Deadline</button>
+                                <button onclick="applyFilter('Assignment')" class="filter-opt w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-teal-500"></span> Assignment</button>
                                 <button onclick="applyFilter('Material')" class="filter-opt w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-violet-500"></span> Material</button>
                                 <button onclick="applyFilter('Holiday')" class="filter-opt w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Holiday</button>
                                 <button onclick="applyFilter('due_date')" class="filter-opt w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-pink-500"></span> Assessment Due</button>
@@ -239,6 +372,120 @@
                     </div>
                 </div>
 
+                <!-- ═══ WEEK VIEW (7-Column x 24-Hour Timeline Engine - EventStudent.md) ═══ -->
+                <div id="weekView" class="hidden">
+                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-6 flex flex-col">
+                        <!-- Week Nav Header -->
+                        <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
+                            <div class="flex items-center gap-2">
+                                <button onclick="changeWeek(-1)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-600 hover:text-blue-600 transition shadow-2xs cursor-pointer" title="Previous Week">
+                                    <i class="fas fa-chevron-left text-xs"></i>
+                                </button>
+                                <button onclick="jumpToWeekToday()" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-600 hover:text-blue-600 text-xs font-bold rounded-xl shadow-2xs transition cursor-pointer">
+                                    Today
+                                </button>
+                                <button onclick="changeWeek(1)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-600 hover:text-blue-600 transition shadow-2xs cursor-pointer" title="Next Week">
+                                    <i class="fas fa-chevron-right text-xs"></i>
+                                </button>
+                            </div>
+                            <div class="text-center">
+                                <h3 id="calWeekRangeLabel" class="font-extrabold text-slate-800 text-base sm:text-lg tracking-tight"></h3>
+                                <p id="calWeekSubLabel" class="text-xs text-slate-400 font-bold"></p>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                                <i class="far fa-clock text-blue-500"></i>
+                                <span id="currentTimeDisplay">--:--</span>
+                            </div>
+                        </div>
+
+                        <!-- Sticky Day Header Row (7 Days) -->
+                        <div class="flex border-b border-slate-200 bg-slate-50/80 sticky top-0 z-20">
+                            <div class="w-14 sm:w-16 flex-shrink-0 border-r border-slate-100 flex items-center justify-center py-2.5">
+                                <span class="text-[9px] font-black uppercase tracking-wider text-slate-400">Time</span>
+                            </div>
+                            <div id="weekDayHeaders" class="flex-1 grid grid-cols-7 divide-x divide-slate-100">
+                                <!-- Injected by JS: Sun, Mon, ... with date badge -->
+                            </div>
+                        </div>
+
+                        <!-- Decoupled Sticky All-Day Row (Rule 6) -->
+                        <div id="allDayRowWrapper" class="flex border-b border-slate-200 bg-slate-100/60 sticky z-10">
+                            <div class="w-14 sm:w-16 flex-shrink-0 border-r border-slate-200 flex items-center justify-end pr-2 py-1.5">
+                                <span class="text-[9px] font-black uppercase tracking-tight text-slate-400">All-Day</span>
+                            </div>
+                            <div id="weekAllDayColumns" class="flex-1 grid grid-cols-7 divide-x divide-slate-200 min-h-[38px] p-1 gap-1">
+                                <!-- 7 columns for all-day chips -->
+                            </div>
+                        </div>
+
+                        <!-- Week Empty State Banner (Rule: Clear feedback when no events scheduled in week) -->
+                        <div id="weekEmptyBanner" class="hidden p-4 bg-gradient-to-r from-blue-50/60 via-slate-50 to-indigo-50/40 border-b border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                                    <i class="far fa-calendar-check text-base"></i>
+                                </div>
+                                <div>
+                                    <h5 class="text-xs font-bold text-slate-800">No events scheduled this week</h5>
+                                    <p class="text-[11px] text-slate-500">You're all clear! Click or drag across any time slot to schedule an event.</p>
+                                </div>
+                            </div>
+                            <button onclick="openEventModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-200 transition flex items-center gap-1.5 flex-shrink-0 cursor-pointer">
+                                <i class="fas fa-plus text-[10px]"></i> Add Event
+                            </button>
+                        </div>
+
+                        <!-- Scrollable Timeline Canvas (Rule 1: 1hr = 60px, 24hr = 1440px) -->
+                        <div id="timelineScroll" class="overflow-y-auto overflow-x-auto relative h-[650px] max-h-[72vh] select-none bg-white">
+                            <div class="flex min-w-[720px] relative" style="height: 1440px;">
+                                <!-- Time Gutter (Left) with labels on division lines -->
+                                <div id="timeGutter" class="w-14 sm:w-16 flex-shrink-0 relative border-r border-slate-100 bg-slate-50/40 select-none">
+                                    <!-- 24 hour labels centered on division lines -->
+                                </div>
+
+                                <!-- 7-Column Grid Canvas -->
+                                <div id="timelineColumnsWrapper" class="flex-1 grid grid-cols-7 relative divide-x divide-slate-100">
+                                    <!-- Hour divider lines and 7 day columns injected by JS -->
+                                </div>
+
+                                <!-- Active Red Current Time Indicator (Rule 1) -->
+                                <div id="currentTimeIndicator" class="pointer-events-none absolute z-20 flex items-center transition-all duration-300" style="display: none; left: 0; right: 0;">
+                                    <div class="w-14 sm:w-16 flex justify-end pr-1">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-red-600 shadow-sm animate-pulse inline-block"></span>
+                                    </div>
+                                    <div class="flex-1 relative">
+                                        <div class="h-[2px] bg-red-500 shadow-xs w-full"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Drag-to-Create Ghost Box (Rule 5) -->
+                                <div id="dragCreateGhost" class="absolute hidden border-2 border-dashed border-blue-500 bg-blue-500/15 rounded-xl z-30 pointer-events-none shadow-md">
+                                    <div id="dragCreateBadge" class="absolute top-1 left-2 text-[10px] font-extrabold bg-blue-600 text-white px-2 py-0.5 rounded shadow-sm whitespace-nowrap"></div>
+                                </div>
+
+                                <!-- Drag-to-Move Ghost Tooltip (Rule 5) -->
+                                <div id="dragMoveBadge" class="fixed hidden text-[11px] font-extrabold bg-slate-900 text-white px-3 py-1 rounded-xl shadow-xl z-50 pointer-events-none"></div>
+                            </div>
+                        </div>
+
+                        <!-- Week View Legend & Drag Helper -->
+                        <div class="p-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60 text-xs">
+                            <div class="flex flex-wrap gap-3">
+                                <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-500"><span class="w-3 h-1.5 rounded bg-red-500 inline-block"></span>Exam</span>
+                                <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-500"><span class="w-3 h-1.5 rounded bg-amber-500 inline-block"></span>Deadline</span>
+                                <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-500"><span class="w-3 h-1.5 rounded bg-teal-500 inline-block"></span>Assignment</span>
+                                <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-500"><span class="w-3 h-1.5 rounded bg-violet-500 inline-block"></span>Material</span>
+                                <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-500"><span class="w-3 h-1.5 rounded bg-emerald-500 inline-block"></span>Holiday</span>
+                                <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-500"><span class="w-3 h-1.5 rounded bg-pink-500 inline-block"></span>Due Date</span>
+                                <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-500"><span class="w-3 h-1.5 rounded bg-sky-500 inline-block"></span>My Event</span>
+                            </div>
+                            <div class="text-[11px] font-semibold text-slate-400 flex items-center gap-2">
+                                <i class="fas fa-hand-pointer text-blue-500"></i>
+                                <span>Click empty slot or drag to create • Drag personal event to move/resize</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ═══ GRID VIEW ═══ -->
                 <div id="gridView">
                     <!-- Calendar Card -->
@@ -246,14 +493,19 @@
 
                         <!-- Month Nav Header -->
                         <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60 rounded-t-3xl">
-                            <button onclick="changeMonth(-1)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-600 hover:text-blue-600 transition shadow-sm">
-                                <i class="fas fa-chevron-left text-xs"></i>
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button onclick="changeMonth(-1)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-600 hover:text-blue-600 transition shadow-2xs" title="Previous Month">
+                                    <i class="fas fa-chevron-left text-xs"></i>
+                                </button>
+                                <button onclick="jumpToToday()" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-600 hover:text-blue-600 text-xs font-bold rounded-xl shadow-2xs transition">
+                                    Today
+                                </button>
+                            </div>
                             <div class="text-center">
                                 <h3 id="calMonthLabel" class="font-extrabold text-slate-800 text-lg tracking-tight"></h3>
                                 <p id="calYearLabel" class="text-xs text-slate-400 font-bold"></p>
                             </div>
-                            <button onclick="changeMonth(1)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-600 hover:text-blue-600 transition shadow-sm">
+                            <button onclick="changeMonth(1)" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-600 hover:text-blue-600 transition shadow-2xs" title="Next Month">
                                 <i class="fas fa-chevron-right text-xs"></i>
                             </button>
                         </div>
@@ -279,12 +531,14 @@
                         </div>
                     </div>
 
-                    <!-- Upcoming Events Strip -->
-                    <div class="mb-2 flex items-center justify-between">
-                        <h4 class="text-base font-extrabold text-slate-700">Upcoming This Month</h4>
-                        <span id="upcomingCount" class="text-xs text-slate-400 font-bold"></span>
+                    <!-- Upcoming Events Section -->
+                    <div class="mb-4 mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Upcoming This Month</h2>
+                        </div>
+                        <span id="upcomingCount" class="text-xs text-slate-400 font-bold self-start sm:self-auto"></span>
                     </div>
-                    <div id="upcomingStrip" class="flex gap-3 overflow-x-auto pb-2 no-scrollbar"></div>
+                    <div id="upcomingStrip" class="space-y-3"></div>
                 </div>
 
                 <!-- ═══ AGENDA VIEW ═══ -->
@@ -332,8 +586,20 @@
 <div id="notification-overlay" onclick="toggleNotifications()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden transition-opacity duration-300 opacity-0"></div>
 <div id="notification-panel" class="fixed top-0 right-0 h-screen w-80 md:w-96 bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col">
     <div class="p-5 border-b flex justify-between items-center bg-blue-600 text-white flex-shrink-0">
-        <h2 class="text-lg font-bold flex items-center gap-2"><i class="far fa-bell"></i> Notifications</h2>
-        <button onclick="toggleNotifications()" class="hover:bg-blue-700 p-2 rounded-lg transition"><i class="fas fa-times text-xl"></i></button>
+        <div>
+            <h2 class="text-lg font-bold flex items-center gap-2">
+                <i class="far fa-bell"></i> Notifications
+            </h2>
+            <p id="notifSubtitle" class="text-xs text-blue-100 font-medium">Activity updates</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="NotificationHub.markAllRead('notification-list')" aria-label="Mark all notifications as read" title="Mark all as read" class="hover:bg-blue-700 text-blue-100 hover:text-white p-2 rounded-lg transition text-xs font-bold flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-white">
+                <i class="fas fa-check-double text-sm"></i>
+            </button>
+            <button onclick="toggleNotifications()" aria-label="Close notifications panel" class="hover:bg-blue-700 p-2 rounded-lg transition focus-visible:ring-2 focus-visible:ring-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
     </div>
     <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 no-scrollbar" id="notification-list">
         <div class="flex flex-col items-center justify-center h-full text-slate-400">
@@ -346,11 +612,12 @@
 <!-- ═══════════════════════════════════════════════════════════
      CREATE / EDIT EVENT MODAL
 ════════════════════════════════════════════════════════════ -->
-<div id="eventModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden modal-anim">
+<div id="eventModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4 cursor-pointer"
+     role="dialog" aria-modal="true" aria-labelledby="modalTitle" onclick="if(event.target === this) closeEventModal()">
+    <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden modal-anim cursor-default">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <h3 id="modalTitle" class="text-xl font-bold text-slate-800">Create New Event</h3>
-            <button onclick="closeEventModal()" class="text-slate-400 hover:text-slate-600 transition text-xl"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeEventModal()" aria-label="Close event modal" class="text-slate-400 hover:text-slate-600 transition text-xl w-8 h-8 rounded-xl flex items-center justify-center"><i class="fas fa-times"></i></button>
         </div>
         <form id="eventForm" action="/events/add" method="POST" class="p-6 space-y-4 max-h-[72vh] overflow-y-auto no-scrollbar">
             <!-- Hidden for edit mode -->
@@ -358,7 +625,7 @@
             <input type="hidden" id="formMethod" name="_method" value="">
 
             <div>
-                <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Subject</label>
+                <label for="formSubjectId" class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Subject</label>
                 <select name="subject_id" id="formSubjectId" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     <option value="">— Select Subject —</option>
                     <% userSubjects.forEach(sub => { %>
@@ -369,45 +636,63 @@
 
             <div class="grid grid-cols-2 gap-4">
                 <div class="col-span-2">
-                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Event Title *</label>
+                    <label for="formTitle" class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Event Title *</label>
                     <input type="text" name="event_title" id="formTitle" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="col-span-2">
-                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Description</label>
+                    <label for="formDesc" class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Description</label>
                     <textarea name="event_description" id="formDesc" rows="2" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Type</label>
+                    <label for="formType" class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Type</label>
                     <select name="event_type" id="formType" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="Material">Material</option>
                         <option value="Deadline">Deadline</option>
                         <option value="Exam">Exam</option>
+                        <option value="Assignment">Assignment</option>
                         <option value="Holiday">Holiday</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Date *</label>
+                    <label for="formDate" class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Date *</label>
                     <input type="date" name="event_date" id="formDate" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
 
             <div>
-                <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Location</label>
-                <input type="text" name="event_location" id="formLocation" placeholder="Room 101 or Online Link" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="flex items-center justify-between mb-2">
+                    <label for="formLocation" class="block text-xs font-black uppercase tracking-widest text-slate-400">Location</label>
+                    <button type="button" onclick="openLocationPickerModal()" class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-xl transition cursor-pointer shadow-2xs">
+                        <i class="fas fa-map-location-dot text-blue-500"></i> Pin on Map
+                    </button>
+                </div>
+                <div class="relative">
+                    <input type="text" name="event_location" id="formLocation" placeholder="Room 101, Science Lab, or Online Link" class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <button type="button" onclick="openLocationPickerModal()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition cursor-pointer" title="Pin on Map">
+                        <i class="fas fa-map-pin text-sm"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                <label class="block text-xs font-black uppercase tracking-widest text-blue-400 mb-3">Duration Settings</label>
+                <label for="durationType" class="block text-xs font-black uppercase tracking-widest text-blue-400 mb-3">Duration Settings</label>
                 <select name="duration_type" id="durationType" onchange="toggleDurationFields()" class="w-full px-4 py-2 bg-white border border-blue-200 rounded-xl text-sm outline-none mb-3">
                     <option value="None">No Duration</option>
-                    <option value="DateRange">Date Range (Start & End)</option>
+                    <option value="DateRange">Date Range (Start &amp; End)</option>
                     <option value="Minutes">Set in Minutes</option>
                 </select>
                 <div id="dateRangeFields" class="hidden grid grid-cols-2 gap-3">
-                    <input type="datetime-local" name="start_date" id="formStartDate" class="px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="datetime-local" name="end_date" id="formEndDate" class="px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    <div>
+                        <label for="formStartDate" class="block text-[10px] font-bold text-slate-500 mb-1">Start Date &amp; Time</label>
+                        <input type="datetime-local" name="start_date" id="formStartDate" class="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="formEndDate" class="block text-[10px] font-bold text-slate-500 mb-1">End Date &amp; Time</label>
+                        <input type="datetime-local" name="end_date" id="formEndDate" class="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
                 </div>
                 <div id="minuteFields" class="hidden">
+                    <label for="formMinutes" class="block text-[10px] font-bold text-slate-500 mb-1">Duration (Minutes)</label>
                     <input type="number" name="duration_minutes" id="formMinutes" placeholder="How many minutes?" class="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
@@ -415,7 +700,7 @@
             <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
                 <input type="checkbox" name="is_repeatable" id="isRepeatable" onchange="toggleRepeatFields()" class="w-5 h-5 accent-blue-600">
                 <label for="isRepeatable" class="text-sm font-bold text-slate-700">Repeat this event</label>
-                <select name="repeat_cycle" id="repeatCycle" class="hidden ml-auto px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
+                <select name="repeat_cycle" id="repeatCycle" aria-label="Repeat Cycle" class="hidden ml-auto px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
                     <option value="Daily">Daily</option>
                     <option value="Weekly">Weekly</option>
                     <option value="Monthly">Monthly</option>
@@ -430,18 +715,221 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
+     LOCATION PICKER MODAL (Leaflet + OpenStreetMap)
+════════════════════════════════════════════════════════════ -->
+<div id="locationPickerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4 cursor-pointer"
+     role="dialog" aria-modal="true" aria-labelledby="locModalTitle" onclick="if(event.target === this) closeLocationPickerModal()">
+    <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden modal-anim cursor-default flex flex-col">
+        <!-- Header -->
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+            <div>
+                <h3 id="locModalTitle" class="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-map-location-dot text-blue-600"></i> Select Event Location
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Click the map or search to pinpoint where your event takes place.</p>
+            </div>
+            <button type="button" onclick="closeLocationPickerModal()" aria-label="Close location picker" class="text-slate-400 hover:text-slate-600 transition text-xl w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-5 space-y-3 flex-1">
+            <!-- Search & Geolocation Toolbar -->
+            <div class="flex flex-col sm:flex-row gap-2">
+                <div class="relative flex-1">
+                    <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                    <input type="text" id="mapSearchInput" placeholder="Search building, street, or landmark..."
+                           onkeydown="if(event.key === 'Enter'){ event.preventDefault(); searchLocationOnMap(); }"
+                           class="w-full pl-9 pr-20 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="button" onclick="searchLocationOnMap()" class="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer">
+                        Search
+                    </button>
+                </div>
+                <button type="button" onclick="promptDeviceLocation()" class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs whitespace-nowrap cursor-pointer">
+                    <i class="fas fa-location-crosshairs text-emerald-600"></i> Use My Location
+                </button>
+            </div>
+
+            <!-- Quick Campus Venue Presets -->
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-[11px]">
+                <span class="text-slate-400 font-bold whitespace-nowrap text-[10px] uppercase">Quick:</span>
+                <button type="button" onclick="setPresetLocation('Chemistry Laboratory, Room 204')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg whitespace-nowrap font-medium transition cursor-pointer">🧪 Chem Lab 204</button>
+                <button type="button" onclick="setPresetLocation('Main Auditorium, Building A')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg whitespace-nowrap font-medium transition cursor-pointer">🏛️ Auditorium A</button>
+                <button type="button" onclick="setPresetLocation('Central Science Library')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg whitespace-nowrap font-medium transition cursor-pointer">📚 Science Library</button>
+                <button type="button" onclick="setPresetLocation('Online Meeting Room (Zoom/Teams)')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg whitespace-nowrap font-medium transition cursor-pointer">💻 Online (Zoom)</button>
+            </div>
+
+            <!-- Map Viewport -->
+            <div class="relative rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100">
+                <div id="mapPickerCanvas" style="height: 320px; width: 100%; min-height: 320px; position: relative; z-index: 1;" class="bg-slate-100"></div>
+                <div class="absolute bottom-2 left-2 z-[500] bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-slate-200 text-[10px] text-slate-600 font-semibold shadow-xs pointer-events-none">
+                    <i class="fas fa-info-circle text-blue-500 mr-1"></i> Click map or drag pin to position
+                </div>
+            </div>
+
+            <!-- Pinned Info Preview -->
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5">
+                <div class="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="fas fa-map-pin text-xs"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-black uppercase text-slate-400">Selected Location</p>
+                    <p id="mapSelectedAddress" class="text-xs font-bold text-slate-800 truncate mt-0.5">No location pinned yet. Click on the map.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5">
+            <button type="button" onclick="closeLocationPickerModal()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-bold transition cursor-pointer">
+                Cancel
+            </button>
+            <button type="button" onclick="applyPinnedLocation()" id="btnApplyLocation" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-200 flex items-center gap-1.5 cursor-pointer">
+                <i class="fas fa-check"></i> Set Location
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOCATION ACCESS CONFIRMATION MODAL
+════════════════════════════════════════════════════════════ -->
+<div id="locationConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] hidden flex items-center justify-center p-4 cursor-pointer"
+     role="dialog" aria-modal="true" aria-labelledby="locConfirmTitle" onclick="if(event.target === this) closeLocationConfirmModal()">
+    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden modal-anim cursor-default p-6 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 mx-auto flex items-center justify-center text-2xl mb-4 shadow-inner">
+            <i class="fas fa-location-crosshairs text-blue-600"></i>
+        </div>
+        <h4 id="locConfirmTitle" class="text-base font-extrabold text-slate-800">Use Your Current Location?</h4>
+        <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            Chemistry LMS will request your device's location to automatically position the pin on the map.
+        </p>
+        <div class="mt-5 grid grid-cols-2 gap-2.5">
+            <button type="button" onclick="closeLocationConfirmModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition cursor-pointer">
+                Cancel
+            </button>
+            <button type="button" onclick="confirmAndGetDeviceLocation()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-200 flex items-center justify-center gap-1.5 cursor-pointer">
+                <i class="fas fa-check"></i> Allow &amp; Pin
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SAVE EVENT CONFIRMATION MODAL
+════════════════════════════════════════════════════════════ -->
+<div id="saveConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[115] hidden flex items-center justify-center p-4 cursor-pointer"
+     role="dialog" aria-modal="true" aria-labelledby="saveConfirmTitle" onclick="if(event.target === this) closeSaveConfirmModal()">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden modal-anim cursor-default">
+        <div class="p-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/70">
+            <div class="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center text-lg shadow-inner">
+                <i class="fas fa-calendar-check text-blue-600"></i>
+            </div>
+            <div>
+                <h4 id="saveConfirmTitle" class="text-base font-extrabold text-slate-800">Confirm Event Details</h4>
+                <p class="text-xs text-slate-400">Review before saving to your calendar.</p>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-3">
+            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-2.5">
+                <div class="flex items-center justify-between gap-2">
+                    <span id="saveConfirmType" class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-blue-50 text-blue-600">Event</span>
+                    <span id="saveConfirmSubject" class="text-[10px] font-bold text-slate-500 truncate"></span>
+                </div>
+                <h5 id="saveConfirmTitleText" class="text-sm font-black text-slate-800 leading-snug"></h5>
+                <div class="pt-2 border-t border-slate-200/60 space-y-1.5 text-xs text-slate-600">
+                    <div class="flex items-center gap-2">
+                        <i class="far fa-calendar text-slate-400 w-4 text-center"></i>
+                        <span id="saveConfirmDate" class="font-semibold"></span>
+                    </div>
+                    <div id="saveConfirmTimeRow" class="flex items-center gap-2">
+                        <i class="far fa-clock text-slate-400 w-4 text-center"></i>
+                        <span id="saveConfirmTime" class="font-semibold"></span>
+                    </div>
+                    <div id="saveConfirmLocRow" class="flex items-center gap-2">
+                        <i class="fas fa-location-dot text-slate-400 w-4 text-center"></i>
+                        <span id="saveConfirmLocation" class="font-semibold truncate"></span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-500 text-center font-medium">Are you sure you want to save this event?</p>
+        </div>
+
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5">
+            <button type="button" onclick="closeSaveConfirmModal()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-bold transition cursor-pointer">
+                Back to Edit
+            </button>
+            <button type="button" onclick="executeFinalFormSubmit()" id="btnExecuteSave" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-200 flex items-center gap-1.5 cursor-pointer">
+                <i class="fas fa-check"></i> Save Event
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     UNSAVED CHANGES CONFIRMATION MODAL
+════════════════════════════════════════════════════════════ -->
+<div id="unsavedChangesModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[125] hidden flex items-center justify-center p-4 cursor-pointer"
+     role="dialog" aria-modal="true" aria-labelledby="unsavedModalTitle" onclick="if(event.target === this) closeUnsavedChangesModal()">
+    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden modal-anim cursor-default p-6 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 text-amber-500 mx-auto flex items-center justify-center text-2xl mb-4 shadow-inner">
+            <i class="fas fa-triangle-exclamation"></i>
+        </div>
+        <h4 id="unsavedModalTitle" class="text-base font-extrabold text-slate-800">Discard Unsaved Changes?</h4>
+        <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            You have unsaved changes in the event form. Discard and close?
+        </p>
+        <div class="mt-5 grid grid-cols-2 gap-2.5">
+            <button type="button" onclick="closeUnsavedChangesModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer">
+                Keep Editing
+            </button>
+            <button type="button" onclick="confirmDiscardAndCloseEventModal()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-rose-200 flex items-center justify-center gap-1.5 cursor-pointer">
+                <i class="fas fa-trash-can text-[10px]"></i> Discard &amp; Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DAY DETAILS MODAL (TOUCH & MOBILE FRIENDLY EVENT INSPECTOR)
+════════════════════════════════════════════════════════════ -->
+<div id="dayDetailsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4 cursor-pointer"
+     role="dialog" aria-modal="true" aria-labelledby="dayModalDate" onclick="if(event.target === this) closeDayDetailsModal()">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden modal-anim flex flex-col max-h-[85vh] cursor-default">
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div>
+                <h3 id="dayModalDate" class="text-base font-extrabold text-slate-800 leading-tight"></h3>
+                <p id="dayModalCount" class="text-xs text-slate-400 font-medium"></p>
+            </div>
+            <button type="button" onclick="closeDayDetailsModal()" aria-label="Close day details" class="text-slate-400 hover:text-slate-600 transition text-lg p-1 font-bold w-8 h-8 rounded-xl flex items-center justify-center">&times;</button>
+        </div>
+        <div id="dayModalEventsList" class="p-4 space-y-3 overflow-y-auto flex-1 no-scrollbar"></div>
+        <div class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 pb-safe">
+            <button type="button" onclick="closeDayDetailsModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-200/60 transition">Close</button>
+            <button type="button" id="dayModalAddBtn" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1.5 shadow-sm shadow-blue-200">
+                <i class="fas fa-plus"></i> Add Event
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
      DELETE CONFIRM MODAL
 ════════════════════════════════════════════════════════════ -->
-<div id="deleteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden modal-anim p-8 text-center">
+<div id="deleteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4 cursor-pointer"
+     role="alertdialog" aria-modal="true" aria-labelledby="deleteModalTitle" aria-describedby="deleteModalDesc" onclick="if(event.target === this) closeDeleteModal()">
+    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden modal-anim p-8 text-center cursor-default">
         <div class="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-trash text-red-500 text-xl"></i>
         </div>
-        <h3 class="text-lg font-extrabold text-slate-800 mb-2">Delete Event?</h3>
-        <p class="text-slate-500 text-sm mb-6">This action cannot be undone. Are you sure?</p>
+        <h3 id="deleteModalTitle" class="text-lg font-extrabold text-slate-800 mb-2">Delete Event?</h3>
+        <p id="deleteModalDesc" class="text-slate-500 text-sm mb-6">This action cannot be undone. Are you sure?</p>
         <div class="flex gap-3">
-            <button onclick="closeDeleteModal()" class="flex-1 py-3 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition">Cancel</button>
-            <button onclick="confirmDelete()" class="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition">Delete</button>
+            <button type="button" id="deleteCancelBtn" onclick="closeDeleteModal()" class="flex-1 py-3 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition">Cancel</button>
+            <button type="button" onclick="confirmDelete()" class="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition">Delete</button>
         </div>
     </div>
 </div>
@@ -467,11 +955,14 @@ let ALL_EVENTS = [
     ...TEACHER_EVENTS.map(e => ({ ...e, source: 'teacher' })),
     ...STUDENT_EVENTS.map(e => ({ ...e, source: 'personal' })),
     ...DUE_DATES.map(e => ({
-        event_id:          null,
+        event_id:          e.assessment_id ? 'asgn-' + e.assessment_id : null,
+        assessment_id:     e.assessment_id,
         event_title:       e.assessment_name,
         event_description: `Due date for ${e.assessment_name}`,
         event_type:        'due_date',
         event_date:        e.due_date,
+        full_due_date:     e.full_due_date || e.due_date,
+        subject_id:        e.subject_id,
         subject_name:      e.subject_name,
         subject_code:      e.subject_code,
         event_location:    'Online / Classroom',
@@ -482,43 +973,88 @@ let ALL_EVENTS = [
     }))
 ];
 
-// ──── STATE ──────────────────────────────────────────────────────────────────
+// ── State ──
 let calYear  = new Date().getFullYear();
-let calMonth = new Date().getMonth(); // 0-indexed
+let calMonth = new Date().getMonth();
 let activeFilter = 'all';
 let searchQuery  = '';
 let pendingDeleteId = null;
-</script>
+let currentView = 'grid';
 
-<!-- ═══════════════════════════════════════════════════════════
-     MAIN SCRIPT
-════════════════════════════════════════════════════════════ -->
-<script>
-// ──── HELPERS ────────────────────────────────────────────────────────────────
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+];
 
-function toLocalDate(str) {
-    // Parse YYYY-MM-DD or ISO without timezone shift
-    if (!str) return null;
-    const s = String(str).substring(0, 10);
-    const [y, m, d] = s.split('-').map(Number);
-    return new Date(y, m - 1, d);
+// ── HTML Sanitizer Utility (Stored XSS Prevention) ──
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
-function formatDate(str) {
-    const d = toLocalDate(str);
+// ── Helpers ──
+function toLocalDate(val) {
+    if (!val) return null;
+    if (val instanceof Date) {
+        return new Date(val.getFullYear(), val.getMonth(), val.getDate());
+    }
+    const str = String(val).trim();
+    if (!str) return null;
+    if (str.includes('T') || str.includes('Z')) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+            return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        }
+    }
+    const parts = str.substring(0, 10).split('-');
+    if (parts.length < 3) return null;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+    return new Date(y, m, d);
+}
+
+function toLocalDateStr(val) {
+    const d = toLocalDate(val);
+    if (!d) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function formatDate(dateStr) {
+    const d = toLocalDate(dateStr);
     if (!d) return '';
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatTimeDisplay(ev) {
+    if (ev.duration_type === 'DateRange' && ev.start_date) {
+        const s = new Date(ev.start_date);
+        return s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    if (ev.duration_type === 'Minutes' && ev.duration_minutes) {
+        return `${ev.duration_minutes} mins`;
+    }
+    return 'All Day';
+}
+
 function pillClass(type, source) {
-    if (source === 'personal') return 'pill-personal';
     if (source === 'due_date') return 'pill-due';
+    if (source === 'personal') return 'pill-personal';
     switch ((type || '').toLowerCase()) {
-        case 'exam':     return 'pill-exam';
-        case 'deadline': return 'pill-deadline';
-        case 'holiday':  return 'pill-holiday';
-        default:         return 'pill-material';
+        case 'exam':       return 'pill-exam';
+        case 'deadline':   return 'pill-deadline';
+        case 'holiday':    return 'pill-holiday';
+        case 'assignment': return 'pill-assignment';
+        default:           return 'pill-material';
     }
 }
 
@@ -526,10 +1062,11 @@ function dotColor(type, source) {
     if (source === 'personal') return '#0ea5e9';
     if (source === 'due_date') return '#ec4899';
     switch ((type || '').toLowerCase()) {
-        case 'exam':     return '#ef4444';
-        case 'deadline': return '#f59e0b';
-        case 'holiday':  return '#10b981';
-        default:         return '#7c3aed';
+        case 'exam':       return '#ef4444';
+        case 'deadline':   return '#f59e0b';
+        case 'holiday':    return '#10b981';
+        case 'assignment': return '#0d9488';
+        default:           return '#7c3aed';
     }
 }
 
@@ -540,11 +1077,11 @@ function typeLabel(type, source) {
 }
 
 function canEdit(ev) {
-    // Student can only edit their own events
+    // Student can only edit their own personal events
     return ev.source === 'personal';
 }
 
-// ──── FILTER + SEARCH ────────────────────────────────────────────────────────
+// ── FILTER + SEARCH ──
 function getVisible() {
     return ALL_EVENTS.filter(ev => {
         // Filter
@@ -569,7 +1106,7 @@ function getVisible() {
     });
 }
 
-// ──── CALENDAR RENDER ─────────────────────────────────────────────────────────
+// ── CALENDAR RENDER ──
 function renderCalendar() {
     document.getElementById('calMonthLabel').textContent = MONTHS[calMonth];
     document.getElementById('calYearLabel').textContent  = calYear;
@@ -577,17 +1114,20 @@ function renderCalendar() {
     const grid = document.getElementById('calendarGrid');
     grid.innerHTML = '';
 
-    const firstDay   = new Date(calYear, calMonth, 1).getDay();
-    const daysInMonth= new Date(calYear, calMonth + 1, 0).getDate();
-    const prevDays   = new Date(calYear, calMonth, 0).getDate();
-    const totalCells = 42;
+    const firstDay    = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const prevDays    = new Date(calYear, calMonth, 0).getDate();
+
+    // Dynamic grid sizing: 35 cells (5 rows) if fits, otherwise 42 cells (6 rows)
+    const neededCells = firstDay + daysInMonth;
+    const totalCells  = Math.ceil(neededCells / 7) * 7;
 
     const visible = getVisible();
 
     // Group events by day string
     const byDay = {};
     visible.forEach(ev => {
-        const d = toLocalDate(ev.event_date);
+        const d = toLocalDate(ev.event_date || ev.start_date);
         if (!d) return;
         if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
             const key = d.getDate();
@@ -599,7 +1139,7 @@ function renderCalendar() {
     const today = new Date();
     const isCurrentMonth = today.getFullYear() === calYear && today.getMonth() === calMonth;
 
-    // Prefix cells
+    // Prefix cells (from previous month)
     for (let i = 0; i < firstDay; i++) {
         const cell = document.createElement('div');
         cell.className = 'border-r border-b border-slate-50 p-2 bg-slate-50/30';
@@ -611,54 +1151,53 @@ function renderCalendar() {
     for (let day = 1; day <= daysInMonth; day++) {
         const events = byDay[day] || [];
         const isToday = isCurrentMonth && today.getDate() === day;
-        const isLastRows = (firstDay + day - 1) >= totalCells - 14; // bottom 2 rows
+        const isLastRows = (firstDay + day - 1) >= totalCells - 14;
+        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
         const cell = document.createElement('div');
-        cell.className = `cal-day border-r border-b border-slate-100 p-2 hover:bg-blue-50/40 transition-colors cursor-default${isLastRows ? ' bottom-row' : ''}`;
+        cell.className = `cal-day border-r border-b border-slate-100 p-2 hover:bg-blue-50/50 transition-colors cursor-pointer${isLastRows ? ' bottom-row' : ''}`;
+        
+        // Tap/click handler for mobile touch and desktop modal
+        cell.onclick = (e) => handleDayClick(day, dateStr, events, e);
 
         // Day number
         const numSpan = isToday
-            ? `<span class="text-xs font-black bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded-full">${day}</span>`
-            : `<span class="text-xs font-bold text-slate-400">${day}</span>`;
+            ? `<span class="text-xs font-black bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded-full shadow-2xs">${day}</span>`
+            : `<span class="text-xs font-bold text-slate-500">${day}</span>`;
 
         // Event pills (max 2 shown + overflow)
         let pillsHTML = '';
         const maxShow = 2;
         events.slice(0, maxShow).forEach(ev => {
-            const cls = pillClass(ev.event_type, ev.source);
-            pillsHTML += `<div class="p-1 rounded text-[9px] font-bold truncate ${cls} mb-0.5">${ev.event_title}</div>`;
+            const safeTitle = escapeHtml(ev.event_title);
+            pillsHTML += `<div class="cal-pill ${pillClass(ev.event_type, ev.source)} text-[11px] font-bold py-0.5 px-1.5 rounded truncate" title="${safeTitle}">${safeTitle}</div>`;
         });
         if (events.length > maxShow) {
-            pillsHTML += `<div class="text-[9px] text-slate-400 font-bold">+${events.length - maxShow} more</div>`;
+            pillsHTML += `<div class="text-[11px] text-blue-600 font-extrabold mt-0.5">+${events.length - maxShow} more</div>`;
         }
 
-        // Tooltip
+        // Tooltip (desktop hover affordance)
         let tooltipContent = '';
         if (events.length > 0) {
             tooltipContent = `
-                <div class="day-tooltip p-0">
+                <div class="day-tooltip p-0 pointer-events-none hidden md:block">
                     <div class="px-4 py-3 border-b border-slate-100">
                         <p class="text-xs font-black text-slate-700">${MONTHS[calMonth]} ${day}, ${calYear}</p>
-                        <p class="text-[10px] text-slate-400">${events.length} event${events.length > 1 ? 's' : ''}</p>
+                        <p class="text-[11px] text-slate-400 font-semibold">${events.length} event${events.length > 1 ? 's' : ''}</p>
                     </div>
                     <div class="p-3 space-y-2 max-h-64 overflow-y-auto no-scrollbar">
                         ${events.map(ev => `
                             <div class="rounded-xl p-3 border border-slate-100 bg-slate-50 hover:bg-white transition" style="border-left: 3px solid ${dotColor(ev.event_type, ev.source)}">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-black text-slate-800 leading-tight truncate">${ev.event_title}</p>
-                                        ${ev.subject_name ? `<span class="text-[9px] font-bold text-blue-500">${ev.subject_name}</span>` : ''}
+                                        <p class="text-xs font-black text-slate-800 leading-tight truncate">${escapeHtml(ev.event_title)}</p>
+                                        ${ev.subject_name ? `<span class="text-[11px] font-bold text-blue-500 block mt-0.5">${escapeHtml(ev.subject_name)}</span>` : ''}
                                         <div class="mt-1 flex flex-wrap gap-1">
-                                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded" style="background:${dotColor(ev.event_type,ev.source)}20;color:${dotColor(ev.event_type,ev.source)}">${typeLabel(ev.event_type, ev.source)}</span>
-                                            ${ev.event_location && ev.event_location !== 'TBA' ? `<span class="text-[9px] text-slate-400 font-medium"><i class="fas fa-location-dot mr-0.5"></i>${ev.event_location}</span>` : ''}
+                                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${dotColor(ev.event_type,ev.source)}20;color:${dotColor(ev.event_type,ev.source)}">${escapeHtml(typeLabel(ev.event_type, ev.source))}</span>
+                                            ${ev.event_location && ev.event_location !== 'TBA' ? `<span class="text-[10px] text-slate-400 font-medium"><i class="fas fa-location-dot mr-0.5"></i>${escapeHtml(ev.event_location)}</span>` : ''}
                                         </div>
-                                        ${ev.event_description ? `<p class="text-[9px] text-slate-500 mt-1 line-clamp-2">${ev.event_description}</p>` : ''}
+                                        ${ev.event_description ? `<p class="text-[11px] text-slate-500 mt-1 line-clamp-2">${escapeHtml(ev.event_description)}</p>` : ''}
                                     </div>
-                                    ${canEdit(ev) ? `
-                                    <div class="flex gap-1 flex-shrink-0">
-                                        <button onclick="openEditModal(${ev.event_id})" class="w-6 h-6 flex items-center justify-center rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition text-[9px]"><i class="fas fa-pen"></i></button>
-                                        <button onclick="openDeleteModal(${ev.event_id})" class="w-6 h-6 flex items-center justify-center rounded-lg bg-red-100 text-red-500 hover:bg-red-200 transition text-[9px]"><i class="fas fa-trash"></i></button>
-                                    </div>` : ''}
                                 </div>
                             </div>
                         `).join('')}
@@ -669,15 +1208,15 @@ function renderCalendar() {
         cell.innerHTML = `
             <div class="flex items-start justify-between">
                 ${numSpan}
-                ${events.length > 0 ? `<div class="flex gap-0.5 flex-wrap">${events.slice(0,3).map(ev=>`<span class="w-1.5 h-1.5 rounded-full" style="background:${dotColor(ev.event_type,ev.source)}"></span>`).join('')}</div>` : ''}
+                ${events.length > 0 ? `<div class="flex gap-1 flex-wrap">${events.slice(0,3).map(ev=>`<span class="w-2 h-2 rounded-full" style="background:${dotColor(ev.event_type,ev.source)}"></span>`).join('')}</div>` : ''}
             </div>
-            <div class="mt-1 space-y-0.5 overflow-hidden">${pillsHTML}</div>
+            <div class="mt-1 space-y-1 overflow-hidden">${pillsHTML}</div>
             ${tooltipContent}
         `;
         grid.appendChild(cell);
     }
 
-    // Suffix cells
+    // Suffix cells (from next month)
     const used = firstDay + daysInMonth;
     const remaining = totalCells - used;
     for (let i = 1; i <= remaining; i++) {
@@ -690,57 +1229,251 @@ function renderCalendar() {
     renderUpcomingStrip();
 }
 
-// ──── UPCOMING STRIP ─────────────────────────────────────────────────────────
-function renderUpcomingStrip() {
-    const strip = document.getElementById('upcomingStrip');
-    const countEl = document.getElementById('upcomingCount');
-    strip.innerHTML = '';
+// ── DAY CLICK & TOUCH DETAILS MODAL ──
+function handleDayClick(day, dateStr, events, e) {
+    // If clicking edit/delete button inside cell, don't trigger cell click
+    if (e && e.target && e.target.closest('button')) return;
 
-    const now = new Date();
-    const endOfMonth = new Date(calYear, calMonth + 1, 0);
-
-    const upcoming = getVisible()
-        .filter(ev => {
-            const d = toLocalDate(ev.event_date);
-            return d && d >= now && d <= endOfMonth;
-        })
-        .sort((a, b) => toLocalDate(a.event_date) - toLocalDate(b.event_date))
-        .slice(0, 10);
-
-    countEl.textContent = upcoming.length ? `${upcoming.length} event${upcoming.length > 1 ? 's' : ''} ahead` : '';
-
-    if (upcoming.length === 0) {
-        strip.innerHTML = `<div class="text-sm text-slate-400 font-medium py-4">No upcoming events this month.</div>`;
+    if (events.length === 0) {
+        // Empty day: directly open create event modal with prefilled date
+        openEventModal(dateStr);
         return;
     }
 
-    upcoming.forEach(ev => {
-        const d = toLocalDate(ev.event_date);
-        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-        const dayNum  = d.getDate();
-        const card = document.createElement('div');
-        card.className = 'flex-shrink-0 w-44 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all cursor-default';
-        card.style = `border-top: 3px solid ${dotColor(ev.event_type, ev.source)}`;
-        card.innerHTML = `
-            <p class="text-[10px] font-black uppercase text-slate-400 mb-1">${dayName}</p>
-            <p class="text-2xl font-black text-slate-800 leading-none mb-2">${dayNum}</p>
-            <p class="text-xs font-bold text-slate-700 truncate mb-1">${ev.event_title}</p>
-            <div class="flex items-center gap-1">
-                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded" style="background:${dotColor(ev.event_type,ev.source)}18;color:${dotColor(ev.event_type,ev.source)}">${typeLabel(ev.event_type, ev.source)}</span>
+    // Day has events: open accessible Day Details Modal
+    const modal = document.getElementById('dayDetailsModal');
+    const dateLabel = document.getElementById('dayModalDate');
+    const countLabel = document.getElementById('dayModalCount');
+    const list = document.getElementById('dayModalEventsList');
+    const addBtn = document.getElementById('dayModalAddBtn');
+
+    dateLabel.textContent = `${MONTHS[calMonth]} ${day}, ${calYear}`;
+    countLabel.textContent = `${events.length} event${events.length > 1 ? 's' : ''} scheduled`;
+
+    addBtn.onclick = () => {
+        closeDayDetailsModal();
+        openEventModal(dateStr);
+    };
+
+    list.innerHTML = events.map(ev => {
+        const safeTitle = escapeHtml(ev.event_title);
+        const safeDesc = escapeHtml(ev.event_description);
+        const safeSubj = escapeHtml(ev.subject_name);
+        const safeLoc = escapeHtml(ev.event_location);
+
+        return `
+            <div class="rounded-2xl p-4 border border-slate-200/80 bg-slate-50/70 hover:bg-white transition shadow-2xs" style="border-left: 4px solid ${dotColor(ev.event_type, ev.source)}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-md uppercase" style="background:${dotColor(ev.event_type,ev.source)}18;color:${dotColor(ev.event_type,ev.source)}">${escapeHtml(typeLabel(ev.event_type, ev.source))}</span>
+                            ${safeSubj ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 uppercase">${safeSubj}</span>` : ''}
+                            ${ev.source === 'personal' ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 uppercase"><i class="fas fa-user mr-0.5"></i>Mine</span>` : ''}
+                        </div>
+                        <h4 class="text-sm font-extrabold text-slate-800 leading-snug">${safeTitle}</h4>
+                        ${safeDesc ? `<p class="text-xs text-slate-500 mt-1 leading-relaxed">${safeDesc}</p>` : ''}
+                        <div class="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400 font-semibold">
+                            ${safeLoc && safeLoc !== 'TBA' ? `<span class="flex items-center gap-1 text-slate-600"><i class="fas fa-location-dot text-slate-400"></i>${safeLoc}</span>` : ''}
+                            ${ev.duration_type === 'DateRange' && ev.start_date ? `<span class="flex items-center gap-1 text-indigo-600"><i class="fas fa-clock text-indigo-400"></i>${new Date(ev.start_date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} – ${new Date(ev.end_date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>` : ''}
+                            ${ev.duration_type === 'Minutes' && ev.duration_minutes ? `<span class="flex items-center gap-1 text-amber-600"><i class="fas fa-stopwatch text-amber-400"></i>${ev.duration_minutes} mins</span>` : ''}
+                        </div>
+                    </div>
+                    ${ev.source === 'due_date' && ev.assessment_id && ev.subject_id ? `
+                    <div class="flex items-center flex-shrink-0">
+                        <a href="/subjects/open/${ev.subject_id}#asgn-card-${ev.assessment_id}" class="px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-600 font-bold text-xs transition flex items-center gap-1.5 shadow-2xs"><i class="fas fa-arrow-up-right-from-square text-[10px]"></i> View Task</a>
+                    </div>` : ''}
+                    ${canEdit(ev) ? `
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <button onclick="closeDayDetailsModal(); openEditModal('${ev.event_id}')" class="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 transition flex items-center justify-center text-xs" title="Edit Event"><i class="fas fa-pen"></i></button>
+                        <button onclick="closeDayDetailsModal(); openDeleteModal('${ev.event_id}')" class="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition flex items-center justify-center text-xs" title="Delete Event"><i class="fas fa-trash"></i></button>
+                    </div>` : ''}
+                </div>
+            </div>`;
+    }).join('');
+
+    if (window.ModalManager) {
+        ModalManager.open('dayDetailsModal');
+    } else {
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeDayDetailsModal() {
+    if (window.ModalManager) {
+        ModalManager.close('dayDetailsModal');
+    } else {
+        const modal = document.getElementById('dayDetailsModal');
+        if (modal) modal.classList.add('hidden');
+    }
+}
+
+// ── UPCOMING LIST ──
+function renderUpcomingStrip() {
+    const strip = document.getElementById('upcomingStrip');
+    const countEl = document.getElementById('upcomingCount');
+    if (!strip) return;
+    strip.innerHTML = '';
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth();
+    const startOfMonth = new Date(calYear, calMonth, 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(calYear, calMonth + 1, 0, 23, 59, 59, 999);
+
+    const visible = getVisible();
+
+    // 1. First priority: Upcoming events from today onwards in this month
+    let upcoming = visible.filter(ev => {
+        const d = toLocalDate(ev.event_date || ev.start_date);
+        if (!d) return false;
+        if (isCurrentMonth) {
+            return d >= startOfToday && d <= endOfMonth;
+        } else if (new Date(calYear, calMonth, 1) > startOfToday) {
+            return d >= startOfMonth && d <= endOfMonth;
+        } else {
+            return d >= startOfMonth && d <= endOfMonth;
+        }
+    }).sort((a, b) => toLocalDate(a.event_date || a.start_date) - toLocalDate(b.event_date || b.start_date));
+
+    // 2. If current month has no events from today onwards, but has events earlier this month, show all events of this month
+    if (isCurrentMonth && upcoming.length === 0) {
+        upcoming = visible.filter(ev => {
+            const d = toLocalDate(ev.event_date || ev.start_date);
+            return d && d >= startOfMonth && d <= endOfMonth;
+        }).sort((a, b) => toLocalDate(a.event_date || a.start_date) - toLocalDate(b.event_date || b.start_date));
+    }
+
+    if (upcoming.length === 0) {
+        if (countEl) {
+            countEl.innerHTML = '<span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-2xs"><i class="fas fa-check-circle text-[10px]"></i> All clear</span>';
+        }
+        strip.innerHTML = `
+            <div class="w-full bg-gradient-to-b from-white via-white to-slate-50/70 rounded-3xl border border-dashed border-indigo-200/80 p-6 sm:p-9 text-center shadow-xs flex flex-col items-center justify-center transition-all hover:border-indigo-300">
+                <div class="relative mb-3.5">
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-indigo-500/10 via-sky-500/10 to-blue-500/10 border border-indigo-100 flex items-center justify-center text-indigo-600 text-xl sm:text-2xl shadow-inner">
+                        <i class="far fa-calendar-check text-indigo-500"></i>
+                    </div>
+                    <span class="absolute -top-1 -right-1 flex h-4 w-4">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
+                        <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white items-center justify-center text-[8px] text-white">
+                            <i class="fas fa-check text-[8px]"></i>
+                        </span>
+                    </span>
+                </div>
+                <h5 class="text-base font-extrabold text-slate-800 tracking-tight">No Events This Month</h5>
+                <p class="text-sm text-slate-500 mt-1 max-w-md leading-relaxed">
+                    You're all caught up! There are no exams, assignment deadlines, or scheduled activities for this month.
+                </p>
+                <div class="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+                    <button onclick="openEventModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-200 flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer">
+                        <i class="fas fa-plus text-[10px]"></i> Add Personal Event
+                    </button>
+                    <button onclick="switchView('agenda')" class="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-blue-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 hover:border-blue-200 cursor-pointer shadow-2xs">
+                        <i class="fas fa-list text-[10px] text-slate-400"></i> View All in Agenda
+                    </button>
+                </div>
             </div>
-            ${ev.subject_name ? `<p class="text-[9px] text-blue-500 font-bold mt-1 truncate">${ev.subject_name}</p>` : ''}
         `;
-        strip.appendChild(card);
+        return;
+    }
+
+    if (countEl) {
+        countEl.innerHTML = `<span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200/60 shadow-2xs"><i class="fas fa-calendar-alt text-[10px]"></i> ${upcoming.length} event${upcoming.length > 1 ? 's' : ''} ${isCurrentMonth ? 'this month' : 'in ' + MONTHS[calMonth]}</span>`;
+    }
+
+    upcoming.forEach(ev => {
+        const d = toLocalDate(ev.event_date || ev.start_date);
+        const monthShort = d ? d.toLocaleDateString('en-US', { month: 'short' }) : '';
+        const dayName    = d ? d.toLocaleDateString('en-US', { weekday: 'short' }) : '';
+        const dayNum     = d ? d.getDate() : '';
+        const isTodayEv  = d && d.toDateString() === now.toDateString();
+
+        const safeTitle = escapeHtml(ev.event_title);
+        const safeDesc  = escapeHtml(ev.event_description);
+        const safeSubj  = escapeHtml(ev.subject_name);
+        const safeLoc   = escapeHtml(ev.event_location);
+
+        const row = document.createElement('div');
+        row.className = 'bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer group';
+        row.style.borderLeft = `4px solid ${dotColor(ev.event_type, ev.source)}`;
+
+        row.onclick = (e) => {
+            if (e.target.closest('button')) return;
+            const dObj = toLocalDate(ev.event_date || ev.start_date);
+            if (dObj) {
+                calYear = dObj.getFullYear();
+                calMonth = dObj.getMonth();
+                const evDateStr = toLocalDateStr(ev.event_date || ev.start_date);
+                weekStartDate = getStartOfWeek(dObj);
+                renderCalendar();
+                const dayEvents = ALL_EVENTS.filter(e => toLocalDateStr(e.event_date || e.start_date) === evDateStr);
+                handleDayClick(dObj.getDate(), evDateStr, dayEvents);
+            }
+        };
+
+        const actionButtons = canEdit(ev) ? `
+            <div class="flex items-center gap-1.5 flex-shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 w-full sm:w-auto justify-end">
+                <button onclick="event.stopPropagation(); openEditModal('${ev.event_id}')" class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition flex items-center gap-1.5" title="Edit Event">
+                    <i class="fas fa-pen text-[10px]"></i><span>Edit</span>
+                </button>
+                <button onclick="event.stopPropagation(); openDeleteModal('${ev.event_id}')" class="px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-xs font-bold hover:bg-rose-100 transition flex items-center gap-1.5" title="Delete Event">
+                    <i class="fas fa-trash text-[10px]"></i><span>Delete</span>
+                </button>
+            </div>
+        ` : `
+            <div class="flex items-center gap-1.5 flex-shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 w-full sm:w-auto justify-end">
+                <span class="text-xs font-bold text-blue-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 group-hover:bg-blue-50 rounded-xl">
+                    View Details <i class="fas fa-chevron-right text-[10px]"></i>
+                </span>
+            </div>
+        `;
+
+        row.innerHTML = `
+            <div class="flex items-start gap-4 flex-1 min-w-0">
+                <!-- Date Box -->
+                <div class="flex flex-col items-center justify-center bg-slate-100 rounded-2xl px-3.5 py-2.5 min-w-[68px] text-center flex-shrink-0 group-hover:bg-blue-50/70 transition-colors">
+                    <span class="text-[10px] font-black uppercase text-slate-400 group-hover:text-blue-500 transition-colors">${monthShort}</span>
+                    <span class="text-2xl font-black text-slate-800 leading-none my-0.5">${dayNum}</span>
+                    <span class="text-[10px] font-bold text-slate-400">${dayName}</span>
+                </div>
+
+                <!-- Event Info -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+                        <span class="px-2 py-0.5 text-[10px] font-black rounded-md uppercase" style="background:${dotColor(ev.event_type,ev.source)}18;color:${dotColor(ev.event_type,ev.source)}">
+                            ${escapeHtml(typeLabel(ev.event_type, ev.source))}
+                        </span>
+                        ${safeSubj ? `<span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded-md uppercase">${safeSubj}</span>` : ''}
+                        ${isTodayEv ? `<span class="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-black rounded-md uppercase tracking-wide shadow-2xs">Today</span>` : ''}
+                        ${ev.source === 'personal' ? `<span class="px-2 py-0.5 bg-sky-50 text-sky-600 text-[10px] font-black rounded-md uppercase"><i class="fas fa-user mr-1"></i>Mine</span>` : ''}
+                        ${ev.is_repeatable ? `<span class="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-md uppercase"><i class="fas fa-redo mr-1"></i>${escapeHtml(ev.repeat_cycle)}</span>` : ''}
+                    </div>
+                    <h4 class="text-base font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors mb-0.5" title="${safeTitle}">
+                        ${safeTitle}
+                    </h4>
+                    ${safeDesc ? `<p class="text-slate-500 text-sm line-clamp-1 mb-2 leading-relaxed">${safeDesc}</p>` : ''}
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 font-medium mt-1">
+                        <span class="flex items-center gap-1 text-slate-500">
+                            <i class="far fa-clock text-slate-400"></i> ${formatTimeDisplay(ev)}
+                        </span>
+                        ${safeLoc && safeLoc !== 'TBA' ? `<span class="flex items-center gap-1 text-slate-500"><i class="fas fa-location-dot text-slate-400"></i> ${safeLoc}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+            ${actionButtons}
+        `;
+
+        strip.appendChild(row);
     });
 }
 
-// ──── AGENDA VIEW ─────────────────────────────────────────────────────────────
+// ── AGENDA VIEW ──
 function renderAgenda() {
     const list  = document.getElementById('agendaList');
     const empty = document.getElementById('agendaEmpty');
     list.innerHTML = '';
 
-    const sorted = getVisible().sort((a, b) => toLocalDate(a.event_date) - toLocalDate(b.event_date));
+    const sorted = getVisible().sort((a, b) => toLocalDate(a.event_date || a.start_date) - toLocalDate(b.event_date || b.start_date));
 
     if (sorted.length === 0) {
         list.classList.add('hidden');
@@ -751,7 +1484,7 @@ function renderAgenda() {
     empty.classList.add('hidden');
 
     sorted.forEach(ev => {
-        const d = toLocalDate(ev.event_date);
+        const d = toLocalDate(ev.event_date || ev.start_date);
         const item = document.createElement('div');
         item.className = 'bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex gap-5 items-start event-agenda-item';
         item.setAttribute('data-title',    (ev.event_title || '').toLowerCase());
@@ -759,10 +1492,15 @@ function renderAgenda() {
         item.setAttribute('data-subject',  (ev.subject_name || '').toLowerCase());
         item.setAttribute('data-type',     (ev.event_type || '').toLowerCase());
 
+        const safeTitle = escapeHtml(ev.event_title);
+        const safeDesc = escapeHtml(ev.event_description);
+        const safeSubj = escapeHtml(ev.subject_name);
+        const safeLoc = escapeHtml(ev.event_location);
+
         const editBtns = canEdit(ev) ? `
             <div class="flex gap-2 flex-shrink-0">
-                <button onclick="openEditModal(${ev.event_id})" class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition"><i class="fas fa-pen mr-1"></i>Edit</button>
-                <button onclick="openDeleteModal(${ev.event_id})" class="px-3 py-1.5 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-100 transition"><i class="fas fa-trash mr-1"></i>Delete</button>
+                <button onclick="openEditModal('${ev.event_id}')" class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition"><i class="fas fa-pen mr-1"></i>Edit</button>
+                <button onclick="openDeleteModal('${ev.event_id}')" class="px-3 py-1.5 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-100 transition"><i class="fas fa-trash mr-1"></i>Delete</button>
             </div>` : '';
 
         item.innerHTML = `
@@ -773,15 +1511,15 @@ function renderAgenda() {
             </div>
             <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-2 mb-2">
-                    ${ev.subject_name ? `<span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg uppercase">${ev.subject_name}</span>` : ''}
-                    <span class="px-2 py-1 text-[10px] font-black rounded-lg uppercase" style="background:${dotColor(ev.event_type,ev.source)}18;color:${dotColor(ev.event_type,ev.source)}">${typeLabel(ev.event_type, ev.source)}</span>
-                    ${ev.is_repeatable ? `<span class="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg uppercase"><i class="fas fa-redo mr-1"></i>${ev.repeat_cycle}</span>` : ''}
+                    ${safeSubj ? `<span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg uppercase">${safeSubj}</span>` : ''}
+                    <span class="px-2 py-1 text-[10px] font-black rounded-lg uppercase" style="background:${dotColor(ev.event_type,ev.source)}18;color:${dotColor(ev.event_type,ev.source)}">${escapeHtml(typeLabel(ev.event_type, ev.source))}</span>
+                    ${ev.is_repeatable ? `<span class="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg uppercase"><i class="fas fa-redo mr-1"></i>${escapeHtml(ev.repeat_cycle)}</span>` : ''}
                     ${ev.source === 'personal' ? `<span class="px-2 py-1 bg-sky-50 text-sky-600 text-[10px] font-black rounded-lg uppercase"><i class="fas fa-user mr-1"></i>Mine</span>` : ''}
                 </div>
-                <h4 class="text-base font-bold text-slate-800 mb-1">${ev.event_title}</h4>
-                ${ev.event_description ? `<p class="text-slate-500 text-sm mb-2 line-clamp-2">${ev.event_description}</p>` : ''}
+                <h4 class="text-base font-bold text-slate-800 mb-1">${safeTitle}</h4>
+                ${safeDesc ? `<p class="text-slate-500 text-sm mb-2 line-clamp-2">${safeDesc}</p>` : ''}
                 <div class="flex flex-wrap gap-4 text-xs text-slate-400 font-medium">
-                    ${ev.event_location && ev.event_location !== 'TBA' ? `<span><i class="fas fa-location-dot mr-1"></i>${ev.event_location}</span>` : ''}
+                    ${safeLoc && safeLoc !== 'TBA' ? `<span><i class="fas fa-location-dot mr-1"></i>${safeLoc}</span>` : ''}
                     ${ev.duration_type === 'DateRange' && ev.start_date ? `<span><i class="fas fa-clock mr-1"></i>${new Date(ev.start_date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} – ${new Date(ev.end_date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>` : ''}
                     ${ev.duration_type === 'Minutes' && ev.duration_minutes ? `<span><i class="fas fa-stopwatch mr-1"></i>${ev.duration_minutes} mins</span>` : ''}
                 </div>
@@ -792,37 +1530,789 @@ function renderAgenda() {
     });
 }
 
-// ──── VIEW SWITCH ─────────────────────────────────────────────────────────────
+// ── VIEW SWITCH (Week, Grid, Agenda) ──
 function switchView(view) {
+    currentView = view;
+    const week   = document.getElementById('weekView');
     const grid   = document.getElementById('gridView');
     const agenda = document.getElementById('agendaView');
+    const btnW   = document.getElementById('btnWeek');
     const btnG   = document.getElementById('btnGrid');
     const btnA   = document.getElementById('btnAgenda');
 
-    if (view === 'grid') {
-        grid.classList.remove('hidden');
-        agenda.classList.add('hidden');
-        btnG.className = 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-slate-100 text-blue-600';
-        btnA.className = 'px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:bg-slate-50';
+    if (btnW) {
+        btnW.classList.remove('bg-slate-100', 'text-blue-600');
+        btnW.classList.add('text-slate-500', 'hover:bg-slate-50');
+    }
+    if (btnG) {
+        btnG.classList.remove('bg-slate-100', 'text-blue-600');
+        btnG.classList.add('text-slate-500', 'hover:bg-slate-50');
+    }
+    if (btnA) {
+        btnA.classList.remove('bg-slate-100', 'text-blue-600');
+        btnA.classList.add('text-slate-500', 'hover:bg-slate-50');
+    }
+
+    if (week) week.classList.add('hidden');
+    if (grid) grid.classList.add('hidden');
+    if (agenda) agenda.classList.add('hidden');
+
+    if (view === 'week') {
+        if (week) week.classList.remove('hidden');
+        if (btnW) {
+            btnW.classList.add('bg-slate-100', 'text-blue-600');
+            btnW.classList.remove('text-slate-500', 'hover:bg-slate-50');
+        }
+        renderWeekTimeline(true);
+    } else if (view === 'grid') {
+        if (grid) grid.classList.remove('hidden');
+        if (btnG) {
+            btnG.classList.add('bg-slate-100', 'text-blue-600');
+            btnG.classList.remove('text-slate-500', 'hover:bg-slate-50');
+        }
         renderCalendar();
     } else {
-        grid.classList.add('hidden');
-        agenda.classList.remove('hidden');
-        btnA.className = 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-slate-100 text-blue-600';
-        btnG.className = 'px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:bg-slate-50';
+        if (agenda) agenda.classList.remove('hidden');
+        if (btnA) {
+            btnA.classList.add('bg-slate-100', 'text-blue-600');
+            btnA.classList.remove('text-slate-500', 'hover:bg-slate-50');
+        }
         renderAgenda();
     }
 }
 
-// ──── MONTH NAV ───────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// 7-COLUMN x 24-HOUR WEEK TIMELINE ENGINE (EventStudent.md UX Specifications)
+// ═══════════════════════════════════════════════════════════════════════════
+
+let weekStartDate = getStartOfWeek(new Date());
+
+function getStartOfWeek(d) {
+    const date = new Date(d);
+    const day = date.getDay(); // 0 = Sunday
+    const diff = date.getDate() - day;
+    const sunday = new Date(date.setDate(diff));
+    sunday.setHours(0, 0, 0, 0);
+    return sunday;
+}
+
+function changeWeek(delta) {
+    weekStartDate.setDate(weekStartDate.getDate() + (delta * 7));
+    renderWeekTimeline(false);
+}
+
+function jumpToWeekToday() {
+    weekStartDate = getStartOfWeek(new Date());
+    renderWeekTimeline(true);
+}
+
+function formatHourLabel(h) {
+    if (h === 0) return '12 AM';
+    if (h === 12) return '12 PM';
+    return h < 12 ? `${h} AM` : `${h - 12} PM`;
+}
+
+function formatTimeMinutes(m) {
+    const hour24 = Math.floor(m / 60);
+    const min = m % 60;
+    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+    const hour12 = hour24 % 12 || 12;
+    return `${hour12}:${String(min).padStart(2, '0')} ${ampm}`;
+}
+
+function getTimelineCategoryClass(type, source) {
+    if (source === 'personal') return 'tl-cat-personal';
+    if (source === 'due_date') return 'tl-cat-due';
+    switch ((type || '').toLowerCase()) {
+        case 'exam':       return 'tl-cat-exam';
+        case 'deadline':   return 'tl-cat-deadline';
+        case 'assignment': return 'tl-cat-assignment';
+        case 'holiday':    return 'tl-cat-holiday';
+        case 'material':
+        default:           return 'tl-cat-material';
+    }
+}
+
+// Timing extractor for each event
+function getEventTiming(ev) {
+    if (ev.duration_type === 'DateRange' && ev.start_date) {
+        const s = new Date(ev.start_date);
+        const e = ev.end_date ? new Date(ev.end_date) : new Date(s.getTime() + 60 * 60 * 1000);
+        if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+            const isSameDay = s.toDateString() === e.toDateString();
+            if (!isSameDay && (e.getTime() - s.getTime() >= 20 * 3600 * 1000)) {
+                return { isTimed: false, isAllDay: true };
+            }
+            const startMin = s.getHours() * 60 + s.getMinutes();
+            let endMin = e.getHours() * 60 + e.getMinutes();
+            if (endMin <= startMin) endMin = Math.min(1440, startMin + 30);
+            return {
+                isTimed: true,
+                isAllDay: false,
+                startMin,
+                endMin,
+                duration: Math.max(1, endMin - startMin),
+                startDate: s,
+                endDate: e
+            };
+        }
+    } else if (ev.duration_type === 'Minutes' && ev.duration_minutes) {
+        let s = ev.start_date ? new Date(ev.start_date) : null;
+        if (!s && ev.event_date && ev.event_date.length > 10) {
+            s = new Date(ev.event_date);
+        }
+        if (s && !isNaN(s.getTime())) {
+            const startMin = s.getHours() * 60 + s.getMinutes();
+            const dur = Math.max(1, parseInt(ev.duration_minutes, 10) || 30);
+            const endMin = Math.min(1440, startMin + dur);
+            return {
+                isTimed: true,
+                isAllDay: false,
+                startMin,
+                endMin,
+                duration: dur,
+                startDate: s,
+                endDate: new Date(s.getTime() + dur * 60 * 1000)
+            };
+        }
+    }
+    // Fallback: duration_type === 'None' or no time specified -> All-Day Row (Rule 6)
+    return { isTimed: false, isAllDay: true };
+}
+
+// Rule 3: Overlap Partitioning Algorithm (Halves, Thirds, 1/N — NO stacking or '+1 more' labels)
+function partitionOverlapEvents(items) {
+    if (items.length === 0) return [];
+    items.sort((a, b) => a.startMin - b.startMin || b.duration - a.duration);
+
+    const clusters = [];
+    let currentCluster = [];
+    let clusterEnd = -1;
+
+    for (const item of items) {
+        if (currentCluster.length === 0) {
+            currentCluster.push(item);
+            clusterEnd = item.endMin;
+        } else if (item.startMin < clusterEnd) {
+            currentCluster.push(item);
+            if (item.endMin > clusterEnd) clusterEnd = item.endMin;
+        } else {
+            clusters.push(currentCluster);
+            currentCluster = [item];
+            clusterEnd = item.endMin;
+        }
+    }
+    if (currentCluster.length > 0) {
+        clusters.push(currentCluster);
+    }
+
+    const result = [];
+    for (const cluster of clusters) {
+        const subColumns = [];
+
+        for (const item of cluster) {
+            let placed = false;
+            for (let c = 0; c < subColumns.length; c++) {
+                if (subColumns[c] <= item.startMin) {
+                    subColumns[c] = item.endMin;
+                    item.colIndex = c;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                item.colIndex = subColumns.length;
+                subColumns.push(item.endMin);
+            }
+        }
+
+        const totalCols = subColumns.length;
+        for (const item of cluster) {
+            item.totalCols = totalCols;
+            item.widthPct = 100 / totalCols;
+            item.leftPct = item.colIndex * item.widthPct;
+            result.push(item);
+        }
+    }
+
+    return result;
+}
+
+// ── RENDER WEEK TIMELINE ──
+function renderWeekTimeline(shouldAutoScroll = false) {
+    const weekHeaders = document.getElementById('weekDayHeaders');
+    const allDayCols  = document.getElementById('weekAllDayColumns');
+    const timeGutter  = document.getElementById('timeGutter');
+    const columnsWrap = document.getElementById('timelineColumnsWrapper');
+    const rangeLabel  = document.getElementById('calWeekRangeLabel');
+    const subLabel    = document.getElementById('calWeekSubLabel');
+    const timeDisplay = document.getElementById('currentTimeDisplay');
+
+    if (!weekHeaders || !columnsWrap) return;
+
+    // Calculate dates of the 7 days (Sunday - Saturday)
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStartDate);
+        d.setDate(d.getDate() + i);
+        days.push(d);
+    }
+
+    const firstDay = days[0];
+    const lastDay  = days[6];
+    if (rangeLabel) {
+        const fMonth = MONTHS[firstDay.getMonth()].substring(0, 3);
+        const lMonth = MONTHS[lastDay.getMonth()].substring(0, 3);
+        if (firstDay.getMonth() === lastDay.getMonth()) {
+            rangeLabel.textContent = `${fMonth} ${firstDay.getDate()} – ${lastDay.getDate()}, ${firstDay.getFullYear()}`;
+        } else {
+            rangeLabel.textContent = `${fMonth} ${firstDay.getDate()} – ${lMonth} ${lastDay.getDate()}, ${lastDay.getFullYear()}`;
+        }
+    }
+    if (subLabel) {
+        // Week number
+        const oneJan = new Date(firstDay.getFullYear(), 0, 1);
+        const numberOfDays = Math.floor((firstDay - oneJan) / (24 * 60 * 60 * 1000));
+        const weekNum = Math.ceil((firstDay.getDay() + 1 + numberOfDays) / 7);
+        subLabel.textContent = `Week ${weekNum} • High-Density Timeline`;
+    }
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    if (timeDisplay) {
+        timeDisplay.textContent = today.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // 1. Render Sticky Day Headers
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    weekHeaders.innerHTML = days.map((d, i) => {
+        const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const isToday = dStr === todayStr;
+        return `
+            <div class="py-2.5 px-2 text-center select-none transition-colors ${isToday ? 'bg-blue-50/70' : ''}">
+                <p class="text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-600' : 'text-slate-400'}">${dayNames[i]}</p>
+                <div class="mt-0.5 flex justify-center">
+                    <span class="text-xs font-black w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-700'}">${d.getDate()}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // 2. Render Left Time Gutter (Rule 1: labels resting on division lines)
+    if (timeGutter) {
+        let gutterHTML = '';
+        for (let h = 0; h < 24; h++) {
+            gutterHTML += `
+                <div class="timeline-gutter-label" style="top: ${h * 60}px;">
+                    ${formatHourLabel(h)}
+                </div>
+            `;
+        }
+        timeGutter.innerHTML = gutterHTML;
+    }
+
+    // 3. Render Decoupled Sticky All-Day Row (Rule 6) & Main Canvas Columns (Rule 1)
+    allDayCols.innerHTML = '';
+    columnsWrap.innerHTML = '';
+
+    // Background lines are rendered via CSS background-image on .timeline-day-col
+
+    const visibleEvents = getVisible();
+
+    // Loop through each day column
+    days.forEach((dayDate, dayIdx) => {
+        const dateStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`;
+        const isToday = dateStr === todayStr;
+
+        // Filter events belonging to this day
+        const dayEvents = visibleEvents.filter(ev => {
+            const evDate = toLocalDateStr(ev.event_date || ev.start_date);
+            return evDate === dateStr;
+        });
+
+        // Separate into All-Day events vs. Timed events
+        const allDayItems = [];
+        const timedItems = [];
+
+        dayEvents.forEach(ev => {
+            const timing = getEventTiming(ev);
+            if (timing.isAllDay) {
+                allDayItems.push(ev);
+            } else {
+                timedItems.push({
+                    ev,
+                    startMin: timing.startMin,
+                    endMin: timing.endMin,
+                    duration: timing.duration,
+                    timing
+                });
+            }
+        });
+
+    // Manage Week Empty State Banner
+    const weekEmptyBanner = document.getElementById('weekEmptyBanner');
+    let totalEventsInWeek = 0;
+    days.forEach(d => {
+        const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        totalEventsInWeek += visibleEvents.filter(ev => toLocalDateStr(ev.event_date || ev.start_date) === dStr).length;
+    });
+    if (weekEmptyBanner) {
+        if (totalEventsInWeek === 0) {
+            weekEmptyBanner.classList.remove('hidden');
+        } else {
+            weekEmptyBanner.classList.add('hidden');
+        }
+    }
+
+        // A. Render All-Day Column (Rule 6)
+        const allDayCol = document.createElement('div');
+        allDayCol.className = `px-1.5 py-1 min-h-[36px] flex flex-col justify-start ${isToday ? 'bg-blue-50/40' : ''}`;
+        if (allDayItems.length === 0) {
+            allDayCol.innerHTML = '<span class="text-[9px] text-slate-300 font-bold block text-center py-1 select-none">—</span>';
+        } else {
+            allDayItems.forEach(ev => {
+                const chip = document.createElement('div');
+                chip.className = `all-day-chip ${getTimelineCategoryClass(ev.event_type, ev.source)}`;
+                chip.textContent = ev.event_title;
+                chip.title = `${ev.event_title} (${typeLabel(ev.event_type, ev.source)})`;
+                chip.onclick = (e) => {
+                    e.stopPropagation();
+                    if (canEdit(ev)) {
+                        openEditModal(ev.event_id);
+                    } else {
+                        handleDayClick(dayDate.getDate(), dateStr, [ev], e);
+                    }
+                };
+                allDayCol.appendChild(chip);
+            });
+        }
+        allDayCols.appendChild(allDayCol);
+
+        // B. Render Main Timeline Column (Rule 1 & Rule 3)
+        const dayCol = document.createElement('div');
+        dayCol.className = `timeline-day-col relative h-[1440px] z-10 ${isToday ? 'bg-blue-50/15' : ''}`;
+        dayCol.dataset.date = dateStr;
+        dayCol.dataset.dayIndex = dayIdx;
+
+        // Render Top All-Day indicators directly in column for immediate visibility
+        if (allDayItems.length > 0) {
+            const allDaySummary = document.createElement('div');
+            allDaySummary.className = 'p-1 space-y-1 bg-slate-50/80 border-b border-slate-100 z-15';
+            allDayItems.forEach(ev => {
+                const badge = document.createElement('div');
+                badge.className = `all-day-chip ${getTimelineCategoryClass(ev.event_type, ev.source)} text-[9px] font-black py-0.5 px-1.5 shadow-2xs`;
+                badge.innerHTML = `<span class="opacity-75 mr-1 font-bold">[All-Day]</span>${escapeHtml(ev.event_title)}`;
+                badge.onclick = (e) => {
+                    e.stopPropagation();
+                    if (canEdit(ev)) {
+                        openEditModal(ev.event_id);
+                    } else {
+                        handleDayClick(dayDate.getDate(), dateStr, [ev], e);
+                    }
+                };
+                allDaySummary.appendChild(badge);
+            });
+            dayCol.appendChild(allDaySummary);
+        }
+
+        // Partition overlapping timed events (Rule 3)
+        const partitionedTimedEvents = partitionOverlapEvents(timedItems);
+
+        partitionedTimedEvents.forEach(item => {
+            const ev = item.ev;
+            const topPx = item.startMin;
+            const heightPx = Math.max(8, item.duration);
+            const widthPct = item.widthPct;
+            const leftPct = item.leftPct;
+
+            const card = document.createElement('div');
+            card.dataset.eventId = ev.event_id || '';
+            card.dataset.source = ev.source;
+            card.dataset.startMin = item.startMin;
+            card.dataset.duration = item.duration;
+
+            const categoryClass = getTimelineCategoryClass(ev.event_type, ev.source);
+            const isPersonal = ev.source === 'personal';
+
+            card.style.top = `${topPx}px`;
+            card.style.height = `${heightPx}px`;
+            card.style.left = `${leftPct}%`;
+            card.style.width = `calc(${widthPct}% - 2px)`;
+
+            // Duration Scaling (Rule 4)
+            if (heightPx < 15) {
+                // Micro-event (<15px): render as thin colored bar with hover tooltip
+                card.className = `timeline-event-card timeline-micro-event ${categoryClass} ${isPersonal ? 'is-movable' : ''}`;
+                card.title = `${ev.event_title} • ${formatTimeMinutes(item.startMin)} - ${formatTimeMinutes(item.endMin)} (${item.duration}m)`;
+            } else if (heightPx < 30) {
+                // 15-minute slot (15px): clipped single-line title
+                card.className = `timeline-event-card timeline-15m-event ${categoryClass} ${isPersonal ? 'is-movable' : ''}`;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between w-full h-full">
+                        <span class="font-extrabold truncate text-[10px]">${escapeHtml(ev.event_title)}</span>
+                        <span class="text-[9px] opacity-75 font-bold ml-1 flex-shrink-0">${formatTimeMinutes(item.startMin)}</span>
+                    </div>
+                `;
+                card.title = `${ev.event_title} • ${formatTimeMinutes(item.startMin)} - ${formatTimeMinutes(item.endMin)}`;
+            } else {
+                // Standard event (>=30px): multi-line rich card
+                card.className = `timeline-event-card p-1.5 flex flex-col justify-between ${categoryClass} ${isPersonal ? 'is-movable' : ''}`;
+                card.innerHTML = `
+                    <div class="min-w-0 flex-1 overflow-hidden">
+                        <div class="flex items-center justify-between gap-1 mb-0.5">
+                            <span class="font-black text-xs leading-tight truncate">${escapeHtml(ev.event_title)}</span>
+                            <span class="text-[9px] font-bold opacity-80 whitespace-nowrap">${formatTimeMinutes(item.startMin)}</span>
+                        </div>
+                        ${heightPx >= 45 ? `
+                            <div class="flex items-center gap-1.5 flex-wrap text-[10px] font-bold opacity-90 leading-none mt-0.5">
+                                ${ev.subject_name ? `<span class="truncate max-w-[90px]">${escapeHtml(ev.subject_name)}</span>` : ''}
+                                <span>${item.duration}m</span>
+                                ${ev.event_location && ev.event_location !== 'TBA' ? `<span class="truncate max-w-[80px]"><i class="fas fa-location-dot mr-0.5 text-[8px]"></i>${escapeHtml(ev.event_location)}</span>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${isPersonal ? '<div class="timeline-resize-handle" title="Drag to resize duration"></div>' : ''}
+                `;
+            }
+
+            // Click handling
+            card.onclick = (e) => {
+                if (card.dataset.dragged === 'true') return;
+                e.stopPropagation();
+                if (isPersonal) {
+                    openEditModal(ev.event_id);
+                } else {
+                    handleDayClick(dayDate.getDate(), dateStr, [ev], e);
+                }
+            };
+
+            dayCol.appendChild(card);
+        });
+
+        columnsWrap.appendChild(dayCol);
+    });
+
+    // 4. Position Active Red Marker Line (Rule 1)
+    updateCurrentTimeMarker(shouldAutoScroll);
+
+    // 5. Initialize Drag Interaction Physics (Rule 5)
+    initTimelineDragPhysics();
+}
+
+// Rule 1: Active Red Current-Time Marker Line & Viewport Auto-Scroll
+function updateCurrentTimeMarker(autoScroll = false) {
+    const indicator = document.getElementById('currentTimeIndicator');
+    const scrollContainer = document.getElementById('timelineScroll');
+    const columnsWrap = document.getElementById('timelineColumnsWrapper');
+    if (!indicator || !scrollContainer || !columnsWrap) return;
+
+    const now = new Date();
+    const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const targetCol = columnsWrap.querySelector(`.timeline-day-col[data-date="${nowStr}"]`);
+
+    if (!targetCol) {
+        indicator.style.display = 'none';
+        return;
+    }
+
+    const currentY = (now.getHours() * 60) + now.getMinutes();
+    indicator.style.display = 'flex';
+    indicator.style.top = `${currentY}px`;
+
+    if (autoScroll) {
+        // Auto-scroll viewport directly to marker minus 120px context (Rule 1)
+        const targetScroll = Math.max(0, currentY - 120);
+        setTimeout(() => {
+            scrollContainer.scrollTo({ top: targetScroll, behavior: 'smooth' });
+        }, 60);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INTERACTION PHYSICS: DRAG-TO-CREATE, DRAG-TO-MOVE, DRAG-TO-RESIZE (Rule 5)
+// ═══════════════════════════════════════════════════════════════════════════
+
+let timelineInteractionsInitialized = false;
+
+function initTimelineDragPhysics() {
+    const scrollContainer = document.getElementById('timelineScroll');
+    const ghost = document.getElementById('dragCreateGhost');
+    const ghostBadge = document.getElementById('dragCreateBadge');
+    const moveBadge = document.getElementById('dragMoveBadge');
+    if (!scrollContainer || !ghost || !ghostBadge) return;
+
+    // A. DRAG EMPTY SPACE TO CREATE (15-Minute Snapping)
+    const dayCols = scrollContainer.querySelectorAll('.timeline-day-col');
+    dayCols.forEach(col => {
+        col.onpointerdown = (e) => {
+            if (e.target.closest('.timeline-event-card')) return; // Ignore event cards
+            if (e.button !== 0) return; // Left click only
+
+            col.setPointerCapture(e.pointerId);
+            const rect = col.getBoundingClientRect();
+            const startY = Math.max(0, Math.min(1440, e.clientY - rect.top));
+            const startMin = Math.floor((startY / 60) * 4) * 15;
+            let currentEndMin = startMin + 15;
+            const colDate = col.dataset.date;
+
+            ghost.classList.remove('hidden');
+            ghost.style.left = `${col.offsetLeft}px`;
+            ghost.style.width = `${col.offsetWidth - 2}px`;
+            ghost.style.top = `${startMin}px`;
+            ghost.style.height = '15px';
+            ghostBadge.textContent = `${formatTimeMinutes(startMin)} – ${formatTimeMinutes(currentEndMin)} (15m)`;
+
+            col.onpointermove = (pe) => {
+                const moveY = pe.clientY - rect.top;
+                const rawMin = Math.floor((moveY / 60) * 4) * 15;
+                currentEndMin = Math.max(startMin + 15, Math.min(1440, rawMin));
+                const dur = currentEndMin - startMin;
+
+                ghost.style.top = `${startMin}px`;
+                ghost.style.height = `${dur}px`;
+                ghostBadge.textContent = `${formatTimeMinutes(startMin)} – ${formatTimeMinutes(currentEndMin)} (${dur}m)`;
+            };
+
+            const finishCreate = () => {
+                col.onpointermove = null;
+                col.onpointerup = null;
+                col.onpointercancel = null;
+                ghost.classList.add('hidden');
+
+                const dur = currentEndMin - startMin;
+                if (dur >= 15) {
+                    const sHour = String(Math.floor(startMin / 60)).padStart(2, '0');
+                    const sMin  = String(startMin % 60).padStart(2, '0');
+                    const eHour = String(Math.floor(currentEndMin / 60)).padStart(2, '0');
+                    const eMin  = String(currentEndMin % 60).padStart(2, '0');
+
+                    const startIso = `${colDate}T${sHour}:${sMin}`;
+                    const endIso   = `${colDate}T${eHour}:${eMin}`;
+
+                    openEventModal(colDate);
+                    document.getElementById('durationType').value = 'DateRange';
+                    toggleDurationFields();
+                    document.getElementById('formStartDate').value = startIso;
+                    document.getElementById('formEndDate').value   = endIso;
+                }
+            };
+
+            col.onpointerup = finishCreate;
+            col.onpointercancel = finishCreate;
+        };
+    });
+
+    // B. DRAG BODY TO MOVE & C. DRAG EDGE TO RESIZE (Personal Events Only)
+    const personalCards = scrollContainer.querySelectorAll('.timeline-event-card.is-movable');
+    personalCards.forEach(card => {
+        const resizeHandle = card.querySelector('.timeline-resize-handle');
+        const eventId = card.dataset.eventId;
+        const initialStartMin = parseInt(card.dataset.startMin, 10) || 0;
+        const initialDuration = parseInt(card.dataset.duration, 10) || 30;
+        const initialCol = card.closest('.timeline-day-col');
+        const initialDate = initialCol ? initialCol.dataset.date : '';
+
+        // ── RESIZE EVENT (Bottom Edge) ──
+        if (resizeHandle) {
+            resizeHandle.onpointerdown = (re) => {
+                re.stopPropagation();
+                re.preventDefault();
+                resizeHandle.setPointerCapture(re.pointerId);
+
+                card.dataset.dragged = 'true';
+                const startClientY = re.clientY;
+                let newDuration = initialDuration;
+
+                if (moveBadge) {
+                    moveBadge.classList.remove('hidden');
+                    moveBadge.textContent = `Duration: ${newDuration}m`;
+                    moveBadge.style.left = `${re.clientX + 16}px`;
+                    moveBadge.style.top = `${re.clientY + 16}px`;
+                }
+
+                resizeHandle.onpointermove = (pe) => {
+                    const deltaY = pe.clientY - startClientY;
+                    const deltaMin = Math.round(deltaY / 15) * 15;
+                    newDuration = Math.max(15, Math.min(1440 - initialStartMin, initialDuration + deltaMin));
+
+                    card.style.height = `${newDuration}px`;
+                    if (moveBadge) {
+                        moveBadge.textContent = `Duration: ${newDuration}m (Ends ${formatTimeMinutes(initialStartMin + newDuration)})`;
+                        moveBadge.style.left = `${pe.clientX + 16}px`;
+                        moveBadge.style.top = `${pe.clientY + 16}px`;
+                    }
+                };
+
+                const finishResize = async () => {
+                    resizeHandle.onpointermove = null;
+                    resizeHandle.onpointerup = null;
+                    resizeHandle.onpointercancel = null;
+                    if (moveBadge) moveBadge.classList.add('hidden');
+
+                    setTimeout(() => { card.dataset.dragged = 'false'; }, 50);
+
+                    if (newDuration !== initialDuration) {
+                        const sHour = String(Math.floor(initialStartMin / 60)).padStart(2, '0');
+                        const sMin  = String(initialStartMin % 60).padStart(2, '0');
+                        const endTotal = initialStartMin + newDuration;
+                        const eHour = String(Math.floor(endTotal / 60)).padStart(2, '0');
+                        const eMin  = String(endTotal % 60).padStart(2, '0');
+
+                        const startIso = `${initialDate}T${sHour}:${sMin}`;
+                        const endIso   = `${initialDate}T${eHour}:${eMin}`;
+
+                        await saveEventTimeAjax(eventId, {
+                            duration_type: 'DateRange',
+                            start_date: startIso,
+                            end_date: endIso,
+                            duration_minutes: newDuration,
+                            event_date: initialDate
+                        });
+                    }
+                };
+
+                resizeHandle.onpointerup = finishResize;
+                resizeHandle.onpointercancel = finishResize;
+            };
+        }
+
+        // ── MOVE EVENT (Body Drag) ──
+        card.onpointerdown = (me) => {
+            if (me.target.closest('.timeline-resize-handle')) return; // handled by resize
+            if (me.button !== 0) return;
+
+            me.stopPropagation();
+            card.setPointerCapture(me.pointerId);
+
+            const startClientY = me.clientY;
+            let hasMoved = false;
+            let proposedStartMin = initialStartMin;
+            let targetDate = initialDate;
+
+            card.onpointermove = (pe) => {
+                const deltaY = pe.clientY - startClientY;
+                if (!hasMoved && Math.abs(deltaY) < 4) return;
+                hasMoved = true;
+                card.dataset.dragged = 'true';
+                card.classList.add('is-dragging');
+
+                const deltaMin = Math.round(deltaY / 15) * 15;
+                proposedStartMin = Math.max(0, Math.min(1440 - initialDuration, initialStartMin + deltaMin));
+                card.style.top = `${proposedStartMin}px`;
+
+                // Detect target day column if dragging across days
+                const hoveredCol = document.elementFromPoint(pe.clientX, pe.clientY)?.closest('.timeline-day-col');
+                if (hoveredCol && hoveredCol.dataset.date) {
+                    targetDate = hoveredCol.dataset.date;
+                }
+
+                if (moveBadge) {
+                    moveBadge.classList.remove('hidden');
+                    moveBadge.textContent = `${formatDate(targetDate)} • ${formatTimeMinutes(proposedStartMin)} – ${formatTimeMinutes(proposedStartMin + initialDuration)}`;
+                    moveBadge.style.left = `${pe.clientX + 16}px`;
+                    moveBadge.style.top = `${pe.clientY + 16}px`;
+                }
+            };
+
+            const finishMove = async () => {
+                card.onpointermove = null;
+                card.onpointerup = null;
+                card.onpointercancel = null;
+                card.classList.remove('is-dragging');
+                if (moveBadge) moveBadge.classList.add('hidden');
+
+                setTimeout(() => { card.dataset.dragged = 'false'; }, 60);
+
+                if (hasMoved && (proposedStartMin !== initialStartMin || targetDate !== initialDate)) {
+                    const sHour = String(Math.floor(proposedStartMin / 60)).padStart(2, '0');
+                    const sMin  = String(proposedStartMin % 60).padStart(2, '0');
+                    const endTotal = proposedStartMin + initialDuration;
+                    const eHour = String(Math.floor(endTotal / 60)).padStart(2, '0');
+                    const eMin  = String(endTotal % 60).padStart(2, '0');
+
+                    const startIso = `${targetDate}T${sHour}:${sMin}`;
+                    const endIso   = `${targetDate}T${eHour}:${eMin}`;
+
+                    await saveEventTimeAjax(eventId, {
+                        event_date: targetDate,
+                        duration_type: 'DateRange',
+                        start_date: startIso,
+                        end_date: endIso,
+                        duration_minutes: initialDuration
+                    });
+                } else if (!hasMoved) {
+                    openEditModal(eventId);
+                }
+            };
+
+            card.onpointerup = finishMove;
+            card.onpointercancel = finishMove;
+        };
+    });
+}
+
+// AJAX persistence for drag move and resize
+async function saveEventTimeAjax(eventId, payload) {
+    try {
+        const targetEv = STUDENT_EVENTS.find(e => String(e.event_id) === String(eventId)) || {};
+        const resp = await fetch(`/events/edit/${eventId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                event_title: targetEv.event_title || payload.event_title || 'Event',
+                ...payload,
+                is_ajax: true
+            })
+        });
+
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data.success !== false) {
+            // Update local memory state
+            const target = STUDENT_EVENTS.find(e => String(e.event_id) === String(eventId));
+            if (target) {
+                Object.assign(target, payload);
+            }
+            const targetAll = ALL_EVENTS.find(e => String(e.event_id) === String(eventId));
+            if (targetAll) {
+                Object.assign(targetAll, payload);
+            }
+            renderWeekTimeline(false);
+            if (currentView === 'grid') renderCalendar();
+            if (currentView === 'agenda') renderAgenda();
+        } else {
+            alert(data.message || 'Could not save event schedule update.');
+            renderWeekTimeline(false);
+        }
+    } catch (err) {
+        console.error('AJAX Event Update Error:', err);
+        alert('Network error while saving schedule changes.');
+        renderWeekTimeline(false);
+    }
+}
+
+
+// ── MONTH NAV ──
 function changeMonth(delta) {
     calMonth += delta;
     if (calMonth > 11) { calMonth = 0;  calYear++; }
     if (calMonth < 0)  { calMonth = 11; calYear--; }
     renderCalendar();
+    if (currentView === 'agenda') renderAgenda();
 }
 
-// ──── FILTER ──────────────────────────────────────────────────────────────────
+function jumpToToday() {
+    const today = new Date();
+    calYear = today.getFullYear();
+    calMonth = today.getMonth();
+    renderCalendar();
+    if (currentView === 'agenda') renderAgenda();
+}
+
+// ── FILTER ──
 function toggleFilter() {
     document.getElementById('filterDropdown').classList.toggle('hidden');
 }
@@ -830,49 +2320,69 @@ function toggleFilter() {
 function applyFilter(type) {
     activeFilter = type;
     const labels = {
-        all: 'All Types', Exam: 'Exam', Deadline: 'Deadline',
+        all: 'All Types', Exam: 'Exam', Deadline: 'Deadline', Assignment: 'Assignment',
         Material: 'Material', Holiday: 'Holiday',
         due_date: 'Assessment Due', personal: 'My Events', teacher: 'Teacher Events'
     };
     document.getElementById('filterLabel').textContent = labels[type] || type;
     document.getElementById('filterDropdown').classList.add('hidden');
-    renderCalendar();
-    renderAgenda();
+    if (currentView === 'grid') {
+        renderCalendar();
+    } else {
+        renderAgenda();
+    }
 }
 
-// ──── SEARCH ──────────────────────────────────────────────────────────────────
+// ── SEARCH ──
 let searchTimeout;
 function handleSearch(val) {
-    searchQuery = val.trim();
+    searchQuery = (val || '').trim();
+    
+    // Sync input values if both desktop & mobile exist
+    const dInput = document.getElementById('eventSearchInput');
+    const mInput = document.getElementById('eventSearchInputMobile');
+    if (dInput && dInput.value !== searchQuery) dInput.value = searchQuery;
+    if (mInput && mInput.value !== searchQuery) mInput.value = searchQuery;
+
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
         renderSearchDropdown(searchQuery);
-        renderCalendar();
-        renderAgenda();
+        if (currentView === 'grid') {
+            renderCalendar();
+        } else {
+            renderAgenda();
+        }
     }, 180);
 }
 
 function renderSearchDropdown(q) {
     const dd = document.getElementById('searchDropdown');
+    if (!dd) return;
     if (!q) { dd.classList.add('hidden'); return; }
     const results = ALL_EVENTS.filter(ev =>
         (ev.event_title || '').toLowerCase().includes(q.toLowerCase()) ||
-        (ev.subject_name || '').toLowerCase().includes(q.toLowerCase())
+        (ev.subject_name || '').toLowerCase().includes(q.toLowerCase()) ||
+        (ev.event_description || '').toLowerCase().includes(q.toLowerCase())
     ).slice(0, 8);
 
     if (results.length === 0) {
-        dd.innerHTML = `<p class="text-center text-sm text-slate-400 py-4">No results found</p>`;
+        dd.innerHTML = `<p class="text-center text-xs font-semibold text-slate-400 py-3">No matching events found</p>`;
     } else {
-        dd.innerHTML = results.map(ev => `
-            <div class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition border-b border-slate-50 last:border-0"
-                 onclick="jumpToEvent('${ev.event_date}')">
+        dd.innerHTML = results.map(ev => {
+            const safeDate = escapeHtml(ev.event_date);
+            const safeTitle = escapeHtml(ev.event_title);
+            const safeSubj = escapeHtml(ev.subject_name);
+            return `
+            <div class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition border-b border-slate-50 last:border-0"
+                 onclick="jumpToEvent('${safeDate}')">
                 <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${dotColor(ev.event_type,ev.source)}"></span>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-slate-800 truncate">${ev.event_title}</p>
-                    <p class="text-[11px] text-slate-400">${formatDate(ev.event_date)} ${ev.subject_name ? '· ' + ev.subject_name : ''}</p>
+                    <p class="text-xs font-bold text-slate-800 truncate">${safeTitle}</p>
+                    <p class="text-[10px] text-slate-400">${formatDate(ev.event_date)} ${safeSubj ? '· ' + safeSubj : ''}</p>
                 </div>
-                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded" style="background:${dotColor(ev.event_type,ev.source)}18;color:${dotColor(ev.event_type,ev.source)}">${typeLabel(ev.event_type,ev.source)}</span>
-            </div>`).join('');
+                <span class="text-[9px] font-black px-1.5 py-0.5 rounded uppercase" style="background:${dotColor(ev.event_type,ev.source)}18;color:${dotColor(ev.event_type,ev.source)}">${escapeHtml(typeLabel(ev.event_type,ev.source))}</span>
+            </div>`;
+        }).join('');
     }
     dd.classList.remove('hidden');
 }
@@ -882,52 +2392,67 @@ function jumpToEvent(dateStr) {
     if (!d) return;
     calYear  = d.getFullYear();
     calMonth = d.getMonth();
-    document.getElementById('searchDropdown').classList.add('hidden');
-    // Switch to grid view
-    switchView('grid');
+    const dd = document.getElementById('searchDropdown');
+    if (dd) dd.classList.add('hidden');
+    weekStartDate = getStartOfWeek(d);
+    switchView('week');
 }
 
-// Close search dropdown on outside click
+// Close search dropdown and user menu on outside click
 document.addEventListener('click', e => {
-    if (!e.target.closest('#eventSearchInput') && !e.target.closest('#searchDropdown')) {
-        document.getElementById('searchDropdown').classList.add('hidden');
+    const dd = document.getElementById('searchDropdown');
+    if (dd && !e.target.closest('#eventSearchInput') && !e.target.closest('#searchDropdown') && !e.target.closest('#eventSearchInputMobile')) {
+        dd.classList.add('hidden');
     }
     if (!e.target.closest('#userDropdown') && !e.target.closest('#userMenuBtn')) {
-        const dd = document.getElementById('userDropdown');
-        if (dd) dd.classList.add('hidden');
+        const uDd = document.getElementById('userDropdown');
+        if (uDd) uDd.classList.add('hidden');
     }
     if (!e.target.closest('#filterDropdown') && !e.target.closest('button[onclick="toggleFilter()"]')) {
-        document.getElementById('filterDropdown').classList.add('hidden');
+        const fDd = document.getElementById('filterDropdown');
+        if (fDd) fDd.classList.add('hidden');
+    }
+    const dModal = document.getElementById('dayDetailsModal');
+    if (dModal && !dModal.classList.contains('hidden') && e.target === dModal) {
+        closeDayDetailsModal();
     }
 });
 
-// ──── CREATE / EDIT MODAL ────────────────────────────────────────────────────
+// ── CREATE / EDIT MODAL ──
 function openEventModal(prefillDate = null) {
     document.getElementById('modalTitle').textContent = 'Create New Event';
     document.getElementById('formSubmitBtn').textContent = 'Save Event';
     document.getElementById('eventForm').action = '/events/add';
     document.getElementById('editEventId').value = '';
     document.getElementById('formMethod').value = '';
-    // Reset fields
+
     document.getElementById('formSubjectId').value = '';
-    document.getElementById('formTitle').value = '';
-    document.getElementById('formDesc').value = '';
-    document.getElementById('formType').value = 'Material';
-    document.getElementById('formDate').value = prefillDate || '';
-    document.getElementById('formLocation').value = '';
-    document.getElementById('durationType').value = 'None';
+    document.getElementById('formTitle').value      = '';
+    document.getElementById('formDesc').value       = '';
+    document.getElementById('formType').value       = 'Material';
+    document.getElementById('formDate').value = prefillDate || toLocalDateStr(new Date());
+    document.getElementById('formLocation').value   = '';
+    document.getElementById('durationType').value  = 'None';
     document.getElementById('formStartDate').value = '';
-    document.getElementById('formEndDate').value = '';
-    document.getElementById('formMinutes').value = '';
+    document.getElementById('formEndDate').value   = '';
+    document.getElementById('formMinutes').value   = '';
     document.getElementById('isRepeatable').checked = false;
     document.getElementById('repeatCycle').classList.add('hidden');
     toggleDurationFields();
-    document.getElementById('eventModal').classList.remove('hidden');
+    if (window.ModalManager) {
+        ModalManager.open('eventModal');
+    } else {
+        document.getElementById('eventModal').classList.remove('hidden');
+    }
 }
 
 function openEditModal(eventId) {
-    const ev = STUDENT_EVENTS.find(e => e.event_id === eventId);
-    if (!ev) return;
+    // Robust loose equality match
+    const ev = STUDENT_EVENTS.find(e => String(e.event_id) === String(eventId));
+    if (!ev) {
+        console.warn('Event not found for edit ID:', eventId);
+        return;
+    }
 
     document.getElementById('modalTitle').textContent = 'Edit Event';
     document.getElementById('formSubmitBtn').textContent = 'Update Event';
@@ -953,124 +2478,122 @@ function openEditModal(eventId) {
         document.getElementById('repeatCycle').classList.add('hidden');
     }
     toggleDurationFields();
-    document.getElementById('eventModal').classList.remove('hidden');
+    if (window.ModalManager) {
+        ModalManager.open('eventModal');
+    } else {
+        document.getElementById('eventModal').classList.remove('hidden');
+    }
 }
 
-function closeEventModal() {
-    document.getElementById('eventModal').classList.add('hidden');
-}
 
-// ──── DELETE MODAL ───────────────────────────────────────────────────────────
+
+// ── DELETE MODAL ──
 function openDeleteModal(eventId) {
     pendingDeleteId = eventId;
-    document.getElementById('deleteModal').classList.remove('hidden');
-}
-function closeDeleteModal() {
-    pendingDeleteId = null;
-    document.getElementById('deleteModal').classList.add('hidden');
-}
-async function confirmDelete() {
-    if (!pendingDeleteId) return;
-    try {
-        const resp = await fetch(`/events/delete/${pendingDeleteId}`, { method: 'POST' });
-        if (resp.ok) {
-            // Remove from local array
-            const idx = STUDENT_EVENTS.findIndex(e => e.event_id === pendingDeleteId);
-            if (idx !== -1) STUDENT_EVENTS.splice(idx, 1);
-            ALL_EVENTS = ALL_EVENTS.filter(e => e.event_id !== pendingDeleteId);
-            renderCalendar();
-            renderAgenda();
-        }
-    } catch (e) { console.error(e); }
-    closeDeleteModal();
+    if (window.ModalManager) {
+        ModalManager.open('deleteModal');
+    } else {
+        document.getElementById('deleteModal').classList.remove('hidden');
+    }
+    setTimeout(() => document.getElementById('deleteCancelBtn')?.focus(), 50);
 }
 
-// ──── FORM HELPERS ────────────────────────────────────────────────────────────
+function closeDeleteModal() {
+    pendingDeleteId = null;
+    if (window.ModalManager) {
+        ModalManager.close('deleteModal');
+    } else {
+        document.getElementById('deleteModal').classList.add('hidden');
+    }
+}
+
+async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    const deleteId = pendingDeleteId;
+    try {
+        const resp = await fetch(`/events/delete/${deleteId}`, { method: 'POST' });
+        const data = await resp.json().catch(() => ({}));
+
+        if (resp.ok && (data.success !== false)) {
+            // Remove from local array with robust string comparison
+            const idx = STUDENT_EVENTS.findIndex(e => String(e.event_id) === String(deleteId));
+            if (idx !== -1) STUDENT_EVENTS.splice(idx, 1);
+            ALL_EVENTS = ALL_EVENTS.filter(e => String(e.event_id) !== String(deleteId));
+            
+            renderCalendar();
+            if (currentView === 'agenda') renderAgenda();
+            closeDeleteModal();
+        } else {
+            alert(data.message || 'Failed to delete event. Please check your network connection and try again.');
+            closeDeleteModal();
+        }
+    } catch (e) {
+        console.error('Delete error:', e);
+        alert('Network error while attempting to delete event.');
+        closeDeleteModal();
+    }
+}
+
+// ── FORM HELPERS ──
 function toggleDurationFields() {
     const type = document.getElementById('durationType').value;
     document.getElementById('dateRangeFields').classList.toggle('hidden', type !== 'DateRange');
     document.getElementById('minuteFields').classList.toggle('hidden', type !== 'Minutes');
 }
+
 function toggleRepeatFields() {
     document.getElementById('repeatCycle').classList.toggle('hidden', !document.getElementById('isRepeatable').checked);
 }
 
-// ──── SIDEBAR / USER MENU ─────────────────────────────────────────────────────
+// ── SIDEBAR / USER MENU ──
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const main = document.getElementById('mainContent');
+    const header = document.querySelector('header');
+    
     if (window.innerWidth < 768) {
-        sidebar.classList.toggle('sidebar-collapsed');
         sidebar.classList.toggle('sidebar-open');
+        sidebar.classList.toggle('sidebar-collapsed');
         overlay.classList.toggle('hidden');
     } else {
         sidebar.classList.toggle('sidebar-collapsed');
-        document.getElementById('mainContent').classList.toggle('md:ml-64');
-        document.getElementById('mainContent').classList.toggle('md:ml-0');
+        if (main) main.classList.toggle('sidebar-collapsed-main');
+        if (header) header.classList.toggle('sidebar-collapsed-header');
     }
 }
+
 function toggleUserMenu(event) {
-    event.stopPropagation();
-    document.getElementById('userDropdown').classList.toggle('hidden');
+    if (event && event.stopPropagation) event.stopPropagation();
+    const dropdown = document.getElementById('userDropdown');
+    const btn = document.getElementById('userMenuBtn');
+    const isExpanded = !dropdown.classList.contains('hidden');
+    dropdown.classList.toggle('hidden');
+    if (btn) btn.setAttribute('aria-expanded', !isExpanded);
 }
-window.addEventListener('resize', () => {
-    const sidebar = document.getElementById('sidebar');
-    const main = document.getElementById('mainContent');
-    if (window.innerWidth >= 768) {
-        sidebar.classList.remove('sidebar-collapsed', 'sidebar-open');
-        main.classList.add('md:ml-64');
-    } else {
-        sidebar.classList.add('sidebar-collapsed');
-        main.classList.remove('md:ml-64');
+
+// Close dropdown when clicking outside
+window.addEventListener('click', function() {
+    const dropdown = document.getElementById('userDropdown');
+    const btn = document.getElementById('userMenuBtn');
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        dropdown.classList.add('hidden');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
     }
 });
 
-// ──── NOTIFICATIONS ───────────────────────────────────────────────────────────
-async function toggleNotifications() {
-    const panel   = document.getElementById('notification-panel');
+// ── Notification Panel ──
+function toggleNotifications() {
+    const panel = document.getElementById('notification-panel');
     const overlay = document.getElementById('notification-overlay');
-    const list    = document.getElementById('notification-list');
-
+    if (!panel || !overlay) return;
+    
     if (panel.classList.contains('translate-x-full')) {
         panel.classList.remove('translate-x-full');
         overlay.classList.remove('hidden');
         setTimeout(() => overlay.classList.add('opacity-100'), 10);
-        try {
-            const response = await fetch('/api/notifications');
-            const notifications = await response.json();
-            list.innerHTML = '';
-            if (notifications.length === 0) {
-                list.innerHTML = `<div class="flex flex-col items-center justify-center h-64 text-gray-400"><i class="fas fa-check-circle text-4xl mb-2 opacity-20"></i><p>All caught up!</p></div>`;
-                return;
-            }
-            notifications.forEach(notif => {
-                const timeAgo = formatTimeAgo(notif.created_at);
-                let config = { icon: 'fa-info-circle', border: 'border-gray-500', badge: 'bg-gray-100 text-gray-600', label: notif.type };
-                switch(notif.type) {
-                    case 'announcement': config = { icon: 'fa-bullhorn', border: 'border-blue-500', badge: 'bg-blue-100 text-blue-600', label: 'Announcement' }; break;
-                    case 'assessment':   config = { icon: 'fa-file-alt', border: 'border-red-500',  badge: 'bg-red-100 text-red-600',   label: 'Assessment'  }; break;
-                    case 'material':     config = { icon: 'fa-book',     border: 'border-purple-500',badge: 'bg-purple-100 text-purple-600',label: 'New Material'}; break;
-                    case 'forum_new': case 'forum_reply': config = { icon: 'fa-comments', border: 'border-green-500', badge: 'bg-green-100 text-green-600', label: 'Forum' }; break;
-                    case 'score':        config = { icon: 'fa-star',     border: 'border-yellow-500',badge: 'bg-yellow-100 text-yellow-700',label: 'Result'    }; break;
-                }
-                let extraBadge = '';
-                if (notif.extra_info) {
-                    const isExp = notif.extra_info.includes('EXP');
-                    extraBadge = `<span class="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-bold ${isExp ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-700'}">${notif.extra_info}</span>`;
-                }
-                list.insertAdjacentHTML('beforeend', `
-                    <div class="bg-white p-3 rounded-lg border-l-4 ${config.border} shadow-sm hover:shadow-md transition-all cursor-pointer group">
-                        <div class="flex justify-between items-start mb-1">
-                            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${config.badge}"><i class="fas ${config.icon} mr-1"></i>${config.label}</span>
-                            <span class="text-[10px] text-gray-400 group-hover:text-gray-600">${timeAgo}</span>
-                        </div>
-                        <p class="text-sm font-bold text-gray-800 leading-tight">${notif.heading}</p>
-                        <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">${notif.snippet}</p>
-                        ${extraBadge}
-                    </div>`);
-            });
-        } catch(err) {
-            list.innerHTML = `<p class="text-center text-red-500 p-4">Failed to load notifications.</p>`;
+        if (window.NotificationHub) {
+            NotificationHub.loadNotifications('notification-list', false);
         }
     } else {
         panel.classList.add('translate-x-full');
@@ -1079,23 +2602,424 @@ async function toggleNotifications() {
     }
 }
 
-function formatTimeAgo(dateString) {
-    if (!dateString) return '';
-    const now  = new Date();
-    const past = new Date(dateString);
-    const diffInMins = Math.floor((now - past) / 60000);
-    if (diffInMins < 0)  return 'Upcoming';
-    if (diffInMins < 1)  return 'Just now';
-    if (diffInMins < 60) return `${diffInMins}m ago`;
-    const h = Math.floor(diffInMins / 60);
-    if (h < 24) return `${h}h ago`;
-    return past.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+// ── GLOBAL MODAL & MAP STATE VARIABLES ──
+let isSavingConfirmed = false;
+let leafletMapInstance = null;
+let leafletMarker = null;
+let selectedCoordinates = null;
+let selectedLocationText = '';
+
+// ── LEAFLET MAP LOCATION PICKER & GEOLOCATION ──
+function openLocationPickerModal() {
+    const modal = document.getElementById('locationPickerModal');
+    if (!modal) return;
+    
+    if (window.ModalManager) {
+        ModalManager.open('locationPickerModal');
+    } else {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    // Initialize or resize map after modal is in DOM layout
+    setTimeout(() => {
+        initOrResizeMap();
+    }, 120);
 }
 
-// ──── INIT ────────────────────────────────────────────────────────────────────
+function closeLocationPickerModal() {
+    if (window.ModalManager) {
+        ModalManager.close('locationPickerModal');
+    } else {
+        const modal = document.getElementById('locationPickerModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+}
+
+function initOrResizeMap() {
+    const canvas = document.getElementById('mapPickerCanvas');
+    if (!canvas) return;
+
+    if (typeof L === 'undefined') {
+        canvas.innerHTML = `
+            <div class="h-full w-full flex flex-col items-center justify-center p-6 text-center text-slate-500">
+                <i class="fas fa-spinner fa-spin text-2xl text-blue-600 mb-2"></i>
+                <p class="text-xs font-bold">Loading Interactive Map...</p>
+            </div>
+        `;
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+        document.head.appendChild(link);
+
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+        script.onload = () => {
+            canvas.innerHTML = '';
+            setupLeaflet();
+        };
+        document.head.appendChild(script);
+        return;
+    }
+
+    setupLeaflet();
+}
+
+function setupLeaflet() {
+    const canvas = document.getElementById('mapPickerCanvas');
+    if (!canvas || typeof L === 'undefined') return;
+
+    const defaultLat = 14.5995;
+    const defaultLng = 120.9842;
+
+    if (!leafletMapInstance) {
+        canvas.innerHTML = '';
+        leafletMapInstance = L.map('mapPickerCanvas', {
+            zoomControl: true,
+            attributionControl: true
+        }).setView([defaultLat, defaultLng], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(leafletMapInstance);
+
+        leafletMapInstance.on('click', function(e) {
+            placeMapPin(e.latlng.lat, e.latlng.lng);
+        });
+    }
+
+    leafletMapInstance.invalidateSize(true);
+    setTimeout(() => leafletMapInstance && leafletMapInstance.invalidateSize(true), 150);
+    setTimeout(() => leafletMapInstance && leafletMapInstance.invalidateSize(true), 350);
+
+    const currentLocVal = (document.getElementById('formLocation')?.value || '').trim();
+    if (currentLocVal && !leafletMarker) {
+        document.getElementById('mapSearchInput').value = currentLocVal;
+        searchLocationOnMap(currentLocVal);
+    } else if (!leafletMarker) {
+        placeMapPin(defaultLat, defaultLng, 'Mabini College Campus / Manila');
+    }
+}
+
+function placeMapPin(lat, lng, label = null) {
+    if (!leafletMapInstance || typeof L === 'undefined') return;
+    selectedCoordinates = { lat, lng };
+
+    const customPin = L.divIcon({
+        className: 'custom-map-pin',
+        html: `
+            <div style="background:#2563eb;color:white;width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,0.4);border:2.5px solid white;">
+                <i class="fas fa-location-dot" style="transform:rotate(45deg);font-size:15px;"></i>
+            </div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 34]
+    });
+
+    if (!leafletMarker) {
+        leafletMarker = L.marker([lat, lng], { icon: customPin, draggable: true }).addTo(leafletMapInstance);
+        leafletMarker.on('dragend', function(e) {
+            const pt = e.target.getLatLng();
+            placeMapPin(pt.lat, pt.lng);
+        });
+    } else {
+        leafletMarker.setLatLng([lat, lng]);
+    }
+
+    const previewEl = document.getElementById('mapSelectedAddress');
+    if (label) {
+        selectedLocationText = label;
+        if (previewEl) previewEl.textContent = label;
+    } else {
+        if (previewEl) previewEl.textContent = `Resolving location (${lat.toFixed(4)}, ${lng.toFixed(4)})... `;
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.display_name) {
+                    const shortName = data.display_name.split(',').slice(0, 3).join(',').trim();
+                    selectedLocationText = shortName;
+                    if (previewEl) previewEl.textContent = shortName;
+                } else {
+                    selectedLocationText = `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+                    if (previewEl) previewEl.textContent = selectedLocationText;
+                }
+            })
+            .catch(() => {
+                selectedLocationText = `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+                if (previewEl) previewEl.textContent = selectedLocationText;
+            });
+    }
+}
+
+function searchLocationOnMap(query) {
+    const q = (query || document.getElementById('mapSearchInput')?.value || '').trim();
+    if (!q) return;
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                const item = data[0];
+                const lat = parseFloat(item.lat);
+                const lon = parseFloat(item.lon);
+                if (leafletMapInstance) {
+                    leafletMapInstance.setView([lat, lon], 16);
+                }
+                const parts = item.display_name.split(',');
+                const shortName = parts.slice(0, 3).join(',').trim();
+                placeMapPin(lat, lon, shortName);
+            }
+        })
+        .catch(() => {});
+}
+
+function setPresetLocation(venueName) {
+    selectedLocationText = venueName;
+    const previewEl = document.getElementById('mapSelectedAddress');
+    if (previewEl) previewEl.textContent = venueName;
+    const inputEl = document.getElementById('formLocation');
+    if (inputEl) inputEl.value = venueName;
+    searchLocationOnMap(venueName);
+}
+
+function promptDeviceLocation() {
+    if (window.ModalManager) {
+        ModalManager.open('locationConfirmModal');
+    } else {
+        const modal = document.getElementById('locationConfirmModal');
+        if (modal) modal.classList.remove('hidden');
+    }
+}
+
+function closeLocationConfirmModal() {
+    if (window.ModalManager) {
+        ModalManager.close('locationConfirmModal');
+    } else {
+        const modal = document.getElementById('locationConfirmModal');
+        if (modal) modal.classList.add('hidden');
+    }
+}
+
+function confirmAndGetDeviceLocation() {
+    closeLocationConfirmModal();
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+    }
+    const previewEl = document.getElementById('mapSelectedAddress');
+    if (previewEl) previewEl.textContent = 'Detecting current position...';
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            if (leafletMapInstance) {
+                leafletMapInstance.setView([lat, lng], 16);
+            }
+            placeMapPin(lat, lng);
+        },
+        (err) => {
+            alert('Unable to retrieve location: ' + err.message);
+            if (previewEl) previewEl.textContent = 'Location access denied or unavailable.';
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+function applyPinnedLocation() {
+    if (!selectedLocationText) {
+        alert('Please pin or search a location on the map first.');
+        return;
+    }
+    const locInput = document.getElementById('formLocation');
+    if (locInput) {
+        locInput.value = selectedLocationText;
+    }
+    closeLocationPickerModal();
+}
+
+// ── SAVE CONFIRMATION MODAL ──
+function openSaveConfirmModal(formData) {
+    document.getElementById('saveConfirmTitleText').textContent = formData.title || 'Untitled Event';
+    document.getElementById('saveConfirmType').textContent = formData.type || 'Event';
+    document.getElementById('saveConfirmSubject').textContent = formData.subject || '';
+    document.getElementById('saveConfirmDate').textContent = formData.date || '';
+
+    const timeRow = document.getElementById('saveConfirmTimeRow');
+    if (formData.time) {
+        timeRow.classList.remove('hidden');
+        document.getElementById('saveConfirmTime').textContent = formData.time;
+    } else {
+        timeRow.classList.add('hidden');
+    }
+
+    const locRow = document.getElementById('saveConfirmLocRow');
+    if (formData.location) {
+        locRow.classList.remove('hidden');
+        document.getElementById('saveConfirmLocation').textContent = formData.location;
+    } else {
+        locRow.classList.add('hidden');
+    }
+
+    if (window.ModalManager) {
+        ModalManager.open('saveConfirmModal');
+    } else {
+        const modal = document.getElementById('saveConfirmModal');
+        if (modal) modal.classList.remove('hidden');
+    }
+}
+
+function closeSaveConfirmModal() {
+    if (window.ModalManager) {
+        ModalManager.close('saveConfirmModal');
+    } else {
+        const modal = document.getElementById('saveConfirmModal');
+        if (modal) modal.classList.add('hidden');
+    }
+}
+
+function executeFinalFormSubmit() {
+    isSavingConfirmed = true;
+    closeSaveConfirmModal();
+    const form = document.getElementById('eventForm');
+    if (form) {
+        HTMLFormElement.prototype.submit.call(form);
+    }
+}
+
+// ── UNSAVED CHANGES MODAL ──
+function openUnsavedChangesModal() {
+    if (window.ModalManager) {
+        ModalManager.open('unsavedChangesModal');
+    } else {
+        const modal = document.getElementById('unsavedChangesModal');
+        if (modal) modal.classList.remove('hidden');
+    }
+}
+
+function closeUnsavedChangesModal() {
+    if (window.ModalManager) {
+        ModalManager.close('unsavedChangesModal');
+    } else {
+        const modal = document.getElementById('unsavedChangesModal');
+        if (modal) modal.classList.add('hidden');
+    }
+}
+
+function confirmDiscardAndCloseEventModal() {
+    closeUnsavedChangesModal();
+    dismissEventModalDirectly();
+}
+
+function dismissEventModalDirectly() {
+    const form = document.getElementById('eventForm');
+    if (form) form.reset();
+    isSavingConfirmed = false;
+    if (window.ModalManager) {
+        ModalManager.close('eventModal', true);
+    } else {
+        const modal = document.getElementById('eventModal');
+        if (modal) modal.classList.add('hidden');
+    }
+}
+
+function closeEventModal() {
+    const titleVal = (document.getElementById('formTitle')?.value || '').trim();
+    const descVal  = (document.getElementById('formDesc')?.value || '').trim();
+    const locVal   = (document.getElementById('formLocation')?.value || '').trim();
+
+    if ((titleVal || descVal || locVal) && !isSavingConfirmed) {
+        openUnsavedChangesModal();
+        return;
+    }
+    dismissEventModalDirectly();
+}
+
+// EXPLICIT GLOBAL WINDOW BINDINGS
+window.openLocationPickerModal = openLocationPickerModal;
+window.closeLocationPickerModal = closeLocationPickerModal;
+window.searchLocationOnMap = searchLocationOnMap;
+window.setPresetLocation = setPresetLocation;
+window.promptDeviceLocation = promptDeviceLocation;
+window.closeLocationConfirmModal = closeLocationConfirmModal;
+window.confirmAndGetDeviceLocation = confirmAndGetDeviceLocation;
+window.applyPinnedLocation = applyPinnedLocation;
+window.openSaveConfirmModal = openSaveConfirmModal;
+window.closeSaveConfirmModal = closeSaveConfirmModal;
+window.executeFinalFormSubmit = executeFinalFormSubmit;
+window.openUnsavedChangesModal = openUnsavedChangesModal;
+window.closeUnsavedChangesModal = closeUnsavedChangesModal;
+window.confirmDiscardAndCloseEventModal = confirmDiscardAndCloseEventModal;
+window.closeEventModal = closeEventModal;
+window.dismissEventModalDirectly = dismissEventModalDirectly;
+
+// ── INIT & FORM SUBMIT LISTENER ──
 document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
+    renderAgenda();
+
+    const eventForm = document.getElementById('eventForm');
+    if (eventForm) {
+        eventForm.addEventListener('submit', function(e) {
+            if (isSavingConfirmed) {
+                return true;
+            }
+            e.preventDefault();
+
+            const title = (document.getElementById('formTitle')?.value || '').trim();
+            if (!title) {
+                alert('Please enter an event title.');
+                document.getElementById('formTitle').focus();
+                return false;
+            }
+
+            const dateVal = document.getElementById('formDate')?.value;
+            if (!dateVal) {
+                alert('Please choose an event date.');
+                document.getElementById('formDate').focus();
+                return false;
+            }
+
+            const durationType = document.getElementById('durationType').value;
+            let timeDisplayStr = '';
+            if (durationType === 'DateRange') {
+                const start = document.getElementById('formStartDate').value;
+                const end = document.getElementById('formEndDate').value;
+                if (start && end && new Date(start) > new Date(end)) {
+                    alert('End date and time cannot be earlier than start date and time.');
+                    document.getElementById('formEndDate').focus();
+                    return false;
+                }
+                if (start && end) {
+                    timeDisplayStr = `${new Date(start).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} – ${new Date(end).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+                }
+            } else if (durationType === 'Minutes') {
+                const mins = document.getElementById('formMinutes')?.value;
+                if (mins) timeDisplayStr = `${mins} minutes`;
+            } else {
+                timeDisplayStr = 'All Day';
+            }
+
+            const subjSelect = document.getElementById('formSubjectId');
+            const subjText = subjSelect && subjSelect.selectedIndex > 0 ? subjSelect.options[subjSelect.selectedIndex].text : '';
+
+            openSaveConfirmModal({
+                title: title,
+                type: document.getElementById('formType')?.value || 'Event',
+                subject: subjText,
+                date: dateVal,
+                time: timeDisplayStr,
+                location: (document.getElementById('formLocation')?.value || '').trim()
+            });
+            return false;
+        });
+    }
 });
 </script>
+
+<!-- Universal Modal Manager Engine -->
+<script src="/js/modal-core.js"></script>
+<script src="/js/notificationHub.js"></script>
 </body>
 </html>

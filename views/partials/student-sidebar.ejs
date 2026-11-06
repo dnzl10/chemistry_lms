@@ -1,0 +1,211 @@
+<%
+    // Standardized Student Side Navigation Partial - Hierarchical Tree UI
+    // Accepts `activeNav`: 'home' | 'dashboard' | 'subjects' | 'events' | 'forums' | 'leaderboards' | 'profile' | 'none'
+    var currentActive = typeof activeNav !== 'undefined' ? activeNav : '';
+    
+    // Evaluate active tree branches for pre-rendered zero-CLS expansion
+    var isMainActive = ['home', 'dashboard'].includes(currentActive);
+    var isAcademicsActive = ['subjects', 'events'].includes(currentActive);
+    var isCommunityActive = ['forums'].includes(currentActive);
+    var isProgressionActive = ['leaderboards'].includes(currentActive);
+
+    // Pre-expand ALL tree branches by default (Main, Academics, Community, Progression)
+    // This ensures 100% persistent zero-reload stability across Home, Dashboard, Subjects, Events, Forums, and Leaderboards
+    var expandMain = true;
+    var expandAcademics = true;
+    var expandCommunity = true;
+    var expandProgression = true;
+%>
+<!-- Backdrop overlay for mobile sidebar -->
+<div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden"></div>
+
+<!-- Sidebar Navigation (Standardized Hierarchical Tree Baseline) -->
+<aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60 tree-nav-initial-load" style="background: #06091A">
+    <!-- Immediate Zero-Flicker Pre-Paint Tree Restoration -->
+    <script>
+        (function() {
+            try {
+                if (window.innerWidth >= 768 && localStorage.getItem('elementa_student_sidebar_collapsed') === '1') {
+                    var sb = document.getElementById('sidebar');
+                    if (sb) sb.classList.add('sidebar-collapsed');
+                }
+                var rawTree = localStorage.getItem('elementa_student_tree_nodes_v2');
+                if (rawTree) {
+                    var storedTree = JSON.parse(rawTree);
+                    if (Array.isArray(storedTree)) {
+                        ['main', 'academics', 'community', 'progression'].forEach(function(k) {
+                            var b = document.getElementById('branch-' + k);
+                            if (b) {
+                                var isAct = b.classList.contains('is-active-branch');
+                                if (storedTree.includes(k) || isAct) {
+                                    b.classList.add('tree-expanded');
+                                } else {
+                                    b.classList.remove('tree-expanded');
+                                }
+                            }
+                        });
+                    }
+                }
+            } catch(e) {}
+        })();
+    </script>
+
+    <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+        <!-- Mobile close button -->
+        <button onclick="toggleSidebar()" aria-label="Close navigation sidebar" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4 p-2 rounded-lg focus-visible:ring-2 focus-visible:ring-indigo-400">
+            <i class="fas fa-times text-xl"></i>
+        </button>
+
+        <!-- Logo -->
+        <img src="/assets/logo.png" alt="Elementa Logo" width="64" height="64" fetchpriority="high" class="w-16 h-16 object-contain mb-3">
+
+        <!-- Brand name & Portal label -->
+        <span class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none" role="img" aria-label="Elementa Logo">
+            Elem<span class="text-white">enta</span>
+        </span>
+        <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mt-1">Student Portal</p>
+    </div>
+
+    <nav id="studentNavTree" class="flex-1 px-3 mt-4 space-y-3 overflow-y-auto no-scrollbar pb-6 bg-[#06091A]" aria-label="Student Tree Navigation" role="tree">
+        <!-- Tree Branch: Main Interface -->
+        <div class="tree-branch <%= isMainActive ? 'is-active-branch ' : '' %><%= expandMain ? 'tree-expanded' : '' %>" id="branch-main" data-branch="main" role="treeitem" aria-expanded="<%= expandMain ? 'true' : 'false' %>">
+            <button type="button" 
+                    class="tree-branch-header w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-indigo-300 hover:text-white hover:bg-indigo-500/10 transition group"
+                    onclick="toggleTreeNode('branch-main')"
+                    aria-expanded="<%= expandMain ? 'true' : 'false' %>"
+                    aria-controls="tree-content-main">
+                <div class="flex items-center gap-2.5">
+                    <i class="fas fa-compass text-xs <%= isMainActive ? 'text-cyan-400' : 'text-indigo-400' %> group-hover:text-cyan-400 transition-colors"></i>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300 group-hover:text-white">Main Interface</span>
+                </div>
+                <i class="fas fa-chevron-right text-[10px] text-indigo-400 tree-chevron group-hover:text-cyan-400"></i>
+            </button>
+            <div id="tree-content-main" class="tree-branch-content" role="group">
+                <div class="tree-branch-inner space-y-1 pt-1 pb-1">
+                    <a href="/home" 
+                       class="tree-leaf <%= currentActive === 'home' ? 'nav-active text-white' : 'text-indigo-200 hover:text-white hover:bg-indigo-500/10' %> flex items-center gap-3 px-3 py-2.5 rounded-xl transition group text-sm" 
+                       <%= currentActive === 'home' ? 'aria-current="page"' : '' %>
+                       role="treeitem">
+                        <i class="fas fa-house w-4 <%= currentActive === 'home' ? 'text-white' : 'text-cyan-400' %> group-hover:scale-105 transition-transform"></i>
+                        <span class="font-semibold tracking-tight">Home</span>
+                    </a>
+                    <a href="/dashboard" 
+                       class="tree-leaf <%= currentActive === 'dashboard' ? 'nav-active text-white' : 'text-indigo-200 hover:text-white hover:bg-indigo-500/10' %> flex items-center gap-3 px-3 py-2.5 rounded-xl transition group text-sm" 
+                       <%= currentActive === 'dashboard' ? 'aria-current="page"' : '' %>
+                       role="treeitem">
+                        <i class="fas fa-chart-line w-4 <%= currentActive === 'dashboard' ? 'text-white' : 'text-cyan-400' %> group-hover:scale-105 transition-transform"></i>
+                        <span class="font-semibold tracking-tight">Dashboard</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tree Branch: Academic Management -->
+        <div class="tree-branch <%= isAcademicsActive ? 'is-active-branch ' : '' %><%= expandAcademics ? 'tree-expanded' : '' %>" id="branch-academics" data-branch="academics" role="treeitem" aria-expanded="<%= expandAcademics ? 'true' : 'false' %>">
+            <button type="button" 
+                    class="tree-branch-header w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-indigo-300 hover:text-white hover:bg-indigo-500/10 transition group"
+                    onclick="toggleTreeNode('branch-academics')"
+                    aria-expanded="<%= expandAcademics ? 'true' : 'false' %>"
+                    aria-controls="tree-content-academics">
+                <div class="flex items-center gap-2.5">
+                    <i class="fas fa-graduation-cap text-xs <%= isAcademicsActive ? 'text-cyan-400' : 'text-indigo-400' %> group-hover:text-cyan-400 transition-colors"></i>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300 group-hover:text-white">Academic Management</span>
+                </div>
+                <i class="fas fa-chevron-right text-[10px] text-indigo-400 tree-chevron group-hover:text-cyan-400"></i>
+            </button>
+            <div id="tree-content-academics" class="tree-branch-content" role="group">
+                <div class="tree-branch-inner space-y-1 pt-1 pb-1">
+                    <a href="/subjects" 
+                       class="tree-leaf <%= currentActive === 'subjects' ? 'nav-active text-white' : 'text-indigo-200 hover:text-white hover:bg-indigo-500/10' %> flex items-center gap-3 px-3 py-2.5 rounded-xl transition group text-sm" 
+                       <%= currentActive === 'subjects' ? 'aria-current="page"' : '' %>
+                       role="treeitem">
+                        <i class="fas fa-book w-4 <%= currentActive === 'subjects' ? 'text-white' : 'text-indigo-400' %> group-hover:scale-105 transition-transform"></i>
+                        <span class="font-semibold tracking-tight">My Subjects</span>
+                    </a>
+                    <a href="/events" 
+                       class="tree-leaf <%= currentActive === 'events' ? 'nav-active text-white' : 'text-indigo-200 hover:text-white hover:bg-indigo-500/10' %> flex items-center gap-3 px-3 py-2.5 rounded-xl transition group text-sm" 
+                       <%= currentActive === 'events' ? 'aria-current="page"' : '' %>
+                       role="treeitem">
+                        <i class="fa-solid fa-calendar-days text-sm w-4 <%= currentActive === 'events' ? 'text-white' : 'text-indigo-400' %> group-hover:scale-105 transition-transform"></i>
+                        <span class="font-semibold tracking-tight">Events</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tree Branch: Community & Engagement -->
+        <div class="tree-branch <%= isCommunityActive ? 'is-active-branch ' : '' %><%= expandCommunity ? 'tree-expanded' : '' %>" id="branch-community" data-branch="community" role="treeitem" aria-expanded="<%= expandCommunity ? 'true' : 'false' %>">
+            <button type="button" 
+                    class="tree-branch-header w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-indigo-300 hover:text-white hover:bg-indigo-500/10 transition group"
+                    onclick="toggleTreeNode('branch-community')"
+                    aria-expanded="<%= expandCommunity ? 'true' : 'false' %>"
+                    aria-controls="tree-content-community">
+                <div class="flex items-center gap-2.5">
+                    <i class="fas fa-users text-xs <%= isCommunityActive ? 'text-cyan-400' : 'text-indigo-400' %> group-hover:text-cyan-400 transition-colors"></i>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300 group-hover:text-white">Community &amp; Engagement</span>
+                </div>
+                <i class="fas fa-chevron-right text-[10px] text-indigo-400 tree-chevron group-hover:text-cyan-400"></i>
+            </button>
+            <div id="tree-content-community" class="tree-branch-content" role="group">
+                <div class="tree-branch-inner space-y-1 pt-1 pb-1">
+                    <a href="/forums" 
+                       class="tree-leaf <%= currentActive === 'forums' ? 'nav-active text-white' : 'text-indigo-200 hover:text-white hover:bg-indigo-500/10' %> flex items-center gap-3 px-3 py-2.5 rounded-xl transition group text-sm" 
+                       <%= currentActive === 'forums' ? 'aria-current="page"' : '' %>
+                       role="treeitem">
+                        <i class="fas fa-comments w-4 <%= currentActive === 'forums' ? 'text-white' : 'text-indigo-400' %> group-hover:scale-105 transition-transform"></i>
+                        <span class="font-semibold tracking-tight">Forums</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tree Branch: EXP & Rankings -->
+        <div class="tree-branch <%= isProgressionActive ? 'is-active-branch ' : '' %><%= expandProgression ? 'tree-expanded' : '' %>" id="branch-progression" data-branch="progression" role="treeitem" aria-expanded="<%= expandProgression ? 'true' : 'false' %>">
+            <button type="button" 
+                    class="tree-branch-header w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-indigo-300 hover:text-white hover:bg-indigo-500/10 transition group"
+                    onclick="toggleTreeNode('branch-progression')"
+                    aria-expanded="<%= expandProgression ? 'true' : 'false' %>"
+                    aria-controls="tree-content-progression">
+                <div class="flex items-center gap-2.5">
+                    <i class="fas fa-award text-xs <%= isProgressionActive ? 'text-cyan-400' : 'text-amber-400' %> group-hover:text-cyan-400 transition-colors"></i>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300 group-hover:text-white">EXP &amp; Rankings</span>
+                </div>
+                <i class="fas fa-chevron-right text-[10px] text-indigo-400 tree-chevron group-hover:text-cyan-400"></i>
+            </button>
+            <div id="tree-content-progression" class="tree-branch-content" role="group">
+                <div class="tree-branch-inner space-y-1 pt-1 pb-1">
+                    <a href="/leaderboards" 
+                       class="tree-leaf <%= currentActive === 'leaderboards' ? 'nav-active text-white' : 'text-indigo-200 hover:text-white hover:bg-indigo-500/10' %> flex items-center gap-3 px-3 py-2.5 rounded-xl transition group text-sm" 
+                       <%= currentActive === 'leaderboards' ? 'aria-current="page"' : '' %>
+                       role="treeitem">
+                        <i class="fas fa-trophy w-4 <%= currentActive === 'leaderboards' ? 'text-white' : 'text-amber-400' %> group-hover:scale-105 transition-transform"></i>
+                        <span class="font-semibold tracking-tight">Leaderboards</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Immediate Zero-Flicker Pre-Paint Scroll Restoration -->
+    <script>
+        (function() {
+            try {
+                var savedNavScroll = sessionStorage.getItem('elementa_student_nav_scroll');
+                var navEl = document.getElementById('studentNavTree');
+                if (savedNavScroll && navEl) {
+                    navEl.scrollTop = parseInt(savedNavScroll, 10);
+                }
+            } catch(e) {}
+        })();
+    </script>
+
+    <!-- Logout Anchor -->
+    <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
+        <a href="/logout"
+           class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-semibold text-sm">
+            <i class="fas fa-right-from-bracket w-5"></i> Log Out
+        </a>
+    </div>
+</aside>
+
+<%- include('student-nav-scripts') %>

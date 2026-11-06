@@ -10,6 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* ─── CSS VARIABLES ─────────────────────────────────── */
     :root {
@@ -1193,6 +1195,21 @@
 
     <div class="tb-divider"></div>
 
+                    <!-- Messages Navigation Button (Entry point to teacher messages workspace) -->
+                    <a href="/teacher/messages" id="messagesBtn" aria-label="Open messages and conversations" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
+                        <i class="far fa-comment-dots text-xl"></i>
+                        
+                        <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                            Messages
+                        </span>
+                    </a>
+
+    <!-- Notification Bell -->
+    <button type="button" onclick="toggleNotifPanel()" aria-label="View notifications" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:var(--radius-sm);background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);cursor:pointer;transition:all .15s;">
+      <i class="far fa-bell" style="font-size:15px;"></i>
+      <span class="notif-badge <%= (typeof notifications !== 'undefined' && notifications && notifications.some(n => !n.is_read)) ? '' : 'hidden' %>" aria-hidden="true" style="position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:9999px;background:#f43f5e;border:2px solid var(--bg-surface);"></span>
+    </button>
+
     <!-- Theme Toggle -->
     <button id="btn-theme-toggle" title="Toggle Light/Dark Mode">
       <span class="toggle-icon" id="theme-toggle-icon">☀️</span>
@@ -1897,7 +1914,7 @@ function initDrag(card, idx) {
 
 // ── ADD QUESTION ─────────────────────────────────────────────
 $('btn-add-q').addEventListener('click', () => {
-  const themeId = state.topic.theme_id || 'default_lab';
+  const themeId = 'default_lab';
   const firstBg = THEME_BACKGROUNDS[themeId]?.bgs[0] || null;
   const newQ = {
     aq_id: null, question_id: null,
@@ -1963,7 +1980,7 @@ function renderMainContent() {
   mainContent.style.display = 'flex';
 
   // background
-  const themeId = state.topic.theme_id || 'default_lab';
+  const themeId = 'default_lab';
   const bgKey   = q.selected_bg_key || THEME_BACKGROUNDS[themeId]?.bgs[0];
   $('main-tab').style.backgroundImage = bgKey ? `url('${bgImageUrl(bgKey)}')` : 'none';
 
@@ -2433,7 +2450,7 @@ function fillPropertiesPanel(q) {
 }
 
 function fillThemePanel(q) {
-  const themeId  = state.topic.theme_id || 'default_lab';
+  const themeId  = 'default_lab';
   const themeConf = THEME_BACKGROUNDS[themeId];
   const soundConf = THEME_SOUNDS[themeId] || THEME_SOUNDS['default_lab'];
   themeNameBadge.textContent = themeConf?.label || themeId;
@@ -2918,5 +2935,6 @@ if (state.activeSlideIndex >= 0) {
   themePanel.style.display = 'none';
 }
 </script>
+<%- include('../partials/notification-panel') %>
 </body>
 </html>

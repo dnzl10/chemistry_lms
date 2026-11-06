@@ -1,0 +1,2133 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900/5">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elementa · Teacher Messages Workspace</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6 Pro CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        /* Custom scrollbar styling for chat message streams */
+        .chat-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .chat-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.35);
+            border-radius: 9999px;
+        }
+        .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.6);
+        }
+        /* Active thread item highlighting */
+        .convo-item.is-active-convo {
+            background: rgba(6, 182, 212, 0.08) !important;
+            border-left: 3px solid #06b6d4;
+        }
+        /* Message bubble animations */
+        @keyframes messageAppear {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .msg-bubble-animate {
+            animation: messageAppear 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        /* Messaging Full-Width Workspace Layout */
+        #mainContent {
+            margin-left: 0 !important;
+            width: 100% !important;
+        }
+        header {
+            left: 0 !important;
+            right: 0 !important;
+        }
+    </style>
+</head>
+<body class="h-full overflow-hidden flex flex-col text-slate-800">
+
+    <!-- Main Content Area (Full Screen Workspace) -->
+    <div id="mainContent" class="flex-1 flex flex-col min-w-0 h-full w-full">
+        <!-- Top Workspace Header -->
+        <header class="h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 z-30 transition-all duration-300">
+            <div class="flex items-center gap-4">
+                <!-- Smart Back Navigation Button -->
+                <button type="button" 
+                        onclick="handleNavigationBack()" 
+                        id="backNavBtn" 
+                        aria-label="Go back to previous page" 
+                        title="Go back to previous page" 
+                        class="p-2.5 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-indigo-950 border border-slate-200/80 shadow-2xs hover:shadow-xs transition focus-visible:ring-2 focus-visible:ring-cyan-500 flex items-center justify-center cursor-pointer group">
+                    <i class="fas fa-arrow-left text-lg text-slate-600 group-hover:text-indigo-950 group-hover:-translate-x-0.5 transition-all"></i>
+                </button>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center border border-cyan-500/20 shadow-xs">
+                        <i class="far fa-comment-dots text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg md:text-xl font-black text-indigo-950 uppercase tracking-tight">
+                            Messages
+                        </h1>
+                        <p class="text-xs text-slate-500 hidden sm:block font-medium">
+                            Faculty Consultations &amp; Direct Student Communications
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 md:gap-5">
+                <!-- Notification Bell Button -->
+                <button type="button" onclick="toggleNotifPanel()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
+                    <i class="far fa-bell text-xl text-slate-700"></i>
+                    
+                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5 notif-badge <%= (typeof notifications !== 'undefined' && notifications && notifications.some(n => !n.is_read)) ? '' : 'hidden' %>" aria-hidden="true">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
+                    </span>
+
+                    <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                        Notifications
+                    </span>
+                </button>
+
+                <!-- Teacher Profile Summary -->
+                <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-bold text-slate-800 leading-none mb-1">Teacher <%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-xs uppercase font-bold text-cyan-600 tracking-wider leading-none">Instructor</p>
+                    </div>
+                    <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" 
+                         alt="<%= user.first_name %>'s avatar" 
+                         class="w-10 h-10 rounded-xl object-cover ring-2 ring-cyan-100"
+                         onerror="this.src='/profile_uploads/default_avatar.png'">
+                </div>
+            </div>
+        </header>
+
+        <!-- Messenger Workspace Container -->
+        <div class="flex-1 flex overflow-hidden mt-20 bg-slate-100/60 relative">
+            <!-- Left Pane: Student Directory & Recent Conversations -->
+            <aside id="chatSidebar" class="w-full md:w-80 lg:w-96 bg-white border-r border-slate-200/80 flex flex-col z-10 shrink-0 h-full">
+                <!-- Directory Search & Header -->
+                <div class="p-4 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1">
+                            <i class="fas fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                            <input type="text" id="contactSearchInput" placeholder="Search student by name, LRN, or class..." 
+                                   class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white transition"
+                                   autocomplete="off">
+                            <button type="button" id="clearSearchBtn" onclick="clearContactSearch()" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs cursor-pointer" aria-label="Clear search">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                        </div>
+
+                        <!-- Class Filter Trigger Button with Dropdown -->
+                        <div class="relative shrink-0" id="classFilterDropdownContainer">
+                            <button type="button" 
+                                    id="classFilterDropdownBtn" 
+                                    onclick="toggleClassFilterDropdown(event)" 
+                                    aria-haspopup="true" 
+                                    aria-expanded="false" 
+                                    title="Filter by class or subject" 
+                                    class="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-cyan-600 transition flex items-center justify-center cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-cyan-500">
+                                <i class="fas fa-filter text-xs"></i>
+                                <span id="classFilterActiveIndicator" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-600 rounded-full border-2 border-white"></span>
+                            </button>
+
+                            <!-- Filter Dropdown Menu -->
+                            <div id="classFilterMenu" class="hidden absolute left-0 sm:left-auto right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 transition-all">
+                                <div class="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between">
+                                    <span class="text-[11px] font-black uppercase text-slate-500 tracking-wider">Filter by Class</span>
+                                    <button type="button" onclick="selectClassFilter('', 'All Classes')" class="text-[10px] font-bold text-cyan-600 hover:text-cyan-700 underline cursor-pointer">
+                                        Reset
+                                    </button>
+                                </div>
+                                <div class="max-h-56 overflow-y-auto chat-scrollbar py-1">
+                                    <button type="button" 
+                                            onclick="selectClassFilter('', 'All Classes')" 
+                                            class="class-filter-opt w-full px-3.5 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-cyan-50 hover:text-cyan-700 transition cursor-pointer text-cyan-700 bg-cyan-50/60"
+                                            data-class-id="">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <i class="fas fa-chalkboard text-slate-400 text-xs"></i>
+                                            <span class="truncate">All Classes</span>
+                                        </div>
+                                        <i class="fas fa-check text-cyan-600 text-xs class-opt-check"></i>
+                                    </button>
+                                    <% if (typeof classes !== 'undefined' && classes.length > 0) { %>
+                                        <% classes.forEach(cls => { %>
+                                            <button type="button" 
+                                                    onclick="selectClassFilter('<%= cls.class_id %>', '<%= cls.subject_code %> · <%= cls.class_name %>')" 
+                                                    class="class-filter-opt w-full px-3.5 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-cyan-50 hover:text-cyan-700 transition cursor-pointer text-slate-700"
+                                                    data-class-id="<%= cls.class_id %>">
+                                                <div class="flex items-center gap-2 truncate min-w-0">
+                                                    <i class="fas fa-users-rectangle text-slate-400 text-xs shrink-0"></i>
+                                                    <div class="truncate">
+                                                        <span class="text-indigo-900 font-black"><%= cls.subject_code %></span>
+                                                        <span class="text-slate-500 font-medium">· <%= cls.class_name %></span>
+                                                    </div>
+                                                </div>
+                                                <i class="fas fa-check text-cyan-600 text-xs class-opt-check hidden"></i>
+                                            </button>
+                                        <% }) %>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Filter Badge (shows when a class filter is applied) -->
+                    <div id="activeFilterBadgeContainer" class="hidden mt-2.5 flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-cyan-50/80 border border-cyan-200/70 text-xs">
+                        <div class="flex items-center gap-1.5 text-cyan-800 font-bold truncate">
+                            <i class="fas fa-filter text-[10px] text-cyan-600"></i>
+                            <span class="text-[11px] font-medium text-slate-500">Filtered:</span>
+                            <span id="activeFilterLabel" class="truncate text-[11px] font-black text-cyan-900">Class</span>
+                        </div>
+                        <button type="button" onclick="selectClassFilter('', 'All Classes')" class="p-1 text-slate-400 hover:text-rose-600 transition cursor-pointer" title="Remove filter">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs (Recent Conversations vs. Student Directory) -->
+                <div class="flex border-b border-slate-100 text-xs font-bold text-slate-500 shrink-0 bg-slate-50/50">
+                    <button id="tabConversations" onclick="switchMessagingTab('conversations')" class="flex-1 py-3 text-center border-b-2 border-cyan-500 text-cyan-600 font-black transition flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="far fa-comments text-xs"></i>
+                        <span>Recent</span>
+                        <span id="totalUnreadBadge" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black"></span>
+                    </button>
+                    <button id="tabDirectory" onclick="switchMessagingTab('directory')" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <i class="far fa-address-book text-xs"></i>
+                        <span>Student Directory</span>
+                    </button>
+                </div>
+
+                <!-- Scrollable List Container -->
+                <div id="conversationsContainer" class="flex-1 overflow-y-auto chat-scrollbar divide-y divide-slate-100">
+                    <div class="p-8 text-center text-slate-400 text-xs">
+                        <i class="fas fa-circle-notch fa-spin text-xl text-cyan-500 mb-2"></i>
+                        <p>Loading conversation threads...</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Pane: Active Chat Conversation Stream -->
+            <main id="chatMain" class="flex-1 flex flex-col bg-slate-50/50 h-full min-w-0 relative">
+                <!-- Default Placeholder Empty State -->
+                <div id="noChatSelected" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                    <div class="w-16 h-16 rounded-3xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center mb-4 text-2xl shadow-sm border border-cyan-500/20">
+                        <i class="far fa-comments"></i>
+                    </div>
+                    <h3 class="text-base font-black text-slate-800 mb-1">Teacher Communications Center</h3>
+                    <p class="text-xs text-slate-500 max-w-sm mb-4">
+                        Select an ongoing thread or choose an enrolled student from your classes to start communicating.
+                    </p>
+                    <button type="button" onclick="switchMessagingTab('directory')" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-2 cursor-pointer">
+                        <i class="fas fa-address-book"></i>
+                        <span>Browse Student Directory</span>
+                    </button>
+                </div>
+
+                <!-- Active Chat Thread Container (Revealed when conversation selected) -->
+                <div id="activeChatContainer" class="flex-1 flex flex-col h-full min-w-0 hidden relative overflow-hidden">
+                    <!-- Partner Header Bar -->
+                    <header id="chatPartnerHeader" class="h-16 px-4 md:px-6 bg-white border-b border-slate-200/80 flex items-center justify-between shadow-2xs z-10 shrink-0">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <!-- Mobile Back Button -->
+                            <button id="mobileBackBtn" onclick="closeActiveChatMobile()" class="md:hidden p-2 text-slate-500 hover:text-slate-800 -ml-1 rounded-lg hover:bg-slate-100 transition cursor-pointer" aria-label="Back to conversations list">
+                                <i class="fas fa-arrow-left text-base"></i>
+                            </button>
+                            <div class="relative shrink-0">
+                                <img id="partnerHeaderAvatar" src="/profile_uploads/default_avatar.png" alt="Student Avatar" class="w-10 h-10 rounded-xl object-cover ring-2 ring-slate-100" onerror="this.src='/profile_uploads/default_avatar.png'">
+                                <span id="partnerOnlineStatus" class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></span>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <h3 id="partnerHeaderName" class="text-sm font-black text-slate-800 leading-snug truncate">Student Name</h3>
+                                    <span id="partnerHeaderRoleBadge" class="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">Student</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 mt-0.5">
+                                    <i class="fas fa-chalkboard-user text-[10px] text-slate-400"></i>
+                                    <span id="partnerHeaderSharedClasses" class="text-[11px] font-semibold text-slate-400 truncate max-w-xs">Enrolled Class</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Thread Actions: Conversation Info Toggle Button -->
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="convoInfoBtn" onclick="toggleConversationInfo()" title="Student Details & Information" aria-label="Student Details & Information" class="p-2.5 text-slate-500 hover:text-cyan-600 hover:bg-slate-100 rounded-xl transition cursor-pointer flex items-center justify-center">
+                                <i class="fas fa-circle-info text-base"></i>
+                            </button>
+                        </div>
+                    </header>
+
+                    <!-- Main Chat Body: Stream/Composer on left + Collapsible Info Panel on right -->
+                    <div class="flex-1 flex min-w-0 h-[calc(100%-4rem)] relative overflow-hidden">
+                        
+                        <!-- Left Chat Stream Column -->
+                        <div class="flex-1 flex flex-col min-w-0 h-full relative">
+                            <!-- Scrollable Message Stream -->
+                            <div id="messageStream" class="flex-1 overflow-y-auto chat-scrollbar p-4 md:p-6 space-y-3 bg-slate-50/70">
+                                <div class="p-8 text-center text-slate-400 text-xs">
+                                    <i class="fas fa-circle-notch fa-spin text-xl text-cyan-500 mb-2"></i>
+                                    <p>Loading messages...</p>
+                                </div>
+                            </div>
+
+                            <!-- Floating New Messages Below Button -->
+                            <button type="button" id="newMessagesBadge" onclick="scrollToStreamBottom()" class="hidden absolute bottom-20 left-1/2 -translate-x-1/2 px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-full shadow-lg text-xs font-bold cursor-pointer transition flex items-center gap-1.5 z-20">
+                                <i class="fas fa-arrow-down text-[10px]"></i>
+                                <span>New messages below</span>
+                            </button>
+
+                            <!-- Message Composer -->
+                            <footer class="bg-white border-t border-slate-200/80 shrink-0">
+                                <!-- Uploading Attachment Banner -->
+                                <div id="uploadingBanner" class="hidden px-4 py-2 bg-cyan-50/80 border-b border-cyan-100 flex items-center justify-between text-xs font-semibold text-cyan-800 animate-pulse">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-circle-notch fa-spin text-cyan-600"></i>
+                                        <span>Uploading attachment...</span>
+                                    </div>
+                                    <span class="text-[11px] text-cyan-600 font-medium">Please wait</span>
+                                </div>
+
+                                <form id="messageForm" onsubmit="handleSendMessage(event)" class="p-3 md:p-4 flex items-center gap-2 sm:gap-3">
+                                    <button type="button" id="attachBtn" onclick="triggerFileUpload()" title="Attach file or image" class="p-2.5 text-slate-400 hover:text-cyan-600 hover:bg-slate-100 rounded-xl transition cursor-pointer">
+                                        <i class="fas fa-paperclip text-sm"></i>
+                                    </button>
+                                    <input type="file" id="chatFileInput" class="hidden" onchange="handleFileSelected(event)">
+                                    <input type="text" id="messageInput" placeholder="Type a message or instruction..." autocomplete="off"
+                                           class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white transition">
+                                    <button type="submit" id="sendBtn" class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-xl text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                                        <span>Send</span>
+                                        <i class="fas fa-paper-plane text-xs"></i>
+                                    </button>
+                                </form>
+                            </footer>
+                        </div>
+
+                        <!-- Mobile Backdrop for off-canvas drawer -->
+                        <div id="infoPanelBackdrop" onclick="toggleConversationInfo(false)" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 transition-opacity md:hidden"></div>
+
+                        <!-- Right Detail Panel (Collapsible on Desktop, Off-Canvas Drawer on Mobile) -->
+                        <aside id="chatInfoPanel" class="hidden w-80 lg:w-96 bg-white border-l border-slate-200/80 h-full shrink-0 flex-col overflow-y-auto chat-scrollbar z-40 fixed inset-y-0 right-0 md:static md:z-10 shadow-2xl md:shadow-none transition-all duration-300">
+                            <!-- Panel Header -->
+                            <div class="p-4 border-b border-slate-100 flex items-center justify-between shrink-0 sticky top-0 bg-white/95 backdrop-blur-xs z-10">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center text-sm font-bold border border-cyan-100">
+                                        <i class="fas fa-circle-info"></i>
+                                    </div>
+                                    <h4 class="text-xs font-black uppercase text-slate-800 tracking-wider">Student &amp; Convo Info</h4>
+                                </div>
+                                <button type="button" onclick="toggleConversationInfo(false)" title="Close details panel" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer">
+                                    <i class="fas fa-xmark text-sm"></i>
+                                </button>
+                            </div>
+
+                            <div class="p-4 md:p-5 space-y-6">
+                                <!-- 1. Participant Profile Details -->
+                                <section id="convoProfileSection" class="flex flex-col items-center text-center">
+                                    <div class="relative mb-3">
+                                        <img id="infoPanelAvatar" src="/profile_uploads/default_avatar.png" alt="Student Avatar" 
+                                             class="w-20 h-20 rounded-2xl object-cover ring-4 ring-cyan-500/10 shadow-md" 
+                                             onerror="this.src='/profile_uploads/default_avatar.png'">
+                                        <span id="infoPanelStatusDot" class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-xs"></span>
+                                    </div>
+                                    <h3 id="infoPanelName" class="text-base font-black text-slate-800 leading-snug">Student Name</h3>
+                                    
+                                    <div class="mt-1.5 flex items-center gap-1.5 justify-center flex-wrap">
+                                        <span id="infoPanelRoleBadge" class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200">Student</span>
+                                        <span id="infoPanelLrnBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">LRN: ---</span>
+                                    </div>
+
+                                    <!-- Real-time Presence Status -->
+                                    <div id="infoPanelPresenceContainer" class="mt-2.5">
+                                        <span id="infoPanelPresenceBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span id="infoPanelPresenceText">Active now</span>
+                                        </span>
+                                    </div>
+
+                                    <!-- Enrolled Section or Academic Cohort Card -->
+                                    <div class="w-full mt-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-left space-y-2.5">
+                                        <div class="flex items-start gap-2.5">
+                                            <div class="w-7 h-7 rounded-lg bg-white border border-slate-200/70 flex items-center justify-center shrink-0 text-cyan-600 text-xs shadow-2xs">
+                                                <i class="fas fa-users-rectangle"></i>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Grade &amp; Section / Strand</p>
+                                                <p id="infoPanelCohort" class="text-xs font-bold text-slate-800 mt-0.5 truncate">Section A</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-2.5 pt-2 border-t border-slate-200/60">
+                                            <div class="w-7 h-7 rounded-lg bg-white border border-slate-200/70 flex items-center justify-center shrink-0 text-cyan-600 text-xs shadow-2xs">
+                                                <i class="fas fa-chalkboard-user"></i>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Enrolled Classes with You</p>
+                                                <p id="infoPanelSharedClasses" class="text-xs font-semibold text-slate-700 mt-0.5 leading-relaxed">Classes</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- 2. Search in Conversation -->
+                                <section class="pt-2 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h5 class="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
+                                            <i class="fas fa-magnifying-glass text-cyan-600 text-xs"></i>
+                                            <span>Search in Conversation</span>
+                                        </h5>
+                                    </div>
+                                    <div class="relative">
+                                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" id="inChatSearchInput" placeholder="Query past messages..." oninput="handleInChatSearch(this.value)" autocomplete="off"
+                                               class="w-full pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white transition">
+                                        <button type="button" id="clearInChatSearchBtn" onclick="clearInChatSearch()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+                                            <i class="fas fa-xmark text-xs"></i>
+                                        </button>
+                                    </div>
+                                    <!-- Search Matches Status -->
+                                    <div id="inChatResultsCount" class="hidden mt-2 text-[11px] font-bold text-slate-500 flex items-center justify-between">
+                                        <span id="inChatResultsText">0 messages found</span>
+                                    </div>
+                                    <div id="inChatSearchResults" class="mt-2 space-y-1.5 max-h-48 overflow-y-auto chat-scrollbar"></div>
+                                </section>
+
+                                <!-- 3. Pinned Messages Section -->
+                                <section class="pt-2 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h5 class="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
+                                            <i class="fas fa-thumbtack text-amber-500 text-xs"></i>
+                                            <span>Pinned Messages</span>
+                                        </h5>
+                                        <span id="pinnedCountBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">0</span>
+                                    </div>
+                                    <div id="pinnedMessagesContainer" class="space-y-2 max-h-56 overflow-y-auto chat-scrollbar">
+                                        <div class="p-4 rounded-xl bg-slate-50/80 border border-dashed border-slate-200 text-center text-slate-400 text-xs">
+                                            <i class="fas fa-thumbtack text-slate-300 text-base mb-1"></i>
+                                            <p class="font-medium">No pinned messages</p>
+                                            <p class="text-[10px] text-slate-400 mt-0.5">Hover on any message bubble and click the pin icon to bookmark it here.</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- 4. Shared Media, Files, and Links -->
+                                <section class="pt-2 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-2.5">
+                                        <h5 class="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
+                                            <i class="fas fa-folder-open text-blue-500 text-xs"></i>
+                                            <span>Shared Repository</span>
+                                        </h5>
+                                    </div>
+                                    <!-- Repository Category Pills -->
+                                    <div class="flex items-center p-1 bg-slate-100 rounded-xl text-[11px] font-bold gap-1 mb-3">
+                                        <button type="button" id="sharedTabMediaBtn" onclick="switchSharedContentTab('media')" 
+                                                class="flex-1 py-1.5 text-center rounded-lg bg-white shadow-2xs text-cyan-700 transition cursor-pointer">
+                                            Media (<span id="sharedMediaCount">0</span>)
+                                        </button>
+                                        <button type="button" id="sharedTabFilesBtn" onclick="switchSharedContentTab('files')" 
+                                                class="flex-1 py-1.5 text-center rounded-lg text-slate-500 hover:text-slate-700 transition cursor-pointer">
+                                            Files (<span id="sharedFilesCount">0</span>)
+                                        </button>
+                                        <button type="button" id="sharedTabLinksBtn" onclick="switchSharedContentTab('links')" 
+                                                class="flex-1 py-1.5 text-center rounded-lg text-slate-500 hover:text-slate-700 transition cursor-pointer">
+                                            Links (<span id="sharedLinksCount">0</span>)
+                                        </button>
+                                    </div>
+
+                                    <!-- Category Panes -->
+                                    <div id="sharedMediaPane" class="max-h-60 overflow-y-auto chat-scrollbar">
+                                        <div class="grid grid-cols-3 gap-2" id="sharedMediaGrid"></div>
+                                        <div id="sharedMediaEmpty" class="hidden p-4 rounded-xl bg-slate-50/80 border border-dashed border-slate-200 text-center text-slate-400 text-xs">
+                                            <i class="fas fa-photo-film text-slate-300 text-base mb-1"></i>
+                                            <p class="font-medium">No media shared</p>
+                                        </div>
+                                    </div>
+                                    <div id="sharedFilesPane" class="hidden space-y-2 max-h-60 overflow-y-auto chat-scrollbar">
+                                        <div id="sharedFilesList" class="space-y-2"></div>
+                                        <div id="sharedFilesEmpty" class="hidden p-4 rounded-xl bg-slate-50/80 border border-dashed border-slate-200 text-center text-slate-400 text-xs">
+                                            <i class="fas fa-file-circle-question text-slate-300 text-base mb-1"></i>
+                                            <p class="font-medium">No files attached</p>
+                                        </div>
+                                    </div>
+                                    <div id="sharedLinksPane" class="hidden space-y-2 max-h-60 overflow-y-auto chat-scrollbar">
+                                        <div id="sharedLinksList" class="space-y-2"></div>
+                                        <div id="sharedLinksEmpty" class="hidden p-4 rounded-xl bg-slate-50/80 border border-dashed border-slate-200 text-center text-slate-400 text-xs">
+                                            <i class="fas fa-link text-slate-300 text-base mb-1"></i>
+                                            <p class="font-medium">No external links shared</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- 5. Read Receipts Privacy Setting -->
+                                <section class="pt-2 border-t border-slate-100 pb-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h5 class="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
+                                            <i class="fas fa-user-shield text-indigo-600 text-xs"></i>
+                                            <span>Privacy Settings</span>
+                                        </h5>
+                                    </div>
+                                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div class="min-w-0 flex-1">
+                                                <label for="readReceiptsToggle" class="text-xs font-bold text-slate-800 cursor-pointer block">Show read receipts</label>
+                                                <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                                    When off, other users cannot see when you have read their messages, and you will not see their read receipts.
+                                                </p>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                                <input type="checkbox" id="readReceiptsToggle" onchange="toggleReadReceiptsPrivacy(this.checked)" class="sr-only peer" checked>
+                                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                                            </label>
+                                        </div>
+                                        <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                                            <span class="text-slate-400 font-medium">Receipts Status</span>
+                                            <span id="readReceiptsStatusText" class="font-bold text-cyan-600 flex items-center gap-1">
+                                                <i class="fas fa-check-double text-[10px]"></i>
+                                                <span>Active & Visible</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Notification Panel Partial & Hub -->
+    <%- include('../partials/notification-panel', { notifications: typeof notifications !== 'undefined' ? notifications : [] }) %>
+    <script src="/js/notificationHub.js"></script>
+
+    <!-- Client-Side Teacher Messaging Engine -->
+    <script>
+        // ========================================================
+        // Navigation Back Controller
+        // ========================================================
+        function handleNavigationBack() {
+            if (document.referrer && document.referrer.indexOf(window.location.origin) !== -1) {
+                window.history.back();
+            } else if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/teacher/dashboard';
+            }
+        }
+
+        // ========================================================
+        // Teacher Messaging Client Controller
+        // ========================================================
+        const CURRENT_USER_ID = <%= user.user_id %>;
+        let activeTab = 'conversations'; // 'conversations' | 'directory'
+        let selectedClassId = '';
+        let searchQuery = '';
+        let currentPartnerId = null;
+        let currentPartner = null;
+        let conversationsList = [];
+        let contactsList = [];
+        let currentMessages = [];
+        let lastPollTimestamp = null;
+        let isSending = false;
+        let isPolling = false;
+        let pollingTimer = null;
+        let searchDebounceTimer = null;
+        let isLoadingContacts = false;
+        let contactsRequestId = 0;
+        let isInfoPanelOpen = false;
+        let activeSharedTab = 'media';
+        let inChatSearchQuery = '';
+
+        // 1. Tab Switching
+        function switchMessagingTab(tab) {
+            activeTab = tab;
+            const tabConvoBtn = document.getElementById('tabConversations');
+            const tabDirBtn = document.getElementById('tabDirectory');
+
+            if (tab === 'conversations') {
+                tabConvoBtn.className = "flex-1 py-3 text-center border-b-2 border-cyan-500 text-cyan-600 font-black transition flex items-center justify-center gap-1.5 cursor-pointer";
+                tabDirBtn.className = "flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer";
+                renderConversations();
+            } else {
+                tabDirBtn.className = "flex-1 py-3 text-center border-b-2 border-cyan-500 text-cyan-600 font-black transition flex items-center justify-center gap-1.5 cursor-pointer";
+                tabConvoBtn.className = "flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer";
+                
+                if (contactsList.length > 0 && !searchQuery && !selectedClassId) {
+                    renderDirectory();
+                }
+                fetchContacts(false);
+            }
+        }
+
+        // 2. Fetch Active Conversations
+        async function fetchConversations() {
+            try {
+                const res = await fetch('/teacher/api/messaging/conversations');
+                if (!res.ok) throw new Error('Failed to load conversations');
+                conversationsList = await res.json();
+                if (activeTab === 'conversations') {
+                    renderConversations();
+                }
+            } catch (err) {
+                console.error('[CONVERSATIONS FETCH ERROR]', err);
+            }
+        }
+
+        // Render Conversations in Left Pane
+        function renderConversations() {
+            const container = document.getElementById('conversationsContainer');
+            if (!container) return;
+
+            const totalUnread = conversationsList.reduce((acc, c) => acc + (parseInt(c.unread, 10) || 0), 0);
+            const totalBadge = document.getElementById('totalUnreadBadge');
+            if (totalBadge) {
+                if (totalUnread > 0) {
+                    totalBadge.textContent = totalUnread > 99 ? '99+' : totalUnread;
+                    totalBadge.classList.remove('hidden');
+                } else {
+                    totalBadge.classList.add('hidden');
+                }
+            }
+
+            let filtered = conversationsList;
+            if (searchQuery.trim().length > 0) {
+                const q = searchQuery.toLowerCase();
+                filtered = filtered.filter(c => 
+                    (c.other_name || '').toLowerCase().includes(q) ||
+                    (c.other_lrn || '').includes(q)
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="py-12 px-6 text-center text-slate-400">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                            <i class="fas fa-inbox text-lg"></i>
+                        </div>
+                        <p class="text-xs font-bold text-slate-600">No Conversations Found</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Start messaging by choosing a student from your roster.</p>
+                        <button type="button" onclick="switchMessagingTab('directory')" class="mt-3 text-xs font-bold text-cyan-600 hover:text-cyan-700 underline cursor-pointer">Browse Student Directory</button>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(convo => {
+                const isActive = (convo.other_user_id === currentPartnerId);
+                const hasUnread = (convo.unread && convo.unread > 0);
+                const timeStr = formatTimestamp(convo.sent_at);
+
+                html += `
+                    <div class="convo-item p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-center gap-3 ${isActive ? 'is-active-convo' : ''}"
+                         onclick="selectConversationFromList(${convo.other_user_id})">
+                        <div class="relative shrink-0">
+                            <img src="${convo.other_pic ? '/profile_uploads/' + convo.other_pic : '/profile_uploads/default_avatar.png'}"
+                                 alt="${escapeHtml(convo.other_name)}"
+                                 class="w-11 h-11 rounded-xl object-cover ring-2 ring-slate-100"
+                                 onerror="this.src='/profile_uploads/default_avatar.png'">
+                            ${hasUnread ? `<span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 rounded-full border-2 border-white animate-pulse"></span>` : ''}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center justify-between gap-1 mb-1">
+                                <div class="flex items-center gap-1.5 truncate">
+                                    <h4 class="text-xs font-black text-slate-800 truncate">${escapeHtml(convo.other_name)}</h4>
+                                    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">Student</span>
+                                </div>
+                                <span class="text-[10px] text-slate-400 shrink-0 font-medium">${timeStr}</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-xs ${hasUnread ? 'font-bold text-slate-900' : 'text-slate-500'} truncate">
+                                    ${escapeHtml(formatMessagePreview(convo.last_message))}
+                                </p>
+                                ${hasUnread ? `<span class="px-1.5 py-0.5 rounded-full bg-cyan-600 text-white font-bold text-[10px] shrink-0">${convo.unread}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 3. Fetch Authorized Student Contacts Directory
+        async function fetchContacts(forceShowLoader = false) {
+            const reqId = ++contactsRequestId;
+            const container = document.getElementById('conversationsContainer');
+
+            if (container && activeTab === 'directory' && (contactsList.length === 0 || forceShowLoader || searchQuery || selectedClassId)) {
+                container.innerHTML = `
+                    <div class="p-8 text-center text-slate-400 text-xs">
+                        <i class="fas fa-circle-notch fa-spin text-xl text-cyan-500 mb-2"></i>
+                        <p>Loading student directory...</p>
+                    </div>
+                `;
+            }
+
+            isLoadingContacts = true;
+            try {
+                let url = `/teacher/api/messaging/contacts?q=${encodeURIComponent(searchQuery)}`;
+                if (selectedClassId) {
+                    url += `&class_id=${encodeURIComponent(selectedClassId)}`;
+                }
+
+                const res = await fetch(url);
+                if (reqId !== contactsRequestId) return;
+
+                if (!res.ok) {
+                    throw new Error(`Failed to load contacts (HTTP ${res.status})`);
+                }
+
+                const data = await res.json();
+                if (reqId !== contactsRequestId) return;
+
+                contactsList = Array.isArray(data.contacts) ? data.contacts : [];
+
+                if (activeTab === 'directory') {
+                    renderDirectory();
+                }
+            } catch (err) {
+                if (reqId !== contactsRequestId) return;
+                console.error('[CONTACTS FETCH ERROR]', err);
+
+                if (activeTab === 'directory' && container) {
+                    container.innerHTML = `
+                        <div class="py-12 px-6 text-center text-slate-400">
+                            <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto mb-3 text-rose-500">
+                                <i class="fas fa-exclamation-triangle text-lg"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-700">Unable to Load Student Directory</p>
+                            <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">There was an issue fetching students from your classes.</p>
+                            <button type="button" onclick="fetchContacts(true)" class="mt-4 px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-bold transition shadow-xs inline-flex items-center gap-1.5 cursor-pointer">
+                                <i class="fas fa-rotate-right text-[10px]"></i>
+                                <span>Try Again</span>
+                            </button>
+                        </div>
+                    `;
+                }
+            } finally {
+                if (reqId === contactsRequestId) {
+                    isLoadingContacts = false;
+                }
+            }
+        }
+
+        // Render Student Directory in Left Pane
+        function renderDirectory() {
+            const container = document.getElementById('conversationsContainer');
+            if (!container) return;
+
+            if (contactsList.length === 0) {
+                const isFiltered = (searchQuery.trim().length > 0) || Boolean(selectedClassId);
+                const title = isFiltered ? 'No Students Found' : 'No Enrolled Students';
+                const subtext = isFiltered
+                    ? 'Try clearing your search query or selecting a different class filter.'
+                    : 'Students enrolled in your active classes will appear here.';
+
+                container.innerHTML = `
+                    <div class="py-12 px-6 text-center text-slate-400">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                            <i class="fas fa-user-slash text-lg"></i>
+                        </div>
+                        <p class="text-xs font-bold text-slate-600">${escapeHtml(title)}</p>
+                        <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">${escapeHtml(subtext)}</p>
+                        ${isFiltered ? `
+                            <button type="button" onclick="resetDirectoryFilters()" class="mt-3 text-xs font-bold text-cyan-600 hover:text-cyan-700 underline cursor-pointer">
+                                Reset Filters
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            contactsList.forEach(contact => {
+                const fullName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Student';
+                const lrnStr = contact.lrn_number ? `LRN: ${contact.lrn_number}` : '';
+
+                html += `
+                    <div class="p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-center justify-between gap-3"
+                         onclick="startChatWithContact(${contact.user_id})">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <img src="${contact.profile_pic ? '/profile_uploads/' + contact.profile_pic : '/profile_uploads/default_avatar.png'}"
+                                 alt="${escapeHtml(fullName)}"
+                                 class="w-10 h-10 rounded-xl object-cover ring-2 ring-slate-100 shrink-0"
+                                 onerror="this.src='/profile_uploads/default_avatar.png'">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <h4 class="text-xs font-black text-slate-800 truncate">${escapeHtml(fullName)}</h4>
+                                </div>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">Student</span>
+                                    ${lrnStr ? `<span class="text-[10px] text-slate-400 font-mono">${escapeHtml(lrnStr)}</span>` : ''}
+                                    <span class="text-[10px] text-slate-400 truncate max-w-[130px] font-medium" title="${escapeHtml(contact.shared_classes || '')}">
+                                        ${escapeHtml(contact.shared_classes || 'Class Student')}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" class="p-2 rounded-xl bg-cyan-50 hover:bg-cyan-600 text-cyan-600 hover:text-white transition shrink-0 cursor-pointer text-xs" title="Chat with ${escapeHtml(fullName)}">
+                            <i class="fas fa-comment-dots"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function resetDirectoryFilters() {
+            clearContactSearch();
+            selectClassFilter('', 'All Classes');
+        }
+
+        // ========================================================
+        // Class Filter Dropdown Controller
+        // ========================================================
+        function toggleClassFilterDropdown(e) {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById('classFilterMenu');
+            const btn = document.getElementById('classFilterDropdownBtn');
+            if (!menu || !btn) return;
+
+            const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+            if (isExpanded) {
+                closeClassFilterDropdown();
+            } else {
+                menu.classList.remove('hidden');
+                btn.setAttribute('aria-expanded', 'true');
+                btn.classList.add('border-cyan-500', 'text-cyan-600', 'bg-cyan-50/50', 'ring-2', 'ring-cyan-500/20');
+            }
+        }
+
+        function closeClassFilterDropdown() {
+            const menu = document.getElementById('classFilterMenu');
+            const btn = document.getElementById('classFilterDropdownBtn');
+            if (menu) menu.classList.add('hidden');
+            if (btn) {
+                btn.setAttribute('aria-expanded', 'false');
+                btn.classList.remove('border-cyan-500', 'text-cyan-600', 'bg-cyan-50/50', 'ring-2', 'ring-cyan-500/20');
+            }
+        }
+
+        function selectClassFilter(classId, classLabel) {
+            selectedClassId = classId || '';
+            closeClassFilterDropdown();
+
+            const badgeContainer = document.getElementById('activeFilterBadgeContainer');
+            const badgeLabel = document.getElementById('activeFilterLabel');
+            const activeIndicator = document.getElementById('classFilterActiveIndicator');
+            const btn = document.getElementById('classFilterDropdownBtn');
+
+            // Update dropdown checkmarks and active highlight
+            const optButtons = document.querySelectorAll('.class-filter-opt');
+            optButtons.forEach(opt => {
+                const optId = opt.getAttribute('data-class-id') || '';
+                const check = opt.querySelector('.class-opt-check');
+                if (optId === selectedClassId) {
+                    opt.classList.add('text-cyan-700', 'bg-cyan-50/60');
+                    opt.classList.remove('text-slate-700');
+                    if (check) check.classList.remove('hidden');
+                } else {
+                    opt.classList.remove('text-cyan-700', 'bg-cyan-50/60');
+                    opt.classList.add('text-slate-700');
+                    if (check) check.classList.add('hidden');
+                }
+            });
+
+            // Update badge UI & button state
+            if (selectedClassId) {
+                if (badgeContainer) badgeContainer.classList.remove('hidden');
+                if (badgeLabel) badgeLabel.textContent = classLabel || 'Selected Class';
+                if (activeIndicator) activeIndicator.classList.remove('hidden');
+                if (btn) btn.classList.add('text-cyan-600', 'bg-cyan-50', 'border-cyan-300');
+            } else {
+                if (badgeContainer) badgeContainer.classList.add('hidden');
+                if (activeIndicator) activeIndicator.classList.add('hidden');
+                if (btn) btn.classList.remove('text-cyan-600', 'bg-cyan-50', 'border-cyan-300');
+            }
+
+            // Auto-switch to directory tab when selecting a specific class
+            if (selectedClassId && activeTab === 'conversations') {
+                switchMessagingTab('directory');
+            } else if (activeTab === 'directory') {
+                fetchContacts(true);
+            }
+        }
+
+        // 4. Select / Open Chat Thread
+        function selectConversationFromList(partnerId) {
+            const convo = conversationsList.find(c => c.other_user_id === partnerId);
+            if (!convo) return;
+            openChatThread({
+                user_id: convo.other_user_id,
+                first_name: convo.other_first_name || (convo.other_name ? convo.other_name.split(' ')[0] : 'Student'),
+                last_name: convo.other_last_name || (convo.other_name ? convo.other_name.split(' ').slice(1).join(' ') : ''),
+                profile_pic: convo.other_pic,
+                role: convo.other_role || 'Student',
+                lrn_number: convo.other_lrn,
+                section: convo.other_section,
+                grade_level: convo.other_grade_level,
+                strand: convo.other_strand,
+                department: convo.other_department,
+                sent_at: convo.sent_at,
+                shared_classes: convo.shared_classes || ''
+            });
+        }
+
+        function startChatWithContact(contactId) {
+            const contact = contactsList.find(c => c.user_id === contactId);
+            if (!contact) return;
+            openChatThread(contact);
+        }
+
+        function openChatThread(partner) {
+            currentPartnerId = partner.user_id;
+            currentPartner = partner;
+            lastPollTimestamp = null;
+            inChatSearchQuery = '';
+
+            const badge = document.getElementById('newMessagesBadge');
+            if (badge) badge.classList.add('hidden');
+
+            const url = new URL(window.location);
+            url.searchParams.set('userId', partner.user_id);
+            window.history.replaceState({}, '', url);
+
+            if (window.innerWidth < 768) {
+                document.getElementById('chatSidebar')?.classList.add('hidden');
+                document.getElementById('chatMain')?.classList.remove('hidden');
+            }
+
+            document.getElementById('noChatSelected')?.classList.add('hidden');
+            document.getElementById('activeChatContainer')?.classList.remove('hidden');
+
+            const partnerName = `${partner.first_name || ''} ${partner.last_name || ''}`.trim() || partner.other_name || 'Student';
+            document.getElementById('partnerHeaderName').textContent = partnerName;
+            
+            const avatarEl = document.getElementById('partnerHeaderAvatar');
+            if (avatarEl) {
+                avatarEl.src = partner.profile_pic ? '/profile_uploads/' + partner.profile_pic : '/profile_uploads/default_avatar.png';
+            }
+
+            const sharedClassEl = document.getElementById('partnerHeaderSharedClasses');
+            if (sharedClassEl) {
+                sharedClassEl.textContent = partner.shared_classes || partner.shared_subjects || 'Enrolled Class';
+            }
+
+            updateConversationInfoPanel();
+
+            const stream = document.getElementById('messageStream');
+            if (stream) {
+                stream.innerHTML = `
+                    <div class="p-8 text-center text-slate-400 text-xs">
+                        <i class="fas fa-circle-notch fa-spin text-xl text-cyan-500 mb-2"></i>
+                        <p>Loading messages...</p>
+                    </div>
+                `;
+            }
+
+            fetchMessages(partner.user_id, true);
+
+            setTimeout(() => {
+                document.getElementById('messageInput')?.focus();
+            }, 100);
+
+            if (activeTab === 'conversations') {
+                renderConversations();
+            }
+        }
+
+        function closeActiveChatMobile() {
+            toggleConversationInfo(false);
+            document.getElementById('chatMain')?.classList.add('hidden');
+            document.getElementById('chatSidebar')?.classList.remove('hidden');
+        }
+
+        // 5. Fetch Messages Thread
+        async function fetchMessages(partnerId, forceScroll = false) {
+            if (!partnerId) return;
+
+            try {
+                const readParam = isReadReceiptsEnabled() ? '' : '?markRead=false';
+                const res = await fetch(`/teacher/api/messaging/thread/${partnerId}${readParam}`);
+                if (res.status === 403) {
+                    const data = await res.json();
+                    renderAccessDenied(data.error || 'Access Denied: You can only message students enrolled in your classes.');
+                    return;
+                }
+                if (!res.ok) throw new Error('Failed to fetch messages');
+
+                const data = await res.json();
+                const messages = Array.isArray(data.messages) ? data.messages : [];
+                if (data.partner && (!currentPartner || !currentPartner.lrn_number)) {
+                    currentPartner = Object.assign({}, currentPartner, data.partner);
+                    updateConversationInfoPanel();
+                }
+                
+                const hasChanged = (messages.length !== currentMessages.length) || 
+                                   (messages.length > 0 && currentMessages.length > 0 && messages[messages.length - 1].message_id !== currentMessages[currentMessages.length - 1].message_id);
+
+                if (hasChanged || forceScroll) {
+                    currentMessages = messages;
+                    lastPollTimestamp = messages.length > 0 ? messages[messages.length - 1].sent_at : new Date().toISOString();
+                    renderMessages(messages, forceScroll);
+                    updateConversationInfoPanel();
+                }
+
+                const convo = conversationsList.find(c => c.other_user_id === partnerId);
+                if (convo && convo.unread > 0) {
+                    convo.unread = 0;
+                    if (activeTab === 'conversations') renderConversations();
+                }
+
+                const badge = document.getElementById('newMessagesBadge');
+                if (badge && forceScroll) badge.classList.add('hidden');
+
+            } catch (err) {
+                console.error('[MESSAGES FETCH ERROR]', err);
+            }
+        }
+
+        // Delta Polling Engine
+        async function pollDeltaMessages() {
+            if (!currentPartnerId || isPolling) return;
+            if (!lastPollTimestamp) {
+                return fetchMessages(currentPartnerId, false);
+            }
+
+            isPolling = true;
+            try {
+                const readParam = isReadReceiptsEnabled() ? '' : '&markRead=false';
+                const url = `/teacher/api/messaging/poll?partnerId=${currentPartnerId}&since=${encodeURIComponent(lastPollTimestamp)}${readParam}`;
+                const res = await fetch(url);
+
+                if (res.status === 403) {
+                    const data = await res.json();
+                    renderAccessDenied(data.error || 'Access Denied: Enrollment boundary mismatch.');
+                    return;
+                }
+                if (!res.ok) return;
+
+                const data = await res.json();
+                const newMsgs = data.messages || [];
+
+                if (newMsgs.length > 0) {
+                    const stream = document.getElementById('messageStream');
+                    const streamWasNearBottom = stream ? (stream.scrollHeight - stream.scrollTop - stream.clientHeight) < 120 : true;
+
+                    let appended = false;
+                    newMsgs.forEach(m => {
+                        const existingIdx = currentMessages.findIndex(cur => 
+                            cur.message_id === m.message_id || 
+                            (String(cur.message_id).startsWith('temp-') && cur.sender_id === m.sender_id && cur.message_text === m.message_text)
+                        );
+                        if (existingIdx !== -1) {
+                            currentMessages[existingIdx] = m;
+                        } else {
+                            currentMessages.push(m);
+                            appended = true;
+                        }
+                    });
+
+                    lastPollTimestamp = newMsgs[newMsgs.length - 1].sent_at;
+                    renderMessages(currentMessages, false);
+                    updateConversationInfoPanel();
+
+                    if (streamWasNearBottom) {
+                        scrollToStreamBottom();
+                    } else if (appended) {
+                        const badge = document.getElementById('newMessagesBadge');
+                        if (badge) badge.classList.remove('hidden');
+                    }
+
+                    fetchConversations();
+                }
+            } catch (err) {
+                console.warn('[DELTA POLL WARNING]', err.message);
+            } finally {
+                isPolling = false;
+            }
+        }
+
+        function scrollToStreamBottom() {
+            const stream = document.getElementById('messageStream');
+            if (stream) {
+                stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
+            }
+            const badge = document.getElementById('newMessagesBadge');
+            if (badge) badge.classList.add('hidden');
+        }
+
+        // ========================================================
+        // Conversation Information & Detail Panel Controller
+        // ========================================================
+        function toggleConversationInfo(force) {
+            const panel = document.getElementById('chatInfoPanel');
+            const backdrop = document.getElementById('infoPanelBackdrop');
+            const btn = document.getElementById('convoInfoBtn');
+            if (!panel) return;
+
+            if (typeof force === 'boolean') {
+                isInfoPanelOpen = force;
+            } else {
+                isInfoPanelOpen = !isInfoPanelOpen;
+            }
+
+            if (isInfoPanelOpen) {
+                panel.classList.remove('hidden');
+                panel.classList.add('flex');
+                if (backdrop) backdrop.classList.remove('hidden');
+                if (btn) btn.classList.add('text-cyan-600', 'bg-cyan-50', 'ring-2', 'ring-cyan-500/20');
+                updateConversationInfoPanel();
+            } else {
+                panel.classList.add('hidden');
+                panel.classList.remove('flex');
+                if (backdrop) backdrop.classList.add('hidden');
+                if (btn) btn.classList.remove('text-cyan-600', 'bg-cyan-50', 'ring-2', 'ring-cyan-500/20');
+            }
+        }
+
+        function getPresenceInfo(partner, messages) {
+            if (!partner) {
+                return { isOnline: false, text: 'Offline', dotClass: 'bg-slate-300', badgeClass: 'bg-slate-100 text-slate-600 border-slate-200' };
+            }
+
+            let latestTs = null;
+            if (Array.isArray(messages) && messages.length > 0) {
+                for (let i = messages.length - 1; i >= 0; i--) {
+                    if (messages[i].sender_id === partner.user_id && messages[i].sent_at) {
+                        latestTs = messages[i].sent_at;
+                        break;
+                    }
+                }
+            }
+            if (!latestTs && partner.sent_at) {
+                latestTs = partner.sent_at;
+            }
+
+            if (!latestTs) {
+                return { isOnline: false, text: 'Offline', dotClass: 'bg-slate-300', badgeClass: 'bg-slate-100 text-slate-600 border-slate-200' };
+            }
+
+            const d = new Date(latestTs);
+            const now = new Date();
+            const diffMin = Math.floor((now - d) / 60000);
+
+            if (diffMin < 5) {
+                return {
+                    isOnline: true,
+                    text: 'Active now',
+                    dotClass: 'bg-emerald-500 ring-2 ring-emerald-300 animate-pulse',
+                    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                };
+            } else if (diffMin < 60) {
+                return {
+                    isOnline: false,
+                    text: `Active ${diffMin}m ago`,
+                    dotClass: 'bg-emerald-400',
+                    badgeClass: 'bg-cyan-50 text-cyan-800 border-cyan-200'
+                };
+            } else if (diffMin < 1440) {
+                const diffHrs = Math.floor(diffMin / 60);
+                return {
+                    isOnline: false,
+                    text: `Active ${diffHrs}h ago`,
+                    dotClass: 'bg-slate-400',
+                    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200'
+                };
+            } else {
+                const diffDays = Math.floor(diffMin / 1440);
+                return {
+                    isOnline: false,
+                    text: diffDays === 1 ? 'Active yesterday' : `Active ${diffDays}d ago`,
+                    dotClass: 'bg-slate-300',
+                    badgeClass: 'bg-slate-100 text-slate-600 border-slate-200'
+                };
+            }
+        }
+
+        function updateConversationInfoPanel() {
+            if (!currentPartner) return;
+
+            const partnerName = `${currentPartner.first_name || ''} ${currentPartner.last_name || ''}`.trim() || currentPartner.other_name || 'Student';
+            const nameEl = document.getElementById('infoPanelName');
+            if (nameEl) nameEl.textContent = partnerName;
+
+            const avatarEl = document.getElementById('infoPanelAvatar');
+            if (avatarEl) {
+                avatarEl.src = currentPartner.profile_pic ? '/profile_uploads/' + currentPartner.profile_pic : '/profile_uploads/default_avatar.png';
+            }
+
+            const lrnBadge = document.getElementById('infoPanelLrnBadge');
+            if (lrnBadge) {
+                const lrnVal = currentPartner.lrn_number || currentPartner.other_lrn || currentPartner.id_number;
+                lrnBadge.textContent = lrnVal ? `LRN: ${lrnVal}` : 'LRN: Unregistered';
+            }
+
+            const presence = getPresenceInfo(currentPartner, currentMessages);
+            const statusDot = document.getElementById('infoPanelStatusDot');
+            if (statusDot) {
+                statusDot.className = `absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-xs ${presence.dotClass}`;
+            }
+            const headerDot = document.getElementById('partnerOnlineStatus');
+            if (headerDot) {
+                headerDot.className = `absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${presence.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`;
+            }
+            const presenceBadge = document.getElementById('infoPanelPresenceBadge');
+            const presenceText = document.getElementById('infoPanelPresenceText');
+            if (presenceBadge && presenceText) {
+                presenceText.textContent = presence.text;
+                presenceBadge.className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${presence.badgeClass}`;
+            }
+
+            const cohortEl = document.getElementById('infoPanelCohort');
+            if (cohortEl) {
+                let cohort = currentPartner.section || currentPartner.other_section || '';
+                if (currentPartner.grade_level) {
+                    cohort = (cohort ? `${currentPartner.grade_level} - ${cohort}` : currentPartner.grade_level);
+                }
+                if (currentPartner.strand) {
+                    cohort = (cohort ? `${cohort} (${currentPartner.strand})` : currentPartner.strand);
+                }
+                cohortEl.textContent = cohort || 'Section Cohort';
+            }
+
+            const sharedClassesEl = document.getElementById('infoPanelSharedClasses');
+            if (sharedClassesEl) {
+                sharedClassesEl.textContent = currentPartner.shared_classes || currentPartner.shared_subjects || 'Enrolled Class';
+            }
+
+            if (inChatSearchQuery.trim()) {
+                handleInChatSearch(inChatSearchQuery);
+            }
+
+            renderPinnedMessages();
+            renderSharedContent();
+            syncReadReceiptsSettingUI();
+        }
+
+        // In-Chat Search
+        function handleInChatSearch(query) {
+            inChatSearchQuery = query || '';
+            const clearBtn = document.getElementById('clearInChatSearchBtn');
+            const countBox = document.getElementById('inChatResultsCount');
+            const countText = document.getElementById('inChatResultsText');
+            const resultsContainer = document.getElementById('inChatSearchResults');
+
+            if (!resultsContainer) return;
+
+            if (clearBtn) {
+                if (inChatSearchQuery.trim().length > 0) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+
+            if (!inChatSearchQuery.trim()) {
+                if (countBox) countBox.classList.add('hidden');
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
+            const q = inChatSearchQuery.toLowerCase();
+            const matches = currentMessages.filter(m => (m.message_text || '').toLowerCase().includes(q));
+
+            if (countBox && countText) {
+                countBox.classList.remove('hidden');
+                countText.textContent = `${matches.length} message${matches.length === 1 ? '' : 's'} found`;
+            }
+
+            if (matches.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="p-3 text-center text-slate-400 text-xs">
+                        <p class="font-medium">No matching messages</p>
+                        <p class="text-[10px] mt-0.5">Try searching with different keywords</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            matches.slice(-15).reverse().forEach(m => {
+                const isMine = (m.sender_id === CURRENT_USER_ID);
+                const senderName = isMine ? 'You' : (currentPartner?.first_name || 'Student');
+                const timeStr = formatTimestamp(m.sent_at);
+                const cleanText = formatMessagePreview(m.message_text);
+                
+                const regex = new RegExp(`(${escapeRegExp(inChatSearchQuery)})`, 'gi');
+                const highlighted = escapeHtml(cleanText).replace(regex, '<mark class="bg-amber-200 text-amber-900 rounded-xs px-0.5 font-bold">$1</mark>');
+
+                html += `
+                    <div onclick="jumpToMessage(${m.message_id})" class="p-2.5 rounded-xl bg-slate-50 hover:bg-cyan-50 border border-slate-200/70 hover:border-cyan-200 transition cursor-pointer text-left group">
+                        <div class="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1">
+                            <span class="${isMine ? 'text-cyan-700 font-black' : 'text-slate-700'}">${senderName}</span>
+                            <span>${timeStr}</span>
+                        </div>
+                        <p class="text-xs text-slate-700 leading-snug line-clamp-2">${highlighted}</p>
+                    </div>
+                `;
+            });
+            resultsContainer.innerHTML = html;
+        }
+
+        function clearInChatSearch() {
+            const input = document.getElementById('inChatSearchInput');
+            if (input) input.value = '';
+            handleInChatSearch('');
+        }
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function jumpToMessage(messageId) {
+            const el = document.getElementById(`msg-${messageId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('ring-2', 'ring-amber-400', 'bg-amber-50/70', 'rounded-2xl', 'p-1');
+                setTimeout(() => {
+                    el.classList.remove('ring-2', 'ring-amber-400', 'bg-amber-50/70', 'p-1');
+                }, 2200);
+
+                if (window.innerWidth < 768) {
+                    toggleConversationInfo(false);
+                }
+            } else {
+                console.warn('[JUMP] Message element not rendered in stream:', messageId);
+            }
+        }
+
+        // Pinned Messages Management
+        function getPinnedStorageKey() {
+            return `elementa_teacher_pinned_${CURRENT_USER_ID}_${currentPartnerId || 0}`;
+        }
+
+        function getPinnedMessageIds() {
+            if (!currentPartnerId) return [];
+            try {
+                const stored = localStorage.getItem(getPinnedStorageKey());
+                return stored ? JSON.parse(stored) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function savePinnedMessageIds(ids) {
+            if (!currentPartnerId) return;
+            try {
+                localStorage.setItem(getPinnedStorageKey(), JSON.stringify(ids));
+            } catch (e) {
+                console.error('[PINNED STORAGE ERROR]', e);
+            }
+        }
+
+        function isMessagePinned(messageId) {
+            const ids = getPinnedMessageIds();
+            return ids.includes(Number(messageId));
+        }
+
+        function togglePinMessage(messageId) {
+            const mId = Number(messageId);
+            let ids = getPinnedMessageIds();
+            if (ids.includes(mId)) {
+                ids = ids.filter(id => id !== mId);
+            } else {
+                ids.push(mId);
+            }
+            savePinnedMessageIds(ids);
+            renderPinnedMessages();
+            renderMessages(currentMessages, false);
+        }
+
+        function unpinMessage(messageId) {
+            const mId = Number(messageId);
+            let ids = getPinnedMessageIds();
+            ids = ids.filter(id => id !== mId);
+            savePinnedMessageIds(ids);
+            renderPinnedMessages();
+            renderMessages(currentMessages, false);
+        }
+
+        function renderPinnedMessages() {
+            const container = document.getElementById('pinnedMessagesContainer');
+            const badge = document.getElementById('pinnedCountBadge');
+            if (!container) return;
+
+            const pinnedIds = getPinnedMessageIds();
+            const pinnedMsgs = currentMessages.filter(m => pinnedIds.includes(Number(m.message_id)));
+
+            if (badge) badge.textContent = pinnedMsgs.length;
+
+            if (pinnedMsgs.length === 0) {
+                container.innerHTML = `
+                    <div class="p-4 rounded-xl bg-slate-50/80 border border-dashed border-slate-200 text-center text-slate-400 text-xs">
+                        <i class="fas fa-thumbtack text-slate-300 text-base mb-1"></i>
+                        <p class="font-medium">No pinned messages</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Hover on any message bubble and click the pin icon to bookmark it here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            pinnedMsgs.forEach(m => {
+                const isMine = (m.sender_id === CURRENT_USER_ID);
+                const senderName = isMine ? 'You' : (currentPartner?.first_name || 'Student');
+                const timeStr = formatTimestamp(m.sent_at);
+                const preview = formatMessagePreview(m.message_text);
+
+                html += `
+                    <div class="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/70 text-left text-xs transition group">
+                        <div class="flex items-center justify-between text-[10px] text-amber-800 font-bold mb-1">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-thumbtack text-[9px] text-amber-500"></i>
+                                <span>${senderName}</span>
+                            </span>
+                            <div class="flex items-center gap-1.5">
+                                <span>${timeStr}</span>
+                                <button type="button" onclick="unpinMessage(${m.message_id})" title="Unpin message" class="p-1 text-slate-400 hover:text-rose-600 transition cursor-pointer">
+                                    <i class="fas fa-times text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-slate-800 leading-snug line-clamp-2">${escapeHtml(preview)}</p>
+                        <div class="mt-2 flex items-center justify-end">
+                            <button type="button" onclick="jumpToMessage(${m.message_id})" class="text-[10px] font-bold text-amber-700 hover:text-amber-900 underline flex items-center gap-1 cursor-pointer">
+                                <span>Jump to message</span>
+                                <i class="fas fa-arrow-right text-[8px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // Shared Content Repository (Media, Files, Links)
+        function switchSharedContentTab(tab) {
+            activeSharedTab = tab;
+            const btnMedia = document.getElementById('sharedTabMediaBtn');
+            const btnFiles = document.getElementById('sharedTabFilesBtn');
+            const btnLinks = document.getElementById('sharedTabLinksBtn');
+
+            const paneMedia = document.getElementById('sharedMediaPane');
+            const paneFiles = document.getElementById('sharedFilesPane');
+            const paneLinks = document.getElementById('sharedLinksPane');
+
+            [btnMedia, btnFiles, btnLinks].forEach(b => {
+                if (b) {
+                    b.className = 'flex-1 py-1.5 text-center rounded-lg text-slate-500 hover:text-slate-700 transition cursor-pointer';
+                }
+            });
+            [paneMedia, paneFiles, paneLinks].forEach(p => {
+                if (p) p.classList.add('hidden');
+            });
+
+            if (tab === 'media') {
+                if (btnMedia) btnMedia.className = 'flex-1 py-1.5 text-center rounded-lg bg-white shadow-2xs text-cyan-700 transition cursor-pointer';
+                if (paneMedia) paneMedia.classList.remove('hidden');
+            } else if (tab === 'files') {
+                if (btnFiles) btnFiles.className = 'flex-1 py-1.5 text-center rounded-lg bg-white shadow-2xs text-cyan-700 transition cursor-pointer';
+                if (paneFiles) paneFiles.classList.remove('hidden');
+            } else if (tab === 'links') {
+                if (btnLinks) btnLinks.className = 'flex-1 py-1.5 text-center rounded-lg bg-white shadow-2xs text-cyan-700 transition cursor-pointer';
+                if (paneLinks) paneLinks.classList.remove('hidden');
+            }
+        }
+
+        function renderSharedContent() {
+            const mediaGrid = document.getElementById('sharedMediaGrid');
+            const mediaEmpty = document.getElementById('sharedMediaEmpty');
+            const mediaCountEl = document.getElementById('sharedMediaCount');
+
+            const filesList = document.getElementById('sharedFilesList');
+            const filesEmpty = document.getElementById('sharedFilesEmpty');
+            const filesCountEl = document.getElementById('sharedFilesCount');
+
+            const linksList = document.getElementById('sharedLinksList');
+            const linksEmpty = document.getElementById('sharedLinksEmpty');
+            const linksCountEl = document.getElementById('sharedLinksCount');
+
+            const mediaItems = [];
+            const fileItems = [];
+            const linkItems = [];
+
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+            currentMessages.forEach(msg => {
+                const text = msg.message_text || '';
+                if (text.includes('||')) {
+                    const parts = text.split('||');
+                    const fileUrl = parts[0];
+                    const fileName = parts[1] || 'Attachment';
+                    const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName) || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+                    if (isImg) {
+                        mediaItems.push({ url: fileUrl, name: fileName, sent_at: msg.sent_at, message_id: msg.message_id });
+                    } else {
+                        fileItems.push({ url: fileUrl, name: fileName, sent_at: msg.sent_at, message_id: msg.message_id });
+                    }
+                } else {
+                    const matches = text.match(urlRegex);
+                    if (matches) {
+                        matches.forEach(u => {
+                            linkItems.push({ url: u, sent_at: msg.sent_at, message_id: msg.message_id });
+                        });
+                    }
+                }
+            });
+
+            if (mediaCountEl) mediaCountEl.textContent = mediaItems.length;
+            if (filesCountEl) filesCountEl.textContent = fileItems.length;
+            if (linksCountEl) linksCountEl.textContent = linkItems.length;
+
+            if (mediaGrid && mediaEmpty) {
+                if (mediaItems.length === 0) {
+                    mediaGrid.innerHTML = '';
+                    mediaEmpty.classList.remove('hidden');
+                } else {
+                    mediaEmpty.classList.add('hidden');
+                    let html = '';
+                    mediaItems.slice(-12).reverse().forEach(item => {
+                        html += `
+                            <div class="relative group rounded-xl overflow-hidden aspect-square bg-slate-100 border border-slate-200 cursor-pointer" onclick="window.open('${escapeHtml(item.url)}', '_blank')">
+                                <img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.name)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs gap-1">
+                                    <i class="fas fa-expand"></i>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    mediaGrid.innerHTML = html;
+                }
+            }
+
+            if (filesList && filesEmpty) {
+                if (fileItems.length === 0) {
+                    filesList.innerHTML = '';
+                    filesEmpty.classList.remove('hidden');
+                } else {
+                    filesEmpty.classList.add('hidden');
+                    let html = '';
+                    fileItems.slice(-15).reverse().forEach(item => {
+                        const iconHtml = getFileIcon(item.name);
+                        const timeStr = formatTimestamp(item.sent_at);
+                        html += `
+                            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-100 transition">
+                                <div class="w-8 h-8 rounded-lg bg-white shadow-2xs flex items-center justify-center shrink-0">
+                                    ${iconHtml}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(item.name)}</p>
+                                    <p class="text-[10px] text-slate-400 font-medium">${timeStr}</p>
+                                </div>
+                                <a href="${escapeHtml(item.url)}" download target="_blank" class="p-2 rounded-lg bg-white hover:bg-cyan-50 hover:text-cyan-600 text-slate-500 shadow-2xs border border-slate-200 transition cursor-pointer" title="Download">
+                                    <i class="fas fa-download text-xs"></i>
+                                </a>
+                            </div>
+                        `;
+                    });
+                    filesList.innerHTML = html;
+                }
+            }
+
+            if (linksList && linksEmpty) {
+                if (linkItems.length === 0) {
+                    linksList.innerHTML = '';
+                    linksEmpty.classList.remove('hidden');
+                } else {
+                    linksEmpty.classList.add('hidden');
+                    let html = '';
+                    linkItems.slice(-15).reverse().forEach(item => {
+                        const timeStr = formatTimestamp(item.sent_at);
+                        let domain = item.url;
+                        try {
+                            domain = new URL(item.url).hostname;
+                        } catch (e) {}
+
+                        html += `
+                            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-100 transition">
+                                <div class="w-8 h-8 rounded-lg bg-white shadow-2xs flex items-center justify-center shrink-0 text-cyan-600 text-xs">
+                                    <i class="fas fa-link"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-cyan-700 hover:text-cyan-800 hover:underline truncate block">
+                                        ${escapeHtml(item.url)}
+                                    </a>
+                                    <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1.5 mt-0.5">
+                                        <span>${escapeHtml(domain)}</span>
+                                        <span>•</span>
+                                        <span>${timeStr}</span>
+                                    </p>
+                                </div>
+                                <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="p-2 rounded-lg bg-white hover:bg-cyan-50 hover:text-cyan-600 text-slate-500 shadow-2xs border border-slate-200 transition" title="Open Link">
+                                    <i class="fas fa-arrow-up-right-from-square text-xs"></i>
+                                </a>
+                            </div>
+                        `;
+                    });
+                    linksList.innerHTML = html;
+                }
+            }
+        }
+
+        // Read Receipts Privacy Setting
+        function isReadReceiptsEnabled() {
+            return localStorage.getItem('elementa_teacher_read_receipts_enabled') !== 'false';
+        }
+
+        function toggleReadReceiptsPrivacy(enabled) {
+            localStorage.setItem('elementa_teacher_read_receipts_enabled', enabled ? 'true' : 'false');
+            syncReadReceiptsSettingUI();
+            renderMessages(currentMessages, false);
+
+            if (enabled && currentPartnerId) {
+                fetch('/teacher/api/messaging/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ partner_id: currentPartnerId })
+                }).catch(() => {});
+            }
+        }
+
+        function syncReadReceiptsSettingUI() {
+            const toggle = document.getElementById('readReceiptsToggle');
+            const statusText = document.getElementById('readReceiptsStatusText');
+            const enabled = isReadReceiptsEnabled();
+
+            if (toggle) toggle.checked = enabled;
+            if (statusText) {
+                if (enabled) {
+                    statusText.className = 'font-bold text-cyan-600 flex items-center gap-1';
+                    statusText.innerHTML = `<i class="fas fa-check-double text-[10px]"></i><span>Active & Visible</span>`;
+                } else {
+                    statusText.className = 'font-bold text-slate-400 flex items-center gap-1';
+                    statusText.innerHTML = `<i class="fas fa-eye-slash text-[10px]"></i><span>Private & Hidden</span>`;
+                }
+            }
+        }
+
+        function renderAccessDenied(errorMessage) {
+            const stream = document.getElementById('messageStream');
+            if (!stream) return;
+            stream.innerHTML = `
+                <div class="py-16 px-6 text-center max-w-md mx-auto">
+                    <div class="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-3 text-xl">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h4 class="text-sm font-black text-slate-800 mb-1">Access Restricted</h4>
+                    <p class="text-xs text-slate-500 mb-4">${escapeHtml(errorMessage)}</p>
+                    <button type="button" onclick="switchMessagingTab('directory')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition">Browse Enrolled Students</button>
+                </div>
+            `;
+        }
+
+        // Render Message Bubbles
+        function renderMessages(messages, forceScroll = false) {
+            const stream = document.getElementById('messageStream');
+            if (!stream) return;
+
+            if (messages.length === 0) {
+                stream.innerHTML = `
+                    <div class="py-16 px-6 text-center text-slate-400">
+                        <div class="w-12 h-12 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center mx-auto mb-3 text-cyan-600">
+                            <i class="far fa-paper-plane text-lg"></i>
+                        </div>
+                        <p class="text-xs font-bold text-slate-700">No Messages Yet</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Start communicating with ${escapeHtml(document.getElementById('partnerHeaderName').textContent)}.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const streamWasNearBottom = (stream.scrollHeight - stream.scrollTop - stream.clientHeight) < 120;
+            const readReceiptsActive = isReadReceiptsEnabled();
+
+            let html = '';
+            let lastDateLabel = null;
+
+            messages.forEach(msg => {
+                const isMine = (msg.sender_id === CURRENT_USER_ID);
+                const isPinned = isMessagePinned(msg.message_id);
+                const dateLabel = formatDayDivider(msg.sent_at);
+
+                if (dateLabel !== lastDateLabel) {
+                    html += `
+                        <div class="flex items-center justify-center my-3">
+                            <span class="px-3 py-1 rounded-full bg-slate-200/70 text-slate-600 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+                                ${dateLabel}
+                            </span>
+                        </div>
+                    `;
+                    lastDateLabel = dateLabel;
+                }
+
+                const timeStr = formatTimeOnly(msg.sent_at);
+                const bubbleContent = formatMessageBubbleContent(msg.message_text, isMine);
+
+                if (isMine) {
+                    html += `
+                        <div id="msg-${msg.message_id}" class="group relative flex flex-col items-end msg-bubble-animate transition-all duration-300">
+                            ${isPinned ? `
+                                <div class="flex items-center gap-1 text-[10px] text-amber-600 font-bold mb-0.5 mr-1">
+                                    <i class="fas fa-thumbtack text-[9px] text-amber-500"></i>
+                                    <span>Pinned</span>
+                                </div>
+                            ` : ''}
+                            <div class="relative flex items-center gap-1.5 flex-row-reverse">
+                                <div class="max-w-[85%] sm:max-w-md px-4 py-2.5 rounded-2xl rounded-br-xs bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-xs text-xs sm:text-sm leading-relaxed break-words">
+                                    ${bubbleContent}
+                                </div>
+                                <button type="button" onclick="togglePinMessage(${msg.message_id})" title="${isPinned ? 'Unpin message' : 'Pin message'}" 
+                                        class="p-1.5 text-slate-400 hover:text-amber-500 rounded-lg hover:bg-slate-100 transition cursor-pointer text-xs ${isPinned ? 'opacity-100 text-amber-500' : 'opacity-0 group-hover:opacity-100'}">
+                                    <i class="fas fa-thumbtack"></i>
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-1.5 mt-1 mr-1 text-[10px] text-slate-400 font-medium">
+                                <span>${timeStr}</span>
+                                ${readReceiptsActive 
+                                    ? `<i class="fas ${msg.is_read ? 'fa-check-double text-cyan-600' : 'fa-check text-slate-400'} text-[9px]" title="${msg.is_read ? 'Read' : 'Delivered'}"></i>`
+                                    : `<i class="fas fa-check text-slate-400 text-[9px]" title="Delivered"></i>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div id="msg-${msg.message_id}" class="group relative flex items-start gap-2.5 max-w-[85%] sm:max-w-md msg-bubble-animate transition-all duration-300">
+                            <img src="${currentPartner?.profile_pic ? '/profile_uploads/' + currentPartner.profile_pic : '/profile_uploads/default_avatar.png'}" 
+                                 alt="Avatar" 
+                                 class="w-8 h-8 rounded-xl object-cover ring-1 ring-slate-200 shrink-0 mt-0.5"
+                                 onerror="this.src='/profile_uploads/default_avatar.png'">
+                            <div class="flex flex-col min-w-0">
+                                ${isPinned ? `
+                                    <div class="flex items-center gap-1 text-[10px] text-amber-600 font-bold mb-0.5 ml-1">
+                                        <i class="fas fa-thumbtack text-[9px] text-amber-500"></i>
+                                        <span>Pinned</span>
+                                    </div>
+                                ` : ''}
+                                <div class="flex items-center gap-1.5">
+                                    <div class="px-4 py-2.5 rounded-2xl rounded-bl-xs bg-white border border-slate-200/90 text-slate-800 shadow-xs text-xs sm:text-sm leading-relaxed break-words">
+                                        ${bubbleContent}
+                                    </div>
+                                    <button type="button" onclick="togglePinMessage(${msg.message_id})" title="${isPinned ? 'Unpin message' : 'Pin message'}" 
+                                            class="p-1.5 text-slate-400 hover:text-amber-500 rounded-lg hover:bg-slate-100 transition cursor-pointer text-xs ${isPinned ? 'opacity-100 text-amber-500' : 'opacity-0 group-hover:opacity-100'}">
+                                        <i class="fas fa-thumbtack"></i>
+                                    </button>
+                                </div>
+                                <span class="text-[10px] text-slate-400 mt-1 ml-1 font-medium">${timeStr}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            stream.innerHTML = html;
+
+            if (forceScroll || streamWasNearBottom) {
+                setTimeout(() => {
+                    stream.scrollTop = stream.scrollHeight;
+                }, 50);
+            }
+        }
+
+        // Send Message Handler
+        async function handleSendMessage(e) {
+            e.preventDefault();
+            if (!currentPartnerId || isSending) return;
+
+            const input = document.getElementById('messageInput');
+            const text = (input?.value || '').trim();
+            if (!text) return;
+
+            const sendBtn = document.getElementById('sendBtn');
+            isSending = true;
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = `<span>Sending...</span><i class="fas fa-circle-notch fa-spin text-xs"></i>`;
+            }
+            input.value = '';
+
+            const optimisticMsg = {
+                message_id: 'temp-' + Date.now(),
+                sender_id: CURRENT_USER_ID,
+                receiver_id: currentPartnerId,
+                message_text: text,
+                sent_at: new Date().toISOString(),
+                is_read: 0
+            };
+            currentMessages.push(optimisticMsg);
+            renderMessages(currentMessages, true);
+
+            try {
+                const res = await fetch('/teacher/api/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        receiver_id: currentPartnerId,
+                        message_text: text
+                    })
+                });
+
+                if (res.status === 403) {
+                    const data = await res.json();
+                    alert(data.error || 'Access restricted by class enrollment boundary.');
+                    currentMessages = currentMessages.filter(m => m.message_id !== optimisticMsg.message_id);
+                    renderMessages(currentMessages, true);
+                    return;
+                }
+
+                if (!res.ok) throw new Error('Failed to send message');
+
+                const data = await res.json();
+                if (data.success && data.message_id) {
+                    optimisticMsg.message_id = data.message_id;
+                    if (data.sent_at) {
+                        optimisticMsg.sent_at = data.sent_at;
+                        lastPollTimestamp = data.sent_at;
+                    }
+                }
+
+                fetchConversations();
+
+            } catch (err) {
+                console.error('[SEND MESSAGE ERROR]', err);
+                alert('Failed to deliver message. Please check your connection.');
+            } finally {
+                isSending = false;
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = `<span>Send</span><i class="fas fa-paper-plane text-xs"></i>`;
+                }
+                input?.focus();
+            }
+        }
+
+        // Attachment Upload Handlers
+        function triggerFileUpload() {
+            if (!currentPartnerId || isSending) return;
+            document.getElementById('chatFileInput')?.click();
+        }
+
+        async function handleFileSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file || !currentPartnerId || isSending) return;
+
+            event.target.value = '';
+
+            if (file.size > 25 * 1024 * 1024) {
+                alert('Attachment exceeds the 25MB limit. Please choose a smaller file.');
+                return;
+            }
+
+            const banner = document.getElementById('uploadingBanner');
+            if (banner) banner.classList.remove('hidden');
+
+            isSending = true;
+            const formData = new FormData();
+            formData.append('receiver_id', currentPartnerId);
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/teacher/api/messages/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.status === 403) {
+                    const data = await res.json();
+                    alert(data.error || 'Access restricted by class enrollment boundary.');
+                    return;
+                }
+
+                if (!res.ok) throw new Error('Upload failed');
+
+                const data = await res.json();
+                if (data.success) {
+                    currentMessages.push({
+                        message_id: data.message_id,
+                        sender_id: CURRENT_USER_ID,
+                        receiver_id: currentPartnerId,
+                        message_text: data.message_text,
+                        sent_at: data.sent_at || new Date().toISOString(),
+                        is_read: 0
+                    });
+                    if (data.sent_at) {
+                        lastPollTimestamp = data.sent_at;
+                    }
+                    renderMessages(currentMessages, true);
+                    fetchConversations();
+                }
+            } catch (err) {
+                console.error('[ATTACHMENT UPLOAD ERROR]', err);
+                alert('Failed to upload file attachment. Please try again.');
+            } finally {
+                isSending = false;
+                if (banner) banner.classList.add('hidden');
+            }
+        }
+
+        // Format Helpers & Utility Functions
+        function getFileIcon(fileName) {
+            const ext = (fileName || '').split('.').pop().toLowerCase();
+            switch (ext) {
+                case 'pdf': return '<i class="fas fa-file-pdf text-rose-500 text-lg shrink-0"></i>';
+                case 'doc':
+                case 'docx': return '<i class="fas fa-file-word text-blue-500 text-lg shrink-0"></i>';
+                case 'xls':
+                case 'xlsx': return '<i class="fas fa-file-excel text-emerald-500 text-lg shrink-0"></i>';
+                case 'ppt':
+                case 'pptx': return '<i class="fas fa-file-powerpoint text-amber-500 text-lg shrink-0"></i>';
+                case 'zip':
+                case 'rar':
+                case '7z': return '<i class="fas fa-file-zipper text-purple-500 text-lg shrink-0"></i>';
+                case 'txt':
+                case 'md': return '<i class="fas fa-file-lines text-slate-500 text-lg shrink-0"></i>';
+                case 'mp3':
+                case 'wav':
+                case 'm4a': return '<i class="fas fa-file-audio text-teal-500 text-lg shrink-0"></i>';
+                case 'mp4':
+                case 'mov': return '<i class="fas fa-file-video text-indigo-500 text-lg shrink-0"></i>';
+                default: return '<i class="fas fa-file-lines text-slate-400 text-lg shrink-0"></i>';
+            }
+        }
+
+        function formatMessagePreview(text) {
+            if (!text) return 'No messages yet';
+            if (text.includes('||')) {
+                const parts = text.split('||');
+                return '📎 File: ' + (parts[1] || 'Attachment');
+            }
+            return text;
+        }
+
+        function formatMessageBubbleContent(text, isMine) {
+            if (!text) return '';
+            if (text.includes('||')) {
+                const parts = text.split('||');
+                const fileUrl = parts[0];
+                const fileName = parts[1] || 'Attachment';
+                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName) || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+
+                if (isImage) {
+                    return `
+                        <div class="rounded-xl overflow-hidden mb-1.5 border ${isMine ? 'border-cyan-400/40' : 'border-slate-200'}">
+                            <img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(fileName)}" class="max-h-56 w-auto object-cover cursor-pointer hover:opacity-95 transition" onclick="window.open('${escapeHtml(fileUrl)}', '_blank')">
+                        </div>
+                        <a href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer" class="text-[11px] underline font-bold flex items-center gap-1.5 ${isMine ? 'text-cyan-100 hover:text-white' : 'text-cyan-600 hover:text-cyan-800'}">
+                            <i class="fas fa-arrow-up-right-from-square text-[9px]"></i>
+                            <span class="truncate">${escapeHtml(fileName)}</span>
+                        </a>
+                    `;
+                } else {
+                    const iconHtml = getFileIcon(fileName);
+                    return `
+                        <div class="flex items-center gap-3 p-2.5 rounded-xl ${isMine ? 'bg-cyan-800/40 border border-cyan-400/30' : 'bg-slate-50 border border-slate-200'} transition">
+                            <div class="w-9 h-9 rounded-lg ${isMine ? 'bg-cyan-950/60' : 'bg-white shadow-2xs'} flex items-center justify-center shrink-0">
+                                ${iconHtml}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-bold truncate ${isMine ? 'text-white' : 'text-slate-800'}">${escapeHtml(fileName)}</p>
+                                <p class="text-[10px] ${isMine ? 'text-cyan-200' : 'text-slate-400'} font-medium">Attachment</p>
+                            </div>
+                            <a href="${escapeHtml(fileUrl)}" target="_blank" download class="p-2 rounded-lg ${isMine ? 'bg-cyan-600/80 hover:bg-cyan-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'} transition cursor-pointer" title="Download ${escapeHtml(fileName)}">
+                                <i class="fas fa-download text-xs"></i>
+                            </a>
+                        </div>
+                    `;
+                }
+            }
+
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return escapeHtml(text).replace(urlRegex, function(url) {
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline font-semibold ${isMine ? 'text-cyan-100 hover:text-white' : 'text-cyan-600 hover:text-cyan-800'}">${url}</a>`;
+            });
+        }
+
+        function formatTimestamp(isoStr) {
+            if (!isoStr) return '';
+            const d = new Date(isoStr);
+            if (isNaN(d.getTime())) return '';
+            const now = new Date();
+            const diffMin = Math.floor((now - d) / 60000);
+
+            if (diffMin < 1) return 'Just now';
+            if (diffMin < 60) return diffMin + 'm ago';
+            const diffHrs = Math.floor(diffMin / 60);
+            if (diffHrs < 24 && now.getDate() === d.getDate()) return diffHrs + 'h ago';
+            if (diffHrs < 48) return 'Yesterday';
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function formatTimeOnly(isoStr) {
+            if (!isoStr) return '';
+            const d = new Date(isoStr);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function formatDayDivider(isoStr) {
+            if (!isoStr) return 'Recent';
+            const d = new Date(isoStr);
+            if (isNaN(d.getTime())) return 'Recent';
+            const now = new Date();
+
+            if (now.toDateString() === d.toDateString()) return 'Today';
+            const yesterday = new Date();
+            yesterday.setDate(now.getDate() - 1);
+            if (yesterday.toDateString() === d.toDateString()) return 'Yesterday';
+
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function clearContactSearch() {
+            const searchInput = document.getElementById('contactSearchInput');
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (searchInput) searchInput.value = '';
+            if (clearBtn) clearBtn.classList.add('hidden');
+            searchQuery = '';
+            if (activeTab === 'conversations') {
+                renderConversations();
+            } else {
+                fetchContacts();
+            }
+        }
+
+        // Event Listeners & Search / Filter Bindings
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchConversations();
+            fetchContacts();
+
+            const searchInput = document.getElementById('contactSearchInput');
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    searchQuery = e.target.value;
+                    if (clearBtn) {
+                        if (searchQuery.trim().length > 0) {
+                            clearBtn.classList.remove('hidden');
+                        } else {
+                            clearBtn.classList.add('hidden');
+                        }
+                    }
+                    clearTimeout(searchDebounceTimer);
+                    searchDebounceTimer = setTimeout(() => {
+                        if (activeTab === 'conversations') {
+                            renderConversations();
+                        } else {
+                            fetchContacts();
+                        }
+                    }, 250);
+                });
+            }
+
+            // Close class filter dropdown on click outside
+            document.addEventListener('click', (e) => {
+                const container = document.getElementById('classFilterDropdownContainer');
+                if (container && !container.contains(e.target)) {
+                    closeClassFilterDropdown();
+                }
+            });
+
+            // Check URL parameters for direct student auto-open (?userId=123)
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetUserId = parseInt(urlParams.get('userId'), 10);
+            if (!isNaN(targetUserId)) {
+                fetch(`/teacher/api/messaging/contacts?q=`).then(r => r.json()).then(data => {
+                    const match = (data.contacts || []).find(c => c.user_id === targetUserId);
+                    if (match) {
+                        openChatThread(match);
+                    } else {
+                        // Direct thread lookup from server
+                        fetch(`/teacher/api/messaging/thread/${targetUserId}?markRead=false`).then(r => r.json()).then(tData => {
+                            if (tData.partner) {
+                                openChatThread(tData.partner);
+                            } else {
+                                openChatThread({ user_id: targetUserId, first_name: 'Student', last_name: '#' + targetUserId, role: 'Student' });
+                            }
+                        }).catch(() => {
+                            openChatThread({ user_id: targetUserId, first_name: 'Student', last_name: '#' + targetUserId, role: 'Student' });
+                        });
+                    }
+                }).catch(() => {});
+            }
+
+            const stream = document.getElementById('messageStream');
+            if (stream) {
+                stream.addEventListener('scroll', () => {
+                    const isNearBottom = (stream.scrollHeight - stream.scrollTop - stream.clientHeight) < 60;
+                    if (isNearBottom) {
+                        const badge = document.getElementById('newMessagesBadge');
+                        if (badge) badge.classList.add('hidden');
+                    }
+                });
+            }
+
+            startPolling();
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    stopPolling();
+                    pollingTimer = setInterval(tickPolling, 15000);
+                } else {
+                    stopPolling();
+                    startPolling();
+                    tickPolling();
+                }
+            });
+        });
+
+        function startPolling() {
+            stopPolling();
+            pollingTimer = setInterval(tickPolling, 2500);
+        }
+
+        function stopPolling() {
+            if (pollingTimer) {
+                clearInterval(pollingTimer);
+                pollingTimer = null;
+            }
+        }
+
+        function tickPolling() {
+            if (currentPartnerId) {
+                pollDeltaMessages();
+            }
+            fetchConversations();
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,161 @@
+<style>
+@media print {
+    body * { visibility: hidden !important; }
+    #submissionReceiptModal, #submissionReceiptModal * { visibility: visible !important; }
+    #submissionReceiptModal {
+        position: fixed !important;
+        inset: 0 !important;
+        background: white !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 999999 !important;
+    }
+    #submissionReceiptModal .bg-white {
+        box-shadow: none !important;
+        border: 2px solid #0f172a !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    #submissionReceiptModal button, #hashDropzone {
+        display: none !important;
+    }
+}
+</style>
+
+<!-- Tamper-Proof Cryptographic Submission Receipt Modal -->
+<div id="submissionReceiptModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[99999] hidden flex items-center justify-center p-4 cursor-pointer"
+     role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle" onclick="if(event.target === this) closeReceiptModal()">
+    <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 cursor-default">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-900 to-indigo-800 text-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center font-black text-xl backdrop-blur-md">
+                    🔐
+                </div>
+                <div>
+                    <h3 class="font-black text-base tracking-tight" id="receiptModalTitle">Cryptographic Submission Receipt</h3>
+                    <p class="text-[11px] text-indigo-200 font-medium">Non-repudiation digital proof of submission</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeReceiptModal()" aria-label="Close receipt" class="text-white/60 hover:text-white text-lg font-bold p-1">&times;</button>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <!-- Receipt Details Grid -->
+            <div class="grid grid-cols-2 gap-3 text-xs">
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block mb-0.5">Receipt ID</span>
+                    <span id="rcptId" class="font-extrabold text-indigo-950 font-mono text-sm">#--</span>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block mb-0.5">Server Timestamp</span>
+                    <span id="rcptTime" class="font-bold text-slate-700">--</span>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 col-span-2">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block mb-0.5">Assessment Title</span>
+                    <span id="rcptTitle" class="font-black text-slate-800">--</span>
+                </div>
+            </div>
+
+            <!-- SHA-256 Hash Container -->
+            <div class="p-4 rounded-2xl bg-slate-900 text-slate-100 font-mono text-xs border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    <span>SHA-256 Digital Fingerprint</span>
+                    <button onclick="copyReceiptHash()" class="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition">
+                        <i class="fas fa-copy"></i>
+                        <span id="copyFeedback">Copy Hash</span>
+                    </button>
+                </div>
+                <div id="rcptHash" class="break-all text-[11px] leading-relaxed text-indigo-200 select-all">
+                    ----------------------------------------------------------------
+                </div>
+            </div>
+
+            <!-- Drag-and-Drop Hash Self-Verification Dropzone -->
+            <div class="p-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-indigo-400 transition bg-slate-50/50 flex flex-col items-center justify-center gap-1.5 cursor-pointer relative" id="hashDropzone">
+                <input type="file" id="hashVerifyFileInput" class="absolute inset-0 opacity-0 cursor-pointer" />
+                <i class="fas fa-fingerprint text-indigo-500 text-xl"></i>
+                <p class="text-xs font-black text-slate-700">Drag & Drop File to Verify Hash</p>
+                <p class="text-[10px] text-slate-400 font-medium">Instantly calculates SHA-256 in your browser to verify integrity</p>
+                <span id="hashVerifyMatchStatus" class="hidden text-xs font-black px-2.5 py-1 rounded-full mt-1"></span>
+            </div>
+        </div>
+
+        <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+            <button onclick="window.print()" class="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-2">
+                <i class="fas fa-print text-slate-400"></i>
+                <span>Print Receipt</span>
+            </button>
+            <button onclick="closeReceiptModal()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-lg shadow-indigo-200 transition">
+                Done
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentReceiptHash = '';
+
+    function showSubmissionReceipt(data) {
+        document.getElementById('rcptId').textContent = '#' + (data.receipt_id || 'PENDING');
+        document.getElementById('rcptTime').textContent = new Date(data.server_timestamp || Date.now()).toLocaleString();
+        document.getElementById('rcptTitle').textContent = data.assessment_name || data.original_filename || 'Assessment Submission';
+        document.getElementById('rcptHash').textContent = data.sha256_hash || '';
+        currentReceiptHash = (data.sha256_hash || '').toLowerCase();
+
+        const statusPill = document.getElementById('hashVerifyMatchStatus');
+        statusPill.classList.add('hidden');
+
+        if (window.ModalManager) {
+            ModalManager.open('submissionReceiptModal');
+        } else {
+            document.getElementById('submissionReceiptModal').classList.remove('hidden');
+            document.getElementById('submissionReceiptModal').classList.add('flex');
+        }
+    }
+
+    function closeReceiptModal() {
+        if (window.ModalManager) {
+            ModalManager.close('submissionReceiptModal');
+        } else {
+            document.getElementById('submissionReceiptModal').classList.add('hidden');
+            document.getElementById('submissionReceiptModal').classList.remove('flex');
+        }
+        if (window._reloadOnReceiptClose) {
+            window._reloadOnReceiptClose = false;
+            location.reload();
+        }
+    }
+
+    function copyReceiptHash() {
+        if (!currentReceiptHash) return;
+        navigator.clipboard.writeText(currentReceiptHash).then(() => {
+            const fb = document.getElementById('copyFeedback');
+            fb.textContent = 'Copied!';
+            setTimeout(() => fb.textContent = 'Copy Hash', 2000);
+        });
+    }
+
+    // Client-side drag-and-drop hash self-checker using SubtleCrypto Web API
+    document.getElementById('hashVerifyFileInput').addEventListener('change', async function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const buffer = await file.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', buffer);
+        const hashArray = Array.from(new Uint8Array(digest));
+        const calculatedHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toLowerCase();
+
+        const statusPill = document.getElementById('hashVerifyMatchStatus');
+        statusPill.classList.remove('hidden');
+
+        if (calculatedHash === currentReceiptHash) {
+            statusPill.className = 'text-xs font-black px-2.5 py-1 rounded-full mt-1 bg-emerald-100 text-emerald-700 border border-emerald-300';
+            statusPill.innerHTML = '<i class="fas fa-check mr-1"></i> Match Verified! File is 100% authentic.';
+        } else {
+            statusPill.className = 'text-xs font-black px-2.5 py-1 rounded-full mt-1 bg-rose-100 text-rose-700 border border-rose-300';
+            statusPill.innerHTML = '<i class="fas fa-times mr-1"></i> Hash Mismatch! File has been altered.';
+        }
+    });
+</script>

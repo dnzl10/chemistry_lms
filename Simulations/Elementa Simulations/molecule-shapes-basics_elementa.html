@@ -1,0 +1,3071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Molecule Shapes: Basics | Elementa LMS Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================================================
+       CSS VARIABLES & THEME
+       ========================================================================= */
+    :root {
+      --bg-base: #070b14;
+      --bg-panel: rgba(15, 23, 42, 0.85);
+      --bg-card: rgba(30, 41, 59, 0.65);
+      --bg-card-hover: rgba(51, 65, 85, 0.85);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-focus: #06b6d4;
+      
+      --accent-cyan: #06b6d4;
+      --accent-teal: #14b8a6;
+      --accent-blue: #3b82f6;
+      --accent-indigo: #6366f1;
+      --accent-purple: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-emerald: #10b981;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --topbar-height: 56px;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-heading: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* =========================================================================
+       TOPBAR (EXACT REPLICATION FROM ACID-BASE-SOLUTIONS)
+       ========================================================================= */
+    .elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border-card);
+    }
+
+    .lms-breadcrumb span.current {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+
+    .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    .action-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* =========================================================================
+       MAIN CONTENT CONTAINER
+       ========================================================================= */
+    .app-main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .app-section {
+      position: absolute;
+      inset: 0;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      overflow: hidden;
+    }
+
+    .app-section.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    /* =========================================================================
+       SUB-NAV FOR SIMULATION LAB (MODEL vs REAL MOLECULES)
+       ========================================================================= */
+    .sim-lab-layout {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sim-subbar {
+      height: 44px;
+      background: rgba(15, 23, 42, 0.6);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .sub-screen-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .sub-tab-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .sub-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    .sub-tab-btn.active {
+      background: rgba(6, 182, 212, 0.16);
+      color: #22d3ee;
+      border-color: rgba(6, 182, 212, 0.4);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+    }
+
+    .sub-quick-stats {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+    }
+
+    .sub-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .sub-stat-val {
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+    }
+
+    /* =========================================================================
+       WORKSPACE AREA (CANVAS + SIDEBARS)
+       ========================================================================= */
+    .sim-workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .viewport-3d-wrap {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at 50% 45%, #131d33 0%, #090e1a 65%, #050810 100%);
+      overflow: hidden;
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #simCanvas:active {
+      cursor: grabbing;
+    }
+
+    /* Floating Viewport Controls */
+    .viewport-overlay-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    .vp-tool-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
+    }
+
+    .vp-tool-btn:hover {
+      background: rgba(30, 41, 59, 0.9);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .vp-tool-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.5);
+      background: rgba(14, 165, 233, 0.15);
+    }
+
+    .viewport-legend-box {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 10px 14px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.75rem;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .legend-title {
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #cbd5e1;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Right Interactive Control Panel */
+    .sim-panel {
+      width: 350px;
+      background: rgba(15, 23, 42, 0.92);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .panel-section {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .panel-heading {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Model Screen Bond Addition Cards */
+    .bond-adder-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .bond-control-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+
+    .bond-control-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: var(--bg-card-hover);
+    }
+
+    .bond-type-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bond-badge-count {
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 8px;
+      border-radius: 5px;
+      color: #38bdf8;
+    }
+
+    .bond-btn-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-counter {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border-card);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-counter:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .btn-counter:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Capacity Bar */
+    .capacity-container {
+      margin-top: 12px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-card);
+    }
+
+    .capacity-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      margin-bottom: 6px;
+    }
+
+    .capacity-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .capacity-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #06b6d4, #3b82f6);
+      width: 33.3%;
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+
+    .capacity-fill.full {
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+    }
+
+    /* Option Toggles */
+    .toggle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .toggle-row:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .toggle-label-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .custom-switch {
+      width: 36px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      position: relative;
+      transition: background 0.2s ease;
+    }
+
+    .custom-switch::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ffffff;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s ease;
+    }
+
+    .toggle-row.active .custom-switch {
+      background: #0284c7;
+    }
+
+    .toggle-row.active .custom-switch::after {
+      transform: translateX(16px);
+    }
+
+    /* VSEPR Geometry Readout Cards */
+    .geom-readout-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .geom-readout-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, #06b6d4, #6366f1);
+    }
+
+    .geom-pill-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .geom-primary-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .geom-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .meta-tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .meta-tag.highlight {
+      background: rgba(6, 182, 212, 0.15);
+      color: #22d3ee;
+      border-color: rgba(6, 182, 212, 0.3);
+    }
+
+    /* Real Molecule Screen Selectors */
+    .real-select-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .styled-select {
+      width: 100%;
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .styled-select:focus {
+      border-color: #06b6d4;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+    }
+
+    .basics-canonical-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .canon-btn {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--border-card);
+      color: #cbd5e1;
+      border-radius: 8px;
+      padding: 9px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.18s ease;
+    }
+
+    .canon-btn:hover {
+      background: rgba(51, 65, 85, 0.8);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .canon-btn.active {
+      background: rgba(14, 165, 233, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .comparison-banner {
+      background: rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.74rem;
+      color: #bae6fd;
+      line-height: 1.45;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    /* Reset Button */
+    .btn-reset-model {
+      width: 100%;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 12px;
+      transition: all 0.18s ease;
+    }
+
+    .btn-reset-model:hover {
+      background: rgba(244, 63, 94, 0.2);
+      border-color: #f43f5e;
+      color: #ffffff;
+    }
+
+    /* =========================================================================
+       GUIDED MISSIONS TAB
+       ========================================================================= */
+    .missions-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .section-hero {
+      margin-bottom: 24px;
+    }
+
+    .section-hero h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-hero p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .missions-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .mission-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      background: rgba(30, 41, 59, 0.8);
+      transform: translateY(-2px);
+    }
+
+    .mission-card.completed {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .mission-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .mission-number {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .mission-card.completed .mission-number {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .mission-info h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+
+    .mission-info p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .mission-tags {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .mission-tag {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #94a3b8;
+    }
+
+    .btn-mission-action {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .btn-mission-action:hover {
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.6);
+      transform: scale(1.02);
+    }
+
+    .mission-card.completed .btn-mission-action {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      cursor: default;
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ TAB
+       ========================================================================= */
+    .quiz-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 950px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .quiz-scoreboard {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .quiz-score-num {
+      font-size: 1.8rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+    }
+
+    .quiz-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .quiz-question {
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .quiz-options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .quiz-option-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.18s ease;
+    }
+
+    .quiz-option-btn:hover:not(.locked) {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .opt-letter {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-option-btn.correct {
+      background: rgba(16, 185, 129, 0.15) !important;
+      border-color: #10b981 !important;
+      color: #a7f3d0 !important;
+    }
+
+    .quiz-option-btn.wrong {
+      background: rgba(244, 63, 94, 0.15) !important;
+      border-color: #f43f5e !important;
+      color: #fecdd3 !important;
+    }
+
+    .quiz-feedback {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .quiz-feedback.show {
+      display: block;
+    }
+
+    .quiz-feedback.correct {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    .quiz-feedback.wrong {
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+    }
+
+    /* =========================================================================
+       THEORY & FORMULAS TAB
+       ========================================================================= */
+    .theory-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 1050px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .theory-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .theory-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-card p, .theory-card li {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .theory-card ul {
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .theory-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 8px;
+    }
+
+    .theory-table th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-card);
+      font-weight: 700;
+    }
+
+    .theory-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+    }
+
+    .theory-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-main);
+    }
+
+    /* Modal Certificate */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 550px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+  
+    /* Standard Sleek Elementa Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  
+    /* ==========================================================================
+       ELEMENTA STANDARD MODALS (acid-base-solutions baseline)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    .modal-backdrop .missions-container,
+    .modal-backdrop .quiz-container,
+    .modal-backdrop .theory-container {
+      max-width: 100% !important;
+      padding: 0 !important;
+    }
+    .modal-backdrop .section-hero {
+      margin-bottom: 16px !important;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+</head>
+<body>
+
+  <!-- =========================================================================
+       ELEMENTA TOPBAR (IDENTICAL TO ACID-BASE-SOLUTIONS)
+       ========================================================================= */
+  -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <circle cx="19" cy="5" r="2"></circle>
+            <circle cx="5" cy="19" r="2"></circle>
+            <circle cx="19" cy="19" r="2"></circle>
+            <line x1="12" y1="9" x2="19" y2="7"></line>
+            <line x1="12" y1="15" x2="5" y2="17"></line>
+            <line x1="14" y1="14" x2="17" y2="17"></line>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Chemical Bonding</span>
+        <span>›</span>
+        <span class="current">Molecule Shapes: Basics</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       MAIN INTERACTIVE APPLICATION
+       ========================================================================= -->
+  <main class="simulation-workspace app-main">
+
+    <!-- 1. SIMULATION LAB -->
+    <section class="app-section active" id="secSimLab">
+      <div class="sim-lab-layout">
+
+        <!-- Sub-bar for Screens -->
+        <div class="sim-subbar">
+          <div class="sub-screen-tabs">
+            <button class="sub-tab-btn active" id="btnSubModel" onclick="setSubScreen('model')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path></svg>
+              Model (Basic VSEPR)
+            </button>
+            <button class="sub-tab-btn" id="btnSubReal" onclick="setSubScreen('real')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+              Real Molecules (5 Canonical Geometries)
+            </button>
+          </div>
+
+          <div class="sub-quick-stats">
+            <div class="sub-stat-item">
+              <span>Steric No:</span>
+              <span class="sub-stat-val" id="lblStericNumber">2</span>
+            </div>
+            <div class="sub-stat-item">
+              <span>Bond Domains:</span>
+              <span class="sub-stat-val" id="lblBondPairs">2</span>
+            </div>
+            <div class="sub-stat-item">
+              <span>Lone Pairs:</span>
+              <span class="sub-stat-val" style="color: #94a3b8;">0 (Basics)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Workspace -->
+        <div class="sim-workspace">
+
+          <!-- Interactive 3D Canvas Viewport -->
+          <div class="viewport-3d-wrap" id="viewportWrap">
+            <canvas id="simCanvas"></canvas>
+
+            <!-- Floating Viewport Controls -->
+            <div class="viewport-overlay-controls">
+              <button class="vp-tool-btn" id="btnAutoSpin" title="Toggle Auto-Spin" onclick="toggleAutoSpin()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+              </button>
+              <button class="vp-tool-btn" title="Reset 3D Orientation" onclick="reset3DOrientation()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              </button>
+              <button class="vp-tool-btn" title="Zoom In" onclick="adjustZoom(1.15)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+              </button>
+              <button class="vp-tool-btn" title="Zoom Out" onclick="adjustZoom(0.87)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+              </button>
+            </div>
+
+            <!-- Legend Overlay -->
+            <div class="viewport-legend-box" id="viewportLegend">
+              <span class="legend-title">Basic VSEPR Domains</span>
+              <div class="legend-item"><span class="legend-dot" style="background: #a855f7;"></span> Central Atom (A)</div>
+              <div class="legend-item"><span class="legend-dot" style="background: #06b6d4;"></span> Bonded Atoms (X)</div>
+            </div>
+          </div>
+
+          <!-- Right Sidebar Control Panel -->
+          <aside class="simulation-sidebar sim-panel">
+
+            <!-- CONTROLS FOR MODEL SCREEN -->
+            <div id="panelModelScreen">
+              <!-- Bonding Controls -->
+              <div class="panel-section">
+                <div class="panel-heading">
+                  <span>Bonding Domains (Max 6)</span>
+                  <span style="color: #64748b; font-size: 0.65rem;">Basics Edition</span>
+                </div>
+
+                <div class="bond-adder-grid">
+                  <!-- Single Bond -->
+                  <div class="bond-control-card">
+                    <span class="bond-type-label">
+                      <span style="display:inline-block; width:16px; height:3px; background:#06b6d4; border-radius:2px;"></span>
+                      Single Bond (—)
+                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span class="bond-badge-count" id="countSingle">2</span>
+                      <div class="bond-btn-row">
+                        <button class="btn-counter" onclick="modifyDomain('single', -1)">−</button>
+                        <button class="btn-counter" onclick="modifyDomain('single', 1)">+</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Double Bond -->
+                  <div class="bond-control-card">
+                    <span class="bond-type-label">
+                      <span style="display:inline-flex; flex-direction:column; gap:2px;"><span style="width:16px; height:2px; background:#06b6d4;"></span><span style="width:16px; height:2px; background:#06b6d4;"></span></span>
+                      Double Bond (=)
+                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span class="bond-badge-count" id="countDouble">0</span>
+                      <div class="bond-btn-row">
+                        <button class="btn-counter" onclick="modifyDomain('double', -1)">−</button>
+                        <button class="btn-counter" onclick="modifyDomain('double', 1)">+</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Triple Bond -->
+                  <div class="bond-control-card">
+                    <span class="bond-type-label">
+                      <span style="display:inline-flex; flex-direction:column; gap:2px;"><span style="width:16px; height:1.5px; background:#06b6d4;"></span><span style="width:16px; height:1.5px; background:#06b6d4;"></span><span style="width:16px; height:1.5px; background:#06b6d4;"></span></span>
+                      Triple Bond (≡)
+                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span class="bond-badge-count" id="countTriple">0</span>
+                      <div class="bond-btn-row">
+                        <button class="btn-counter" onclick="modifyDomain('triple', -1)">−</button>
+                        <button class="btn-counter" onclick="modifyDomain('triple', 1)">+</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Capacity Progress Bar -->
+                <div class="capacity-container">
+                  <div class="capacity-label-row">
+                    <span style="color: #94a3b8;">Valence Steric Load</span>
+                    <span id="capacityLabel" style="font-weight: 700; color: #38bdf8;">2 / 6 Domains</span>
+                  </div>
+                  <div class="capacity-track">
+                    <div class="capacity-fill" id="capacityFillBar" style="width: 33.3%;"></div>
+                  </div>
+                </div>
+
+                <!-- Reset Model Button -->
+                <button class="btn-reset-model" onclick="removeAllDomains()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  Remove All Domains
+                </button>
+              </div>
+            </div>
+
+            <!-- CONTROLS FOR REAL MOLECULES SCREEN -->
+            <div id="panelRealScreen" style="display: none;">
+              <div class="panel-section">
+                <div class="panel-heading">Canonical Basic Molecules</div>
+                
+                <div class="basics-canonical-grid">
+                  <button class="canon-btn" id="btnBeCl2" onclick="onSelectCanonical('BeCl2')">BeCl₂ (Linear)</button>
+                  <button class="canon-btn" id="btnCO2" onclick="onSelectCanonical('CO2')">CO₂ (Linear =)</button>
+                  <button class="canon-btn" id="btnBF3" onclick="onSelectCanonical('BF3')">BF₃ (Trigonal)</button>
+                  <button class="canon-btn active" id="btnCH4" onclick="onSelectCanonical('CH4')">CH₄ (Tetrahedral)</button>
+                  <button class="canon-btn" id="btnPCl5" onclick="onSelectCanonical('PCl5')">PCl₅ (Trig. Bipyr.)</button>
+                  <button class="canon-btn" id="btnSF6" onclick="onSelectCanonical('SF6')">SF₆ (Octahedral)</button>
+                </div>
+
+                <div class="comparison-banner">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                  <span id="canonicalNoteText">In basic molecules with 0 lone pairs, the Molecule Geometry is identical to the Electron Geometry and bond angles are perfectly symmetric.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SHARED DISPLAY TOGGLES -->
+            <div class="panel-section">
+              <div class="panel-heading">Display Options</div>
+              <div class="toggle-list">
+                <!-- Molecule Geometry Toggle -->
+                <div class="toggle-row active" id="togMoleculeGeom" onclick="toggleOption('moleculeGeom')">
+                  <div class="toggle-label-wrap">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                    <span>Molecule Geometry</span>
+                  </div>
+                  <div class="custom-switch"></div>
+                </div>
+
+                <!-- Bond Angles Toggle -->
+                <div class="toggle-row active" id="togBondAngles" onclick="toggleOption('bondAngles')">
+                  <div class="toggle-label-wrap">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+                    <span>Show Bond Angles</span>
+                  </div>
+                  <div class="custom-switch"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- VSEPR CLASSIFICATION CARDS -->
+            <div class="panel-section" style="flex: 1;">
+              <div class="panel-heading">Canonical Geometry Summary</div>
+
+              <div class="geom-readout-card" id="cardGeomReadout">
+                <span class="geom-pill-title">Basic Molecule Geometry</span>
+                <div class="geom-primary-name" id="readoutMoleculeGeom">Linear</div>
+                
+                <span class="geom-pill-title" style="margin-top: 6px;">Geometry Type</span>
+                <div style="font-size: 0.95rem; font-weight: 700; color: #38bdf8;" id="readoutElectronGeom">Ideal Symmetrical Polyhedron</div>
+
+                <div class="geom-meta-row">
+                  <span class="meta-tag highlight" id="tagFormula">AX₂</span>
+                  <span class="meta-tag" id="tagHybrid">Hybridization: sp</span>
+                  <span class="meta-tag" id="tagAngle">Bond Angle: 180°</span>
+                </div>
+              </div>
+            </div>
+
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 2. GUIDED MISSIONS -->
+    <section class="app-section" id="secMissions">
+      <div class="missions-container">
+        <div class="section-hero">
+          <h2>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            Foundational VSEPR Missions
+          </h2>
+          <p>Master the 5 fundamental symmetrical shapes of chemistry where all electron pairs are bonded into ideal polyhedra.</p>
+        </div>
+
+        <div class="missions-grid">
+          <!-- Mission 1 -->
+          <div class="mission-card" id="missionCard1">
+            <div class="mission-left">
+              <div class="mission-number">01</div>
+              <div class="mission-info">
+                <h3>Linear Symmetry (AX₂)</h3>
+                <p>Construct a molecule with 2 single bonds in the Model builder or inspect Beryllium Chloride (BeCl₂). Verify that two electron domains maximize separation at 180°.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Linear</span>
+                  <span class="mission-tag">Steric No: 2</span>
+                  <span class="mission-tag">+100 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(1)">Start Mission</button>
+          </div>
+
+          <!-- Mission 2 -->
+          <div class="mission-card" id="missionCard2">
+            <div class="mission-left">
+              <div class="mission-number">02</div>
+              <div class="mission-info">
+                <h3>Trigonal Planar Triad (AX₃)</h3>
+                <p>Construct or inspect Boron Trifluoride (BF₃). Confirm that 3 electron domains spread into a flat 2D plane with 120° angles between each bond.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Trigonal Planar</span>
+                  <span class="mission-tag">Steric No: 3</span>
+                  <span class="mission-tag">+100 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(2)">Start Mission</button>
+          </div>
+
+          <!-- Mission 3 -->
+          <div class="mission-card" id="missionCard3">
+            <div class="mission-left">
+              <div class="mission-number">03</div>
+              <div class="mission-info">
+                <h3>The 3D Tetrahedral Octet (AX₄)</h3>
+                <p>Build Methane (CH₄) with 4 single bonds. Note that 4 domains do not form a 90° square, but expand into full 3D space to achieve a 109.5° tetrahedral angle.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Tetrahedral</span>
+                  <span class="mission-tag">Steric No: 4</span>
+                  <span class="mission-tag">+150 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(3)">Start Mission</button>
+          </div>
+
+          <!-- Mission 4 -->
+          <div class="mission-card" id="missionCard4">
+            <div class="mission-left">
+              <div class="mission-number">04</div>
+              <div class="mission-info">
+                <h3>Expanded Valence: Trigonal Bipyramidal (AX₅)</h3>
+                <p>Examine Phosphorus Pentachloride (PCl₅). Identify the 2 distinct geometric environments: 3 equatorial bonds at 120° and 2 axial bonds perpendicular at 90°.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Trigonal Bipyramidal</span>
+                  <span class="mission-tag">Steric No: 5</span>
+                  <span class="mission-tag">+150 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(4)">Start Mission</button>
+          </div>
+
+          <!-- Mission 5 -->
+          <div class="mission-card" id="missionCard5">
+            <div class="mission-left">
+              <div class="mission-number">05</div>
+              <div class="mission-info">
+                <h3>Perfect Octahedral Symmetry (AX₆)</h3>
+                <p>Inspect Sulfur Hexafluoride (SF₆) with 6 bonds. Verify that all 6 vertices are completely equivalent with mutual 90° and 180° bond angles.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Octahedral</span>
+                  <span class="mission-tag">Steric No: 6</span>
+                  <span class="mission-tag">+200 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(5)">Start Mission</button>
+          </div>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- 3. ASSESSMENT QUIZ -->
+    <section class="app-section" id="secQuiz">
+      <div class="quiz-container">
+        <div class="quiz-scoreboard">
+          <div>
+            <h2 style="font-size: 1.3rem; font-weight: 800; color: #ffffff;">Basics VSEPR Knowledge Quiz</h2>
+            <p style="color: var(--text-muted); font-size: 0.82rem;">Test your understanding of basic molecular geometry, bond angles, and orbital hybridization.</p>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Current Score</div>
+            <div class="quiz-score-num" id="quizScoreDisplay">0 / 100%</div>
+          </div>
+        </div>
+
+        <!-- Question 1 -->
+        <div class="quiz-card" id="quizCard1">
+          <div class="quiz-q-num">Question 1 of 5</div>
+          <div class="quiz-question">What is the bond angle between the two beryllium-chlorine bonds in linear Beryllium Chloride (BeCl₂)?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 0, false)"><span class="opt-letter">A</span> 90°</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 1, false)"><span class="opt-letter">B</span> 109.5°</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 2, false)"><span class="opt-letter">C</span> 120°</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 3, true)"><span class="opt-letter">D</span> 180°</button>
+          </div>
+          <div class="quiz-feedback" id="feedback1">
+            <strong>Explanation:</strong> With 2 electron domains and 0 lone pairs on the central atom (AX₂), the two bonding pairs repel directly to opposite sides of the nucleus, yielding a 180° bond angle.
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="quiz-card" id="quizCard2">
+          <div class="quiz-q-num">Question 2 of 5</div>
+          <div class="quiz-question">Why does methane (CH₄) adopt a 3D tetrahedral geometry (109.5°) rather than a planar square geometry (90°)?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 0, true)"><span class="opt-letter">A</span> 109.5° in 3D provides greater electrostatic distance and lower repulsion between electron pairs than 90° in a plane.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 1, false)"><span class="opt-letter">B</span> Hydrogen atoms carry partial negative charges that attract each other.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 2, false)"><span class="opt-letter">C</span> Carbon cannot form sp³ hybrid orbitals in a plane.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 3, false)"><span class="opt-letter">D</span> Methane possesses a central lone pair that pushes the bonds down.</button>
+          </div>
+          <div class="quiz-feedback" id="feedback2">
+            <strong>Explanation:</strong> VSEPR theory states that electron domains repel to maximize distance. A 3D tetrahedron spreads 4 electron domains at 109.5°, which minimizes repulsion compared to 90° in a flat square plane.
+          </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="quiz-card" id="quizCard3">
+          <div class="quiz-q-num">Question 3 of 5</div>
+          <div class="quiz-question">Which geometry and hybridization describe Boron Trifluoride (BF₃), which has 3 single bonds and 0 lone pairs?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 0, false)"><span class="opt-letter">A</span> Trigonal Pyramidal, sp³</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 1, true)"><span class="opt-letter">B</span> Trigonal Planar, sp²</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 2, false)"><span class="opt-letter">C</span> T-shaped, sp³d</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 3, false)"><span class="opt-letter">D</span> Tetrahedral, sp³</button>
+          </div>
+          <div class="quiz-feedback" id="feedback3">
+            <strong>Explanation:</strong> Three electron domains around boron (steric number 3) adopt a flat Trigonal Planar geometry with 120° angles and sp² hybridization.
+          </div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="quiz-card" id="quizCard4">
+          <div class="quiz-q-num">Question 4 of 5</div>
+          <div class="quiz-question">In Phosphorus Pentachloride (PCl₅, AX₅), what bond angles exist between the bonds?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 0, false)"><span class="opt-letter">A</span> Only 109.5°</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 1, false)"><span class="opt-letter">B</span> Only 90°</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 2, true)"><span class="opt-letter">C</span> 90°, 120°, and 180°</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 3, false)"><span class="opt-letter">D</span> Only 120°</button>
+          </div>
+          <div class="quiz-feedback" id="feedback4">
+            <strong>Explanation:</strong> Trigonal bipyramidal geometry contains 3 equatorial bonds (120° to each other), 2 axial bonds (180° to each other), and axial-to-equatorial relationships (90°).
+          </div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="quiz-card" id="quizCard5">
+          <div class="quiz-q-num">Question 5 of 5</div>
+          <div class="quiz-question">Why are all 5 canonical basic molecules (BeCl₂, BF₃, CH₄, PCl₅, SF₆) completely nonpolar even though their individual chemical bonds are polar?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 0, false)"><span class="opt-letter">A</span> The electronegativity difference is zero in each bond.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 1, true)"><span class="opt-letter">B</span> Their highly symmetric 3D shapes cause individual bond dipole vectors to sum to zero.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 2, false)"><span class="opt-letter">C</span> The central atoms have no valence electrons left.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 3, false)"><span class="opt-letter">D</span> Dispersion forces cancel out the dipole moments.</button>
+          </div>
+          <div class="quiz-feedback" id="feedback5">
+            <strong>Explanation:</strong> Because the outer atoms are identical and arranged in high geometric symmetry with zero lone pairs, the vector sum of bond dipoles equals zero ($sum ec{mu} = 0$), making each molecule nonpolar overall.
+          </div>
+        </div>
+
+        <!-- Action / Certificate Button -->
+        <div style="text-align: center; margin-top: 30px;">
+          <button class="btn-mission-action" style="font-size: 0.95rem; padding: 12px 28px; margin: 0 auto;" id="btnClaimCert" onclick="openCertificateModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            Claim Certificate of Mastery
+          </button>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- 4. THEORY & FORMULAS -->
+    <section class="app-section" id="secTheory">
+      <div class="theory-container">
+        <div class="section-hero">
+          <h2>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            Basic VSEPR Theory & Polyhedral Geometries
+          </h2>
+          <p>Reference guide for foundational VSEPR shapes with 0 lone pairs on the central atom.</p>
+        </div>
+
+        <div class="theory-grid">
+          <!-- Card 1 -->
+          <div class="theory-card">
+            <h3>1. The Five Canonical Shapes</h3>
+            <p>When a central atom has no non-bonding lone pairs, its molecular geometry matches its electron geometry exactly. Electron domains spread symmetrically into five regular geometric polyhedra:</p>
+            <ul>
+              <li><strong>2 Domains (AX₂):</strong> Linear (180°)</li>
+              <li><strong>3 Domains (AX₃):</strong> Trigonal Planar (120°)</li>
+              <li><strong>4 Domains (AX₄):</strong> Tetrahedral (109.5°)</li>
+              <li><strong>5 Domains (AX₅):</strong> Trigonal Bipyramidal (90°, 120°, 180°)</li>
+              <li><strong>6 Domains (AX₆):</strong> Octahedral (90°, 180°)</li>
+            </ul>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="theory-card">
+            <h3>2. Bond Multiplicity Rule</h3>
+            <p>In VSEPR theory, double and triple bonds contain multiple electron pairs, but because they are constrained between the same two atomic nuclei, they act as a <strong>single electron domain</strong> when determining overall geometry.</p>
+            <p>For example, Carbon Dioxide ($O=C=O$) has two double bonds ($AX_2$), so it is completely linear (180°), identical in geometry to Beryllium Chloride ($Cl-Be-Cl$).</p>
+          </div>
+
+          <!-- Card 3 (Master Table) -->
+          <div class="theory-card full-width">
+            <h3>3. Canonical Geometry Master Reference Table</h3>
+            <table class="theory-table">
+              <thead>
+                <tr>
+                  <th>Steric No.</th>
+                  <th>Formula</th>
+                  <th>Geometry</th>
+                  <th>Bond Angle(s)</th>
+                  <th>Hybridization</th>
+                  <th>Canonical Molecule</th>
+                  <th>Symmetry & Polarity</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>2</td><td>AX₂</td><td>Linear</td><td>180°</td><td>sp</td><td>BeCl₂, CO₂</td><td>Nonpolar ($sumec{mu}=0$)</td></tr>
+                <tr><td>3</td><td>AX₃</td><td>Trigonal Planar</td><td>120°</td><td>sp²</td><td>BF₃, SO₃</td><td>Nonpolar ($sumec{mu}=0$)</td></tr>
+                <tr><td>4</td><td>AX₄</td><td>Tetrahedral</td><td>109.5°</td><td>sp³</td><td>CH₄, CCl₄</td><td>Nonpolar ($sumec{mu}=0$)</td></tr>
+                <tr><td>5</td><td>AX₅</td><td>Trigonal Bipyramidal</td><td>90°, 120°, 180°</td><td>sp³d</td><td>PCl₅</td><td>Nonpolar ($sumec{mu}=0$)</td></tr>
+                <tr><td>6</td><td>AX₆</td><td>Octahedral</td><td>90°, 180°</td><td>sp³d²</td><td>SF₆</td><td>Nonpolar ($sumec{mu}=0$)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="theory-card">
+            <h3>4. Valence Bond Theory & Orbital Hybridization</h3>
+            <p>Hybrid orbitals form from the linear combination of atomic s, p, and d wavefunctions to point directly toward the bonded ligand atoms:</p>
+            <ul>
+              <li><strong>sp:</strong> Linear mixing of 1 s and 1 p orbital (180°)</li>
+              <li><strong>sp²:</strong> Trigonal mixing of 1 s and 2 p orbitals (120°)</li>
+              <li><strong>sp³:</strong> Tetrahedral mixing of 1 s and 3 p orbitals (109.5°)</li>
+              <li><strong>sp³d:</strong> Expanded octet involving 1 d orbital (90°/120°)</li>
+              <li><strong>sp³d²:</strong> Six octahedral equivalent lobes (90°)</li>
+            </ul>
+          </div>
+
+          <!-- Card 5 -->
+          <div class="theory-card">
+            <h3>5. Complete Vector Cancellation</h3>
+            <p>Each bond in molecules like $CF_4$ or $SF_6$ is strongly polar due to large differences in electronegativity ($Deltachi > 1.5$). However, because the bonds are symmetrically distributed in 3D space, the vector sum of dipole moments is identically zero:</p>
+            <div style="background: rgba(0,0,0,0.3); padding: 10px 14px; border-radius: 8px; font-weight: 700; color: #38bdf8; text-align: center; margin: 6px 0; font-family: var(--font-mono);">
+              vec(μ)_net = Σ vec(μ)_i = 0
+            </div>
+            <p>Thus, symmetric molecules with identical ligand atoms possess no permanent dipole moment.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- =========================================================================
+       MODAL: CERTIFICATE OF MASTERY
+       ========================================================================= -->
+  <div class="modal-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(56, 189, 248, 0.2); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h2 style="font-size: 1.4rem; font-weight: 800; color: #ffffff;">Certificate of Mastery</h2>
+      <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">This certifies that the student has demonstrated proficiency in <strong>Foundational VSEPR Geometries & Symmetry Principles</strong>.</p>
+      
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-card); border-radius: 8px; padding: 12px 20px; width: 100%; text-align: left;">
+        <div style="font-size: 0.72rem; color: #94a3b8;">Student Name:</div>
+        <input type="text" id="certStudentName" value="Elementa Scholar" style="background: transparent; border: none; border-bottom: 1px solid #38bdf8; color: #ffffff; font-size: 1rem; font-weight: 700; width: 100%; outline: none; margin-top: 4px;">
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.75rem; color: #94a3b8;">
+          <span>Score: <strong style="color: #38bdf8;" id="certScoreVal">100%</strong></span>
+          <span>Verified: <strong>Elementa LMS</strong></span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; width: 100%; margin-top: 8px;">
+        <button class="btn-mission-action" style="flex: 1;" onclick="downloadCertPDF()">Print / Save</button>
+        <button class="action-btn" style="flex: 1;" onclick="closeCertificateModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       CORE JAVASCRIPT LOGIC
+       ========================================================================= -->
+  <script>
+    /* -------------------------------------------------------------------------
+       STATE & CONFIGURATION (BASICS EDITION)
+       ------------------------------------------------------------------------- */
+    const appState = {
+      mode: 'sim', // 'sim', 'missions', 'quiz', 'theory'
+      subScreen: 'model', // 'model', 'real'
+      audioEnabled: true,
+      autoSpin: false,
+      options: {
+        moleculeGeom: true,
+        bondAngles: true
+      },
+      // Model Builder Domains (Only bonds in Basics edition)
+      model: {
+        single: 2,
+        double: 0,
+        triple: 0
+      },
+      // Canonical Molecule Selected
+      activeCanonKey: 'CH4',
+      // Camera & Rotation
+      rotX: 0.35,
+      rotY: 0.55,
+      zoom: 1.0,
+      isDragging: false,
+      lastMouseX: 0,
+      lastMouseY: 0,
+      // Quiz & Missions
+      missionsCompleted: [false, false, false, false, false],
+      quizAnswers: [null, null, null, null, null]
+    };
+
+    /* -------------------------------------------------------------------------
+       CANONICAL BASIC MOLECULES DATABASE (The 5 Canonical Geometries)
+       ------------------------------------------------------------------------- */
+    const CANONICAL_MOLECULES = {
+      BeCl2: {
+        formula: 'BeCl₂',
+        name: 'Beryllium Chloride',
+        central: { symbol: 'Be', color: '#0d9488', radius: 20 },
+        radials: [
+          { symbol: 'Cl', color: '#22c55e', radius: 24, bondOrder: 1 },
+          { symbol: 'Cl', color: '#22c55e', radius: 24, bondOrder: 1 }
+        ],
+        angleDeg: 180.0,
+        axFormula: 'AX₂',
+        geom: 'Linear',
+        hybrid: 'sp',
+        steric: 2,
+        note: 'Linear geometry (180°) with beryllium having an incomplete octet (4 valence electrons).'
+      },
+      CO2: {
+        formula: 'CO₂',
+        name: 'Carbon Dioxide',
+        central: { symbol: 'C', color: '#334155', radius: 22 },
+        radials: [
+          { symbol: 'O', color: '#ef4444', radius: 20, bondOrder: 2 },
+          { symbol: 'O', color: '#ef4444', radius: 20, bondOrder: 2 }
+        ],
+        angleDeg: 180.0,
+        axFormula: 'AX₂',
+        geom: 'Linear',
+        hybrid: 'sp',
+        steric: 2,
+        note: 'Two double bonds act as two single domains, repelling into an ideal 180° linear geometry.'
+      },
+      BF3: {
+        formula: 'BF₃',
+        name: 'Boron Trifluoride',
+        central: { symbol: 'B', color: '#fb7185', radius: 20 },
+        radials: [
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 },
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 },
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 }
+        ],
+        angleDeg: 120.0,
+        axFormula: 'AX₃',
+        geom: 'Trigonal Planar',
+        hybrid: 'sp²',
+        steric: 3,
+        note: 'Flat 2D trigonal planar geometry with equivalent 120° bond angles.'
+      },
+      CH4: {
+        formula: 'CH₄',
+        name: 'Methane',
+        central: { symbol: 'C', color: '#334155', radius: 22 },
+        radials: [
+          { symbol: 'H', color: '#f8fafc', radius: 15, bondOrder: 1 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, bondOrder: 1 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, bondOrder: 1 },
+          { symbol: 'H', color: '#f8fafc', radius: 15, bondOrder: 1 }
+        ],
+        angleDeg: 109.5,
+        axFormula: 'AX₄',
+        geom: 'Tetrahedral',
+        hybrid: 'sp³',
+        steric: 4,
+        note: 'Canonical 3D tetrahedral geometry with four equivalent C–H bonds oriented at 109.5°.'
+      },
+      PCl5: {
+        formula: 'PCl₅',
+        name: 'Phosphorus Pentachloride',
+        central: { symbol: 'P', color: '#f97316', radius: 25 },
+        radials: [
+          { symbol: 'Cl', color: '#22c55e', radius: 24, bondOrder: 1 },
+          { symbol: 'Cl', color: '#22c55e', radius: 24, bondOrder: 1 },
+          { symbol: 'Cl', color: '#22c55e', radius: 24, bondOrder: 1 },
+          { symbol: 'Cl', color: '#22c55e', radius: 24, bondOrder: 1 },
+          { symbol: 'Cl', color: '#22c55e', radius: 24, bondOrder: 1 }
+        ],
+        angleDeg: 120.0,
+        axFormula: 'AX₅',
+        geom: 'Trigonal Bipyramidal',
+        hybrid: 'sp³d',
+        steric: 5,
+        note: 'Contains 3 equatorial bonds at 120° and 2 axial bonds at 90° and 180°.'
+      },
+      SF6: {
+        formula: 'SF₆',
+        name: 'Sulfur Hexafluoride',
+        central: { symbol: 'S', color: '#eab308', radius: 26 },
+        radials: [
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 },
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 },
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 },
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 },
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 },
+          { symbol: 'F', color: '#10b981', radius: 18, bondOrder: 1 }
+        ],
+        angleDeg: 90.0,
+        axFormula: 'AX₆',
+        geom: 'Octahedral',
+        hybrid: 'sp³d²',
+        steric: 6,
+        note: 'Highly symmetric regular octahedron with all 6 vertices equivalent at 90° and 180°.'
+      }
+    };
+
+    /* -------------------------------------------------------------------------
+       VSEPR CANONICAL BASIC MAP
+       ------------------------------------------------------------------------- */
+    function getBasicVSEPRDetails(domainCount) {
+      if (domainCount === 0) {
+        return { geom: 'Central Atom', ax: 'A', hybrid: 's', angle: 'N/A' };
+      }
+      if (domainCount === 1) {
+        return { geom: 'Linear', ax: 'AX', hybrid: 'sp', angle: 'N/A' };
+      }
+      if (domainCount === 2) {
+        return { geom: 'Linear', ax: 'AX₂', hybrid: 'sp', angle: '180°' };
+      }
+      if (domainCount === 3) {
+        return { geom: 'Trigonal Planar', ax: 'AX₃', hybrid: 'sp²', angle: '120°' };
+      }
+      if (domainCount === 4) {
+        return { geom: 'Tetrahedral', ax: 'AX₄', hybrid: 'sp³', angle: '109.5°' };
+      }
+      if (domainCount === 5) {
+        return { geom: 'Trigonal Bipyramidal', ax: 'AX₅', hybrid: 'sp³d', angle: '90°, 120°, 180°' };
+      }
+      if (domainCount === 6) {
+        return { geom: 'Octahedral', ax: 'AX₆', hybrid: 'sp³d²', angle: '90°, 180°' };
+      }
+      return { geom: 'Complex', ax: 'AX' + domainCount, hybrid: 'sp³d²', angle: '90°' };
+    }
+
+    /* -------------------------------------------------------------------------
+       3D UNIT VECTORS FOR BASIC VSEPR
+       ------------------------------------------------------------------------- */
+    function getBasicUnitVectors(steric) {
+      if (steric === 1) return [{ x: 1, y: 0, z: 0 }];
+      if (steric === 2) return [{ x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }];
+      if (steric === 3) {
+        return [
+          { x: 1, y: 0, z: 0 },
+          { x: -0.5, y: Math.sqrt(3) / 2, z: 0 },
+          { x: -0.5, y: -Math.sqrt(3) / 2, z: 0 }
+        ];
+      }
+      if (steric === 4) {
+        const inv = 1 / Math.sqrt(3);
+        return [
+          { x: inv, y: inv, z: inv },
+          { x: inv, y: -inv, z: -inv },
+          { x: -inv, y: inv, z: -inv },
+          { x: -inv, y: -inv, z: inv }
+        ];
+      }
+      if (steric === 5) {
+        return [
+          { x: 0, y: 1, z: 0 }, // Axial +Y
+          { x: 0, y: -1, z: 0 }, // Axial -Y
+          { x: 1, y: 0, z: 0 }, // Equatorial
+          { x: -0.5, y: 0, z: Math.sqrt(3) / 2 },
+          { x: -0.5, y: 0, z: -Math.sqrt(3) / 2 }
+        ];
+      }
+      if (steric === 6) {
+        return [
+          { x: 1, y: 0, z: 0 },
+          { x: -1, y: 0, z: 0 },
+          { x: 0, y: 1, z: 0 },
+          { x: 0, y: -1, z: 0 },
+          { x: 0, y: 0, z: 1 },
+          { x: 0, y: 0, z: -1 }
+        ];
+      }
+      return [];
+    }
+
+    /* -------------------------------------------------------------------------
+       AUDIO SYNTHESIZER
+       ------------------------------------------------------------------------- */
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!appState.audioEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'add') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.08);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'remove') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(261.63, now + 0.08);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'success') {
+          const freqs = [523.25, 659.25, 783.99, 1046.50];
+          freqs.forEach((f, i) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(f, now + i * 0.04);
+            g.gain.setValueAtTime(0.08, now + i * 0.04);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.25);
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start(now + i * 0.04);
+            o.stop(now + i * 0.04 + 0.25);
+          });
+        }
+      } catch (e) {}
+    }
+
+    /* -------------------------------------------------------------------------
+       CANVAS & RENDERING SETUP
+       ------------------------------------------------------------------------- */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    let canvasW = 0;
+    let canvasH = 0;
+
+    function resizeCanvas() {
+      const wrap = document.getElementById('viewportWrap');
+      if (!wrap) return;
+      const rect = wrap.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvasW = rect.width;
+      canvasH = rect.height;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+      renderScene();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    /* -------------------------------------------------------------------------
+       3D ROTATION & PROJECTION MATH
+       ------------------------------------------------------------------------- */
+    function project3D(point, rotX, rotY, zoom, cx, cy) {
+      const cosY = Math.cos(rotY);
+      const sinY = Math.sin(rotY);
+      const x1 = point.x * cosY + point.z * sinY;
+      const y1 = point.y;
+      const z1 = -point.x * sinY + point.z * cosY;
+
+      const cosX = Math.cos(rotX);
+      const sinX = Math.sin(rotX);
+      const x2 = x1;
+      const y2 = y1 * cosX - z1 * sinX;
+      const z2 = y1 * sinX + z1 * cosX;
+
+      const cameraDist = 480;
+      const factor = (cameraDist / (cameraDist - z2)) * zoom;
+
+      return {
+        x: cx + x2 * factor,
+        y: cy - y2 * factor,
+        z: z2,
+        scale: factor
+      };
+    }
+
+    /* -------------------------------------------------------------------------
+       SCENE RENDERER
+       ------------------------------------------------------------------------- */
+    function renderScene() {
+      if (canvasW === 0 || canvasH === 0) return;
+      ctx.clearRect(0, 0, canvasW, canvasH);
+
+      const cx = canvasW * 0.46;
+      const cy = canvasH * 0.50;
+
+      if (appState.subScreen === 'model') {
+        renderModelScreen(cx, cy);
+      } else {
+        renderCanonicalScreen(cx, cy);
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       RENDER MODEL SCREEN (BASIC VSEPR)
+       ------------------------------------------------------------------------- */
+    function renderModelScreen(cx, cy) {
+      const { single, double, triple } = appState.model;
+      const domainCount = single + double + triple;
+
+      const centralAtom = {
+        x: 0,
+        y: 0,
+        z: 0,
+        radius: 26,
+        color: '#9333ea',
+        symbol: 'A'
+      };
+
+      if (domainCount === 0) {
+        const p = project3D(centralAtom, appState.rotX, appState.rotY, appState.zoom, cx, cy);
+        drawAtomSphere(p.x, p.y, centralAtom.radius * p.scale, centralAtom.symbol, centralAtom.color);
+        return;
+      }
+
+      const unitVectors = getBasicUnitVectors(domainCount);
+      const bondDist = 135;
+
+      let sRem = single;
+      let dRem = double;
+      let tRem = triple;
+
+      const itemsToDraw = [];
+      for (let i = 0; i < domainCount; i++) {
+        let order = 1;
+        if (tRem > 0) { order = 3; tRem--; }
+        else if (dRem > 0) { order = 2; dRem--; }
+        else if (sRem > 0) { order = 1; sRem--; }
+
+        const v = unitVectors[i];
+        itemsToDraw.push({
+          order: order,
+          pos: { x: v.x * bondDist, y: v.y * bondDist, z: v.z * bondDist },
+          radius: 20,
+          symbol: 'X',
+          color: '#06b6d4'
+        });
+      }
+
+      const projCentral = project3D(centralAtom, appState.rotX, appState.rotY, appState.zoom, cx, cy);
+      const projItems = itemsToDraw.map((it, idx) => ({
+        ...it,
+        proj: project3D(it.pos, appState.rotX, appState.rotY, appState.zoom, cx, cy),
+        idx: idx
+      }));
+
+      const renderQueue = [
+        { type: 'central', z: projCentral.z, draw: () => drawAtomSphere(projCentral.x, projCentral.y, centralAtom.radius * projCentral.scale, centralAtom.symbol, centralAtom.color) }
+      ];
+
+      projItems.forEach(item => {
+        renderQueue.push({
+          type: 'bond_line',
+          z: (projCentral.z + item.proj.z) / 2 - 2,
+          draw: () => drawBond3D(projCentral.x, projCentral.y, item.proj.x, item.proj.y, item.order, item.proj.scale)
+        });
+        renderQueue.push({
+          type: 'atom',
+          z: item.proj.z,
+          draw: () => drawAtomSphere(item.proj.x, item.proj.y, item.radius * item.proj.scale, item.symbol, item.color)
+        });
+      });
+
+      renderQueue.sort((a, b) => a.z - b.z);
+      renderQueue.forEach(q => q.draw());
+
+      if (appState.options.bondAngles) {
+        drawBondAngleArcs(projCentral, projItems, getBasicVSEPRDetails(domainCount).angle);
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       RENDER CANONICAL REAL MOLECULES SCREEN
+       ------------------------------------------------------------------------- */
+    function renderCanonicalScreen(cx, cy) {
+      const mol = CANONICAL_MOLECULES[appState.activeCanonKey] || CANONICAL_MOLECULES.CH4;
+      const centralAtom = {
+        x: 0,
+        y: 0,
+        z: 0,
+        radius: mol.central.radius,
+        color: mol.central.color,
+        symbol: mol.central.symbol
+      };
+
+      const domainCount = mol.radials.length;
+      const unitVectors = getBasicUnitVectors(domainCount);
+      const bondDist = 140;
+
+      const itemsToDraw = [];
+      for (let i = 0; i < domainCount; i++) {
+        const r = mol.radials[i];
+        const v = unitVectors[i];
+        itemsToDraw.push({
+          order: r.bondOrder,
+          pos: { x: v.x * bondDist, y: v.y * bondDist, z: v.z * bondDist },
+          symbol: r.symbol,
+          color: r.color,
+          radius: r.radius
+        });
+      }
+
+      const projCentral = project3D(centralAtom, appState.rotX, appState.rotY, appState.zoom, cx, cy);
+      const projItems = itemsToDraw.map((it, idx) => ({
+        ...it,
+        proj: project3D(it.pos, appState.rotX, appState.rotY, appState.zoom, cx, cy),
+        idx: idx
+      }));
+
+      const renderQueue = [
+        { type: 'central', z: projCentral.z, draw: () => drawAtomSphere(projCentral.x, projCentral.y, centralAtom.radius * projCentral.scale, centralAtom.symbol, centralAtom.color) }
+      ];
+
+      projItems.forEach(item => {
+        renderQueue.push({
+          type: 'bond_line',
+          z: (projCentral.z + item.proj.z) / 2 - 2,
+          draw: () => drawBond3D(projCentral.x, projCentral.y, item.proj.x, item.proj.y, item.order, item.proj.scale)
+        });
+        renderQueue.push({
+          type: 'atom',
+          z: item.proj.z,
+          draw: () => drawAtomSphere(item.proj.x, item.proj.y, item.radius * item.proj.scale, item.symbol, item.color)
+        });
+      });
+
+      renderQueue.sort((a, b) => a.z - b.z);
+      renderQueue.forEach(q => q.draw());
+
+      if (appState.options.bondAngles) {
+        drawBondAngleArcs(projCentral, projItems, mol.angleDeg + '°');
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       GRAPHICS DRAWING UTILITIES
+       ------------------------------------------------------------------------- */
+    function drawAtomSphere(x, y, radius, symbol, baseColor) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.arc(x + 4, y + 5, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      const grad = ctx.createRadialGradient(x - radius * 0.35, y - radius * 0.35, radius * 0.05, x, y, radius);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.25, baseColor);
+      grad.addColorStop(0.85, darkenColor(baseColor, 0.55));
+      grad.addColorStop(1, '#050810');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      if (radius > 12) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 ' + Math.max(10, Math.round(radius * 0.85)) + 'px ' + getComputedStyle(document.body).fontFamily;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(symbol, x, y + 1);
+      }
+      ctx.restore();
+    }
+
+    function drawBond3D(x1, y1, x2, y2, order, scale) {
+      ctx.save();
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx);
+
+      ctx.translate(x1, y1);
+      ctx.rotate(angle);
+
+      const bondThick = 9 * scale;
+
+      if (order === 1) {
+        drawSingleCylinder(0, -bondThick / 2, len, bondThick);
+      } else if (order === 2) {
+        const offset = bondThick * 0.75;
+        drawSingleCylinder(0, -offset - bondThick / 2, len, bondThick * 0.85);
+        drawSingleCylinder(0, offset - bondThick / 2, len, bondThick * 0.85);
+      } else if (order === 3) {
+        const offset = bondThick * 1.2;
+        drawSingleCylinder(0, -offset - bondThick / 2, len, bondThick * 0.75);
+        drawSingleCylinder(0, -bondThick / 2, len, bondThick * 0.75);
+        drawSingleCylinder(0, offset - bondThick / 2, len, bondThick * 0.75);
+      }
+
+      ctx.restore();
+    }
+
+    function drawSingleCylinder(x, y, len, thick) {
+      const grad = ctx.createLinearGradient(0, y, 0, y + thick);
+      grad.addColorStop(0, '#94a3b8');
+      grad.addColorStop(0.35, '#f1f5f9');
+      grad.addColorStop(0.8, '#475569');
+      grad.addColorStop(1, '#1e293b');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, len, thick);
+
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(x, y, len, thick);
+    }
+
+    function drawBondAngleArcs(central, bonds, label) {
+      if (bonds.length < 2) return;
+      ctx.save();
+
+      const b1 = bonds[0];
+      const b2 = bonds[1];
+
+      const a1 = Math.atan2(b1.proj.y - central.y, b1.proj.x - central.x);
+      const a2 = Math.atan2(b2.proj.y - central.y, b2.proj.x - central.x);
+
+      const arcRadius = 45 * central.scale;
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.2;
+      ctx.setLineDash([4, 3]);
+
+      let diff = a2 - a1;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+
+      ctx.beginPath();
+      ctx.arc(central.x, central.y, arcRadius, a1, a1 + diff, diff < 0);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const midAngle = a1 + diff / 2;
+      const lx = central.x + Math.cos(midAngle) * (arcRadius + 22);
+      const ly = central.y + Math.sin(midAngle) * (arcRadius + 22);
+
+      const text = label;
+      ctx.font = '700 11px ' + getComputedStyle(document.body).fontFamily;
+      const textWidth = ctx.measureText(text).width;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(lx - textWidth / 2 - 6, ly - 9, textWidth + 12, 18, 5);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, lx, ly);
+
+      ctx.restore();
+    }
+
+    function darkenColor(hex, factor) {
+      if (!hex || hex[0] !== '#') return hex;
+      const num = parseInt(hex.slice(1), 16);
+      let r = (num >> 16);
+      let g = ((num >> 8) & 0x00FF);
+      let b = (num & 0x0000FF);
+      r = Math.floor(r * factor);
+      g = Math.floor(g * factor);
+      b = Math.floor(b * factor);
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
+
+    /* -------------------------------------------------------------------------
+       INTERACTIVE CONTROLS: MODEL BUILDER
+       ------------------------------------------------------------------------- */
+    function modifyDomain(type, delta) {
+      const { single, double, triple } = appState.model;
+      const currentDomains = single + double + triple;
+
+      if (delta > 0 && currentDomains >= 6) {
+        playSound('click');
+        return;
+      }
+
+      if (delta < 0 && appState.model[type] <= 0) {
+        playSound('click');
+        return;
+      }
+
+      appState.model[type] += delta;
+      playSound(delta > 0 ? 'add' : 'remove');
+      updateUI();
+      renderScene();
+      checkMissionAutoProgress();
+    }
+
+    function removeAllDomains() {
+      appState.model = { single: 0, double: 0, triple: 0 };
+      playSound('remove');
+      updateUI();
+      renderScene();
+    }
+
+    function updateUI() {
+      if (appState.subScreen === 'model') {
+        const { single, double, triple } = appState.model;
+        const domainCount = single + double + triple;
+
+        document.getElementById('countSingle').innerText = single;
+        document.getElementById('countDouble').innerText = double;
+        document.getElementById('countTriple').innerText = triple;
+
+        document.getElementById('lblStericNumber').innerText = domainCount;
+        document.getElementById('lblBondPairs').innerText = domainCount;
+
+        document.getElementById('capacityLabel').innerText = domainCount + ' / 6 Domains';
+        const fillBar = document.getElementById('capacityFillBar');
+        fillBar.style.width = (domainCount / 6 * 100) + '%';
+        if (domainCount >= 6) fillBar.classList.add('full');
+        else fillBar.classList.remove('full');
+
+        const details = getBasicVSEPRDetails(domainCount);
+        document.getElementById('readoutMoleculeGeom').innerText = details.geom;
+        document.getElementById('tagFormula').innerText = details.ax;
+        document.getElementById('tagHybrid').innerText = 'Hybridization: ' + details.hybrid;
+        document.getElementById('tagAngle').innerText = 'Bond Angle: ' + details.angle;
+      } else {
+        const mol = CANONICAL_MOLECULES[appState.activeCanonKey] || CANONICAL_MOLECULES.CH4;
+        document.getElementById('lblStericNumber').innerText = mol.steric;
+        document.getElementById('lblBondPairs').innerText = mol.radials.length;
+
+        document.getElementById('readoutMoleculeGeom').innerText = mol.geom;
+        document.getElementById('tagFormula').innerText = mol.axFormula;
+        document.getElementById('tagHybrid').innerText = 'Hybridization: ' + mol.hybrid;
+        document.getElementById('tagAngle').innerText = 'Bond Angle: ' + mol.angleDeg + '°';
+        document.getElementById('canonicalNoteText').innerText = mol.note;
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       SUB-SCREEN SWITCHER
+       ------------------------------------------------------------------------- */
+    function setSubScreen(screen) {
+      appState.subScreen = screen;
+      playSound('click');
+
+      document.getElementById('btnSubModel').classList.toggle('active', screen === 'model');
+      document.getElementById('btnSubReal').classList.toggle('active', screen === 'real');
+
+      document.getElementById('panelModelScreen').style.display = (screen === 'model') ? 'block' : 'none';
+      document.getElementById('panelRealScreen').style.display = (screen === 'real') ? 'block' : 'none';
+
+      updateUI();
+      renderScene();
+    }
+
+    function onSelectCanonical(key) {
+      appState.activeCanonKey = key;
+      playSound('click');
+
+      const keys = ['BeCl2', 'CO2', 'BF3', 'CH4', 'PCl5', 'SF6'];
+      keys.forEach(k => {
+        const btn = document.getElementById('btn' + k);
+        if (btn) btn.classList.toggle('active', k === key);
+      });
+
+      updateUI();
+      renderScene();
+      checkMissionAutoProgress();
+    }
+
+    function toggleOption(optKey) {
+      appState.options[optKey] = !appState.options[optKey];
+      playSound('click');
+      const elemMap = {
+        moleculeGeom: 'togMoleculeGeom',
+        bondAngles: 'togBondAngles'
+      };
+      const row = document.getElementById(elemMap[optKey]);
+      if (row) row.classList.toggle('active', appState.options[optKey]);
+      renderScene();
+    }
+
+    /* -------------------------------------------------------------------------
+       APP MODE NAVIGATION (SIM, MISSIONS, QUIZ, THEORY)
+       ------------------------------------------------------------------------- */
+    function setAppMode(modeKey) {
+      if (typeof appState !== 'undefined' && appState && appState.mode !== undefined) appState.mode = modeKey;
+      if (typeof state !== 'undefined' && state && state.mode !== undefined) state.mode = modeKey;
+      if (typeof playSound === 'function') playSound('click');
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    /* -------------------------------------------------------------------------
+       VIEWPORT MOUSE & TOUCH CONTROLS (3D ROTATION & ZOOM)
+       ------------------------------------------------------------------------- */
+    canvas.addEventListener('mousedown', e => {
+      appState.isDragging = true;
+      appState.lastMouseX = e.clientX;
+      appState.lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      appState.isDragging = false;
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!appState.isDragging) return;
+      const dx = e.clientX - appState.lastMouseX;
+      const dy = e.clientY - appState.lastMouseY;
+      appState.rotY += dx * 0.009;
+      appState.rotX += dy * 0.009;
+      appState.lastMouseX = e.clientX;
+      appState.lastMouseY = e.clientY;
+      renderScene();
+    });
+
+    canvas.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) {
+        appState.isDragging = true;
+        appState.lastMouseX = e.touches[0].clientX;
+        appState.lastMouseY = e.touches[0].clientY;
+      }
+    });
+
+    window.addEventListener('touchend', () => {
+      appState.isDragging = false;
+    });
+
+    window.addEventListener('touchmove', e => {
+      if (!appState.isDragging || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - appState.lastMouseX;
+      const dy = e.touches[0].clientY - appState.lastMouseY;
+      appState.rotY += dx * 0.009;
+      appState.rotX += dy * 0.009;
+      appState.lastMouseX = e.touches[0].clientX;
+      appState.lastMouseY = e.touches[0].clientY;
+      renderScene();
+    });
+
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      adjustZoom(zoomFactor);
+    }, { passive: false });
+
+    function adjustZoom(factor) {
+      appState.zoom = Math.max(0.6, Math.min(2.5, appState.zoom * factor));
+      renderScene();
+    }
+
+    function reset3DOrientation() {
+      appState.rotX = 0.35;
+      appState.rotY = 0.55;
+      appState.zoom = 1.0;
+      playSound('click');
+      renderScene();
+    }
+
+    function toggleAutoSpin() {
+      appState.autoSpin = !appState.autoSpin;
+      playSound('click');
+      document.getElementById('btnAutoSpin').classList.toggle('active', appState.autoSpin);
+    }
+
+    function animLoop() {
+      if (appState.autoSpin) {
+        appState.rotY += 0.008;
+        renderScene();
+      }
+      requestAnimationFrame(animLoop);
+    }
+    requestAnimationFrame(animLoop);
+
+    /* -------------------------------------------------------------------------
+       GUIDED MISSIONS SYSTEM
+       ------------------------------------------------------------------------- */
+    function startMission(mNum) {
+      setAppMode('sim');
+      playSound('click');
+
+      if (mNum === 1) {
+        setSubScreen('model');
+        appState.model = { single: 2, double: 0, triple: 0 };
+        updateUI();
+        renderScene();
+        markMissionCompleted(1);
+      } else if (mNum === 2) {
+        setSubScreen('real');
+        onSelectCanonical('BF3');
+        markMissionCompleted(2);
+      } else if (mNum === 3) {
+        setSubScreen('real');
+        onSelectCanonical('CH4');
+        markMissionCompleted(3);
+      } else if (mNum === 4) {
+        setSubScreen('real');
+        onSelectCanonical('PCl5');
+        markMissionCompleted(4);
+      } else if (mNum === 5) {
+        setSubScreen('real');
+        onSelectCanonical('SF6');
+        markMissionCompleted(5);
+      }
+    }
+
+    function markMissionCompleted(mNum) {
+      if (appState.missionsCompleted[mNum - 1]) return;
+      appState.missionsCompleted[mNum - 1] = true;
+      playSound('success');
+
+      const card = document.getElementById('missionCard' + mNum);
+      if (card) {
+        card.classList.add('completed');
+        const btn = card.querySelector('.btn-mission-action');
+        if (btn) btn.innerHTML = '✓ Completed';
+      }
+
+      const count = appState.missionsCompleted.filter(Boolean).length;
+      document.getElementById('missionBadgeCount').innerText = count + '/5';
+    }
+
+    function checkMissionAutoProgress() {
+      if (appState.subScreen === 'model') {
+        const { single, double, triple } = appState.model;
+        const total = single + double + triple;
+        if (total === 2) markMissionCompleted(1);
+        if (total === 3) markMissionCompleted(2);
+        if (total === 4) markMissionCompleted(3);
+        if (total === 5) markMissionCompleted(4);
+        if (total === 6) markMissionCompleted(5);
+      } else if (appState.subScreen === 'real') {
+        if (appState.activeCanonKey === 'BeCl2' || appState.activeCanonKey === 'CO2') markMissionCompleted(1);
+        if (appState.activeCanonKey === 'BF3') markMissionCompleted(2);
+        if (appState.activeCanonKey === 'CH4') markMissionCompleted(3);
+        if (appState.activeCanonKey === 'PCl5') markMissionCompleted(4);
+        if (appState.activeCanonKey === 'SF6') markMissionCompleted(5);
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       ASSESSMENT QUIZ SYSTEM
+       ------------------------------------------------------------------------- */
+    function checkQuizAnswer(qNum, optIdx, isCorrect) {
+      if (appState.quizAnswers[qNum - 1] !== null) return;
+
+      appState.quizAnswers[qNum - 1] = isCorrect;
+      const card = document.getElementById('quizCard' + qNum);
+      const buttons = card.querySelectorAll('.quiz-option-btn');
+
+      buttons.forEach((btn, idx) => {
+        btn.classList.add('locked');
+        if (idx === optIdx) {
+          btn.classList.add(isCorrect ? 'correct' : 'wrong');
+        }
+      });
+
+      const feedback = document.getElementById('feedback' + qNum);
+      feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+
+      playSound(isCorrect ? 'success' : 'remove');
+
+      const answered = appState.quizAnswers.filter(a => a !== null);
+      const correctCount = appState.quizAnswers.filter(a => a === true).length;
+      const scorePct = Math.round((correctCount / 5) * 100);
+      document.getElementById('quizScoreDisplay').innerText = scorePct + '%';
+      document.getElementById('certScoreVal').innerText = scorePct + '%';
+
+      if (window.parent) {
+        window.parent.postMessage({
+          type: 'ELEMENTA_SIM_SCORE',
+          simulation: 'molecule-shapes-basics',
+          score: scorePct,
+          completed: answered.length === 5
+        }, '*');
+      }
+    }
+
+    function openCertificateModal() {
+      playSound('click');
+      document.getElementById('certOverlay').classList.add('active');
+    }
+
+    function closeCertificateModal() {
+      playSound('click');
+      document.getElementById('certOverlay').classList.remove('active');
+    }
+
+    function downloadCertPDF() {
+      window.print();
+    }
+
+    /* -------------------------------------------------------------------------
+       TOPBAR UTILITIES
+       ------------------------------------------------------------------------- */
+    function toggleAudio() {
+      appState.audioEnabled = !appState.audioEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      btn.classList.toggle('active', appState.audioEnabled);
+      playSound('click');
+    }
+
+    function resetSimulation() {
+      appState.model = { single: 2, double: 0, triple: 0 };
+      appState.activeCanonKey = 'CH4';
+      appState.subScreen = 'model';
+      appState.rotX = 0.35;
+      appState.rotY = 0.55;
+      appState.zoom = 1.0;
+      appState.autoSpin = false;
+      document.getElementById('btnAutoSpin').classList.remove('active');
+      setSubScreen('model');
+      playSound('click');
+      updateUI();
+      renderScene();
+    }
+
+    function captureScreenshot() {
+      playSound('click');
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = 'molecule_shapes_basics_elementa_' + Date.now() + '.png';
+      link.href = dataUrl;
+      link.click();
+    }
+
+    function toggleFullscreen() {
+      playSound('click');
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       INIT ON LOAD
+       ------------------------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      updateUI();
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

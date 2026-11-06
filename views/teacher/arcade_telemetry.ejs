@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Telemetry & Cognitive Analytics | Chemistry Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdfa;
+            background-image: radial-gradient(#2dd4bf 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+        #sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Nav active state */
+        .nav-active {
+            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%) !important;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 4px 16px rgba(6,182,212,0.3), 0 2px 8px rgba(99,102,241,0.4);
+        }
+        .nav-active i { color: white !important; }
+
+        .section-card { background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 20px rgba(15,23,42,0.03); }
+        .section-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+        /* Periodic table grid */
+        .pt-grid {
+            display: grid;
+            grid-template-columns: repeat(18, minmax(36px, 1fr));
+            gap: 4px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+        .pt-cell {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            user-select: none;
+            border: 1px solid rgba(0,0,0,0.06);
+        }
+        .pt-cell:hover {
+            transform: scale(1.18);
+            z-index: 20;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+        }
+        .pt-empty { aspect-ratio: 1; visibility: hidden; }
+
+        /* Heatmap risk color scale */
+        .heat-opt { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+        .heat-low { background: #fef9c3; color: #854d0e; border-color: #fef08a; }
+        .heat-med { background: #ffedd5; color: #c2410c; border-color: #fed7aa; }
+        .heat-high { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+        .heat-none { background: #f8fafc; color: #94a3b8; border-color: #e2e8f0; }
+
+        /* Quadrant scatter markers */
+        .quad-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 800; }
+        .quad-mastery { background: #dcfce7; color: #15803d; }
+        .quad-methodical { background: #e0f2fe; color: #0369a1; }
+        .quad-impulsive { background: #fef3c7; color: #b45309; }
+        .quad-overload { background: #fee2e2; color: #b91c1c; }
+
+        /* Modals & Drawers */
+        .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(15,23,42,0.6); align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+        .modal-backdrop.open { display: flex; }
+        .modal-card { background: white; border-radius: 1.5rem; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); animation: mSlideUp .22s ease-out; }
+        @keyframes mSlideUp { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        /* Toast notification */
+        #telemetry-toast { position: fixed; bottom: 24px; right: 24px; z-index: 999; background: #0f172a; color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; display: flex; align-items: center; gap: 10px; }
+        #telemetry-toast.show { transform: translateY(0); opacity: 1; }
+    </style>
+    <%- include('../partials/teacher-nav-styles') %>
+</head>
+<body class="text-slate-900">
+
+<div id="telemetry-toast">
+    <i class="fas fa-circle-check text-emerald-400 text-base" id="toast-icon"></i>
+    <span id="toast-msg">Operation completed successfully</span>
+</div>
+
+<div class="flex min-h-screen relative overflow-x-hidden">
+
+    <%- include('../partials/teacher-sidebar', { activeNav: 'arcade_telemetry' }) %>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 h-screen overflow-hidden">
+
+        <!-- Top Header Bar -->
+        <header class="h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-40">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" class="p-2 rounded-lg hover:bg-slate-100 text-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 transition">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="hidden sm:block">
+                    <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">Arcade Telemetry</h1>
+                    <p class="text-xs text-slate-600 font-medium">
+                        <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
+                        Micro-Telemetry Analytics & Cognitive Diagnostic Fleet Monitor
+                    </p>
+                </div>
+            </div>
+
+            <!-- Class Filter & Profile Actions -->
+            <div class="flex items-center gap-3 md:gap-6">
+                <!-- Class selector -->
+                <div class="relative hidden sm:block">
+                    <select id="telemetryClassFilter" onchange="applyTelemetryClassFilter(this.value)"
+                            class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl px-3 py-2 pr-8 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition cursor-pointer">
+                        <option value="">All Roster Cadets</option>
+                        <% if (classes && classes.length) { %>
+                            <% classes.forEach(c => { %>
+                                <option value="<%= c.class_id %>" <%= (selectedClassId == c.class_id) ? 'selected' : '' %>>
+                                    <%= c.class_name %> (<%= c.section || 'General' %>)
+                                </option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+
+                    <!-- Messages Navigation Button (Entry point to teacher messages workspace) -->
+                    <a href="/teacher/messages" id="messagesBtn" aria-label="Open messages and conversations" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
+                        <i class="far fa-comment-dots text-xl"></i>
+                        
+                        <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                            Messages
+                        </span>
+                    </a>
+
+                <!-- Notification Button with keyboard-accessible tooltip -->
+                <button type="button" onclick="toggleNotifPanel()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
+                    <i class="far fa-bell text-xl text-slate-700"></i>
+                    
+                    <span class="absolute top-2 right-2 flex h-2.5 w-2.5 notif-badge <%= (typeof notifications !== 'undefined' && notifications && notifications.some(n => !n.is_read)) ? '' : 'hidden' %>" aria-hidden="true">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
+                    </span>
+
+                    <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                        Notifications
+                    </span>
+                </button>
+
+                <!-- User Profile Dropdown -->
+                <div class="relative">
+                    <button type="button" onclick="toggleUserMenu(event)" id="userMenuBtn" aria-expanded="false" aria-label="Open user profile menu" class="flex items-center gap-3 pl-4 border-l border-slate-200 hover:opacity-85 transition focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-lg">
+                        <div class="text-right hidden lg:block">
+                            <p class="text-sm font-bold text-slate-800 leading-none mb-1"><%= user.first_name %> <%= user.last_name %></p>
+                            <p class="text-xs uppercase font-bold text-slate-600 tracking-wider leading-none"><%= user.role || 'Teacher' %></p>
+                        </div>
+                        <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" alt="<%= user.first_name %>'s avatar" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100" onerror="this.src='/profile_uploads/default_avatar.png'">
+                        <i class="fas fa-chevron-down text-xs text-slate-600 ml-1"></i>
+                    </button>
+
+                    <div id="userDropdown" class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+                        <div class="px-4 py-3 border-b border-slate-100 lg:hidden">
+                            <p class="text-sm font-bold text-slate-800"><%= user.first_name %> <%= user.last_name %></p>
+                            <p class="text-xs text-slate-600 mt-1 uppercase font-bold"><%= user.role || 'Teacher' %></p>
+                        </div>
+                        <a href="/teacher/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                            <i class="far fa-user w-5 text-center"></i> View Profile
+                        </a>
+                        <hr class="my-2 border-slate-100">
+                        <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition font-bold">
+                            <i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== SCROLLABLE CONTENT BODY ===== -->
+        <div id="telemetryContentBody" class="flex-1 overflow-y-auto mt-20 no-scrollbar p-4 md:p-8 space-y-6">
+
+            <!-- HERO STAT STRIP -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center text-cyan-600 text-xl font-bold">
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Arcade Sessions</p>
+                        <h3 class="text-2xl font-black text-slate-800"><%= recentSessions ? recentSessions.length : 0 %></h3>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl font-bold">
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Mean Dial Hesitation</p>
+                        <h3 class="text-2xl font-black text-indigo-600">
+                            <%= scatter && scatter.length ? (scatter.reduce((a,c) => a + (Number(c.x !== undefined ? c.x : c.avgHesitation) || 0), 0) / scatter.length).toFixed(1) : '18.4' %>s
+                        </h3>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 text-xl font-bold">
+                        <i class="fas fa-triangle-exclamation"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Early Warning Cadets</p>
+                        <h3 class="text-2xl font-black text-rose-600">
+                            <%= riskList ? riskList.filter(r => r.riskTier === 'Critical' || r.riskTier === 'Moderate').length : 0 %>
+                        </h3>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl font-bold">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Auto Gradebook Sync</p>
+                        <h3 class="text-2xl font-black text-emerald-600">100% Active</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 PROCTOR CONSOLE: LIVE KIOSK FLEET & ASSESSMENT PAUSE CONTROL
+                 ============================================================ -->
+            <div class="section-card border-indigo-200/80 shadow-md">
+                <div class="section-header bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-b-0 py-4 px-6 rounded-t-2xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 text-lg shadow-inner">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-base font-black tracking-wide text-white">Live Kiosk Fleet &amp; Assessment Proctor Console</h2>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    Telemetry Live
+                                </span>
+                            </div>
+                            <p class="text-xs text-indigo-200/80 font-medium mt-0.5">
+                                Real-time laboratory station governance. Only instructors have the authority to pause or release ongoing assessments.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="fetchKioskFleetStatus(true)" class="px-3.5 py-1.5 rounded-lg bg-indigo-800/60 hover:bg-indigo-700/80 text-indigo-200 border border-indigo-600/40 text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fas fa-rotate" id="kiosk-refresh-icon"></i>
+                            Refresh Fleet
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Kiosk Grid Body -->
+                <div class="p-6 bg-slate-50/50">
+                    <div id="kioskFleetContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <div class="col-span-full py-8 text-center text-slate-400 text-xs font-semibold">
+                            <i class="fas fa-circle-notch fa-spin text-indigo-500 text-xl mb-2 block"></i>
+                            Connecting to arcade telemetry bus...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 1: 118-ELEMENT PERIODIC TABLE DISTRACTOR HEATMAP
+                 ============================================================ -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div>
+                        <h2 class="text-base font-black text-slate-800 flex items-center gap-2">
+                            <i class="fas fa-table-cells text-cyan-500"></i>
+                            118-Element Periodic Table Distractor & Confusion Matrix
+                        </h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">
+                            Real-time error density generated from live arcade customer encounters, dial tuning, and barcode lookups.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs font-bold text-slate-600">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-400"></span> 0-15% Error</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-400"></span> 15-35% Error</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-orange-400"></span> 35-55% Error</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span> &gt;55% Confusion</span>
+                    </div>
+                </div>
+
+                <div class="p-6 overflow-x-auto">
+                    <!-- Periodic Table Layout Container -->
+                    <div class="min-w-[920px]">
+                        <div class="pt-grid" id="periodicTableGrid">
+                            <% 
+                            // Map heatmap array by atomic number
+                            const heatMapLookup = {};
+                            if (heatmap && heatmap.length) {
+                                heatmap.forEach(h => { heatMapLookup[h.atomicNumber] = h; });
+                            }
+
+                            // 118-element fallback list in case elements is empty
+                            const allElements = (typeof elements !== 'undefined' && elements && elements.length) ? elements : [];
+                            
+                            // Map elements by atomic number
+                            const elementLookup = {};
+                            allElements.forEach(el => { elementLookup[el.atomic_number] = el; });
+
+                            for (let z = 1; z <= 118; z++) {
+                                const el = elementLookup[z] || {};
+                                const h = heatMapLookup[z] || {};
+
+                                const atomicNumber = z;
+                                const symbol = el.element_symbol || h.symbol || '?';
+                                const name = el.element_name || h.name || ('Element ' + z);
+                                const category = el.category || h.category || 'Unknown';
+                                const encounters = Number(h.clicks || h.totalEncounters || 0);
+                                const errors = Number(h.errors || h.errorCount || 0);
+                                const errorRatio = Number(h.errorRatio || (encounters > 0 ? (errors / encounters) : 0));
+                                const errorRate = (errorRatio <= 1 && errorRatio > 0) ? Math.round(errorRatio * 100) : Math.round(errorRatio);
+                                const hesitation = h.hesitationAvg || 0;
+                                const groupCol = el.group_col;
+                                const periodRow = el.period_row;
+
+                                let heatClass = 'heat-none';
+                                if (encounters > 0) {
+                                    if (errorRate > 55) heatClass = 'heat-high';
+                                    else if (errorRate > 35) heatClass = 'heat-med';
+                                    else if (errorRate > 15) heatClass = 'heat-low';
+                                    else heatClass = 'heat-opt';
+                                }
+
+                                const gridStyle = (groupCol && periodRow) ? `grid-column: ${groupCol}; grid-row: ${periodRow};` : '';
+                            %>
+                                <div class="pt-cell <%= heatClass %>"
+                                     style="<%= gridStyle %>"
+                                     data-z="<%= atomicNumber %>"
+                                     data-symbol="<%= symbol %>"
+                                     data-name="<%= name %>"
+                                     data-category="<%= category %>"
+                                     data-encounters="<%= encounters %>"
+                                     data-errors="<%= errors %>"
+                                     data-rate="<%= errorRate %>"
+                                     data-hesitation="<%= hesitation %>"
+                                     onclick="inspectElement(this)"
+                                     title="<%= name %> (#<%= atomicNumber %>) [<%= symbol %>] — Encounters: <%= encounters %>, Errors: <%= errors %> (<%= errorRate %>%)">
+                                    <span class="text-[8px] opacity-75 font-normal"><%= atomicNumber %></span>
+                                    <span class="text-xs font-black leading-none"><%= symbol %></span>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Element Inspection Drawer (Revealed on click) -->
+                <div id="elementDrawer" class="hidden p-5 bg-slate-50 border-t border-slate-200 transition-all">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-2xl bg-cyan-600 text-white flex flex-col items-center justify-center shadow-lg shadow-cyan-600/20">
+                                <span class="text-xs font-semibold" id="drawerZ">#1</span>
+                                <span class="text-2xl font-black leading-none" id="drawerSym">H</span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-black text-slate-800" id="drawerName">Hydrogen</h3>
+                                <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-semibold mt-1">
+                                    <span>Encounters: <strong class="text-slate-800" id="drawerEncounters">0</strong></span>
+                                    <span>•</span>
+                                    <span>Errors: <strong class="text-rose-600" id="drawerErrors">0</strong></span>
+                                    <span>•</span>
+                                    <span>Error Rate: <strong class="text-rose-600" id="drawerRate">0%</strong></span>
+                                    <span>•</span>
+                                    <span>Avg Hesitation: <strong class="text-indigo-600" id="drawerHesitation">0s</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="openRemediationModalForElement()" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-2">
+                                <i class="fas fa-bullseye"></i> Assign Targeted Study Module
+                            </button>
+                            <button onclick="document.getElementById('elementDrawer').classList.add('hidden')" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition">
+                                <i class="fas fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 2 & 3: SPEED-ACCURACY SCATTER & REPLAY
+                 ============================================================ -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- 2A. Cognitive Hesitation & Speed-Accuracy Scatter -->
+                <div class="section-card flex flex-col">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="text-base font-black text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-brain text-indigo-500"></i>
+                                Speed-Accuracy & Cognitive Hesitation
+                            </h2>
+                            <p class="text-xs text-slate-400 font-medium mt-0.5">
+                                Identifies impulsive dial guessing vs. cognitive overload
+                            </p>
+                        </div>
+                    </div>
+                    <div class="p-6 flex-1 flex flex-col justify-between">
+                        <div class="relative w-full h-80">
+                            <canvas id="speedAccuracyChart"></canvas>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 border-t border-slate-100 mt-4 text-center">
+                            <div class="p-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs">
+                                <p class="font-extrabold">Mastery</p>
+                                <p class="text-[10px] text-emerald-600">Fast & Accurate</p>
+                            </div>
+                            <div class="p-2 rounded-xl bg-blue-50 text-blue-800 text-xs">
+                                <p class="font-extrabold">Methodical</p>
+                                <p class="text-[10px] text-blue-600">Slow & Accurate</p>
+                            </div>
+                            <div class="p-2 rounded-xl bg-amber-50 text-amber-800 text-xs">
+                                <p class="font-extrabold">Impulsive</p>
+                                <p class="text-[10px] text-amber-600">Fast & Guessing</p>
+                            </div>
+                            <div class="p-2 rounded-xl bg-rose-50 text-rose-800 text-xs">
+                                <p class="font-extrabold">Overloaded</p>
+                                <p class="text-[10px] text-rose-600">Slow & Failing</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2B. Step-by-Step Problem Solving Replay Feed -->
+                <div class="section-card flex flex-col">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="text-base font-black text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-film text-purple-500"></i>
+                                Step-by-Step Problem-Solving Replay
+                            </h2>
+                            <p class="text-xs text-slate-400 font-medium mt-0.5">
+                                Inspect micro-interactions: dial turns, scans, and periodic clicks
+                            </p>
+                        </div>
+                        <button type="button" onclick="openModal('allSessionsModal')"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-600 text-purple-700 hover:text-white font-black text-xs transition shadow-2xs cursor-pointer group">
+                            <span>All</span>
+                            <i class="fas fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                        </button>
+                    </div>
+                    <div class="p-4 flex-1 min-h-0 overflow-y-auto space-y-2.5 custom-scrollbar">
+                        <% if (recentSessions && recentSessions.length > 0) { %>
+                            <% recentSessions.slice(0, 5).forEach(sess => { %>
+                                <div class="p-3 rounded-xl border border-slate-200/80 hover:border-cyan-400 bg-white hover:bg-cyan-50/20 transition flex items-center justify-between gap-3 shadow-2xs">
+                                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                                        <% if ((sess.game_mode === 'Versus' || sess.play_mode === 'Versus') && sess.p2_first_name) { %>
+                                            <!-- Dual Avatars -->
+                                            <div class="flex -space-x-2.5 overflow-hidden flex-shrink-0">
+                                                <img src="/profile_uploads/<%= sess.profile_pic || 'default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-white shadow-xs" title="<%= sess.first_name %> <%= sess.last_name %>" onerror="this.src='/profile_uploads/default_avatar.png'">
+                                                <img src="/profile_uploads/<%= sess.p2_profile_pic || 'default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-rose-400 shadow-xs" title="<%= sess.p2_first_name %> <%= sess.p2_last_name %>" onerror="this.src='/profile_uploads/default_avatar.png'">
+                                            </div>
+                                        <% } else { %>
+                                            <!-- Single Avatar -->
+                                            <img src="/profile_uploads/<%= sess.profile_pic || 'default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-slate-100 flex-shrink-0" onerror="this.src='/profile_uploads/default_avatar.png'">
+                                        <% } %>
+
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-bold text-slate-800 leading-tight truncate">
+                                                <% if ((sess.game_mode === 'Versus' || sess.play_mode === 'Versus') && sess.p2_first_name) { %>
+                                                    <span><%= sess.first_name %> <%= sess.last_name %></span>
+                                                    <span class="text-xs font-black text-rose-500 px-1 uppercase tracking-tight">vs</span>
+                                                    <span><%= sess.p2_first_name %> <%= sess.p2_last_name %></span>
+                                                <% } else { %>
+                                                    <%= sess.first_name %> <%= sess.last_name %>
+                                                <% } %>
+                                            </p>
+                                            <p class="text-[11px] text-slate-400 mt-0.5 truncate flex items-center gap-1.5">
+                                                <% if ((sess.game_mode === 'Versus' || sess.play_mode === 'Versus') && sess.p2_first_name) { %>
+                                                    <span class="inline-flex items-center px-1.5 py-0.2 rounded font-black text-[9px] uppercase bg-rose-100 text-rose-700">DUAL</span>
+                                                <% } %>
+                                                <span>LRN: <span class="font-mono text-slate-600"><%= sess.lrn_number || 'N/A' %></span></span>
+                                                <span>&bull;</span>
+                                                <span><%= new Date(sess.played_at || sess.started_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-3 flex-shrink-0">
+                                        <div class="text-right">
+                                            <% if ((sess.game_mode === 'Versus' || sess.play_mode === 'Versus') && sess.p2_first_name) { %>
+                                                <p class="text-xs font-black text-cyan-700">
+                                                    <%= sess.final_score %> <span class="text-slate-400 font-bold">-</span> <%= sess.final_score_p2 != null ? sess.final_score_p2 : 0 %> PTS
+                                                </p>
+                                            <% } else { %>
+                                                <p class="text-xs font-black text-cyan-700"><%= sess.final_score %> PTS</p>
+                                            <% } %>
+                                            <p class="text-[10px] font-bold text-slate-400"><%= sess.cabinet_id || 'KIOSK-01' %></p>
+                                        </div>
+                                        <button onclick="loadSessionReplay(<%= sess.session_id %>)" class="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                            <i class="fas fa-play text-xs"></i> Replay
+                                        </button>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        <% } else { %>
+                            <div class="text-center py-12 text-slate-400 text-xs font-semibold">
+                                <i class="fas fa-gamepad text-3xl mb-2 opacity-50 block"></i>
+                                No arcade sessions recorded for this class selection yet.
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ============================================================
+                 SECTION 4: EARLY WARNING INTERVENTION RADAR TABLE
+                 ============================================================ -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div>
+                        <h2 class="text-base font-black text-slate-800 flex items-center gap-2">
+                            <i class="fas fa-shield-halved text-rose-500"></i>
+                            Early Warning Intervention Radar ($Z_{\text{risk}}$ Model)
+                        </h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">
+                            Predictive failure probability based on hesitation spikes, repeat timeouts, and machine failure clusters.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                <th class="py-3 px-5">Cadet</th>
+                                <th class="py-3 px-4">Risk Tier</th>
+                                <th class="py-3 px-4 text-center">Failure Risk</th>
+                                <th class="py-3 px-4 text-center">Predicted Exam</th>
+                                <th class="py-3 px-4">Vulnerable Machine</th>
+                                <th class="py-3 px-4 text-center">Timeouts</th>
+                                <th class="py-3 px-5 text-right">Intervention</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-xs">
+                            <% if (riskList && riskList.length > 0) { %>
+                                <% riskList.forEach(r => { %>
+                                    <tr class="hover:bg-slate-50/80 transition">
+                                        <td class="py-3.5 px-5 flex items-center gap-3">
+                                            <img src="/profile_uploads/<%= r.profilePic || 'default_avatar.png' %>" class="w-8 h-8 rounded-lg object-cover ring-1 ring-slate-200" onerror="this.src='/profile_uploads/default_avatar.png'">
+                                            <div>
+                                                <p class="font-bold text-slate-800"><%= r.name %></p>
+                                                <p class="text-[10px] text-slate-400"><%= r.section || 'General' %></p>
+                                            </div>
+                                        </td>
+                                        <td class="py-3.5 px-4">
+                                            <% if (r.riskTier === 'Critical') { %>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-700">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span> Critical Risk
+                                                </span>
+                                            <% } else if (r.riskTier === 'Moderate') { %>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">
+                                                    Moderate Risk
+                                                </span>
+                                            <% } else { %>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
+                                                    Optimal
+                                                </span>
+                                            <% } %>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-center font-black <%= r.riskScore >= 70 ? 'text-rose-600' : (r.riskScore >= 50 ? 'text-amber-600' : 'text-slate-600') %>">
+                                            <%= r.riskScore %>%
+                                        </td>
+                                        <td class="py-3.5 px-4 text-center font-bold text-indigo-600">
+                                            ~<%= r.predictedScore %>%
+                                        </td>
+                                        <td class="py-3.5 px-4 font-semibold text-slate-700">
+                                            <%= r.vulnerableMachine %>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-center font-mono font-bold text-slate-600">
+                                            <%= r.totalTimeouts %>
+                                        </td>
+                                        <td class="py-3.5 px-5 text-right">
+                                            <button onclick="openRemediationModal('<%= r.userId %>', '<%= r.name.replace(/'/g, '\\\'') %>', '<%= r.vulnerableMachine %>')"
+                                                    class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition shadow-sm">
+                                                <i class="fas fa-paper-plane mr-1"></i> Remediate
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="py-10 text-center text-slate-400 font-semibold">
+                                        No active risk alerts recorded. All cadets performing within healthy cognitive bounds!
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- ============================================================
+     ALL PROBLEM-SOLVING REPLAY SESSIONS MODAL
+     ============================================================ -->
+<div id="allSessionsModal" class="modal-backdrop" onclick="if(event.target === this) closeModal('allSessionsModal')">
+    <div class="modal-card max-w-3xl flex flex-col max-h-[85vh]">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10 rounded-t-3xl">
+            <div>
+                <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-film text-purple-500"></i>
+                    All Problem-Solving Replay Sessions
+                </h3>
+                <p class="text-xs text-slate-400 font-medium mt-0.5">
+                    Full archive of micro-telemetry recordings (<%= recentSessions ? recentSessions.length : 0 %> total)
+                </p>
+            </div>
+            <button onclick="closeModal('allSessionsModal')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition cursor-pointer">
+                <i class="fas fa-xmark text-sm"></i>
+            </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto space-y-2.5 flex-1 custom-scrollbar">
+            <% if (recentSessions && recentSessions.length > 0) { %>
+                <% recentSessions.forEach(sess => { %>
+                    <div class="p-3 rounded-xl border border-slate-200/80 hover:border-cyan-400 bg-white hover:bg-cyan-50/20 transition flex items-center justify-between gap-3 shadow-2xs">
+                        <div class="flex items-center gap-3 min-w-0 flex-1">
+                            <% if ((sess.game_mode === 'Versus' || sess.play_mode === 'Versus') && sess.p2_first_name) { %>
+                                <!-- Dual Avatars -->
+                                <div class="flex -space-x-2.5 overflow-hidden flex-shrink-0">
+                                    <img src="/profile_uploads/<%= sess.profile_pic || 'default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-white shadow-xs" title="<%= sess.first_name %> <%= sess.last_name %>" onerror="this.src='/profile_uploads/default_avatar.png'">
+                                    <img src="/profile_uploads/<%= sess.p2_profile_pic || 'default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-rose-400 shadow-xs" title="<%= sess.p2_first_name %> <%= sess.p2_last_name %>" onerror="this.src='/profile_uploads/default_avatar.png'">
+                                </div>
+                            <% } else { %>
+                                <!-- Single Avatar -->
+                                <img src="/profile_uploads/<%= sess.profile_pic || 'default_avatar.png' %>" class="w-10 h-10 rounded-xl object-cover ring-2 ring-slate-100 flex-shrink-0" onerror="this.src='/profile_uploads/default_avatar.png'">
+                            <% } %>
+
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-bold text-slate-800 leading-tight truncate">
+                                    <% if ((sess.game_mode === 'Versus' || sess.play_mode === 'Versus') && sess.p2_first_name) { %>
+                                        <span><%= sess.first_name %> <%= sess.last_name %></span>
+                                        <span class="text-xs font-black text-rose-500 px-1 uppercase tracking-tight">vs</span>
+                                        <span><%= sess.p2_first_name %> <%= sess.p2_last_name %></span>
+                                    <% } else { %>
+                                        <%= sess.first_name %> <%= sess.last_name %>
+                                    <% } %>
+                                </p>
+                                <p class="text-[11px] text-slate-400 mt-0.5 truncate flex items-center gap-1.5">
+                                    <% if ((sess.game_mode === 'Versus' || sess.play_mode === 'Versus') && sess.p2_first_name) { %>
+                                        <span class="inline-flex items-center px-1.5 py-0.2 rounded font-black text-[9px] uppercase bg-rose-100 text-rose-700">DUAL</span>
+                                    <% } %>
+                                    <span>LRN: <span class="font-mono text-slate-600"><%= sess.lrn_number || 'N/A' %></span></span>
+                                    <span>&bull;</span>
+                                    <span><%= new Date(sess.played_at || sess.started_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <div class="text-right">
+                                <% if ((sess.game_mode === 'Versus' || sess.play_mode === 'Versus') && sess.p2_first_name) { %>
+                                    <p class="text-xs font-black text-cyan-700">
+                                        <%= sess.final_score %> <span class="text-slate-400 font-bold">-</span> <%= sess.final_score_p2 != null ? sess.final_score_p2 : 0 %> PTS
+                                    </p>
+                                <% } else { %>
+                                    <p class="text-xs font-black text-cyan-700"><%= sess.final_score %> PTS</p>
+                                <% } %>
+                                <p class="text-[10px] font-bold text-slate-400"><%= sess.cabinet_id || 'KIOSK-01' %></p>
+                            </div>
+                            <button onclick="closeModal('allSessionsModal'); loadSessionReplay(<%= sess.session_id %>);" class="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                <i class="fas fa-play text-xs"></i> Replay
+                            </button>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <div class="text-center py-12 text-slate-400 text-xs font-semibold">
+                    <i class="fas fa-gamepad text-3xl mb-2 opacity-50 block"></i>
+                    No arcade sessions recorded for this class selection yet.
+                </div>
+            <% } %>
+        </div>
+
+        <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center rounded-b-3xl">
+            <span class="text-xs font-bold text-slate-400">Showing <%= recentSessions ? recentSessions.length : 0 %> total recorded telemetry sessions</span>
+            <button onclick="closeModal('allSessionsModal')" class="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition cursor-pointer">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     STEP-BY-STEP REPLAY TIMELINE MODAL
+     ============================================================ -->
+<div id="replayModal" class="modal-backdrop" onclick="if(event.target === this) closeModal('replayModal')">
+    <div class="modal-card max-w-3xl flex flex-col max-h-[88vh]">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10 rounded-t-3xl">
+            <div>
+                <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-play-circle text-indigo-600"></i>
+                    Session Interaction Timeline
+                </h3>
+                <p class="text-xs text-slate-400 font-semibold mt-0.5" id="replaySubtitle">Loading telemetry trace...</p>
+            </div>
+            <button onclick="closeModal('replayModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1" id="replayTimelineBody">
+            <!-- Timeline items populated via AJAX -->
+        </div>
+
+        <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end rounded-b-3xl">
+            <button onclick="closeModal('replayModal')" class="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition cursor-pointer">
+                Close Replay
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     1-CLICK TARGETED REMEDIATION MODAL
+     ============================================================ -->
+<div id="remediationModal" class="modal-backdrop">
+    <div class="modal-card">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+            <div>
+                <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-paper-plane text-cyan-600"></i>
+                    Dispatch Targeted Remediation
+                </h3>
+                <p class="text-xs text-slate-400 font-semibold mt-0.5" id="remStudentLabel">For Cadet</p>
+            </div>
+            <button onclick="closeModal('remediationModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="remediationForm" onsubmit="submitRemediation(event)" class="p-6 space-y-4">
+            <input type="hidden" id="remStudentId" name="student_id">
+            <input type="hidden" id="remMachineName" name="machine_name">
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Select Targeted Learning Material</label>
+                <select id="remMaterialId" name="material_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-cyan-500">
+                    <option value="">-- General Diagnostic Review --</option>
+                    <% if (materials && materials.length > 0) { %>
+                        <% materials.forEach(m => { %>
+                            <option value="<%= m.material_id %>"><%= m.title %> (<%= m.material_type || 'Module' %>)</option>
+                        <% }); %>
+                    <% } %>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Custom Pedagogical Feedback / Guidance Note</label>
+                <textarea id="remCustomNote" name="custom_note" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:border-cyan-500" placeholder="e.g. Focus on atomic valence configurations before taking next week's quiz."></textarea>
+            </div>
+
+            <div class="pt-2 flex justify-end gap-3">
+                <button type="button" onclick="closeModal('remediationModal')" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition">
+                    Cancel
+                </button>
+                <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition shadow-md shadow-cyan-600/20">
+                    <i class="fas fa-paper-plane mr-1.5"></i> Dispatch to Cadet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script type="application/json" id="telemetry-scatter-sync-data"><%- JSON.stringify(scatter || []).replace(/<\//g, '<\\/') %></script>
+<script>
+/* ── Sidebar & Profile Toggle ── */
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    sb.classList.toggle('-translate-x-full');
+    ov.classList.toggle('hidden');
+}
+
+function toggleProfileDropdown() {
+    // Basic stub or redirect to profile
+    window.location.href = '/teacher/profile';
+}
+
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('open');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+
+function anToast(msg, isError = false) {
+    const t = document.getElementById('telemetry-toast');
+    const msgEl = document.getElementById('toast-msg');
+    const icnEl = document.getElementById('toast-icon');
+    msgEl.innerText = msg;
+    icnEl.className = isError ? 'fas fa-circle-xmark text-rose-400 text-base' : 'fas fa-circle-check text-emerald-400 text-base';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ── Element Inspection Drawer ── */
+let currentInspectedElement = null;
+
+function inspectElement(el) {
+    const z = el.getAttribute('data-z');
+    const sym = el.getAttribute('data-symbol');
+    const name = el.getAttribute('data-name');
+    const enc = el.getAttribute('data-encounters');
+    const err = el.getAttribute('data-errors');
+    const rate = el.getAttribute('data-rate');
+    const hes = el.getAttribute('data-hesitation');
+
+    currentInspectedElement = { z, sym, name, enc, err, rate, hes };
+
+    document.getElementById('drawerZ').innerText = '#' + z;
+    document.getElementById('drawerSym').innerText = sym;
+    document.getElementById('drawerName').innerText = name;
+    document.getElementById('drawerEncounters').innerText = enc;
+    document.getElementById('drawerErrors').innerText = err;
+    document.getElementById('drawerRate').innerText = rate + '%';
+    document.getElementById('drawerHesitation').innerText = hes + 's';
+
+    document.getElementById('elementDrawer').classList.remove('hidden');
+}
+
+function openRemediationModalForElement() {
+    if (!currentInspectedElement) return;
+    document.getElementById('remStudentId').value = '';
+    document.getElementById('remMachineName').value = currentInspectedElement.name + ' Station';
+    document.getElementById('remStudentLabel').innerText = `Target Concept: ${currentInspectedElement.name} (#${currentInspectedElement.z})`;
+    document.getElementById('remCustomNote').value = `Telemetry indicates high hesitation / error rate when configuring ${currentInspectedElement.name} (${currentInspectedElement.sym}). Please review atomic properties.`;
+    document.getElementById('remediationModal').classList.add('open');
+}
+
+/* ── Remediation Modal Trigger ── */
+function openRemediationModal(studentId, name, machine) {
+    document.getElementById('remStudentId').value = studentId;
+    document.getElementById('remMachineName').value = machine;
+    document.getElementById('remStudentLabel').innerText = `For Cadet: ${name} (${machine})`;
+    document.getElementById('remCustomNote').value = `Targeted practice assigned based on Elementa Arcade telemetry at ${machine}.`;
+    document.getElementById('remediationModal').classList.add('open');
+}
+
+async function submitRemediation(e) {
+    e.preventDefault();
+    const studentId = document.getElementById('remStudentId').value;
+    const materialId = document.getElementById('remMaterialId').value;
+    const customNote = document.getElementById('remCustomNote').value;
+    const machineName = document.getElementById('remMachineName').value;
+
+    try {
+        const res = await fetch('/teacher/api/arcade/assign-remediation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: studentId || null,
+                material_id: materialId || null,
+                custom_note: customNote,
+                machine_name: machineName
+            })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+
+        anToast('Remediation guidance dispatched to student successfully!');
+        closeModal('remediationModal');
+    } catch (err) {
+        anToast('Failed to assign: ' + err.message, true);
+    }
+}
+
+/* ── Replay Timeline Viewer ── */
+async function loadSessionReplay(sessionId) {
+    const modal = document.getElementById('replayModal');
+    const body = document.getElementById('replayTimelineBody');
+    const sub = document.getElementById('replaySubtitle');
+
+    modal.classList.add('open');
+    body.innerHTML = '<div class="py-12 text-center text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="text-xs mt-2 font-bold">Decoding hardware telemetry...</p></div>';
+
+    try {
+        const res = await fetch('/teacher/api/arcade/replay/' + sessionId);
+        const data = await res.json();
+        if (!data.success || !data.replay) throw new Error(data.error || 'Replay trace not available');
+
+        const { session, events } = data.replay;
+        const isDual = session.play_mode === 'Versus' || Boolean(session.student_id_p2);
+
+        if (isDual && (session.p2_first || session.student_id_p2)) {
+            const p2Name = (session.p2_first && session.p2_last) ? `${session.p2_first} ${session.p2_last}` : 'Opponent';
+            sub.innerText = `Duel Matchup: ${session.p1_first} ${session.p1_last} vs ${p2Name} • Score: ${session.final_score_p1 || session.final_score || 0} - ${session.final_score_p2 || 0} PTS • Cabinet: ${session.cabinet_id || 'KIOSK-01'}`;
+        } else {
+            sub.innerText = `Cadet: ${session.p1_first} ${session.p1_last} • Score: ${session.final_score || session.final_score_p1 || 0} PTS • Cabinet: ${session.cabinet_id || 'KIOSK-01'}`;
+        }
+
+        if (!events || events.length === 0) {
+            body.innerHTML = '<div class="py-10 text-center text-slate-400 text-xs font-semibold">No granular micro-telemetry steps found for this session.</div>';
+            return;
+        }
+
+        let html = '';
+        events.forEach((ev, idx) => {
+            const timeStr = new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit', second:'2-digit' });
+
+            if (ev.type === 'periodic_lookup') {
+                const isP1 = ev.playerNumber === 1;
+                html += `
+                    <div class="relative flex items-start gap-3.5 sm:gap-4">
+                        <!-- Node Marker -->
+                        <div class="relative z-10 w-9 h-9 rounded-full bg-cyan-600 text-white flex items-center justify-center text-xs font-black shadow-md shrink-0 border-2 border-white ring-2 ring-cyan-200">
+                            <i class="fas fa-eye text-xs"></i>
+                        </div>
+                        <!-- Card Content -->
+                        <div class="flex-1 min-w-0 bg-white rounded-2xl border border-cyan-100 p-4 shadow-xs hover:border-cyan-200 transition">
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-50 pb-2 mb-2.5">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    ${isDual ? `
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${isP1 ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}">
+                                            <span class="w-1.5 h-1.5 rounded-full ${isP1 ? 'bg-indigo-600' : 'bg-rose-600'}"></span>
+                                            Player ${ev.playerNumber || 1}: ${ev.playerName || (isP1 ? 'Player 1' : 'Player 2')}
+                                        </span>
+                                    ` : ''}
+                                    <span class="text-xs font-black text-cyan-950">Periodic Table Lookup: ${ev.symbol || 'Element'}</span>
+                                </div>
+                                <span class="text-[11px] font-mono text-cyan-700 font-semibold flex items-center gap-1">
+                                    <i class="far fa-clock text-[10px]"></i>
+                                    ${timeStr}
+                                </span>
+                            </div>
+                            <p class="text-xs text-cyan-800">
+                                Inspected atomic cell #${ev.atomicNumber || '—'} from <strong class="text-cyan-950 font-bold">${ev.source || 'Station Reference'}</strong> with a ${((ev.durationMs || 1500) / 1000).toFixed(1)}s focus duration.
+                            </p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const isPass = ev.isCorrect;
+                const isP1 = ev.playerNumber === 1;
+                const statusBorder = isPass ? 'border-emerald-200 hover:border-emerald-300' : (ev.isTimeout ? 'border-amber-200 hover:border-amber-300' : 'border-rose-200 hover:border-rose-300');
+                const statusBg = isPass ? 'bg-white' : (ev.isTimeout ? 'bg-amber-50/20' : 'bg-rose-50/20');
+                const badgeColor = isPass ? 'bg-emerald-500 ring-emerald-200' : (ev.isTimeout ? 'bg-amber-500 ring-amber-200' : 'bg-rose-500 ring-rose-200');
+                const statusText = isPass ? 'Success (Pass)' : (ev.isTimeout ? 'Timeout' : 'Failure: ' + (ev.failureType || 'Incorrect Configuration'));
+
+                html += `
+                    <div class="relative flex items-start gap-3.5 sm:gap-4">
+                        <!-- Node Marker -->
+                        <div class="relative z-10 w-9 h-9 rounded-full ${badgeColor} text-white flex items-center justify-center text-xs font-black shadow-md shrink-0 border-2 border-white ring-2">
+                            ${isDual ? `<span class="text-[11px] font-black tracking-tight">P${ev.playerNumber || 1}</span>` : `<i class="fas ${isPass ? 'fa-check' : 'fa-xmark'} text-xs"></i>`}
+                            ${isDual ? `
+                                <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${isPass ? 'bg-emerald-600' : 'bg-rose-600'} text-white text-[9px] flex items-center justify-center border-2 border-white shadow-xs">
+                                    <i class="fas ${isPass ? 'fa-check' : 'fa-xmark'}"></i>
+                                </span>
+                            ` : ''}
+                        </div>
+
+                        <!-- Card Content -->
+                        <div class="flex-1 min-w-0 ${statusBg} rounded-2xl border ${statusBorder} p-4 shadow-xs transition">
+                            <!-- Card Header: Player Turn Indicator + Order & Level + Timestamp -->
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    ${isDual ? `
+                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${isP1 ? 'bg-indigo-50 border border-indigo-200 text-indigo-700' : 'bg-rose-50 border border-rose-200 text-rose-700'}">
+                                            <span class="w-2 h-2 rounded-full ${isP1 ? 'bg-indigo-500' : 'bg-rose-500'}"></span>
+                                            <span>Player ${ev.playerNumber}: ${ev.playerName}</span>
+                                            <span class="ml-1 px-1.5 py-0.2 rounded ${isP1 ? 'bg-indigo-600' : 'bg-rose-600'} text-white text-[9px] font-black uppercase tracking-wider">
+                                                ${isP1 ? 'Answered 1st' : 'Followed by P2'}
+                                            </span>
+                                        </div>
+                                    ` : `
+                                        <div class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200">
+                                            <i class="fas fa-user-astronaut text-indigo-600 text-[10px]"></i>
+                                            <span>${ev.playerName || 'Cadet'}</span>
+                                        </div>
+                                    `}
+                                    <span class="text-xs font-black text-slate-800">
+                                        Customer: ${ev.customer || 'Laboratory Order'} &nbsp;•&nbsp; Level ${ev.level || 1}
+                                    </span>
+                                </div>
+                                <span class="text-[11px] font-mono text-slate-400 font-semibold flex items-center gap-1">
+                                    <i class="far fa-clock text-[10px]"></i>
+                                    ${timeStr}
+                                </span>
+                            </div>
+
+                            <!-- Question Snapshot -->
+                            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-600 italic">
+                                "${ev.question || 'Order specifications'}"
+                            </div>
+
+                            <!-- Answers comparison (if available) -->
+                            ${ev.studentAnswer ? `
+                                <div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+                                    <span class="text-slate-500 font-semibold">Answer:</span>
+                                    <span class="font-mono font-bold px-2 py-0.5 rounded-md ${isPass ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+                                        ${ev.studentAnswer}
+                                    </span>
+                                    ${!isPass && ev.correctAnswer ? `
+                                        <span class="text-slate-400 font-semibold ml-2">Expected:</span>
+                                        <span class="font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                            ${ev.correctAnswer}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+
+                            <!-- Telemetry Meta Badges -->
+                            <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                                <span class="px-2.5 py-0.5 rounded-full ${isPass ? 'bg-emerald-100 text-emerald-800' : (ev.isTimeout ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')}">
+                                    ${statusText}
+                                </span>
+                                <span class="text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                                    Machine: <strong class="text-slate-700">${ev.machine || 'Chemical Mixing Station'}</strong>
+                                </span>
+                                <span class="text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                                    Hesitation: <strong class="text-indigo-600">${ev.responseTime || 0}s</strong>
+                                </span>
+                                ${ev.scaffoldingUsed ? '<span class="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">Scaffolding Clue Triggered</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // Vertical timeline track container with connecting vertical spine
+        body.innerHTML = `
+            <div class="relative pl-1 sm:pl-2 py-2">
+                <!-- Vertical timeline connector spine line -->
+                <div class="absolute left-[22px] sm:left-[26px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-indigo-500 via-purple-300 to-slate-200"></div>
+                <div class="space-y-6">
+                    ${html}
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        body.innerHTML = `<div class="p-6 text-center text-rose-500 text-xs font-bold">Failed to load replay: ${err.message}</div>`;
+    }
+}
+
+/* ── Speed-Accuracy Scatter Chart (Chart.js) ── */
+let speedAccuracyChartInstance = null;
+
+function renderSpeedAccuracyChart(rawScatter) {
+    const ctx = document.getElementById('speedAccuracyChart');
+    if (!ctx) return;
+
+    if (speedAccuracyChartInstance) {
+        speedAccuracyChartInstance.destroy();
+        speedAccuracyChartInstance = null;
+    }
+
+    const points = (rawScatter || []).map(s => ({
+        x: s.x !== undefined ? s.x : (s.avgHesitation || 0),
+        y: s.y !== undefined ? s.y : (s.accuracyRate || 0),
+        studentName: s.name || 'Cadet',
+        lrn: s.lrn || ''
+    }));
+
+    speedAccuracyChartInstance = new Chart(ctx.getContext('2d'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Cadets',
+                data: points,
+                backgroundColor: points.map(p => {
+                    if (p.x <= 25 && p.y >= 70) return '#10b981'; // Mastery
+                    if (p.x > 25 && p.y >= 70) return '#3b82f6';  // Methodical
+                    if (p.x <= 25 && p.y < 70) return '#f59e0b';  // Impulsive
+                    return '#ef4444';                             // Overloaded
+                }),
+                pointRadius: 6,
+                pointHoverRadius: 9
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: 'Mean Hesitation Time (seconds)', font: { family: 'Plus Jakarta Sans', weight: 'bold', size: 11 } },
+                    min: 0,
+                    max: 60,
+                    grid: { color: '#f1f5f9' }
+                },
+                y: {
+                    title: { display: true, text: 'Accuracy Rate (%)', font: { family: 'Plus Jakarta Sans', weight: 'bold', size: 11 } },
+                    min: 0,
+                    max: 100,
+                    grid: { color: '#f1f5f9' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const p = context.raw;
+                            return `${p.studentName}: ${p.y}% accuracy, ${p.x}s avg hesitation`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const rawScatter = <%- JSON.stringify(scatter || []) %>;
+    renderSpeedAccuracyChart(rawScatter);
+});
+
+async function applyTelemetryClassFilter(classId) {
+    try {
+        const targetUrl = '/teacher/arcade-telemetry' + (classId ? ('?class_id=' + encodeURIComponent(classId)) : '');
+        window.history.pushState({ class_id: classId }, '', targetUrl);
+
+        const res = await fetch(targetUrl, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            cache: 'no-store'
+        });
+        if (!res.ok) throw new Error('Failed to load telemetry filter');
+        const html = await res.text();
+        const parser = new DOMParser();
+        const newDoc = parser.parseFromString(html, 'text/html');
+
+        ['telemetryContentBody', 'allSessionsModal'].forEach(id => {
+            const curEl = document.getElementById(id);
+            const newEl = newDoc.getElementById(id);
+            if (curEl && newEl) {
+                curEl.innerHTML = newEl.innerHTML;
+            }
+        });
+
+        const syncEl = newDoc.getElementById('telemetry-scatter-sync-data');
+        if (syncEl) {
+            const updatedScatter = JSON.parse(syncEl.textContent);
+            renderSpeedAccuracyChart(updatedScatter);
+        }
+
+        fetchKioskFleetStatus(false);
+        showToast('Class filter applied', 'info');
+    } catch (err) {
+        console.error('Error applying telemetry class filter:', err);
+        showToast('Failed to update class filter', 'error');
+    }
+}
+
+/* Initial Kiosk Fleet Pre-render & Periodic Live Sync */
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const initialKiosks = <%- JSON.stringify(kiosks || []) %>;
+        if (Array.isArray(initialKiosks) && initialKiosks.length > 0) {
+            renderKioskCards(initialKiosks);
+        } else {
+            fetchKioskFleetStatus(false);
+        }
+    } catch (e) {
+        console.error('Error pre-rendering kiosks:', e);
+        fetchKioskFleetStatus(false);
+    }
+    setInterval(() => fetchKioskFleetStatus(false), 2000);
+});
+
+/* ── Kiosk Fleet Remote Proctor Control & Live Sync ── */
+
+function showToast(msg, type = 'info') {
+    const toast = document.getElementById('telemetry-toast');
+    const msgEl = document.getElementById('toast-msg');
+    const iconEl = document.getElementById('toast-icon');
+    if (!toast) return;
+
+    if (msgEl) msgEl.textContent = msg;
+    if (iconEl) {
+        iconEl.className = type === 'error' 
+            ? 'fas fa-circle-exclamation text-rose-400 text-base' 
+            : 'fas fa-circle-check text-emerald-400 text-base';
+    }
+
+    toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3200);
+}
+
+function renderKioskCards(kiosks) {
+    const container = document.getElementById('kioskFleetContainer');
+    if (!container) return;
+
+    if (!kiosks || kiosks.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full py-8 text-center text-slate-400 text-xs font-semibold bg-white rounded-xl border border-dashed border-slate-300">
+                <i class="fas fa-server text-slate-300 text-2xl mb-2 block"></i>
+                No arcade kiosks registered in fleet database.
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    kiosks.forEach(k => {
+        const isOnline = k.is_online || (k.seconds_since_heartbeat !== null && k.seconds_since_heartbeat <= 45);
+        const isAssessmentActive = isOnline && k.active_session_id && k.active_session_id > 0;
+        const isPaused = k.pending_command === 'PAUSE' || k.is_proctor_paused === 1;
+
+        let statusBadgeClass = 'bg-slate-100 text-slate-600 border border-slate-200';
+        let statusText = 'Offline';
+        let statusIcon = 'fa-power-off';
+        let borderCardClass = 'border-slate-200/80';
+
+        if (!isOnline) {
+            statusBadgeClass = 'bg-slate-100 text-slate-500 border border-slate-200';
+            statusText = 'Offline';
+            statusIcon = 'fa-cloud-slash';
+        } else if (isPaused) {
+            statusBadgeClass = 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse';
+            statusText = 'Proctor Paused';
+            statusIcon = 'fa-lock';
+            borderCardClass = 'border-rose-300 ring-2 ring-rose-200/50';
+        } else if (isAssessmentActive) {
+            statusBadgeClass = 'bg-amber-100 text-amber-900 border border-amber-300';
+            statusText = 'In Assessment';
+            statusIcon = 'fa-user-pen';
+            borderCardClass = 'border-amber-300/80';
+        } else {
+            statusBadgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+            statusText = 'Ready / Practice';
+            statusIcon = 'fa-gamepad';
+        }
+
+        const heartbeatAge = k.seconds_since_heartbeat !== null 
+            ? (k.seconds_since_heartbeat < 60 ? `${k.seconds_since_heartbeat}s ago` : `${Math.floor(k.seconds_since_heartbeat / 60)}m ago`)
+            : 'Never';
+
+        const studentDisplay = k.student_name_p1 
+            ? `${k.student_name_p1}${k.student_name_p2 ? ' & ' + k.student_name_p2 : ''}`
+            : (isAssessmentActive ? `Session #${k.active_session_id}` : 'None');
+
+        html += `
+            <div class="bg-white rounded-xl border ${borderCardClass} p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div>
+                    <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}"></span>
+                                <h4 class="text-sm font-black text-slate-800 font-mono tracking-wide">${k.kiosk_id}</h4>
+                            </div>
+                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">IP: ${k.ip_address || '127.0.0.1'} &bull; ${k.ping_ms || 4}ms</p>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase ${statusBadgeClass}">
+                            <i class="fas ${statusIcon} mr-1"></i> ${statusText}
+                        </span>
+                    </div>
+
+                    <div class="py-3.5 space-y-2 text-xs">
+                        ${isAssessmentActive ? `
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">Active Cadet:</span>
+                                <span class="font-extrabold text-slate-800 truncate max-w-[170px]">${studentDisplay}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">Assessment:</span>
+                                <span class="font-bold text-indigo-600 truncate max-w-[170px]">${k.assessment_name || ('Level ' + (k.level_number || 1))}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">Mode:</span>
+                                <span class="font-semibold text-slate-600">${k.play_mode || 'Solo'}</span>
+                            </div>
+                        ` : `
+                            <div class="py-2 text-center text-slate-400 text-xs italic">
+                                <i class="fas fa-gamepad text-slate-300 text-lg mb-1 block"></i>
+                                Station idle or in Guest Practice mode.
+                            </div>
+                        `}
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <span class="text-[10px] text-slate-400 font-medium">
+                        <i class="far fa-clock mr-1"></i> ${heartbeatAge}
+                    </span>
+                    <div class="flex items-center gap-1.5">
+                        ${isPaused ? `
+                            <button onclick="sendKioskCommand('${k.kiosk_id}', 'RESUME')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition flex items-center gap-1.5 shadow-sm">
+                                <i class="fas fa-play"></i> Resume
+                            </button>
+                        ` : `
+                            <button onclick="sendKioskCommand('${k.kiosk_id}', 'PAUSE')" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-black text-xs transition flex items-center gap-1.5 shadow-sm" ${!isAssessmentActive ? 'disabled opacity-40 cursor-not-allowed title="Only active assessments can be paused"' : ''}>
+                                <i class="fas fa-pause"></i> Pause
+                            </button>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+async function fetchKioskFleetStatus(showFeedback = false) {
+    const icon = document.getElementById('kiosk-refresh-icon');
+    const container = document.getElementById('kioskFleetContainer');
+    if (icon) icon.classList.add('fa-spin');
+
+    try {
+        const res = await fetch('/api/elementa/kiosks');
+        const data = await res.json();
+        if (icon) icon.classList.remove('fa-spin');
+
+        if (data.success && data.kiosks) {
+            renderKioskCards(data.kiosks);
+            if (showFeedback) showToast('Kiosk fleet synchronized', 'success');
+        } else {
+            if (container && container.innerHTML.includes('Connecting to arcade telemetry bus')) {
+                renderKioskCards([]);
+            }
+            if (showFeedback) showToast(data.error || 'Failed to load fleet status', 'error');
+        }
+    } catch (err) {
+        if (icon) icon.classList.remove('fa-spin');
+        console.error('[fetchKioskFleetStatus]', err);
+        if (container && container.innerHTML.includes('Connecting to arcade telemetry bus')) {
+            container.innerHTML = `
+                <div class="col-span-full py-6 text-center bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
+                    <i class="fas fa-triangle-exclamation text-rose-500 text-lg mb-1 block"></i>
+                    Unable to reach arcade telemetry bus.
+                    <button onclick="fetchKioskFleetStatus(true)" class="block mx-auto mt-2 px-3 py-1 bg-white hover:bg-rose-100 border border-rose-300 rounded text-rose-800 text-[11px] font-bold shadow-xs">
+                        <i class="fas fa-rotate mr-1"></i> Try Reconnecting
+                    </button>
+                </div>
+            `;
+        }
+        if (showFeedback) showToast('Network error connecting to fleet', 'error');
+    }
+}
+
+async function sendKioskCommand(kioskId, action) {
+    const actionLabel = action === 'PAUSE' ? 'Pause' : 'Resume';
+    if (!confirm(`Are you sure you want to ${actionLabel.toUpperCase()} the ongoing assessment on ${kioskId}?`)) {
+        return;
+    }
+
+    try {
+        const teacherName = "<%= user ? (user.first_name + ' ' + user.last_name) : 'Instructor' %>";
+        const res = await fetch(`/api/elementa/kiosk/${encodeURIComponent(kioskId)}/command`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action, teacher_name: teacherName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`${actionLabel} command sent to ${kioskId}`, 'success');
+            fetchKioskFleetStatus(false);
+            setTimeout(() => fetchKioskFleetStatus(false), 500);
+            setTimeout(() => fetchKioskFleetStatus(false), 1500);
+        } else {
+            showToast(data.error || 'Failed to dispatch command', 'error');
+        }
+    } catch (err) {
+        console.error('[sendKioskCommand]', err);
+        showToast('Error dispatching command', 'error');
+    }
+}
+</script>
+<%- include('../partials/notification-panel') %>
+<%- include('../partials/teacher-nav-scripts') %>
+</body>
+</html>

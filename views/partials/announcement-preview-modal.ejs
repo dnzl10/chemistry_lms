@@ -1,0 +1,275 @@
+<!-- ============================================================
+     ANNOUNCEMENT PREVIEW & OFFICIAL PROOF READER MODAL (FULLSCREEN)
+     ============================================================ -->
+<div id="announcementPreviewModal" class="fixed inset-0 z-[99999] bg-slate-950 hidden flex-col w-screen h-screen overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="annPreviewTitle">
+    <div class="w-full h-full flex flex-col bg-slate-900 overflow-hidden cursor-default">
+        
+        <!-- Top Sticky Header -->
+        <div class="px-6 py-4 md:px-8 border-b border-slate-800 flex items-center justify-between bg-slate-950/90 flex-shrink-0 backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <span id="annPreviewScopeBadge" class="px-3 py-1 text-xs font-black rounded-lg uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Announcement
+                </span>
+                <span id="annPreviewCriticalBadge" class="hidden px-3 py-1 text-xs font-black rounded-lg uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    🚨 Emergency
+                </span>
+            </div>
+            <button type="button" onclick="closeAnnouncementPreview()" aria-label="Close announcement preview" class="px-3.5 py-1.5 md:px-4 md:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center gap-2 text-xs font-bold transition border border-slate-700/60 focus-visible:ring-2 focus-visible:ring-cyan-400 cursor-pointer">
+                <i class="fas fa-times text-sm"></i>
+                <span class="hidden sm:inline">Close</span>
+            </button>
+        </div>
+
+        <!-- Main Body: Auto-fitting Responsive Layout -->
+        <div id="annPreviewMainContainer" class="flex-1 min-h-0 w-full flex flex-col lg:flex-row overflow-hidden">
+            
+            <!-- Left Column: Announcement Details & Content -->
+            <div id="annPreviewContentCol" class="w-full flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 space-y-6">
+                <div class="max-w-4xl mx-auto w-full space-y-6">
+                    
+                    <!-- Metadata Strip -->
+                    <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800/80 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                                <i class="fas fa-user-tie text-xs"></i>
+                            </div>
+                            <span>Posted by <strong id="annPreviewAuthor" class="text-slate-200">Instructor</strong></span>
+                        </div>
+                        <span id="annPreviewDate" class="text-slate-500 font-medium">Just now</span>
+                    </div>
+
+                    <!-- Title -->
+                    <h2 id="annPreviewTitle" class="text-2xl md:text-3xl font-black text-white tracking-tight leading-tight">
+                        Announcement Title
+                    </h2>
+
+                    <!-- Deadline Pill (if present) -->
+                    <div id="annPreviewDeadlineContainer" class="hidden p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between flex-wrap gap-2">
+                        <div class="flex items-center gap-2 text-amber-300 text-xs font-bold">
+                            <i class="fas fa-clock text-amber-400"></i>
+                            <span>Action Required Deadline: <span id="annPreviewDueDate" class="text-amber-200 font-extrabold"></span></span>
+                        </div>
+                        <a id="annPreviewCalLink" href="#" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold rounded-lg transition inline-flex items-center gap-1.5 border border-amber-500/30">
+                            <i class="fab fa-google text-xs"></i> Add to Calendar
+                        </a>
+                    </div>
+
+                    <!-- Content text -->
+                    <div id="annPreviewContent" class="text-slate-300 text-sm md:text-base leading-relaxed whitespace-pre-wrap bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80 shadow-inner">
+                    </div>
+
+                    <!-- Discussion Forum Helper Notice -->
+                    <div class="text-[11px] text-slate-400 font-medium pt-2">
+                        <i class="fas fa-circle-info text-cyan-400 mr-1"></i> For inquiries, please post in your course 
+                        <a href="/forums" class="text-cyan-300 font-bold hover:underline">Discussion Forum</a>.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Dedicated Full-Viewport Official Proof / Document Viewer -->
+            <div id="annPreviewAttachmentWrap" class="hidden flex-1 min-w-0 min-h-0 h-full flex flex-col bg-slate-950 border-t lg:border-t-0 lg:border-l border-slate-800 overflow-hidden">
+                
+                <!-- Document Toolbar Header -->
+                <div class="px-6 py-3 border-b border-slate-800/80 bg-slate-900/40 flex items-center justify-between flex-shrink-0">
+                    <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fas fa-file-shield text-sm"></i> Official Attached Document / Proof
+                    </h4>
+                    <div class="flex items-center gap-2">
+                        <a id="annPreviewExternalBtn" href="#" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer" title="Open in new window">
+                            <i class="fas fa-arrow-up-right-from-square text-xs"></i> <span class="hidden sm:inline">New Tab</span>
+                        </a>
+                        <a id="annPreviewDownloadBtn" href="#" download target="_blank" class="px-3.5 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition inline-flex items-center gap-2 cursor-pointer">
+                            <i class="fas fa-arrow-down-to-bracket text-xs"></i> Download Proof
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Document Display Viewport -->
+                <div class="flex-1 min-h-0 p-3 sm:p-5 flex flex-col overflow-hidden">
+                    
+                    <!-- PDF Viewer Frame: Full Height, Auto-scaling without clipping or nested scrollboxes -->
+                    <div id="annPreviewPdfContainer" class="hidden w-full h-full min-h-[60vh] lg:min-h-0 flex-1 rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-2xl flex flex-col">
+                        <iframe id="annPreviewPdfFrame" src="" class="w-full h-full flex-1 border-0 bg-white" title="Attached Notice Document"></iframe>
+                    </div>
+
+                    <!-- Image Lightbox Container: Fully scaled, centered, readable without clipping -->
+                    <div id="annPreviewImgContainer" class="hidden w-full h-full min-h-[60vh] lg:min-h-0 flex-1 rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-950/80 p-4 flex flex-col items-center justify-center relative shadow-2xl">
+                        <img id="annPreviewImg" src="" alt="Official Announcement Notice" class="max-h-full max-w-full object-contain rounded-xl shadow-xl cursor-zoom-in transition-transform duration-200 hover:scale-[1.01]" onclick="window.open(this.src, '_blank')">
+                        <p class="text-[11px] text-slate-400 mt-2 italic flex-shrink-0">
+                            <i class="fas fa-magnifying-glass-plus text-cyan-400 mr-1"></i> Click preview image to view full resolution in a new tab
+                        </p>
+                    </div>
+
+                    <!-- Generic Document Download Card -->
+                    <div id="annPreviewDocCard" class="hidden m-auto max-w-md w-full p-6 rounded-2xl bg-slate-800/60 border border-slate-700 flex flex-col items-center text-center shadow-2xl space-y-4">
+                        <div class="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                            <i class="fas fa-file-lines text-3xl"></i>
+                        </div>
+                        <div>
+                            <p id="annPreviewDocName" class="text-base font-bold text-white break-all">document.pdf</p>
+                            <p class="text-xs text-slate-400 mt-1">Official memorandum attachment</p>
+                        </div>
+                        <a id="annPreviewDocDownloadBtn" href="#" download class="w-full py-3 px-4 rounded-xl bg-cyan-600 text-white font-bold text-xs hover:bg-cyan-500 transition inline-flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30">
+                            <i class="fas fa-download"></i> Download Attached Document
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Sticky Action Footer Bar -->
+        <div class="px-6 py-3.5 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between flex-shrink-0 backdrop-blur-md">
+            <p class="text-[11px] text-slate-400 font-medium hidden sm:block">
+                <i class="fas fa-bullhorn text-cyan-400 mr-1"></i> Official Course Communication
+            </p>
+            <div class="flex items-center gap-3 ml-auto sm:ml-0">
+                <button type="button" onclick="closeAnnouncementPreview()" 
+                        class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition cursor-pointer border border-slate-700 hover:border-slate-600 focus-visible:ring-2 focus-visible:ring-cyan-400">
+                    Done Reading
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let currentPreviewData = null;
+
+function openAnnouncementPreview(data) {
+    currentPreviewData = data;
+    const modal = document.getElementById('announcementPreviewModal');
+    if (!modal) return;
+
+    // Set Text Content
+    document.getElementById('annPreviewTitle').textContent = data.title || 'Announcement';
+    document.getElementById('annPreviewContent').textContent = data.content || '';
+    document.getElementById('annPreviewAuthor').textContent = data.author_name || (data.first_name ? `${data.first_name} ${data.last_name}` : 'Instructor');
+    
+    // Date
+    const postDate = data.created_at ? new Date(data.created_at).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }) : 'Recent';
+    document.getElementById('annPreviewDate').textContent = postDate;
+
+    // Badges
+    const isCritical = data.is_critical == 1 || data.is_critical === true;
+    const critBadge = document.getElementById('annPreviewCriticalBadge');
+    if (critBadge) critBadge.classList.toggle('hidden', !isCritical);
+
+    const scopeBadge = document.getElementById('annPreviewScopeBadge');
+    if (scopeBadge) {
+        scopeBadge.textContent = data.scope === 'global' ? 'Global Campus Broadcast' : (data.class_name ? `Class • ${data.class_name}` : 'Course Announcement');
+    }
+
+    // Deadline & Calendar
+    const deadWrap = document.getElementById('annPreviewDeadlineContainer');
+    if (data.due_date) {
+        deadWrap.classList.remove('hidden');
+        const dueObj = new Date(data.due_date);
+        document.getElementById('annPreviewDueDate').textContent = dueObj.toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        // Google Calendar Link
+        const calStart = dueObj.toISOString().replace(/-|:|\.\d+/g, '');
+        const calEnd = new Date(dueObj.getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d+/g, '');
+        const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(data.title)}&details=${encodeURIComponent(data.content)}&dates=${calStart}/${calEnd}`;
+        document.getElementById('annPreviewCalLink').href = calUrl;
+    } else {
+        deadWrap.classList.add('hidden');
+    }
+
+    // Attachment Section
+    const contentCol = document.getElementById('annPreviewContentCol');
+    const attachWrap = document.getElementById('annPreviewAttachmentWrap');
+    const pdfContainer = document.getElementById('annPreviewPdfContainer');
+    const pdfFrame = document.getElementById('annPreviewPdfFrame');
+    const imgContainer = document.getElementById('annPreviewImgContainer');
+    const imgEl = document.getElementById('annPreviewImg');
+    const docCard = document.getElementById('annPreviewDocCard');
+    const downloadBtn = document.getElementById('annPreviewDownloadBtn');
+    const extBtn = document.getElementById('annPreviewExternalBtn');
+
+    // Reset attachments
+    pdfContainer.classList.add('hidden');
+    pdfFrame.src = '';
+    imgContainer.classList.add('hidden');
+    imgEl.src = '';
+    docCard.classList.add('hidden');
+
+    if (data.attachment_url) {
+        attachWrap.classList.remove('hidden');
+        attachWrap.classList.add('flex');
+        
+        // Auto-fit layout: split view with dedicated document column on desktop
+        if (contentCol) {
+            contentCol.classList.remove('lg:flex-1');
+            contentCol.classList.add('lg:w-[420px]', 'xl:w-[460px]', '2xl:w-[500px]', 'lg:flex-shrink-0', 'lg:border-r');
+        }
+
+        downloadBtn.href = data.attachment_url;
+        downloadBtn.download = data.attachment_name || 'announcement_attachment';
+        if (extBtn) extBtn.href = data.attachment_url;
+
+        const ext = data.attachment_url.split('.').pop().toLowerCase();
+        const isPdf = ext === 'pdf' || data.attachment_type === 'pdf';
+        const isImg = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext) || data.attachment_type === 'image';
+
+        if (isPdf) {
+            pdfContainer.classList.remove('hidden');
+            pdfFrame.src = data.attachment_url;
+        } else if (isImg) {
+            imgContainer.classList.remove('hidden');
+            imgEl.src = data.attachment_url;
+        } else {
+            docCard.classList.remove('hidden');
+            document.getElementById('annPreviewDocName').textContent = data.attachment_name || 'Attached Document';
+            document.getElementById('annPreviewDocDownloadBtn').href = data.attachment_url;
+            document.getElementById('annPreviewDocDownloadBtn').download = data.attachment_name || 'attachment';
+        }
+    } else {
+        attachWrap.classList.add('hidden');
+        attachWrap.classList.remove('flex');
+        
+        // Auto-fit layout: full width centered container when no attachment
+        if (contentCol) {
+            contentCol.classList.remove('lg:w-[420px]', 'xl:w-[460px]', '2xl:w-[500px]', 'lg:flex-shrink-0', 'lg:border-r');
+            contentCol.classList.add('lg:flex-1');
+        }
+    }
+
+    if (window.ModalManager) {
+        ModalManager.open('announcementPreviewModal');
+    } else {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function closeAnnouncementPreview() {
+    const modal = document.getElementById('announcementPreviewModal');
+    if (modal) {
+        const pdfFrame = document.getElementById('annPreviewPdfFrame');
+        if (pdfFrame) pdfFrame.src = '';
+        if (window.ModalManager) {
+            ModalManager.close('announcementPreviewModal');
+        } else {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+}
+
+// Escape key dismiss handler
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('announcementPreviewModal');
+        if (modal && (!modal.classList.contains('hidden') || modal.classList.contains('open'))) {
+            closeAnnouncementPreview();
+        }
+    }
+});
+</script>

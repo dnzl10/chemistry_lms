@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-dna" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#051229" />
+      <stop offset="60%" stop-color="#0c2d6b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="helix-a" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+    <linearGradient id="helix-b" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#bg-dna)" />
+
+  <!-- DNA Double Helix Wave Across Horizon -->
+  <g transform="translate(100, 200)">
+    <!-- Rungs -->
+    <g stroke-width="3" stroke-linecap="round">
+      <line x1="50" y1="-70" x2="50" y2="70" stroke="#60a5fa" opacity="0.6" />
+      <line x1="120" y1="-50" x2="120" y2="50" stroke="#c084fc" opacity="0.6" />
+      <line x1="190" y1="0" x2="190" y2="0" stroke="#38bdf8" opacity="0.6" />
+      <line x1="260" y1="50" x2="260" y2="-50" stroke="#60a5fa" opacity="0.6" />
+      <line x1="330" y1="70" x2="330" y2="-70" stroke="#c084fc" opacity="0.6" />
+      <line x1="400" y1="50" x2="400" y2="-50" stroke="#38bdf8" opacity="0.6" />
+      <line x1="470" y1="0" x2="470" y2="0" stroke="#60a5fa" opacity="0.6" />
+      <line x1="540" y1="-50" x2="540" y2="50" stroke="#c084fc" opacity="0.6" />
+      <line x1="610" y1="-70" x2="610" y2="70" stroke="#38bdf8" opacity="0.6" />
+      <line x1="680" y1="-50" x2="680" y2="50" stroke="#60a5fa" opacity="0.6" />
+      <line x1="750" y1="0" x2="750" y2="0" stroke="#c084fc" opacity="0.6" />
+      <line x1="820" y1="50" x2="820" y2="-50" stroke="#38bdf8" opacity="0.6" />
+      <line x1="890" y1="70" x2="890" y2="-70" stroke="#60a5fa" opacity="0.6" />
+      <line x1="960" y1="50" x2="960" y2="-50" stroke="#c084fc" opacity="0.6" />
+    </g>
+
+    <!-- Strand 1 -->
+    <path d="M 0,-80 Q 140,-80 190,0 T 380,80 T 570,0 T 760,-80 T 950,0 T 1050,80" fill="none" stroke="url(#helix-a)" stroke-width="6" stroke-linecap="round" />
+    <!-- Strand 2 -->
+    <path d="M 0,80 Q 140,80 190,0 T 380,-80 T 570,0 T 760,80 T 950,0 T 1050,-80" fill="none" stroke="url(#helix-b)" stroke-width="6" stroke-linecap="round" />
+
+    <!-- Nodes on Strand 1 -->
+    <circle cx="50" cy="-70" r="7" fill="#38bdf8" />
+    <circle cx="190" cy="0" r="7" fill="#60a5fa" />
+    <circle cx="330" cy="70" r="7" fill="#818cf8" />
+    <circle cx="470" cy="0" r="7" fill="#38bdf8" />
+    <circle cx="610" cy="-70" r="7" fill="#60a5fa" />
+    <circle cx="750" cy="0" r="7" fill="#818cf8" />
+    <circle cx="890" cy="70" r="7" fill="#38bdf8" />
+
+    <!-- Nodes on Strand 2 -->
+    <circle cx="50" cy="70" r="7" fill="#a855f7" />
+    <circle cx="330" cy="-70" r="7" fill="#c084fc" />
+    <circle cx="610" cy="70" r="7" fill="#a855f7" />
+    <circle cx="890" cy="-70" r="7" fill="#c084fc" />
+  </g>
+</svg>

@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elementa LMS | Senior High School General Chemistry - Mabini Colleges Inc.</title>
+    <meta name="description" content="Official General Chemistry 1 & 2 Learning Management System for Senior High School STEM learners at Mabini Colleges Inc. Interactive simulations, gamified drills, and DepEd-aligned competency mastery.">
+    
+    <!-- Google Fonts: Outfit (Display) + Plus Jakarta Sans (Body) + JetBrains Mono (Chemical Formulas) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            950: '#040914',
+                            900: '#071124',
+                            850: '#0b1730',
+                            800: '#0f2042',
+                            700: '#172f5d',
+                            600: '#234482',
+                        },
+                        mabini: {
+                            maroon: '#7A1321',
+                            crimson: '#9E1B32',
+                            gold: '#D4AF37',
+                            amber: '#F59E0B',
+                        },
+                        chem: {
+                            cyan: '#00E5FF',
+                            teal: '#0D9488',
+                            emerald: '#10B981',
+                            violet: '#8B5CF6',
+                            plasma: '#38BDF8',
+                            amber: '#F59E0B'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Outfit', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    boxShadow: {
+                        'glow-cyan': '0 0 25px -3px rgba(0, 229, 255, 0.25)',
+                        'glow-teal': '0 0 25px -3px rgba(13, 148, 136, 0.3)',
+                        'glow-gold': '0 0 25px -3px rgba(212, 175, 55, 0.25)',
+                        'card-dark': '0 12px 40px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        :root {
+            --font-display: 'Outfit', sans-serif;
+            --font-body: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            
+            /* Primitive Tokens */
+            --color-canvas: #040914;
+            --color-surface-base: #071124;
+            --color-surface-raised: #0b1730;
+            --color-surface-hover: #102144;
+            --color-border-subtle: rgba(255, 255, 255, 0.08);
+            --color-border-active: rgba(0, 229, 255, 0.4);
+            
+            /* Academic & STEM Accents */
+            --color-mabini-maroon: #8B1E2D;
+            --color-mabini-gold: #D4AF37;
+            --color-chem-cyan: #00E5FF;
+            --color-chem-teal: #0D9488;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--color-canvas);
+            color: #E2E8F0;
+            overflow-x: hidden;
+            selection-background-color: #00E5FF;
+            selection-color: #040914;
+        }
+
+        ::selection {
+            background-color: rgba(0, 229, 255, 0.3);
+            color: #FFFFFF;
+        }
+
+        /* Scientific Grid Pattern */
+        .bg-grid-lattice {
+            background-image: 
+                radial-gradient(circle at center, rgba(0, 229, 255, 0.08) 1px, transparent 1px),
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 32px 32px, 96px 96px, 96px 96px;
+        }
+
+        .bg-subtle-glow {
+            background: radial-gradient(circle 600px at 50% 20%, rgba(13, 148, 136, 0.15), rgba(4, 9, 20, 0) 70%);
+        }
+
+        /* Chemical formula styling */
+        .chem-formula {
+            font-family: var(--font-mono);
+            letter-spacing: -0.02em;
+        }
+        
+        .chem-formula sub {
+            font-size: 0.72em;
+            line-height: 0;
+            bottom: -0.22em;
+            position: relative;
+            color: #38BDF8;
+        }
+        
+        .chem-formula sup {
+            font-size: 0.72em;
+            line-height: 0;
+            top: -0.32em;
+            position: relative;
+            color: #F59E0B;
+        }
+
+        /* Micro-interactions & Smooth Transitions */
+        .interactive-card {
+            transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), 
+                        border-color 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+                        box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .interactive-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(0, 229, 255, 0.35);
+            box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.8), 0 0 20px -2px rgba(0, 229, 255, 0.18);
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-navy-950 text-slate-200 antialiased relative">
+
+    <!-- Navigation Bar -->
+    <header class="sticky top-0 z-50 backdrop-blur-xl bg-navy-950/90 border-b border-white/10 transition-all">
+        <!-- Optional Subtle Institutional Top Sub-strip -->
+        <div class="border-b border-white/5 py-1.5 px-6 sm:px-10 lg:px-14 xl:px-20 bg-navy-900/60 hidden sm:block">
+            <div class="max-w-[1720px] mx-auto flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="text-slate-300 font-semibold tracking-wide">Mabini Colleges Inc. Senior High School Department</span>
+                    <span class="text-white/20">•</span>
+                    <span class="text-slate-400">General Chemistry 1 & 2 Learning Management System</span>
+                </div>
+                <div class="flex items-center gap-4 text-[11px]">
+                    <span class="text-chem-cyan font-mono">Academic Track STEM</span>
+                    <span class="text-white/20">•</span>
+                    <a href="/login" class="text-mabini-gold hover:text-amber-300 font-bold transition-colors">Portal Login →</a>
+                </div>
+            </div>
+        </div>
+
+        <nav class="max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-20 h-20 flex items-center justify-between gap-8">
+            
+            <!-- Brand & Elementa Logo Lockup -->
+            <a href="/" class="flex items-center gap-3.5 group focus:outline-none shrink-0" aria-label="Elementa LMS Home">
+                <div class="relative flex items-center justify-center">
+                    <img src="/assets/logo.png" alt="Elementa Logo" class="h-10 w-auto object-contain drop-shadow-[0_0_14px_rgba(0,229,255,0.35)] transition-transform duration-300 group-hover:scale-105">
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2">
+                        <span class="font-display font-black text-2xl tracking-tight text-white group-hover:text-chem-cyan transition-colors">
+                            Elem<span class="text-chem-cyan">enta</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-500/10 text-chem-cyan border border-cyan-500/25 tracking-wider">
+                            LMS
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 font-medium tracking-tight">Mabini Colleges Inc. · SHS Chemistry</p>
+                </div>
+            </a>
+
+            <!-- Nav Links: Spread with Generous Breathing Room -->
+            <div class="hidden lg:flex items-center gap-2 xl:gap-4 font-medium text-sm text-slate-300">
+                <a href="#curriculum" class="px-3.5 py-2 rounded-lg hover:text-chem-cyan hover:bg-white/5 transition-all focus:outline-none focus:text-chem-cyan">
+                    Curriculum Matrix
+                </a>
+                <a href="#virtual-lab" class="px-3.5 py-2 rounded-lg hover:text-chem-cyan hover:bg-white/5 transition-all focus:outline-none focus:text-chem-cyan">
+                    Virtual Lab Suites
+                </a>
+                <a href="#interactive-tool" class="px-3.5 py-2 rounded-lg hover:text-chem-cyan hover:bg-white/5 transition-all focus:outline-none focus:text-chem-cyan">
+                    Reaction Balancer
+                </a>
+                <a href="#dual-persona" class="px-3.5 py-2 rounded-lg hover:text-chem-cyan hover:bg-white/5 transition-all focus:outline-none focus:text-chem-cyan">
+                    Students & Faculty
+                </a>
+                <a href="#institution" class="px-3.5 py-2 rounded-lg hover:text-chem-cyan hover:bg-white/5 transition-all focus:outline-none focus:text-chem-cyan">
+                    About MCI
+                </a>
+            </div>
+
+            <!-- Primary CTAs with balanced spacing -->
+            <div class="flex items-center gap-3.5 shrink-0">
+                <a href="#virtual-lab" class="hidden sm:inline-flex items-center justify-center px-4 py-2.5 text-xs font-semibold rounded-xl text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all">
+                    Explore Labs
+                </a>
+                <a href="/login" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl text-navy-950 bg-chem-cyan hover:bg-cyan-300 shadow-glow-cyan transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                    </svg>
+                    Student & Faculty Portal
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Hero Section -->
+    <section class="relative pt-12 pb-24 lg:pt-20 lg:pb-32 overflow-hidden bg-grid-lattice">
+        <!-- Ambient lighting layers -->
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-chem-teal/15 blur-[120px] rounded-full pointer-events-none"></div>
+        <div class="absolute top-1/3 right-10 w-[450px] h-[350px] bg-mabini-maroon/20 blur-[130px] rounded-full pointer-events-none"></div>
+        
+        <div class="max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-20 relative z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+                
+                <!-- Left Column: Copy & Value Proposition -->
+                <div class="lg:col-span-7 flex flex-col items-start text-left">
+                    
+                    <!-- Institutional Callout Badge -->
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-300 font-medium mb-6 backdrop-blur-md">
+                        <span class="w-2 h-2 rounded-full bg-chem-cyan"></span>
+                        <span class="text-chem-cyan font-bold">Grade 11 STEM Chemistry</span>
+                        <span class="text-white/30">•</span>
+                        <span>Mabini Colleges Inc. SHS Department</span>
+                    </div>
+
+                    <!-- Main Headline -->
+                    <h1 class="font-display font-black text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-[1.1] mb-6">
+                        Bridging Molecular Concepts to 
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-chem-cyan via-teal-300 to-emerald-400">
+                            Virtual Lab Mastery.
+                        </span>
+                    </h1>
+
+                    <!-- Supporting Value Prop Deck -->
+                    <p class="text-base sm:text-lg text-slate-300 font-normal leading-relaxed mb-8 max-w-2xl">
+                        The dedicated digital learning platform for <strong class="text-white font-semibold">General Chemistry 1 & 2</strong>. Engineered for Mabini Colleges Grade 11 STEM learners with interactive 2D/3D PhET laboratory simulations, stoichiometry reaction analyzers, and real-time DepEd competency tracking.
+                    </p>
+
+                    <!-- Dual CTAs -->
+                    <div class="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-10">
+                        <a href="/login" class="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl text-sm font-bold text-navy-950 bg-gradient-to-r from-chem-cyan to-teal-400 hover:from-cyan-300 hover:to-teal-300 shadow-glow-cyan transition-all transform hover:-translate-y-0.5">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004 11m0 0a8 8 0 0015.992.355"/>
+                            </svg>
+                            Access Student Portal
+                        </a>
+                        <a href="#virtual-lab" class="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 border border-white/15 hover:border-chem-cyan/40 transition-all">
+                            <svg class="w-5 h-5 text-chem-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                            </svg>
+                            Explore 22+ Virtual Labs
+                        </a>
+                    </div>
+
+                    <!-- Credibility / Metrics Row -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-white/10 w-full text-slate-300">
+                        <div>
+                            <div class="font-display font-black text-2xl text-white">22+</div>
+                            <div class="text-xs text-slate-400 font-medium">Virtual Simulations</div>
+                        </div>
+                        <div>
+                            <div class="font-display font-black text-2xl text-chem-cyan">100%</div>
+                            <div class="text-xs text-slate-400 font-medium">DepEd Curriculum</div>
+                        </div>
+                        <div>
+                            <div class="font-display font-black text-2xl text-white">SHA-256</div>
+                            <div class="text-xs text-slate-400 font-medium">Digital Lab Receipts</div>
+                        </div>
+                        <div>
+                            <div class="font-display font-black text-2xl text-mabini-gold">MCI SHS</div>
+                            <div class="text-xs text-slate-400 font-medium">Academic STEM Track</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Column: Interactive Hero Mockup (Live Chemistry HUD) -->
+                <div class="lg:col-span-5">
+                    <div class="relative rounded-2xl bg-navy-900 border border-white/15 p-5 shadow-2xl shadow-black/80 backdrop-blur-xl">
+                        
+                        <!-- Top Chrome Bar -->
+                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                                <span class="ml-2 font-mono text-[11px] text-slate-400 font-medium">elementa-runtime // gen_chem_11</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-chem-cyan/15 text-chem-cyan border border-chem-cyan/30">
+                                LIVE SIMULATION
+                            </span>
+                        </div>
+
+                        <!-- Interactive Element Inspection Unit -->
+                        <div class="mb-5 bg-navy-950 rounded-xl p-4 border border-white/10">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Atomic Lattice Inspector</span>
+                                <span class="text-[11px] font-mono text-chem-cyan" id="hero-element-name">Carbon (C)</span>
+                            </div>
+                            
+                            <!-- Element Chips -->
+                            <div class="grid grid-cols-4 sm:grid-cols-8 gap-1.5 mb-4" id="element-selector">
+                                <button onclick="selectHeroElement('H', 1, '1.008', '1s¹', 2.20, 'Hydrogen')" class="el-chip px-2 py-1.5 rounded-lg bg-navy-850 hover:bg-chem-cyan/20 border border-white/10 text-center transition-all focus:outline-none">
+                                    <div class="text-[9px] text-slate-400 font-mono">1</div>
+                                    <div class="text-xs font-bold text-white">H</div>
+                                </button>
+                                <button onclick="selectHeroElement('C', 6, '12.011', '[He] 2s² 2p²', 2.55, 'Carbon')" class="el-chip active px-2 py-1.5 rounded-lg bg-chem-cyan/20 border border-chem-cyan text-center transition-all focus:outline-none">
+                                    <div class="text-[9px] text-slate-400 font-mono">6</div>
+                                    <div class="text-xs font-bold text-chem-cyan">C</div>
+                                </button>
+                                <button onclick="selectHeroElement('N', 7, '14.007', '[He] 2s² 2p³', 3.04, 'Nitrogen')" class="el-chip px-2 py-1.5 rounded-lg bg-navy-850 hover:bg-chem-cyan/20 border border-white/10 text-center transition-all focus:outline-none">
+                                    <div class="text-[9px] text-slate-400 font-mono">7</div>
+                                    <div class="text-xs font-bold text-white">N</div>
+                                </button>
+                                <button onclick="selectHeroElement('O', 8, '15.999', '[He] 2s² 2p⁴', 3.44, 'Oxygen')" class="el-chip px-2 py-1.5 rounded-lg bg-navy-850 hover:bg-chem-cyan/20 border border-white/10 text-center transition-all focus:outline-none">
+                                    <div class="text-[9px] text-slate-400 font-mono">8</div>
+                                    <div class="text-xs font-bold text-white">O</div>
+                                </button>
+                                <button onclick="selectHeroElement('Na', 11, '22.990', '[Ne] 3s¹', 0.93, 'Sodium')" class="el-chip px-2 py-1.5 rounded-lg bg-navy-850 hover:bg-chem-cyan/20 border border-white/10 text-center transition-all focus:outline-none">
+                                    <div class="text-[9px] text-slate-400 font-mono">11</div>
+                                    <div class="text-xs font-bold text-white">Na</div>
+                                </button>
+                                <button onclick="selectHeroElement('Cl', 17, '35.45', '[Ne] 3s² 3p⁵', 3.16, 'Chlorine')" class="el-chip px-2 py-1.5 rounded-lg bg-navy-850 hover:bg-chem-cyan/20 border border-white/10 text-center transition-all focus:outline-none">
+                                    <div class="text-[9px] text-slate-400 font-mono">17</div>
+                                    <div class="text-xs font-bold text-white">Cl</div>
+                                </button>
+                                <button onclick="selectHeroElement('Fe', 26, '55.845', '[Ar] 3d⁶ 4s²', 1.83, 'Iron')" class="el-chip px-2 py-1.5 rounded-lg bg-navy-850 hover:bg-chem-cyan/20 border border-white/10 text-center transition-all focus:outline-none">
+                                    <div class="text-[9px] text-slate-400 font-mono">26</div>
+                                    <div class="text-xs font-bold text-white">Fe</div>
+                                </button>
+                                <button onclick="selectHeroElement('Cu', 29, '63.546', '[Ar] 3d¹⁰ 4s¹', 1.90, 'Copper')" class="el-chip px-2 py-1.5 rounded-lg bg-navy-850 hover:bg-chem-cyan/20 border border-white/10 text-center transition-all focus:outline-none">
+                                    <div class="text-[9px] text-slate-400 font-mono">29</div>
+                                    <div class="text-xs font-bold text-white">Cu</div>
+                                </button>
+                            </div>
+
+                            <!-- Selected Element Telemetry Grid -->
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
+                                <div class="bg-navy-900 p-2.5 rounded-lg border border-white/5">
+                                    <span class="text-slate-400 block text-[10px]">Atomic Weight</span>
+                                    <span class="text-white font-bold" id="hero-element-mass">12.011 u</span>
+                                </div>
+                                <div class="bg-navy-900 p-2.5 rounded-lg border border-white/5">
+                                    <span class="text-slate-400 block text-[10px]">Electronegativity</span>
+                                    <span class="text-chem-cyan font-bold" id="hero-element-en">2.55 (Pauling)</span>
+                                </div>
+                                <div class="bg-navy-900 p-2.5 rounded-lg border border-white/5 col-span-2 sm:col-span-1">
+                                    <span class="text-slate-400 block text-[10px]">Configuration</span>
+                                    <span class="text-emerald-400 font-bold" id="hero-element-cfg">[He] 2s² 2p²</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Molecular Bond Simulation Snippet -->
+                        <div class="bg-navy-950 rounded-xl p-4 border border-white/10">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Stoichiometric Reaction Preview</span>
+                                <span class="text-[10px] font-mono text-mabini-gold">EXOTHERMIC · ΔH = -890 kJ</span>
+                            </div>
+                            <div class="bg-navy-900 p-3 rounded-lg border border-white/5 text-center">
+                                <div class="chem-formula text-sm sm:text-base font-bold text-white mb-2">
+                                    CH<sub>4(g)</sub> + 2 O<sub>2(g)</sub> → CO<sub>2(g)</sub> + 2 H<sub>2</sub>O<sub>(g)</sub>
+                                </div>
+                                <p class="text-[11px] text-slate-400">Combustion of Methane: 1 mol reacts with 2 mol O₂ producing 1 mol CO₂ and 2 mol water vapor.</p>
+                            </div>
+                        </div>
+
+                        <!-- Live Student Metric Card Footer -->
+                        <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-400">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>MCI SHS Virtual Lab Node Active</span>
+                            </div>
+                            <a href="#interactive-tool" class="text-chem-cyan hover:underline font-semibold">Test Balancer →</a>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 2: General Chemistry 1 & 2 Curriculum Matrix -->
+    <section id="curriculum" class="py-24 bg-navy-900 border-t border-b border-white/10 relative">
+        <div class="max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-20">
+            
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-12">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-widest text-chem-cyan mb-2 block">
+                        DepEd Senior High School STEM Curriculum
+                    </span>
+                    <h2 class="font-display font-black text-3xl sm:text-4xl text-white tracking-tight">
+                        Standardized Grade 11 Competency Matrix
+                    </h2>
+                </div>
+                <div class="mt-6 md:mt-0 flex items-center gap-2 p-1 bg-navy-950 rounded-xl border border-white/10">
+                    <button id="btn-genchem1" onclick="switchCurriculumTab('genchem1')" class="px-5 py-2.5 rounded-lg text-xs font-bold transition-all bg-chem-cyan text-navy-950 shadow-md">
+                        General Chemistry 1 (Semester 1)
+                    </button>
+                    <button id="btn-genchem2" onclick="switchCurriculumTab('genchem2')" class="px-5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white">
+                        General Chemistry 2 (Semester 2)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 1: General Chemistry 1 Matrix -->
+            <div id="tab-genchem1" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Card 1 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-chem-cyan bg-chem-cyan/10 px-2.5 py-1 rounded-md border border-chem-cyan/20">
+                                STEM_GC11MP-Ia-b
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 1</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Matter & Measurements</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Extensive vs. intensive properties, precision, accuracy, significant figures, dimensional analysis, and physical vs. chemical changes.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Density & States Lab</span>
+                        <a href="/Simulations/Elementa%20Simulations/density_elementa.html" class="text-chem-cyan hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-chem-cyan bg-chem-cyan/10 px-2.5 py-1 rounded-md border border-chem-cyan/20">
+                                STEM_GC11AM-Ic-e
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 2</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Atomic Structure & Isotopes</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Evolution of atomic models (Dalton, Thomson, Rutherford, Bohr), subatomic particles, isotopic abundance, and average atomic mass calculations.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Build an Atom Lab</span>
+                        <a href="/Simulations/Elementa%20Simulations/build-an-atom_elementa.html" class="text-chem-cyan hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-chem-cyan bg-chem-cyan/10 px-2.5 py-1 rounded-md border border-chem-cyan/20">
+                                STEM_GC11ES-IIf-g
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 3</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Electronic Structure & Trends</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Quantum numbers (n, l, m<sub>l</sub>, m<sub>s</sub>), electron configuration, orbital diagrams, and periodic trends (radius, IE, EA, and EN).
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Hydrogen Atom Sim</span>
+                        <a href="/Simulations/Elementa%20Simulations/models-of-the-hydrogen-atom_elementa.html" class="text-chem-cyan hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-chem-cyan bg-chem-cyan/10 px-2.5 py-1 rounded-md border border-chem-cyan/20">
+                                STEM_GC11CB-IId-g
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 4</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Chemical Bonding & VSEPR</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Ionic vs. covalent bonds, octet rule, resonance, formal charges, VSEPR 3D geometry prediction, and molecular polarity determination.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Molecule Shapes 3D</span>
+                        <a href="/Simulations/Elementa%20Simulations/molecule-shapes_elementa.html" class="text-chem-cyan hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-chem-cyan bg-chem-cyan/10 px-2.5 py-1 rounded-md border border-chem-cyan/20">
+                                STEM_GC11S-IIh-i
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 5</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Stoichiometry & Mole Concept</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Avogadro's number, molar mass, empirical & molecular formulas, balancing equations, limiting & excess reactants, and percentage yield.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Reactants & Leftovers</span>
+                        <a href="/Simulations/Elementa%20Simulations/reactants-products-and-leftovers_elementa.html" class="text-chem-cyan hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-chem-cyan bg-chem-cyan/10 px-2.5 py-1 rounded-md border border-chem-cyan/20">
+                                STEM_GC11G-IIj-28
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 6</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Gases & Kinetic Molecular Theory</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Boyle's, Charles's, Gay-Lussac's, and Combined Gas Laws. Ideal Gas equation (<span class="chem-formula">PV = nRT</span>), Dalton's partial pressures, and Graham's effusion.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Gas Properties Lab</span>
+                        <a href="/Simulations/Elementa%20Simulations/states-of-matter_elementa.html" class="text-chem-cyan hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Tab 2: General Chemistry 2 Matrix (Hidden by Default) -->
+            <div id="tab-genchem2" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Card 1 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-md border border-emerald-400/20">
+                                STEM_GC11IMF-IIIa-c
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 1</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Intermolecular Forces (IMFA)</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Dipole-dipole, hydrogen bonding, ion-dipole, and London dispersion forces. Impact on boiling points, surface tension, viscosity, and vapor pressure.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Atomic Interactions</span>
+                        <a href="/Simulations/Elementa%20Simulations/atomic-interactions_elementa.html" class="text-emerald-400 hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-md border border-emerald-400/20">
+                                STEM_GC11PP-IIId-f
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 2</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Physical Properties of Solutions</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Solubility factors, Henry's Law, Molarity, Molality, Mole Fraction. Colligative properties: vapor pressure lowering, freezing point depression, osmotic pressure.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Concentration & Molarity</span>
+                        <a href="/Simulations/Elementa%20Simulations/molarity_elementa.html" class="text-emerald-400 hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-md border border-emerald-400/20">
+                                STEM_GC11TC-IIIg-i
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 3</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Thermochemistry & Energetics</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Enthalpy of reaction (<span class="chem-formula">ΔH</span>), exothermic and endothermic processes, constant-pressure calorimetry (<span class="chem-formula">q = mcΔT</span>), Hess's Law, standard enthalpies of formation.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Energy Forms & Changes</span>
+                        <a href="/Simulations/Elementa%20Simulations/states-of-matter-basics_elementa.html" class="text-emerald-400 hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-md border border-emerald-400/20">
+                                STEM_GC11CK-IIIj-130
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 4</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Chemical Kinetics</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Reaction rates, differential rate laws, reaction orders (0th, 1st, 2nd order), half-life equations, Arrhenius equation, activation energy (<span class="chem-formula">E<sub>a</sub></span>), and catalytic mechanisms.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Reaction Rates Lab</span>
+                        <a href="/Simulations/Elementa%20Simulations/concentration_elementa.html" class="text-emerald-400 hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-md border border-emerald-400/20">
+                                STEM_GC11CE-IVa-h
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 5</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Chemical Equilibrium</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Law of Mass Action, equilibrium constant (<span class="chem-formula">K<sub>c</sub>, K<sub>p</sub></span>), reaction quotient (<span class="chem-formula">Q</span>), and Le Chatelier's Principle shifts under temperature, pressure, and concentration changes.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Equilibrium Solver</span>
+                        <a href="/Simulations/Elementa%20Simulations/balancing-chemical-equations_elementa.html" class="text-emerald-400 hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="interactive-card bg-navy-950 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-md border border-emerald-400/20">
+                                STEM_GC11AB-IVi-j
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">Unit 6</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Acid-Base & Buffer Systems</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Brønsted-Lowry & Lewis theories, autoionization of water (<span class="chem-formula">K<sub>w</sub> = 1.0 × 10<sup>-14</sup></span>), pH, pOH, Henderson-Hasselbalch equation, buffer capacity, and titration curve analysis.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span class="text-slate-400 font-mono">Acid-Base Solutions Lab</span>
+                        <a href="/Simulations/Elementa%20Simulations/acid-base-solutions_elementa.html" class="text-emerald-400 hover:underline font-semibold" target="_blank">Launch Sim →</a>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+    <!-- SECTION 3: The "Live Thing" - Real Stoichiometric Reaction Balancer & Yield Calculator -->
+    <section id="interactive-tool" class="py-24 bg-navy-950 relative overflow-hidden">
+        <div class="max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-20 relative z-10">
+            
+            <div class="max-w-3xl mx-auto text-center mb-12">
+                <span class="text-xs font-bold uppercase tracking-widest text-chem-cyan mb-2 block">
+                    Interactive STEM Laboratory Engine
+                </span>
+                <h2 class="font-display font-black text-3xl sm:text-4xl text-white tracking-tight mb-4">
+                    Live Reaction Balancer & Stoichiometry Calculator
+                </h2>
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                    Test your understanding of the Mole Concept. Select a fundamental General Chemistry reaction, enter input reactant quantities, and calculate stoichiometric yields instantly.
+                </p>
+            </div>
+
+            <div class="max-w-4xl mx-auto bg-navy-900 rounded-2xl border border-white/15 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+                
+                <!-- Reaction Selector -->
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                        1. Select Chemical Reaction
+                    </label>
+                    <select id="reaction-picker" onchange="updateReactionUI()" class="w-full bg-navy-950 text-white font-mono text-sm sm:text-base rounded-xl px-4 py-3 border border-white/15 focus:border-chem-cyan focus:outline-none transition-colors">
+                        <option value="propane">Combustion of Propane: C₃H₈ + 5 O₂ → 3 CO₂ + 4 H₂O</option>
+                        <option value="water">Synthesis of Water: 2 H₂ + O₂ → 2 H₂O</option>
+                        <option value="haber">Haber Ammonia Synthesis: N₂ + 3 H₂ → 2 NH₃</option>
+                        <option value="neutralization">Acid-Base Neutralization: HCl + NaOH → NaCl + H₂O</option>
+                    </select>
+                </div>
+
+                <!-- Balanced Equation Display Box -->
+                <div class="bg-navy-950 rounded-xl p-5 border border-chem-cyan/30 mb-8 text-center">
+                    <span class="text-[11px] text-chem-cyan font-mono block mb-1 uppercase font-bold tracking-wider">Balanced Stoichiometric Equation</span>
+                    <div id="equation-display" class="chem-formula text-lg sm:text-2xl font-black text-white py-2">
+                        C<sub>3</sub>H<sub>8(g)</sub> + 5 O<sub>2(g)</sub> → 3 CO<sub>2(g)</sub> + 4 H<sub>2</sub>O<sub>(g)</sub>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-center gap-3 mt-2 text-[11px] font-mono text-slate-400">
+                        <span class="px-2 py-0.5 rounded bg-white/5">Ratio: 1 mol C₃H₈ : 5 mol O₂ → 3 mol CO₂ : 4 mol H₂O</span>
+                        <span class="text-mabini-gold">ΔH° = -2220 kJ/mol (Exothermic)</span>
+                    </div>
+                </div>
+
+                <!-- Calculator Input & Live Compute -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2" id="input-label">
+                            Mass of Primary Reactant (grams C₃H₈):
+                        </label>
+                        <div class="relative">
+                            <input type="number" id="reactant-input" value="44.1" step="0.1" min="0.1" oninput="calculateStoichiometry()" class="w-full bg-navy-950 font-mono text-lg text-white rounded-xl px-4 py-3 border border-white/15 focus:border-chem-cyan focus:outline-none">
+                            <span class="absolute right-4 top-3.5 text-xs font-mono text-slate-400 font-semibold">grams (g)</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1 font-mono" id="molar-mass-note">Molar mass of C₃H₈ = 44.1 g/mol</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                            Assumed Reaction Conditions:
+                        </label>
+                        <div class="bg-navy-950 rounded-xl p-3 border border-white/10 text-xs font-mono space-y-1.5 text-slate-300">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Temperature (STP):</span>
+                                <span class="text-white font-bold">273.15 K (0 °C)</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Pressure:</span>
+                                <span class="text-white font-bold">1.00 atm</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Limiting Reagent:</span>
+                                <span class="text-chem-cyan font-bold" id="limiting-tag">Assumed Reactant 1</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Results Telemetry Grid -->
+                <div class="bg-navy-950 rounded-xl p-5 border border-white/10">
+                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-3">
+                        Computed Stoichiometric Yields (Real-Time)
+                    </span>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-center">
+                        <div class="bg-navy-900 p-4 rounded-xl border border-white/5">
+                            <span class="text-[11px] text-slate-400 block mb-1">Moles Reacted</span>
+                            <span class="text-xl font-bold text-chem-cyan" id="res-moles">1.000 mol</span>
+                            <span class="text-[10px] text-slate-500 block mt-1">n = mass / M</span>
+                        </div>
+                        <div class="bg-navy-900 p-4 rounded-xl border border-white/5">
+                            <span class="text-[11px] text-slate-400 block mb-1" id="res-prod1-title">Mass of CO₂ Produced</span>
+                            <span class="text-xl font-bold text-emerald-400" id="res-prod1-mass">132.03 g</span>
+                            <span class="text-[10px] text-slate-500 block mt-1" id="res-prod1-mol">3.000 mol CO₂</span>
+                        </div>
+                        <div class="bg-navy-900 p-4 rounded-xl border border-white/5">
+                            <span class="text-[11px] text-slate-400 block mb-1" id="res-prod2-title">Mass of H₂O Produced</span>
+                            <span class="text-xl font-bold text-mabini-gold" id="res-prod2-mass">72.06 g</span>
+                            <span class="text-[10px] text-slate-500 block mt-1" id="res-prod2-mol">4.000 mol H₂O</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between text-xs text-slate-400">
+                        <span class="flex items-center gap-1.5 font-mono">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Law of Conservation of Mass Verified
+                        </span>
+                        <a href="/Simulations/Elementa%20Simulations/reactants-products-and-leftovers_elementa.html" target="_blank" class="text-chem-cyan hover:underline font-semibold">
+                            Open Full Simulation Laboratory →
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+    <!-- SECTION 4: Virtual Lab Simulator Directory (Installed Simulations) -->
+    <section id="virtual-lab" class="py-24 bg-navy-900 border-t border-white/10 relative">
+        <div class="max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-20">
+            
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-12">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-widest text-chem-cyan mb-2 block">
+                        Interactive Physics & Chemistry Engine
+                    </span>
+                    <h2 class="font-display font-black text-3xl sm:text-4xl text-white tracking-tight">
+                        Elementa Virtual Laboratory Suite
+                    </h2>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-400 max-w-md mt-4 md:mt-0">
+                    Over 20+ built-in, browser-executable laboratory modules allowing Grade 11 learners to manipulate variables without physical chemical hazard.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Lab 1: Balancing Chemical Equations -->
+                <div class="interactive-card bg-navy-950 rounded-2xl overflow-hidden border border-white/10 flex flex-col justify-between">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-mono uppercase font-bold text-chem-cyan bg-chem-cyan/10 px-2 py-0.5 rounded">
+                                Stoichiometry Lab
+                            </span>
+                            <span class="text-xs font-mono text-slate-400">GenChem 1</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Balancing Chemical Equations</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Interactive visual balance beam for conservation of mass. Practice synthesis, decomposition, and combustion reactions with atom counts.
+                        </p>
+                        <div class="flex flex-wrap gap-1.5 text-[10px] font-mono text-slate-400">
+                            <span class="bg-navy-900 px-2 py-1 rounded">Mass Conservation</span>
+                            <span class="bg-navy-900 px-2 py-1 rounded">Coefficient Games</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-navy-900/60 border-t border-white/5 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Standalone HTML5</span>
+                        <a href="/Simulations/Elementa%20Simulations/balancing-chemical-equations_elementa.html" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-chem-cyan text-navy-950 hover:bg-cyan-300 transition-colors">
+                            Launch Lab
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Lab 2: Acid-Base Solutions -->
+                <div class="interactive-card bg-navy-950 rounded-2xl overflow-hidden border border-white/10 flex flex-col justify-between">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-mono uppercase font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">
+                                Aqueous Systems
+                            </span>
+                            <span class="text-xs font-mono text-slate-400">GenChem 2</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Acid-Base Solutions & pH Lab</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Investigate strong vs. weak acids and bases, test pH with visual indicators, and monitor hydronium [<span class="chem-formula">H<sub>3</sub>O<sup>+</sup></span>] and hydroxide concentrations.
+                        </p>
+                        <div class="flex flex-wrap gap-1.5 text-[10px] font-mono text-slate-400">
+                            <span class="bg-navy-900 px-2 py-1 rounded">pH Meter</span>
+                            <span class="bg-navy-900 px-2 py-1 rounded">Conductivity Probe</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-navy-900/60 border-t border-white/5 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Standalone HTML5</span>
+                        <a href="/Simulations/Elementa%20Simulations/acid-base-solutions_elementa.html" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-chem-cyan text-navy-950 hover:bg-cyan-300 transition-colors">
+                            Launch Lab
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Lab 3: Molecule Shapes 3D (VSEPR) -->
+                <div class="interactive-card bg-navy-950 rounded-2xl overflow-hidden border border-white/10 flex flex-col justify-between">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-mono uppercase font-bold text-chem-plasma bg-chem-plasma/10 px-2 py-0.5 rounded">
+                                Chemical Bonding
+                            </span>
+                            <span class="text-xs font-mono text-slate-400">GenChem 1</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Molecule Shapes & VSEPR 3D</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Explore electron and molecular geometries in real-time 3D rotation. Test bond angles, lone-pair repulsions, and tetrahedral vs. octahedral structures.
+                        </p>
+                        <div class="flex flex-wrap gap-1.5 text-[10px] font-mono text-slate-400">
+                            <span class="bg-navy-900 px-2 py-1 rounded">VSEPR Theory</span>
+                            <span class="bg-navy-900 px-2 py-1 rounded">Bond Angles</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-navy-900/60 border-t border-white/5 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Standalone HTML5</span>
+                        <a href="/Simulations/Elementa%20Simulations/molecule-shapes_elementa.html" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-chem-cyan text-navy-950 hover:bg-cyan-300 transition-colors">
+                            Launch Lab
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Lab 4: Molarity & Solution Concentration -->
+                <div class="interactive-card bg-navy-950 rounded-2xl overflow-hidden border border-white/10 flex flex-col justify-between">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-mono uppercase font-bold text-mabini-gold bg-mabini-gold/10 px-2 py-0.5 rounded">
+                                Solutions
+                            </span>
+                            <span class="text-xs font-mono text-slate-400">GenChem 2</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Molarity & Concentration Lab</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Adjust solute quantities, solvent volumes, and observe solution color saturation and molarity (M = mol/L) changes with Beer's Law spectroscopy.
+                        </p>
+                        <div class="flex flex-wrap gap-1.5 text-[10px] font-mono text-slate-400">
+                            <span class="bg-navy-900 px-2 py-1 rounded">Spectrophotometer</span>
+                            <span class="bg-navy-900 px-2 py-1 rounded">Dilution Calculator</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-navy-900/60 border-t border-white/5 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Standalone HTML5</span>
+                        <a href="/Simulations/Elementa%20Simulations/molarity_elementa.html" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-chem-cyan text-navy-950 hover:bg-cyan-300 transition-colors">
+                            Launch Lab
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Lab 5: Build an Atom & Isotopes -->
+                <div class="interactive-card bg-navy-950 rounded-2xl overflow-hidden border border-white/10 flex flex-col justify-between">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-mono uppercase font-bold text-chem-cyan bg-chem-cyan/10 px-2 py-0.5 rounded">
+                                Atomic Theory
+                            </span>
+                            <span class="text-xs font-mono text-slate-400">GenChem 1</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">Build an Atom & Isotopes</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Add protons, neutrons, and electrons to construct stable or radioactive nuclides. Observe nuclear charge, mass number, and electron shells.
+                        </p>
+                        <div class="flex flex-wrap gap-1.5 text-[10px] font-mono text-slate-400">
+                            <span class="bg-navy-900 px-2 py-1 rounded">Isotopic Mass</span>
+                            <span class="bg-navy-900 px-2 py-1 rounded">Nuclide Symbol</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-navy-900/60 border-t border-white/5 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Standalone HTML5</span>
+                        <a href="/Simulations/Elementa%20Simulations/build-an-atom_elementa.html" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-chem-cyan text-navy-950 hover:bg-cyan-300 transition-colors">
+                            Launch Lab
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Lab 6: States of Matter & Phase Shifts -->
+                <div class="interactive-card bg-navy-950 rounded-2xl overflow-hidden border border-white/10 flex flex-col justify-between">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-mono uppercase font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">
+                                Kinetic Theory
+                            </span>
+                            <span class="text-xs font-mono text-slate-400">GenChem 1 & 2</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-2">States of Matter & Phase Changes</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Heat or cool atoms and molecules and watch them transition between solid, liquid, and gas phases. Analyze phase diagrams and pressure curves.
+                        </p>
+                        <div class="flex flex-wrap gap-1.5 text-[10px] font-mono text-slate-400">
+                            <span class="bg-navy-900 px-2 py-1 rounded">Phase Diagrams</span>
+                            <span class="bg-navy-900 px-2 py-1 rounded">Kinetic Speed</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-navy-900/60 border-t border-white/5 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Standalone HTML5</span>
+                        <a href="/Simulations/Elementa%20Simulations/states-of-matter_elementa.html" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-chem-cyan text-navy-950 hover:bg-cyan-300 transition-colors">
+                            Launch Lab
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+    <!-- SECTION 5: Dual Persona Showcase (Student vs. Faculty Experience) -->
+    <section id="dual-persona" class="py-24 bg-navy-950 relative overflow-hidden">
+        <div class="max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-20">
+            
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <span class="text-xs font-bold uppercase tracking-widest text-chem-cyan mb-2 block">
+                    Tailored Workflows
+                </span>
+                <h2 class="font-display font-black text-3xl sm:text-4xl text-white tracking-tight mb-4">
+                    Built for Grade 11 STEM Learners & Chemistry Educators
+                </h2>
+                <div class="inline-flex p-1 bg-navy-900 rounded-xl border border-white/10 mt-2">
+                    <button id="toggle-student-btn" onclick="switchPersona('student')" class="px-6 py-2.5 rounded-lg text-xs font-bold transition-all bg-chem-cyan text-navy-950 shadow-md">
+                        Student Experience
+                    </button>
+                    <button id="toggle-faculty-btn" onclick="switchPersona('faculty')" class="px-6 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white">
+                        Chemistry Faculty Tools
+                    </button>
+                </div>
+            </div>
+
+            <!-- Student Persona Content -->
+            <div id="persona-student" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div class="lg:col-span-6 space-y-6">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-chem-cyan/10 border border-chem-cyan/20 flex items-center justify-center shrink-0 text-chem-cyan font-bold">
+                            01
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-white mb-1">Gamified Assessment Arcade</h3>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                Practice reaction balancing, stoichiometry conversions, and periodic trend drills with instant feedback, streak multipliers, and XP leaderboards.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-chem-cyan/10 border border-chem-cyan/20 flex items-center justify-center shrink-0 text-chem-cyan font-bold">
+                            02
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-white mb-1">Digital Lab Notebook & SHA-256 Receipts</h3>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                Every submitted laboratory report and problem set generates an encrypted SHA-256 receipt, guaranteeing submission timestamp integrity.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-chem-cyan/10 border border-chem-cyan/20 flex items-center justify-center shrink-0 text-chem-cyan font-bold">
+                            03
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-white mb-1">Real-Time Competency Mastery</h3>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                View your progress radar across every DepEd Chemistry competency before major quarter examinations and practical laboratory assessments.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-6">
+                    <div class="bg-navy-900 rounded-2xl p-6 border border-white/10 shadow-xl">
+                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+                            <span class="text-xs font-bold text-white uppercase tracking-wider">Student Dashboard Snapshot</span>
+                            <span class="text-xs font-mono text-emerald-400">Grade 11 · STEM-A</span>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="p-3.5 bg-navy-950 rounded-xl border border-white/5 flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">Stoichiometric Yield Experiment</span>
+                                    <span class="text-[11px] text-slate-400">Quarter 2 Lab Report #3</span>
+                                </div>
+                                <span class="px-2 py-1 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    VERIFIED (98/100)
+                                </span>
+                            </div>
+                            <div class="p-3.5 bg-navy-950 rounded-xl border border-white/5 flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">VSEPR 3D Geometry Drill</span>
+                                    <span class="text-[11px] text-slate-400">Arcade Speed Practice</span>
+                                </div>
+                                <span class="px-2 py-1 rounded text-[10px] font-mono font-bold bg-chem-cyan/10 text-chem-cyan border border-chem-cyan/20">
+                                    +450 XP EARNED
+                                </span>
+                            </div>
+                            <div class="p-3.5 bg-navy-950 rounded-xl border border-white/5 flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">Acid-Base Titration Simulation</span>
+                                    <span class="text-[11px] text-slate-400">Due Tomorrow, 11:59 PM</span>
+                                </div>
+                                <span class="px-2 py-1 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    IN PROGRESS
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Faculty Persona Content (Hidden by Default) -->
+            <div id="persona-faculty" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div class="lg:col-span-6 space-y-6">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-mabini-gold/10 border border-mabini-gold/20 flex items-center justify-center shrink-0 text-mabini-gold font-bold">
+                            01
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-white mb-1">Section-Level Competency Heatmaps</h3>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                Identify struggling topics instantly. Visualize which class sections need reinforcement in chemical equilibrium vs. thermochemistry stoichiometry.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-mabini-gold/10 border border-mabini-gold/20 flex items-center justify-center shrink-0 text-mabini-gold font-bold">
+                            02
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-white mb-1">Automated Deliverable Grading & Audits</h3>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                Review student simulation submissions with automated grading metrics, rubric support, and verifiable cryptographic submission timestamps.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-mabini-gold/10 border border-mabini-gold/20 flex items-center justify-center shrink-0 text-mabini-gold font-bold">
+                            03
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-white mb-1">Priority Broadcast & Deadline Dispatcher</h3>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                Broadcast critical announcements, laboratory safety reminders, and examination schedules directly to students' dashboard timelines with read receipts.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-6">
+                    <div class="bg-navy-900 rounded-2xl p-6 border border-white/10 shadow-xl">
+                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+                            <span class="text-xs font-bold text-white uppercase tracking-wider">Teacher Analytics Terminal</span>
+                            <span class="text-xs font-mono text-mabini-gold">Faculty ID: MCI-CHEM-04</span>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="p-3.5 bg-navy-950 rounded-xl border border-white/5">
+                                <div class="flex justify-between text-xs mb-1.5">
+                                    <span class="font-bold text-white">Grade 11 - STEM Curie (42 Students)</span>
+                                    <span class="text-chem-cyan font-mono">92% Completion</span>
+                                </div>
+                                <div class="w-full bg-navy-900 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-chem-cyan h-full rounded-full" style="width: 92%"></div>
+                                </div>
+                            </div>
+                            <div class="p-3.5 bg-navy-950 rounded-xl border border-white/5">
+                                <div class="flex justify-between text-xs mb-1.5">
+                                    <span class="font-bold text-white">Grade 11 - STEM Mendeleev (38 Students)</span>
+                                    <span class="text-emerald-400 font-mono">87% Completion</span>
+                                </div>
+                                <div class="w-full bg-navy-900 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-emerald-400 h-full rounded-full" style="width: 87%"></div>
+                                </div>
+                            </div>
+                            <div class="p-3.5 bg-navy-950 rounded-xl border border-white/5">
+                                <div class="flex justify-between text-xs mb-1.5">
+                                    <span class="font-bold text-white">Grade 11 - STEM Dalton (40 Students)</span>
+                                    <span class="text-amber-400 font-mono">79% Completion</span>
+                                </div>
+                                <div class="w-full bg-navy-900 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-amber-400 h-full rounded-full" style="width: 79%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- SECTION 6: Institutional Integrity (Mabini Colleges Inc.) -->
+    <section id="institution" class="py-24 bg-navy-900 border-t border-b border-white/10 relative">
+        <div class="max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-20">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                
+                <div class="lg:col-span-5">
+                    <div class="relative bg-navy-950 rounded-2xl p-8 border border-white/10 text-center">
+                        <img src="/assets/mabini_logo2.png" alt="Mabini Colleges Official Crest" class="w-28 h-28 object-contain mx-auto mb-6 drop-shadow-lg" onerror="this.src='/assets/mabini_logo1.png'">
+                        <h3 class="font-display font-black text-2xl text-white mb-2">Mabini Colleges Inc.</h3>
+                        <p class="text-xs text-mabini-gold font-bold tracking-widest uppercase mb-4">Senior High School Department</p>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-6">
+                            Established in 1924, Daet, Camarines Norte. Pioneering quality educational foundation, scientific inquiry, and academic excellence in Bicolandia for over a century.
+                        </p>
+                        <div class="pt-4 border-t border-white/5 flex items-center justify-around text-xs font-mono text-slate-400">
+                            <div><span>Gov. Panotes Ave.</span></div>
+                            <div><span>Daet, Cam. Norte</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7">
+                    <span class="text-xs font-bold uppercase tracking-widest text-chem-cyan mb-2 block">
+                        Institutional Standards
+                    </span>
+                    <h2 class="font-display font-black text-3xl sm:text-4xl text-white tracking-tight mb-6">
+                        Empowering Future Scientists, Engineers, and Healthcare Professionals
+                    </h2>
+                    <p class="text-sm sm:text-base text-slate-300 leading-relaxed mb-8">
+                        The Elementa LMS represents Mabini Colleges' commitment to 21st-century educational technology. By marrying rigorous Department of Education Senior High School competencies with virtual molecular simulation, our Grade 11 STEM students gain an unfair advantage in national college readiness and scientific literacy.
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-navy-950 p-4 rounded-xl border border-white/5">
+                            <span class="text-chem-cyan font-bold block text-sm mb-1">Standardized Curriculum</span>
+                            <p class="text-xs text-slate-400">Synchronized lesson materials, virtual laboratory requirements, and grading criteria across all sections.</p>
+                        </div>
+                        <div class="bg-navy-950 p-4 rounded-xl border border-white/5">
+                            <span class="text-mabini-gold font-bold block text-sm mb-1">Laboratory Safety First</span>
+                            <p class="text-xs text-slate-400">Risk-free pre-lab virtual experiment iterations prepare students thoroughly before entering physical wet laboratories.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 7: High-Impact Call to Action Banner -->
+    <section class="py-20 bg-gradient-to-b from-navy-900 to-navy-950 relative overflow-hidden">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            
+            <div class="bg-gradient-to-r from-navy-850 via-navy-800 to-navy-850 rounded-3xl p-8 sm:p-14 border border-chem-cyan/30 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-80 h-80 bg-chem-cyan/15 blur-[90px] rounded-full pointer-events-none"></div>
+                <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-mabini-maroon/25 blur-[90px] rounded-full pointer-events-none"></div>
+
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-chem-cyan/20 text-chem-cyan mb-4 border border-chem-cyan/30">
+                    Mabini Colleges Inc. SHS Department
+                </span>
+                
+                <h2 class="font-display font-black text-3xl sm:text-5xl text-white tracking-tight mb-6">
+                    Ready to Master General Chemistry 1 & 2?
+                </h2>
+                
+                <p class="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto mb-8 leading-relaxed">
+                    Log in with your official Mabini Colleges account to access homework assignments, live experiment simulations, competency grade reports, and classroom discussion boards.
+                </p>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <a href="/login" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-navy-950 bg-chem-cyan hover:bg-cyan-300 shadow-glow-cyan transition-all transform hover:-translate-y-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                        Log In to Student & Teacher Portal
+                    </a>
+                    <a href="#curriculum" class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 border border-white/15 transition-all">
+                        Review Curriculum Syllabus
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-navy-950 border-t border-white/10 py-12 text-slate-400 text-xs">
+        <div class="max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-20">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                
+                <div class="md:col-span-2">
+                    <div class="flex items-center gap-2.5 mb-4">
+                        <img src="/assets/logo.png" alt="Elementa Logo" class="w-8 h-8 object-contain">
+                        <span class="font-display font-black text-xl text-white">
+                            Elem<span class="text-chem-cyan">enta</span> LMS
+                        </span>
+                    </div>
+                    <p class="text-slate-400 text-xs leading-relaxed max-w-sm mb-4">
+                        Senior High School General Chemistry Learning Management System for Mabini Colleges Inc. Powered by interactive simulations and structured competency tracking.
+                    </p>
+                    <p class="text-slate-500 font-mono text-[11px]">
+                        Governor Panotes Avenue, Daet, Camarines Norte 4600, Philippines
+                    </p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-white text-xs uppercase tracking-wider mb-4">Curriculum Modules</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#curriculum" class="hover:text-chem-cyan transition-colors">Matter & Atomic Models</a></li>
+                        <li><a href="#curriculum" class="hover:text-chem-cyan transition-colors">Chemical Bonding & VSEPR</a></li>
+                        <li><a href="#curriculum" class="hover:text-chem-cyan transition-colors">Stoichiometry & Mole Concept</a></li>
+                        <li><a href="#curriculum" class="hover:text-chem-cyan transition-colors">Intermolecular Forces & Solutions</a></li>
+                        <li><a href="#curriculum" class="hover:text-chem-cyan transition-colors">Thermochemistry & Kinetics</a></li>
+                        <li><a href="#curriculum" class="hover:text-chem-cyan transition-colors">Chemical Equilibrium & Acids</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-white text-xs uppercase tracking-wider mb-4">Portals & Authentication</h4>
+                    <ul class="space-y-2">
+                        <li><a href="/login" class="text-chem-cyan hover:underline font-bold">Student Portal Login</a></li>
+                        <li><a href="/login" class="hover:text-white transition-colors">Teacher Dashboard Login</a></li>
+                        <li><a href="/login" class="hover:text-white transition-colors">Administrator Console</a></li>
+                        <li><a href="#virtual-lab" class="hover:text-white transition-colors">22+ Simulation Sandbox</a></li>
+                        <li><a href="/auth/google" class="hover:text-white transition-colors">Google Classroom Sign-in</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
+                <div>
+                    © <span id="current-year">2026</span> Mabini Colleges Inc. Senior High School Department. All rights reserved.
+                </div>
+                <div class="flex items-center gap-6">
+                    <span class="hover:text-slate-400">DepEd Senior High School STEM Track</span>
+                    <span class="hover:text-slate-400">General Chemistry 1 & 2</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Client Scripts -->
+    <script>
+        // Update copyright year
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
+        // 1. Hero Element Selector Data & Handler
+        const elementsData = {
+            'H': { name: 'Hydrogen', mass: '1.008 u', en: '2.20 (Pauling)', cfg: '1s¹' },
+            'C': { name: 'Carbon', mass: '12.011 u', en: '2.55 (Pauling)', cfg: '[He] 2s² 2p²' },
+            'N': { name: 'Nitrogen', mass: '14.007 u', en: '3.04 (Pauling)', cfg: '[He] 2s² 2p³' },
+            'O': { name: 'Oxygen', mass: '15.999 u', en: '3.44 (Pauling)', cfg: '[He] 2s² 2p⁴' },
+            'Na': { name: 'Sodium', mass: '22.990 u', en: '0.93 (Pauling)', cfg: '[Ne] 3s¹' },
+            'Cl': { name: 'Chlorine', mass: '35.45 u', en: '3.16 (Pauling)', cfg: '[Ne] 3s² 3p⁵' },
+            'Fe': { name: 'Iron', mass: '55.845 u', en: '1.83 (Pauling)', cfg: '[Ar] 3d⁶ 4s²' },
+            'Cu': { name: 'Copper', mass: '63.546 u', en: '1.90 (Pauling)', cfg: '[Ar] 3d¹⁰ 4s¹' }
+        };
+
+        function selectHeroElement(symbol, num, mass, cfg, en, name) {
+            document.querySelectorAll('.el-chip').forEach(el => {
+                el.classList.remove('active', 'border-chem-cyan', 'bg-chem-cyan/20');
+                el.classList.add('border-white/10', 'bg-navy-850');
+            });
+            event.currentTarget.classList.add('active', 'border-chem-cyan', 'bg-chem-cyan/20');
+            event.currentTarget.classList.remove('border-white/10', 'bg-navy-850');
+
+            document.getElementById('hero-element-name').textContent = `${name} (${symbol})`;
+            document.getElementById('hero-element-mass').textContent = mass + ' u';
+            document.getElementById('hero-element-en').textContent = en + ' (Pauling)';
+            document.getElementById('hero-element-cfg').textContent = cfg;
+        }
+
+        // 2. Curriculum Tabs Switcher
+        function switchCurriculumTab(tab) {
+            const btn1 = document.getElementById('btn-genchem1');
+            const btn2 = document.getElementById('btn-genchem2');
+            const tab1 = document.getElementById('tab-genchem1');
+            const tab2 = document.getElementById('tab-genchem2');
+
+            if (tab === 'genchem1') {
+                btn1.className = 'px-5 py-2.5 rounded-lg text-xs font-bold transition-all bg-chem-cyan text-navy-950 shadow-md';
+                btn2.className = 'px-5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white';
+                tab1.classList.remove('hidden');
+                tab2.classList.add('hidden');
+            } else {
+                btn2.className = 'px-5 py-2.5 rounded-lg text-xs font-bold transition-all bg-chem-cyan text-navy-950 shadow-md';
+                btn1.className = 'px-5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white';
+                tab2.classList.remove('hidden');
+                tab1.classList.add('hidden');
+            }
+        }
+
+        // 3. Dual Persona Switcher (Student vs. Faculty)
+        function switchPersona(persona) {
+            const btnStudent = document.getElementById('toggle-student-btn');
+            const btnFaculty = document.getElementById('toggle-faculty-btn');
+            const viewStudent = document.getElementById('persona-student');
+            const viewFaculty = document.getElementById('persona-faculty');
+
+            if (persona === 'student') {
+                btnStudent.className = 'px-6 py-2.5 rounded-lg text-xs font-bold transition-all bg-chem-cyan text-navy-950 shadow-md';
+                btnFaculty.className = 'px-6 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white';
+                viewStudent.classList.remove('hidden');
+                viewFaculty.classList.add('hidden');
+            } else {
+                btnFaculty.className = 'px-6 py-2.5 rounded-lg text-xs font-bold transition-all bg-chem-cyan text-navy-950 shadow-md';
+                btnStudent.className = 'px-6 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white';
+                viewFaculty.classList.remove('hidden');
+                viewStudent.classList.add('hidden');
+            }
+        }
+
+        // 4. Stoichiometric Reaction Balancer & Calculator Engine
+        const reactions = {
+            'propane': {
+                formula: 'C<sub>3</sub>H<sub>8(g)</sub> + 5 O<sub>2(g)</sub> → 3 CO<sub>2(g)</sub> + 4 H<sub>2</sub>O<sub>(g)</sub>',
+                ratioText: 'Ratio: 1 mol C₃H₈ : 5 mol O₂ → 3 mol CO₂ : 4 mol H₂O',
+                energy: 'ΔH° = -2220 kJ/mol (Exothermic)',
+                inputLabel: 'Mass of Propane (grams C₃H₈):',
+                molarMassNote: 'Molar mass of C₃H₈ = 44.10 g/mol',
+                molarMassReactant: 44.10,
+                prod1Name: 'Mass of CO₂ Produced',
+                prod1MolarMass: 44.01,
+                prod1Coeff: 3,
+                prod2Name: 'Mass of H₂O Produced',
+                prod2MolarMass: 18.015,
+                prod2Coeff: 4,
+                reactantCoeff: 1
+            },
+            'water': {
+                formula: '2 H<sub>2(g)</sub> + O<sub>2(g)</sub> → 2 H<sub>2</sub>O<sub>(g)</sub>',
+                ratioText: 'Ratio: 2 mol H₂ : 1 mol O₂ → 2 mol H₂O',
+                energy: 'ΔH° = -572 kJ/mol (Exothermic)',
+                inputLabel: 'Mass of Hydrogen Gas (grams H₂):',
+                molarMassNote: 'Molar mass of H₂ = 2.016 g/mol',
+                molarMassReactant: 2.016,
+                prod1Name: 'Mass of H₂O Produced',
+                prod1MolarMass: 18.015,
+                prod1Coeff: 2,
+                prod2Name: 'Oxygen Consumed',
+                prod2MolarMass: 32.00,
+                prod2Coeff: 1,
+                reactantCoeff: 2
+            },
+            'haber': {
+                formula: 'N<sub>2(g)</sub> + 3 H<sub>2(g)</sub> ⇌ 2 NH<sub>3(g)</sub>',
+                ratioText: 'Ratio: 1 mol N₂ : 3 mol H₂ → 2 mol NH₃',
+                energy: 'ΔH° = -92.4 kJ/mol (Exothermic Synthesis)',
+                inputLabel: 'Mass of Nitrogen Gas (grams N₂):',
+                molarMassNote: 'Molar mass of N₂ = 28.014 g/mol',
+                molarMassReactant: 28.014,
+                prod1Name: 'Mass of Ammonia (NH₃) Produced',
+                prod1MolarMass: 17.031,
+                prod1Coeff: 2,
+                prod2Name: 'Hydrogen Consumed (H₂)',
+                prod2MolarMass: 2.016,
+                prod2Coeff: 3,
+                reactantCoeff: 1
+            },
+            'neutralization': {
+                formula: 'HCl<sub>(aq)</sub> + NaOH<sub>(aq)</sub> → NaCl<sub>(aq)</sub> + H<sub>2</sub>O<sub>(l)</sub>',
+                ratioText: 'Ratio: 1 mol HCl : 1 mol NaOH → 1 mol NaCl : 1 mol H₂O',
+                energy: 'ΔH° = -57.1 kJ/mol (Neutralization Heat)',
+                inputLabel: 'Mass of Hydrochloric Acid (grams HCl):',
+                molarMassNote: 'Molar mass of HCl = 36.46 g/mol',
+                molarMassReactant: 36.46,
+                prod1Name: 'Mass of Salt (NaCl) Produced',
+                prod1MolarMass: 58.44,
+                prod1Coeff: 1,
+                prod2Name: 'Mass of Water (H₂O) Formed',
+                prod2MolarMass: 18.015,
+                prod2Coeff: 1,
+                reactantCoeff: 1
+            }
+        };
+
+        function updateReactionUI() {
+            const rxnKey = document.getElementById('reaction-picker').value;
+            const rxn = reactions[rxnKey];
+            
+            document.getElementById('equation-display').innerHTML = rxn.formula;
+            document.getElementById('input-label').textContent = rxn.inputLabel;
+            document.getElementById('molar-mass-note').textContent = rxn.molarMassNote;
+            
+            calculateStoichiometry();
+        }
+
+        function calculateStoichiometry() {
+            const rxnKey = document.getElementById('reaction-picker').value;
+            const rxn = reactions[rxnKey];
+            const inputVal = parseFloat(document.getElementById('reactant-input').value) || 0;
+
+            if (inputVal <= 0) {
+                document.getElementById('res-moles').textContent = '0.000 mol';
+                document.getElementById('res-prod1-mass').textContent = '0.00 g';
+                document.getElementById('res-prod2-mass').textContent = '0.00 g';
+                return;
+            }
+
+            // Moles of reactant = mass / molarMass
+            const molesReactant = inputVal / rxn.molarMassReactant;
+            document.getElementById('res-moles').textContent = molesReactant.toFixed(3) + ' mol';
+
+            // Product 1 Moles & Mass
+            const molesProd1 = (molesReactant / rxn.reactantCoeff) * rxn.prod1Coeff;
+            const massProd1 = molesProd1 * rxn.prod1MolarMass;
+            document.getElementById('res-prod1-title').textContent = rxn.prod1Name;
+            document.getElementById('res-prod1-mass').textContent = massProd1.toFixed(2) + ' g';
+            document.getElementById('res-prod1-mol').textContent = molesProd1.toFixed(3) + ' mol produced';
+
+            // Product 2 Moles & Mass
+            const molesProd2 = (molesReactant / rxn.reactantCoeff) * rxn.prod2Coeff;
+            const massProd2 = molesProd2 * rxn.prod2MolarMass;
+            document.getElementById('res-prod2-title').textContent = rxn.prod2Name;
+            document.getElementById('res-prod2-mass').textContent = massProd2.toFixed(2) + ' g';
+            document.getElementById('res-prod2-mol').textContent = molesProd2.toFixed(3) + ' mol';
+        }
+
+        // Initialize calculator on load
+        calculateStoichiometry();
+    </script>
+</body>
+</html>

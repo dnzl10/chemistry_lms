@@ -1,0 +1,3063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reactants, Products and Leftovers | Elementa LMS Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================================================
+       CSS VARIABLES & THEME
+       ========================================================================= */
+    :root {
+      --bg-base: #070b14;
+      --bg-panel: rgba(15, 23, 42, 0.85);
+      --bg-card: rgba(30, 41, 59, 0.65);
+      --bg-card-hover: rgba(51, 65, 85, 0.85);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-focus: #06b6d4;
+      
+      --accent-cyan: #06b6d4;
+      --accent-teal: #14b8a6;
+      --accent-blue: #3b82f6;
+      --accent-indigo: #6366f1;
+      --accent-purple: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-emerald: #10b981;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --topbar-height: 56px;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-heading: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* =========================================================================
+       TOPBAR (EXACT REPLICATION FROM ACID-BASE-SOLUTIONS)
+       ========================================================================= */
+    .elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border-card);
+    }
+
+    .lms-breadcrumb span.current {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+
+    .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    .action-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* =========================================================================
+       MAIN CONTENT CONTAINER
+       ========================================================================= */
+    .app-main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .app-section {
+      position: absolute;
+      inset: 0;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      overflow: hidden;
+    }
+
+    .app-section.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    /* =========================================================================
+       SIMULATION LAB LAYOUT
+       ========================================================================= */
+    .sim-lab-layout {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sim-subbar {
+      height: 46px;
+      background: rgba(15, 23, 42, 0.6);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .sub-screen-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .sub-tab-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .sub-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    .sub-tab-btn.active {
+      background: rgba(6, 182, 212, 0.16);
+      color: #22d3ee;
+      border-color: rgba(6, 182, 212, 0.4);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+    }
+
+    .sub-quick-stats {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+    }
+
+    .sub-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .sub-stat-val {
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+    }
+
+    /* Top Equation Bar */
+    .equation-banner {
+      background: rgba(15, 23, 42, 0.75);
+      border-bottom: 1px solid var(--border-card);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(10px);
+      z-index: 5;
+    }
+
+    .equation-display {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-heading);
+    }
+
+    .eq-coeff {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      padding: 1px 7px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+    }
+
+    .reaction-type-pills {
+      display: flex;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      gap: 4px;
+    }
+
+    .rxn-pill {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .rxn-pill:hover {
+      color: #ffffff;
+    }
+
+    .rxn-pill.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    /* Main Workspace (Dual Chamber + Right Controls) */
+    .sim-workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chambers-container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 16px;
+      background: radial-gradient(circle at 50% 50%, #0d1527 0%, #060913 70%, #020408 100%);
+      overflow: hidden;
+    }
+
+    /* Individual Reaction Chamber Box */
+    .chamber-box {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .chamber-header {
+      padding: 10px 16px;
+      background: rgba(30, 41, 59, 0.5);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .chamber-canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chamber-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Chamber Bottom Input Controls */
+    .chamber-controls-bar {
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.9);
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: 10px;
+    }
+
+    .reactant-input-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 6px 12px;
+    }
+
+    .btn-step {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid var(--border-card);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-step:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .btn-step:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .count-display {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 800;
+      color: #ffffff;
+      min-width: 22px;
+      text-align: center;
+    }
+
+    /* Right Sidebar Control Panel */
+    .sim-panel {
+      width: 360px;
+      background: rgba(15, 23, 42, 0.92);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .panel-section {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .panel-heading {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Diagnostic Badges */
+    .diagnostic-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .diagnostic-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, #06b6d4, #6366f1);
+    }
+
+    .diag-pill-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .diag-hero-val {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-limiting {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      color: #fda4af;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-excess {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-balanced {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    /* Practice Game View */
+    .game-viewport {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      position: relative;
+    }
+
+    .game-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 24px;
+      max-width: 720px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .game-level-tabs {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .game-level-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .game-level-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    /* =========================================================================
+       GUIDED MISSIONS TAB
+       ========================================================================= */
+    .missions-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .section-hero {
+      margin-bottom: 24px;
+    }
+
+    .section-hero h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-hero p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .missions-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .mission-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      background: rgba(30, 41, 59, 0.8);
+      transform: translateY(-2px);
+    }
+
+    .mission-card.completed {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .mission-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .mission-number {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .mission-card.completed .mission-number {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .mission-info h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+
+    .mission-info p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .mission-tags {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .mission-tag {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #94a3b8;
+    }
+
+    .btn-mission-action {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .btn-mission-action:hover {
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.6);
+      transform: scale(1.02);
+    }
+
+    .mission-card.completed .btn-mission-action {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      cursor: default;
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ TAB
+       ========================================================================= */
+    .quiz-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 950px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .quiz-scoreboard {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .quiz-score-num {
+      font-size: 1.8rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+    }
+
+    .quiz-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .quiz-question {
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .quiz-options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .quiz-option-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.18s ease;
+    }
+
+    .quiz-option-btn:hover:not(.locked) {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .opt-letter {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-option-btn.correct {
+      background: rgba(16, 185, 129, 0.15) !important;
+      border-color: #10b981 !important;
+      color: #a7f3d0 !important;
+    }
+
+    .quiz-option-btn.wrong {
+      background: rgba(244, 63, 94, 0.15) !important;
+      border-color: #f43f5e !important;
+      color: #fecdd3 !important;
+    }
+
+    .quiz-feedback {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .quiz-feedback.show {
+      display: block;
+    }
+
+    .quiz-feedback.correct {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    .quiz-feedback.wrong {
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+    }
+
+    /* =========================================================================
+       THEORY & FORMULAS TAB
+       ========================================================================= */
+    .theory-container {
+      flex: 1;
+      padding: 28px 40px;
+      overflow-y: auto;
+      max-width: 1050px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .theory-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .theory-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-card p, .theory-card li {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .theory-card ul {
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .theory-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 8px;
+    }
+
+    .theory-table th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-card);
+      font-weight: 700;
+    }
+
+    .theory-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+    }
+
+    .theory-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-main);
+    }
+
+    /* Modal Certificate */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 550px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+  
+    /* Standard Sleek Elementa Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  
+    /* ==========================================================================
+       ELEMENTA STANDARD MODALS (acid-base-solutions baseline)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    .modal-backdrop .missions-container,
+    .modal-backdrop .quiz-container,
+    .modal-backdrop .theory-container {
+      max-width: 100% !important;
+      padding: 0 !important;
+    }
+    .modal-backdrop .section-hero {
+      margin-bottom: 16px !important;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+</head>
+<body>
+
+  <!-- =========================================================================
+       ELEMENTA TOPBAR (IDENTICAL TO ACID-BASE-SOLUTIONS)
+       ========================================================================= -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Stoichiometry</span>
+        <span>›</span>
+        <span class="current">Reactants, Products and Leftovers</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       MAIN INTERACTIVE APPLICATION
+       ========================================================================= -->
+  <main class="simulation-workspace app-main">
+
+    <!-- 1. SIMULATION LAB -->
+    <section class="app-section active" id="secSimLab">
+      <div class="sim-lab-layout">
+
+        <!-- Sub-bar for Screens -->
+        <div class="sim-subbar">
+          <div class="sub-screen-tabs">
+            <button class="sub-tab-btn active" id="btnSubMolecules" onclick="setSubScreen('molecules')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><circle cx="19" cy="5" r="2"></circle><circle cx="5" cy="19" r="2"></circle><line x1="12" y1="9" x2="19" y2="7"></line><line x1="12" y1="15" x2="5" y2="17"></line></svg>
+              Chemical Molecules
+            </button>
+            <button class="sub-tab-btn" id="btnSubSandwiches" onclick="setSubScreen('sandwiches')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h18M3 16h18M5 12h14"></path></svg>
+              Sandwich Analogy
+            </button>
+            <button class="sub-tab-btn" id="btnSubGame" onclick="setSubScreen('game')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+              Practice Game
+            </button>
+          </div>
+
+          <div class="sub-quick-stats">
+            <div class="sub-stat-item">
+              <span>Limiting Reactant:</span>
+              <span class="sub-stat-val" id="lblLimitingVal" style="color: #fda4af;">H₂</span>
+            </div>
+            <div class="sub-stat-item">
+              <span>Reaction Batches:</span>
+              <span class="sub-stat-val" id="lblBatchesVal">3</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Balanced Equation Banner -->
+        <div class="equation-banner">
+          <div class="equation-display" id="equationDisplay">
+            <span class="eq-coeff" id="eqC1">2</span> H<sub>2</sub>
+            <span>+</span>
+            <span class="eq-coeff" id="eqC2">1</span> O<sub>2</sub>
+            <span>→</span>
+            <span class="eq-coeff" id="eqC3">2</span> H<sub>2</sub>O
+          </div>
+
+          <div class="reaction-type-pills" id="reactionTypePills">
+            <button class="rxn-pill active" id="rxnWater" onclick="selectReaction('water')">Make Water</button>
+            <button class="rxn-pill" id="rxnAmmonia" onclick="selectReaction('ammonia')">Make Ammonia</button>
+            <button class="rxn-pill" id="rxnMethane" onclick="selectReaction('methane')">Combust Methane</button>
+          </div>
+
+          <div class="reaction-type-pills" id="sandwichTypePills" style="display: none;">
+            <button class="rxn-pill active" id="swCheese" onclick="selectSandwichType('cheese')">Cheese</button>
+            <button class="rxn-pill" id="swMeat" onclick="selectSandwichType('meat')">Meat & Cheese</button>
+          </div>
+        </div>
+
+        <!-- Main Workspace (Dual Chamber or Game) -->
+        <div class="sim-workspace" id="workspaceChambers">
+
+          <!-- Left & Right Chambers -->
+          <div class="chambers-container">
+
+            <!-- Chamber 1: Before Reaction (Reactants) -->
+            <div class="chamber-box">
+              <div class="chamber-header">
+                <span style="color: #38bdf8;">Before Reaction (Reactants)</span>
+                <span id="txtReactantTotal" style="color: #94a3b8; font-family: var(--font-mono);">8 Molecules Total</span>
+              </div>
+              <div class="chamber-canvas-wrap" id="wrapBefore">
+                <canvas class="chamber-canvas" id="canvasBefore"></canvas>
+              </div>
+              <!-- Input Steppers -->
+              <div class="chamber-controls-bar" id="ctrlsReactants">
+                <!-- Reactant 1 -->
+                <div class="reactant-input-card">
+                  <span id="lblR1Name" style="font-size: 0.82rem; font-weight: 700; color: #ffffff;">H<sub>2</sub>:</span>
+                  <button class="btn-step" onclick="adjustReactant(0, -1)">−</button>
+                  <span class="count-display" id="countR1">6</span>
+                  <button class="btn-step" onclick="adjustReactant(0, 1)">+</button>
+                </div>
+
+                <!-- Reactant 2 -->
+                <div class="reactant-input-card">
+                  <span id="lblR2Name" style="font-size: 0.82rem; font-weight: 700; color: #ffffff;">O<sub>2</sub>:</span>
+                  <button class="btn-step" onclick="adjustReactant(1, -1)">−</button>
+                  <span class="count-display" id="countR2">4</span>
+                  <button class="btn-step" onclick="adjustReactant(1, 1)">+</button>
+                </div>
+
+                <!-- Reactant 3 (for sandwiches with meat) -->
+                <div class="reactant-input-card" id="cardR3" style="display: none;">
+                  <span id="lblR3Name" style="font-size: 0.82rem; font-weight: 700; color: #ffffff;">Meat:</span>
+                  <button class="btn-step" onclick="adjustReactant(2, -1)">−</button>
+                  <span class="count-display" id="countR3">0</span>
+                  <button class="btn-step" onclick="adjustReactant(2, 1)">+</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chamber 2: After Reaction (Products & Leftovers) -->
+            <div class="chamber-box">
+              <div class="chamber-header">
+                <span style="color: #34d399;">After Reaction (Products & Leftovers)</span>
+                <span id="txtProductTotal" style="color: #94a3b8; font-family: var(--font-mono);">6 Products | 1 Leftover</span>
+              </div>
+              <div class="chamber-canvas-wrap" id="wrapAfter">
+                <canvas class="chamber-canvas" id="canvasAfter"></canvas>
+              </div>
+              <div class="chamber-controls-bar" style="justify-content: center; gap: 24px;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;" id="summaryYield">
+                  Products: <strong style="color: #34d399;">6 H<sub>2</sub>O</strong>
+                </div>
+                <div style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;" id="summaryLeftovers">
+                  Leftovers: <strong style="color: #38bdf8;">1 O<sub>2</sub></strong>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right Sidebar Control Panel -->
+          <aside class="simulation-sidebar sim-panel">
+
+            <!-- Stoichiometric Diagnostic Card -->
+            <div class="panel-section">
+              <div class="panel-heading">Stoichiometric Analysis</div>
+
+              <div class="diagnostic-card">
+                <span class="diag-pill-title">Limiting Reagent Status</span>
+                <div class="diag-hero-val" id="diagLimiting">
+                  <span class="badge-limiting" id="badgeLimitingPill">H₂ is Limiting</span>
+                </div>
+                <p style="font-size: 0.76rem; color: #cbd5e1; line-height: 1.45;" id="diagLimitingExpl">
+                  All 6 available H₂ molecules are completely consumed to produce 6 H₂O molecules, leaving 1 unreacted O₂ in excess.
+                </p>
+
+                <span class="diag-pill-title" style="margin-top: 6px;">Excess Reactant</span>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span class="badge-excess" id="badgeExcessPill">1 O₂ Unreacted</span>
+                  <span style="font-size: 0.72rem; color: #94a3b8; font-family: var(--font-mono);" id="diagMoleRatio">Ratio: 1.50 vs Req: 2.00</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Conservation of Atoms Card -->
+            <div class="panel-section">
+              <div class="panel-heading">Conservation of Mass & Atoms</div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--border-card); color: #94a3b8; text-align: left;">
+                    <th style="padding: 6px 0;">Element</th>
+                    <th style="text-align: center;">Before (Reactants)</th>
+                    <th style="text-align: center;">After (Products+Left)</th>
+                  </tr>
+                </thead>
+                <tbody id="atomConservationBody">
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                    <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Hydrogen (H)</td>
+                    <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;" id="atomHBefore">12</td>
+                    <td style="text-align: center; font-family: var(--font-mono); color: #34d399;" id="atomHAfter">12</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Oxygen (O)</td>
+                    <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;" id="atomOBefore">8</td>
+                    <td style="text-align: center; font-family: var(--font-mono); color: #34d399;" id="atomOAfter">8</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Quick Action / Presets -->
+            <div class="panel-section" style="flex: 1;">
+              <div class="panel-heading">Stoichiometric Presets</div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="action-btn" style="width: 100%; justify-content: flex-start;" onclick="setPreset('exact')">
+                  <span style="color: #34d399;">●</span> Exact Stoichiometric Ratio (No Leftovers)
+                </button>
+                <button class="action-btn" style="width: 100%; justify-content: flex-start;" onclick="setPreset('excess1')">
+                  <span style="color: #38bdf8;">●</span> Excess Reactant 1
+                </button>
+                <button class="action-btn" style="width: 100%; justify-content: flex-start;" onclick="setPreset('excess2')">
+                  <span style="color: #f59e0b;">●</span> Excess Reactant 2
+                </button>
+              </div>
+            </div>
+
+          </aside>
+        </div>
+
+        <!-- Practice Game Workspace (When Game Sub-tab is Active) -->
+        <div class="game-viewport" id="workspaceGame" style="display: none;">
+          <div class="game-level-tabs">
+            <button class="game-level-btn active" id="btnGameLvl1" onclick="selectGameLevel(1)">Level 1: Find Products & Leftovers</button>
+            <button class="game-level-btn" id="btnGameLvl2" onclick="selectGameLevel(2)">Level 2: Deduce Initial Reactants</button>
+            <button class="game-level-btn" id="btnGameLvl3" onclick="selectGameLevel(3)">Level 3: Stoichiometry Challenge</button>
+          </div>
+
+          <div class="game-card" id="gameCard">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-card); padding-bottom: 12px;">
+              <span style="font-weight: 700; font-size: 0.95rem; color: #ffffff;" id="gameProblemTitle">Level 1 — Problem 1 of 5</span>
+              <span style="font-family: var(--font-mono); font-weight: 800; color: #38bdf8;" id="gameScoreLabel">Score: 0 / 5 ★</span>
+            </div>
+
+            <div style="font-size: 1.05rem; font-weight: 700; color: #ffffff; text-align: center; padding: 10px 0;" id="gameEquation">
+              2 H<sub>2</sub> + 1 O<sub>2</sub> → 2 H<sub>2</sub>O
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: rgba(0,0,0,0.25); padding: 16px; border-radius: 10px;">
+              <!-- Left: Given -->
+              <div>
+                <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;" id="gameGivenTitle">Before Reaction (Given)</div>
+                <div id="gameGivenDetails" style="font-size: 0.9rem; color: #cbd5e1; line-height: 1.6;">
+                  H<sub>2</sub>: <strong style="color: #ffffff;">8 molecules</strong><br>
+                  O<sub>2</sub>: <strong style="color: #ffffff;">3 molecules</strong>
+                </div>
+              </div>
+
+              <!-- Right: User Answers -->
+              <div>
+                <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;" id="gameAnswerTitle">Enter Your Prediction</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;" id="gameInputFields">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="gameAnsLabel1">H<sub>2</sub>O Products:</span>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <button class="btn-step" onclick="adjustGameAns(0, -1)">−</button>
+                      <span class="count-display" id="gameAnsVal0">0</span>
+                      <button class="btn-step" onclick="adjustGameAns(0, 1)">+</button>
+                    </div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="gameAnsLabel2">Leftover H<sub>2</sub>:</span>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <button class="btn-step" onclick="adjustGameAns(1, -1)">−</button>
+                      <span class="count-display" id="gameAnsVal1">0</span>
+                      <button class="btn-step" onclick="adjustGameAns(1, 1)">+</button>
+                    </div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="gameAnsLabel3">Leftover O<sub>2</sub>:</span>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <button class="btn-step" onclick="adjustGameAns(2, -1)">−</button>
+                      <span class="count-display" id="gameAnsVal2">0</span>
+                      <button class="btn-step" onclick="adjustGameAns(2, 1)">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Check Button & Feedback -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <div id="gameFeedbackText" style="font-size: 0.85rem; font-weight: 700; color: #34d399;"></div>
+              <button class="btn-mission-action" id="btnGameCheck" onclick="checkGameAnswer()">Check Answer</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 2. GUIDED MISSIONS -->
+    <section class="app-section" id="secMissions">
+      <div class="missions-container">
+        <div class="section-hero">
+          <h2>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            Guided Learning Missions
+          </h2>
+          <p>Master limiting reactants, excess reagents, and atom conservation through guided laboratory challenges.</p>
+        </div>
+
+        <div class="missions-grid">
+          <!-- Mission 1 -->
+          <div class="mission-card" id="missionCard1">
+            <div class="mission-left">
+              <div class="mission-number">01</div>
+              <div class="mission-info">
+                <h3>The Sandwich Analogy Baseline</h3>
+                <p>Switch to the Sandwich Analogy screen. Provide 6 Bread slices and 2 Cheese slices. Confirm that Cheese is the limiting reagent and exactly 2 Bread slices remain leftover.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Sandwiches</span>
+                  <span class="mission-tag">Limiting Cheese</span>
+                  <span class="mission-tag">+100 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(1)">Start Mission</button>
+          </div>
+
+          <!-- Mission 2 -->
+          <div class="mission-card" id="missionCard2">
+            <div class="mission-left">
+              <div class="mission-number">02</div>
+              <div class="mission-info">
+                <h3>Water Synthesis Stoichiometry (2 H₂ + 1 O₂ → 2 H₂O)</h3>
+                <p>Set 6 H₂ and 4 O₂ molecules. Observe the creation of 6 H₂O molecules and verify that H₂ is completely exhausted while 1 O₂ remains unreacted.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Water</span>
+                  <span class="mission-tag">H₂ Limiting</span>
+                  <span class="mission-tag">+150 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(2)">Start Mission</button>
+          </div>
+
+          <!-- Mission 3 -->
+          <div class="mission-card" id="missionCard3">
+            <div class="mission-left">
+              <div class="mission-number">03</div>
+              <div class="mission-info">
+                <h3>Haber-Bosch Ammonia Production (1 N₂ + 3 H₂ → 2 NH₃)</h3>
+                <p>Select Make Ammonia. Adjust reactants to precisely 2 N₂ and 6 H₂. Confirm that the stoichiometric ratio is exactly balanced with zero leftovers.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Ammonia</span>
+                  <span class="mission-tag">Exact Ratio</span>
+                  <span class="mission-tag">+150 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(3)">Start Mission</button>
+          </div>
+
+          <!-- Mission 4 -->
+          <div class="mission-card" id="missionCard4">
+            <div class="mission-left">
+              <div class="mission-number">04</div>
+              <div class="mission-info">
+                <h3>Methane Combustion (1 CH₄ + 2 O₂ → 1 CO₂ + 2 H₂O)</h3>
+                <p>Select Combust Methane. Set 3 CH₄ and 4 O₂. Prove that Oxygen is the limiting reactant, yielding 2 CO₂ and 4 H₂O with 1 unburned CH₄ leftover.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Combustion</span>
+                  <span class="mission-tag">O₂ Limiting</span>
+                  <span class="mission-tag">+200 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(4)">Start Mission</button>
+          </div>
+
+          <!-- Mission 5 -->
+          <div class="mission-card" id="missionCard5">
+            <div class="mission-left">
+              <div class="mission-number">05</div>
+              <div class="mission-info">
+                <h3>Stoichiometry Practice Game Mastery</h3>
+                <p>Switch to the Practice Game and correctly solve at least 3 problems to demonstrate operational fluency with limiting reactants and leftovers.</p>
+                <div class="mission-tags">
+                  <span class="mission-tag">Game</span>
+                  <span class="mission-tag">Problem Solving</span>
+                  <span class="mission-tag">+200 XP</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(5)">Start Mission</button>
+          </div>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- 3. ASSESSMENT QUIZ -->
+    <section class="app-section" id="secQuiz">
+      <div class="quiz-container">
+        <div class="quiz-scoreboard">
+          <div>
+            <h2 style="font-size: 1.3rem; font-weight: 800; color: #ffffff;">Stoichiometry & Reagents Assessment</h2>
+            <p style="color: var(--text-muted); font-size: 0.82rem;">Demonstrate mastery of balanced chemical equations, limiting reagents, and conservation of mass.</p>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Current Score</div>
+            <div class="quiz-score-num" id="quizScoreDisplay">0 / 100%</div>
+          </div>
+        </div>
+
+        <!-- Question 1 -->
+        <div class="quiz-card" id="quizCard1">
+          <div class="quiz-q-num">Question 1 of 5</div>
+          <div class="quiz-question">In the reaction 2 H₂ + 1 O₂ → 2 H₂O, if you start with 8 molecules of H₂ and 5 molecules of O₂, how many H₂O molecules can be produced, and which reactant is in excess?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 0, false)"><span class="opt-letter">A</span> 10 H₂O produced, H₂ in excess</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 1, true)"><span class="opt-letter">B</span> 8 H₂O produced, O₂ in excess (1 O₂ leftover)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 2, false)"><span class="opt-letter">C</span> 8 H₂O produced, H₂ in excess (2 H₂ leftover)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(1, 3, false)"><span class="opt-letter">D</span> 5 H₂O produced, no leftovers</button>
+          </div>
+          <div class="quiz-feedback" id="feedback1">
+            <strong>Explanation:</strong> Each 2 H₂ requires 1 O₂. To consume 8 H₂, 4 O₂ are needed. Since 5 O₂ are available, H₂ runs out first (limiting reactant). Exactly 8 H₂O molecules are formed, leaving 5 − 4 = 1 O₂ unreacted in excess.
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="quiz-card" id="quizCard2">
+          <div class="quiz-q-num">Question 2 of 5</div>
+          <div class="quiz-question">In the Haber-Bosch synthesis of ammonia (1 N₂ + 3 H₂ → 2 NH₃), you mix 4 molecules of N₂ with 9 molecules of H₂. What will remain in the reaction vessel after the reaction goes to completion?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 0, false)"><span class="opt-letter">A</span> 8 NH₃ and 1 H₂ leftover</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 1, false)"><span class="opt-letter">B</span> 6 NH₃ and 1 H₂ leftover</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 2, true)"><span class="opt-letter">C</span> 6 NH₃ and 1 N₂ leftover</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(2, 3, false)"><span class="opt-letter">D</span> 4 NH₃ and 2 N₂ leftover</button>
+          </div>
+          <div class="quiz-feedback" id="feedback2">
+            <strong>Explanation:</strong> 9 H₂ molecules can only react with 9 ÷ 3 = 3 N₂ molecules to produce 3 × 2 = 6 NH₃ molecules. H₂ is the limiting reactant, leaving 4 − 3 = 1 N₂ unreacted.
+          </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="quiz-card" id="quizCard3">
+          <div class="quiz-q-num">Question 3 of 5</div>
+          <div class="quiz-question">Which statement accurately defines the 'limiting reactant' in a chemical reaction?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 0, false)"><span class="opt-letter">A</span> The reactant present in the smallest initial mass.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 1, true)"><span class="opt-letter">B</span> The reactant that is completely consumed first, which dictates the theoretical maximum yield of products.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 2, false)"><span class="opt-letter">C</span> The reactant with the largest stoichiometric coefficient in the balanced equation.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(3, 3, false)"><span class="opt-letter">D</span> The substance that remains in the reaction container after completion.</button>
+          </div>
+          <div class="quiz-feedback" id="feedback3">
+            <strong>Explanation:</strong> The limiting reactant is determined by mole-to-coefficient ratios, not by initial mass alone. It is the reactant that is entirely consumed first, stopping the reaction and capping the theoretical yield.
+          </div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="quiz-card" id="quizCard4">
+          <div class="quiz-q-num">Question 4 of 5</div>
+          <div class="quiz-question">Consider the combustion of methane: 1 CH₄ + 2 O₂ → 1 CO₂ + 2 H₂O. If 5 molecules of CH₄ are mixed with 6 molecules of O₂, how many total molecules exist AFTER the reaction?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 0, false)"><span class="opt-letter">A</span> 9 molecules (3 CO₂ + 6 H₂O)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 1, true)"><span class="opt-letter">B</span> 11 molecules (3 CO₂ + 6 H₂O + 2 leftover CH₄)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 2, false)"><span class="opt-letter">C</span> 15 molecules (5 CO₂ + 10 H₂O)</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(4, 3, false)"><span class="opt-letter">D</span> 8 molecules (2 CO₂ + 4 H₂O + 2 leftover O₂)</button>
+          </div>
+          <div class="quiz-feedback" id="feedback4">
+            <strong>Explanation:</strong> 6 O₂ can combust 6 ÷ 2 = 3 CH₄ molecules. This yields 3 CO₂ + 6 H₂O = 9 product molecules. Additionally, 5 − 3 = 2 CH₄ molecules remain unreacted. The total count after reaction is 3 + 6 + 2 = 11 molecules.
+          </div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="quiz-card" id="quizCard5">
+          <div class="quiz-q-num">Question 5 of 5</div>
+          <div class="quiz-question">Why can the total number of molecules change during a chemical reaction (e.g. 2 H₂ + 1 O₂ = 3 molecules yielding only 2 H₂O molecules) without violating the Law of Conservation of Mass?</div>
+          <div class="quiz-options">
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 0, true)"><span class="opt-letter">A</span> Atoms are conserved, but the bonds between them are rearranged to form fewer, larger molecules.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 1, false)"><span class="opt-letter">B</span> The missing molecule was converted directly into electromagnetic radiation.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 2, false)"><span class="opt-letter">C</span> Molecules are only conserved in nuclear reactions, not chemical reactions.</button>
+            <button class="quiz-option-btn" onclick="checkQuizAnswer(5, 3, false)"><span class="opt-letter">D</span> The excess mass is stored as potential energy in the chemical bonds.</button>
+          </div>
+          <div class="quiz-feedback" id="feedback5">
+            <strong>Explanation:</strong> In chemical reactions, individual atoms cannot be created or destroyed (mass is conserved: 4 H and 2 O atoms before and after). However, atoms recombine into different molecular arrangements, so the total number of independent molecules frequently changes.
+          </div>
+        </div>
+
+        <!-- Action / Certificate Button -->
+        <div style="text-align: center; margin-top: 30px;">
+          <button class="btn-mission-action" style="font-size: 0.95rem; padding: 12px 28px; margin: 0 auto;" id="btnClaimCert" onclick="openCertificateModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            Claim Certificate of Mastery
+          </button>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- 4. THEORY & FORMULAS -->
+    <section class="app-section" id="secTheory">
+      <div class="theory-container">
+        <div class="section-hero">
+          <h2>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            Chemical Stoichiometry & Reaction Yield Reference
+          </h2>
+          <p>Fundamental principles governing chemical proportions, limiting reactants, excess leftovers, and conservation laws.</p>
+        </div>
+
+        <div class="theory-grid">
+          <!-- Card 1 -->
+          <div class="theory-card">
+            <h3>1. The Law of Conservation of Mass</h3>
+            <p>Formulated by Antoine Lavoisier, the Law of Conservation of Mass states that matter cannot be created or destroyed in a chemical reaction. The total mass of reactants must equal the total mass of products and leftovers:</p>
+            <div style="background: rgba(0,0,0,0.3); padding: 10px 14px; border-radius: 8px; font-weight: 700; color: #38bdf8; text-align: center; margin: 6px 0; font-family: var(--font-mono);">
+              Total Atoms Before = Total Atoms After
+            </div>
+            <ul>
+              <li>Every individual atomic nucleus is strictly conserved.</li>
+              <li>Chemical equations must be balanced by stoichiometric coefficients so that atom counts for each element match on both sides.</li>
+            </ul>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="theory-card">
+            <h3>2. Limiting Reactant & Excess Reagent</h3>
+            <p>Reactants are rarely supplied in exact stoichiometric ratios. The reaction proceeds only until one of the reactants is completely depleted:</p>
+            <ul>
+              <li><strong>Limiting Reactant:</strong> The reactant that yields the smallest amount of product based on stoichiometric mole ratios. It is completely consumed.</li>
+              <li><strong>Excess Reactant:</strong> The reactant present in a quantity greater than necessary to react with the limiting reactant. Unreacted molecules remain as leftovers.</li>
+            </ul>
+          </div>
+
+          <!-- Card 3 (Master Table) -->
+          <div class="theory-card full-width">
+            <h3>3. Common Stoichiometric Reactions Table</h3>
+            <table class="theory-table">
+              <thead>
+                <tr>
+                  <th>Reaction Name</th>
+                  <th>Balanced Chemical Equation</th>
+                  <th>Reactant Mole Ratio</th>
+                  <th>Product Yield Ratio</th>
+                  <th>Industrial Importance</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Water Synthesis</td>
+                  <td>2 H<sub>2</sub> + 1 O<sub>2</sub> → 2 H<sub>2</sub>O</td>
+                  <td>2 mol H₂ : 1 mol O₂</td>
+                  <td>2 mol H₂O</td>
+                  <td>Clean fuel cells, rocketry propellant</td>
+                </tr>
+                <tr>
+                  <td>Ammonia Synthesis (Haber)</td>
+                  <td>1 N<sub>2</sub> + 3 H<sub>2</sub> → 2 NH<sub>3</sub></td>
+                  <td>1 mol N₂ : 3 mol H₂</td>
+                  <td>2 mol NH₃</td>
+                  <td>Global agricultural nitrogen fertilizers</td>
+                </tr>
+                <tr>
+                  <td>Methane Combustion</td>
+                  <td>1 CH<sub>4</sub> + 2 O<sub>2</sub> → 1 CO<sub>2</sub> + 2 H<sub>2</sub>O</td>
+                  <td>1 mol CH₄ : 2 mol O₂</td>
+                  <td>1 mol CO₂ + 2 mol H₂O</td>
+                  <td>Natural gas heating, electricity generation</td>
+                </tr>
+                <tr>
+                  <td>Cheese Sandwich Analogy</td>
+                  <td>2 Bread + 1 Cheese → 1 Sandwich</td>
+                  <td>2 Bd : 1 Ch</td>
+                  <td>1 Sandwich</td>
+                  <td>Pedagogical model for limiting reagents</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="theory-card">
+            <h3>4. Theoretical Yield & Percent Yield</h3>
+            <p>The theoretical yield is the maximum mass of product that could be formed from the given amounts of reactants, calculated from the limiting reactant:</p>
+            <div style="background: rgba(0,0,0,0.3); padding: 10px 14px; border-radius: 8px; font-weight: 700; color: #10b981; text-align: center; margin: 6px 0; font-family: var(--font-mono);">
+              Percent Yield = (Actual Yield / Theoretical Yield) × 100%
+            </div>
+            <p>In actual laboratory synthesis, percent yield is typically &lt; 100% due to incomplete reactions, side reactions, or product loss during isolation.</p>
+          </div>
+
+          <!-- Card 5 -->
+          <div class="theory-card">
+            <h3>5. Method for Determining the Limiting Reactant</h3>
+            <p>Follow this standardized 3-step analytical procedure:</p>
+            <ul>
+              <li><strong>Step 1:</strong> Balance the chemical equation to identify stoichiometric coefficients.</li>
+              <li><strong>Step 2:</strong> Divide the initial moles of each reactant by its stoichiometric coefficient: <span style="color: #38bdf8; font-family: var(--font-mono);">n / coefficient</span>.</li>
+              <li><strong>Step 3:</strong> The reactant with the lowest quotient is the limiting reactant. Use its value to compute product yield and subtract consumed amounts to find leftovers.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- =========================================================================
+       MODAL: CERTIFICATE OF MASTERY
+       ========================================================================= -->
+  <div class="modal-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(56, 189, 248, 0.2); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h2 style="font-size: 1.4rem; font-weight: 800; color: #ffffff;">Certificate of Mastery</h2>
+      <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">This certifies that the student has demonstrated proficiency in <strong>Chemical Stoichiometry, Limiting Reactants, and Atom Conservation</strong>.</p>
+      
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-card); border-radius: 8px; padding: 12px 20px; width: 100%; text-align: left;">
+        <div style="font-size: 0.72rem; color: #94a3b8;">Student Name:</div>
+        <input type="text" id="certStudentName" value="Elementa Scholar" style="background: transparent; border: none; border-bottom: 1px solid #38bdf8; color: #ffffff; font-size: 1rem; font-weight: 700; width: 100%; outline: none; margin-top: 4px;">
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.75rem; color: #94a3b8;">
+          <span>Score: <strong style="color: #38bdf8;" id="certScoreVal">100%</strong></span>
+          <span>Verified: <strong>Elementa LMS</strong></span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; width: 100%; margin-top: 8px;">
+        <button class="btn-mission-action" style="flex: 1;" onclick="downloadCertPDF()">Print / Save</button>
+        <button class="action-btn" style="flex: 1;" onclick="closeCertificateModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       CORE JAVASCRIPT LOGIC & STOICHIOMETRIC ENGINE
+       ========================================================================= -->
+  <script>
+    /* -------------------------------------------------------------------------
+       STATE & CONFIGURATION
+       ------------------------------------------------------------------------- */
+    const appState = {
+      mode: 'sim', // 'sim', 'missions', 'quiz', 'theory'
+      subScreen: 'molecules', // 'molecules', 'sandwiches', 'game'
+      audioEnabled: true,
+      currentReaction: 'water', // 'water', 'ammonia', 'methane'
+      currentSandwich: 'cheese', // 'cheese', 'meat'
+      // Reactant quantities
+      inputs: {
+        r1: 6,
+        r2: 4,
+        r3: 0
+      },
+      // Game State
+      game: {
+        level: 1,
+        problemIdx: 0,
+        score: 0,
+        currentProblem: null,
+        userAns: [0, 0, 0]
+      },
+      // Missions & Quiz
+      missionsCompleted: [false, false, false, false, false],
+      quizAnswers: [null, null, null, null, null]
+    };
+
+    /* -------------------------------------------------------------------------
+       REACTION DEFINITIONS
+       ------------------------------------------------------------------------- */
+    const REACTIONS = {
+      water: {
+        title: 'Make Water',
+        eqHtml: '<span class="eq-coeff">2</span> H<sub>2</sub> + <span class="eq-coeff">1</span> O<sub>2</sub> → <span class="eq-coeff">2</span> H<sub>2</sub>O',
+        r1: { name: 'H₂', coeff: 2, label: 'H<sub>2</sub>' },
+        r2: { name: 'O₂', coeff: 1, label: 'O<sub>2</sub>' },
+        p1: { name: 'H₂O', coeff: 2, label: 'H<sub>2</sub>O' },
+        calc: (r1, r2) => {
+          const batches = Math.min(Math.floor(r1 / 2), Math.floor(r2 / 1));
+          const pYield = batches * 2;
+          const leftR1 = r1 - batches * 2;
+          const leftR2 = r2 - batches * 1;
+          let limiting = 'Equimolar';
+          if (r1 / 2 < r2 / 1) limiting = 'H₂ is Limiting';
+          else if (r1 / 2 > r2 / 1) limiting = 'O₂ is Limiting';
+          return { batches, pYield, leftR1, leftR2, limiting };
+        }
+      },
+      ammonia: {
+        title: 'Make Ammonia',
+        eqHtml: '<span class="eq-coeff">1</span> N<sub>2</sub> + <span class="eq-coeff">3</span> H<sub>2</sub> → <span class="eq-coeff">2</span> NH<sub>3</sub>',
+        r1: { name: 'N₂', coeff: 1, label: 'N<sub>2</sub>' },
+        r2: { name: 'H₂', coeff: 3, label: 'H<sub>2</sub>' },
+        p1: { name: 'NH₃', coeff: 2, label: 'NH<sub>3</sub>' },
+        calc: (r1, r2) => {
+          const batches = Math.min(Math.floor(r1 / 1), Math.floor(r2 / 3));
+          const pYield = batches * 2;
+          const leftR1 = r1 - batches * 1;
+          const leftR2 = r2 - batches * 3;
+          let limiting = 'Equimolar';
+          if (r1 / 1 < r2 / 3) limiting = 'N₂ is Limiting';
+          else if (r1 / 1 > r2 / 3) limiting = 'H₂ is Limiting';
+          return { batches, pYield, leftR1, leftR2, limiting };
+        }
+      },
+      methane: {
+        title: 'Combust Methane',
+        eqHtml: '<span class="eq-coeff">1</span> CH<sub>4</sub> + <span class="eq-coeff">2</span> O<sub>2</sub> → <span class="eq-coeff">1</span> CO<sub>2</sub> + <span class="eq-coeff">2</span> H<sub>2</sub>O',
+        r1: { name: 'CH₄', coeff: 1, label: 'CH<sub>4</sub>' },
+        r2: { name: 'O₂', coeff: 2, label: 'O<sub>2</sub>' },
+        p1: { name: 'CO₂', coeff: 1, label: 'CO<sub>2</sub>' },
+        p2: { name: 'H₂O', coeff: 2, label: 'H<sub>2</sub>O' },
+        calc: (r1, r2) => {
+          const batches = Math.min(Math.floor(r1 / 1), Math.floor(r2 / 2));
+          const pYield1 = batches * 1;
+          const pYield2 = batches * 2;
+          const leftR1 = r1 - batches * 1;
+          const leftR2 = r2 - batches * 2;
+          let limiting = 'Equimolar';
+          if (r1 / 1 < r2 / 2) limiting = 'CH₄ is Limiting';
+          else if (r1 / 1 > r2 / 2) limiting = 'O₂ is Limiting';
+          return { batches, pYield1, pYield2, leftR1, leftR2, limiting };
+        }
+      }
+    };
+
+    const SANDWICHES = {
+      cheese: {
+        title: 'Cheese Sandwich',
+        eqHtml: '<span class="eq-coeff">2</span> Bread + <span class="eq-coeff">1</span> Cheese → <span class="eq-coeff">1</span> Sandwich',
+        r1: { name: 'Bread', coeff: 2, label: 'Bread' },
+        r2: { name: 'Cheese', coeff: 1, label: 'Cheese' },
+        calc: (b, c) => {
+          const batches = Math.min(Math.floor(b / 2), Math.floor(c / 1));
+          const leftB = b - batches * 2;
+          const leftC = c - batches * 1;
+          let limiting = 'Equimolar';
+          if (b / 2 < c / 1) limiting = 'Bread is Limiting';
+          else if (b / 2 > c / 1) limiting = 'Cheese is Limiting';
+          return { batches, pYield: batches, leftR1: leftB, leftR2: leftC, limiting };
+        }
+      },
+      meat: {
+        title: 'Meat & Cheese Sandwich',
+        eqHtml: '<span class="eq-coeff">2</span> Bread + <span class="eq-coeff">1</span> Meat + <span class="eq-coeff">1</span> Cheese → <span class="eq-coeff">1</span> Sandwich',
+        r1: { name: 'Bread', coeff: 2, label: 'Bread' },
+        r2: { name: 'Cheese', coeff: 1, label: 'Cheese' },
+        r3: { name: 'Meat', coeff: 1, label: 'Meat' },
+        calc: (b, c, m) => {
+          const batches = Math.min(Math.floor(b / 2), Math.floor(c / 1), Math.floor(m / 1));
+          const leftB = b - batches * 2;
+          const leftC = c - batches * 1;
+          const leftM = m - batches * 1;
+          let limiting = 'Equimolar';
+          const rB = b / 2, rC = c / 1, rM = m / 1;
+          if (rB <= rC && rB <= rM) limiting = 'Bread is Limiting';
+          else if (rC <= rB && rC <= rM) limiting = 'Cheese is Limiting';
+          else limiting = 'Meat is Limiting';
+          return { batches, pYield: batches, leftR1: leftB, leftR2: leftC, leftR3: leftM, limiting };
+        }
+      }
+    };
+
+    /* -------------------------------------------------------------------------
+       AUDIO SYNTHESIZER
+       ------------------------------------------------------------------------- */
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!appState.audioEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'step') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.07);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+          osc.start(now);
+          osc.stop(now + 0.07);
+        } else if (type === 'success') {
+          const freqs = [523.25, 659.25, 783.99, 1046.50];
+          freqs.forEach((f, i) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(f, now + i * 0.04);
+            g.gain.setValueAtTime(0.08, now + i * 0.04);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.25);
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start(now + i * 0.04);
+            o.stop(now + i * 0.04 + 0.25);
+          });
+        }
+      } catch (e) {}
+    }
+
+    /* -------------------------------------------------------------------------
+       CANVAS RENDERING ENGINE
+       ------------------------------------------------------------------------- */
+    const canvasBefore = document.getElementById('canvasBefore');
+    const ctxBefore = canvasBefore.getContext('2d');
+    const canvasAfter = document.getElementById('canvasAfter');
+    const ctxAfter = canvasAfter.getContext('2d');
+
+    function resizeCanvases() {
+      const wrapB = document.getElementById('wrapBefore');
+      const wrapA = document.getElementById('wrapAfter');
+      if (!wrapB || !wrapA) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const rectB = wrapB.getBoundingClientRect();
+      const rectA = wrapA.getBoundingClientRect();
+
+      canvasBefore.width = rectB.width * dpr;
+      canvasBefore.height = rectB.height * dpr;
+      ctxBefore.resetTransform();
+      ctxBefore.scale(dpr, dpr);
+
+      canvasAfter.width = rectA.width * dpr;
+      canvasAfter.height = rectA.height * dpr;
+      ctxAfter.resetTransform();
+      ctxAfter.scale(dpr, dpr);
+
+      renderChambers();
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    /* -------------------------------------------------------------------------
+       RENDER CHAMBERS
+       ------------------------------------------------------------------------- */
+    function renderChambers() {
+      const wB = canvasBefore.width / (window.devicePixelRatio || 1);
+      const hB = canvasBefore.height / (window.devicePixelRatio || 1);
+      const wA = canvasAfter.width / (window.devicePixelRatio || 1);
+      const hA = canvasAfter.height / (window.devicePixelRatio || 1);
+
+      ctxBefore.clearRect(0, 0, wB, hB);
+      ctxAfter.clearRect(0, 0, wA, hA);
+
+      if (appState.subScreen === 'molecules') {
+        renderMoleculesChamber(wB, hB, wA, hA);
+      } else if (appState.subScreen === 'sandwiches') {
+        renderSandwichesChamber(wB, hB, wA, hA);
+      }
+    }
+
+    function renderMoleculesChamber(wB, hB, wA, hA) {
+      const rxn = REACTIONS[appState.currentReaction];
+      const res = rxn.calc(appState.inputs.r1, appState.inputs.r2);
+
+      // 1. Draw Before Chamber
+      drawMoleculeGrid(ctxBefore, wB, hB, [
+        { type: rxn.r1.name, count: appState.inputs.r1 },
+        { type: rxn.r2.name, count: appState.inputs.r2 }
+      ]);
+
+      // 2. Draw After Chamber (Products on left side, Leftovers on right side)
+      let productItems = [];
+      if (appState.currentReaction === 'methane') {
+        productItems = [
+          { type: 'CO₂', count: res.pYield1 },
+          { type: 'H₂O', count: res.pYield2 }
+        ];
+      } else {
+        productItems = [
+          { type: rxn.p1.name, count: res.pYield }
+        ];
+      }
+
+      const leftoverItems = [
+        { type: rxn.r1.name, count: res.leftR1 },
+        { type: rxn.r2.name, count: res.leftR2 }
+      ];
+
+      drawSplitAfterChamber(ctxAfter, wA, hA, productItems, leftoverItems);
+    }
+
+    function renderSandwichesChamber(wB, hB, wA, hA) {
+      const sw = SANDWICHES[appState.currentSandwich];
+      const res = (appState.currentSandwich === 'meat')
+        ? sw.calc(appState.inputs.r1, appState.inputs.r2, appState.inputs.r3)
+        : sw.calc(appState.inputs.r1, appState.inputs.r2);
+
+      // Before items
+      const beforeList = [
+        { type: 'Bread', count: appState.inputs.r1 },
+        { type: 'Cheese', count: appState.inputs.r2 }
+      ];
+      if (appState.currentSandwich === 'meat') {
+        beforeList.push({ type: 'Meat', count: appState.inputs.r3 });
+      }
+
+      drawMoleculeGrid(ctxBefore, wB, hB, beforeList);
+
+      // After items
+      const productList = [{ type: 'Sandwich', count: res.pYield }];
+      const leftoverList = [
+        { type: 'Bread', count: res.leftR1 },
+        { type: 'Cheese', count: res.leftR2 }
+      ];
+      if (appState.currentSandwich === 'meat') {
+        leftoverList.push({ type: 'Meat', count: res.leftR3 });
+      }
+
+      drawSplitAfterChamber(ctxAfter, wA, hA, productList, leftoverList);
+    }
+
+    /* -------------------------------------------------------------------------
+       CHAMBER DRAWING PRIMITIVES
+       ------------------------------------------------------------------------- */
+    function drawMoleculeGrid(ctx, w, h, items) {
+      const total = items.reduce((acc, it) => acc + it.count, 0);
+      if (total === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '600 13px ' + getComputedStyle(document.body).fontFamily;
+        ctx.textAlign = 'center';
+        ctx.fillText('Chamber is empty (0 Reactants)', w / 2, h / 2);
+        return;
+      }
+
+      const cols = Math.min(5, Math.ceil(Math.sqrt(total * 1.5)));
+      const cellW = w / (cols + 1);
+      const cellH = Math.min(65, (h - 20) / Math.ceil(total / cols));
+
+      let curIdx = 0;
+      items.forEach(it => {
+        for (let i = 0; i < it.count; i++) {
+          const col = curIdx % cols;
+          const row = Math.floor(curIdx / cols);
+          const x = cellW * (col + 1) + (Math.sin(curIdx * 3.7) * 4);
+          const y = 35 + row * cellH + (Math.cos(curIdx * 2.1) * 4);
+          drawChemicalEntity(ctx, it.type, x, y);
+          curIdx++;
+        }
+      });
+    }
+
+    function drawSplitAfterChamber(ctx, w, h, products, leftovers) {
+      // Divider line down center
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(w * 0.55, 10);
+      ctx.lineTo(w * 0.55, h - 10);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Section Labels
+      ctx.fillStyle = '#34d399';
+      ctx.font = '700 11px ' + getComputedStyle(document.body).fontFamily;
+      ctx.textAlign = 'center';
+      ctx.fillText('PRODUCTS', w * 0.28, 20);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('LEFTOVERS', w * 0.78, 20);
+
+      // Draw products in left half
+      const prodTotal = products.reduce((acc, p) => acc + p.count, 0);
+      if (prodTotal === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '600 11px ' + getComputedStyle(document.body).fontFamily;
+        ctx.fillText('0 Products', w * 0.28, h / 2);
+      } else {
+        const colsP = 3;
+        const cellW = (w * 0.55) / (colsP + 1);
+        let curIdx = 0;
+        products.forEach(p => {
+          for (let i = 0; i < p.count; i++) {
+            const col = curIdx % colsP;
+            const row = Math.floor(curIdx / colsP);
+            const x = cellW * (col + 1);
+            const y = 45 + row * 60;
+            drawChemicalEntity(ctx, p.type, x, y);
+            curIdx++;
+          }
+        });
+      }
+
+      // Draw leftovers in right half
+      const leftTotal = leftovers.reduce((acc, l) => acc + l.count, 0);
+      if (leftTotal === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '600 11px ' + getComputedStyle(document.body).fontFamily;
+        ctx.fillText('0 Leftovers (Clean Reaction)', w * 0.78, h / 2);
+      } else {
+        const colsL = 2;
+        const startX = w * 0.55;
+        const cellWL = (w * 0.45) / (colsL + 1);
+        let curIdxL = 0;
+        leftovers.forEach(l => {
+          for (let i = 0; i < l.count; i++) {
+            const col = curIdxL % colsL;
+            const row = Math.floor(curIdxL / colsL);
+            const x = startX + cellWL * (col + 1);
+            const y = 45 + row * 60;
+            drawChemicalEntity(ctx, l.type, x, y);
+            curIdxL++;
+          }
+        });
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       MOLECULE & SANDWICH ASSET RENDERERS
+       ------------------------------------------------------------------------- */
+    function drawChemicalEntity(ctx, type, x, y) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      if (type === 'H₂' || type === 'H2') {
+        // Two connected white spheres
+        drawSphere(ctx, -7, 0, 9, '#f8fafc', 'H');
+        drawSphere(ctx, 7, 0, 9, '#f8fafc', 'H');
+      } else if (type === 'O₂' || type === 'O2') {
+        // Two connected red spheres
+        drawSphere(ctx, -10, 0, 13, '#ef4444', 'O');
+        drawSphere(ctx, 10, 0, 13, '#ef4444', 'O');
+      } else if (type === 'N₂' || type === 'N2') {
+        // Two connected blue spheres
+        drawSphere(ctx, -10, 0, 13, '#3b82f6', 'N');
+        drawSphere(ctx, 10, 0, 13, '#3b82f6', 'N');
+      } else if (type === 'H₂O' || type === 'H2O') {
+        // Bent water: central red O, 2 white H
+        drawSphere(ctx, 0, -5, 14, '#ef4444', 'O');
+        drawSphere(ctx, -11, 7, 8, '#f8fafc', 'H');
+        drawSphere(ctx, 11, 7, 8, '#f8fafc', 'H');
+      } else if (type === 'NH₃' || type === 'NH3') {
+        // Pyramidal ammonia: central blue N, 3 white H
+        drawSphere(ctx, 0, -6, 14, '#3b82f6', 'N');
+        drawSphere(ctx, -12, 6, 8, '#f8fafc', 'H');
+        drawSphere(ctx, 0, 10, 8, '#f8fafc', 'H');
+        drawSphere(ctx, 12, 6, 8, '#f8fafc', 'H');
+      } else if (type === 'CH₄' || type === 'CH4') {
+        // Methane: central dark carbon, 4 white H
+        drawSphere(ctx, 0, 0, 14, '#475569', 'C');
+        drawSphere(ctx, 0, -14, 7, '#f8fafc', 'H');
+        drawSphere(ctx, -13, 8, 7, '#f8fafc', 'H');
+        drawSphere(ctx, 13, 8, 7, '#f8fafc', 'H');
+        drawSphere(ctx, 4, 11, 7, '#f8fafc', 'H');
+      } else if (type === 'CO₂' || type === 'CO2') {
+        // Linear CO2: central grey C, 2 red O
+        drawSphere(ctx, 0, 0, 13, '#475569', 'C');
+        drawSphere(ctx, -18, 0, 12, '#ef4444', 'O');
+        drawSphere(ctx, 18, 0, 12, '#ef4444', 'O');
+      } else if (type === 'Bread') {
+        // Golden brown bread slice
+        ctx.fillStyle = '#b45309';
+        ctx.beginPath();
+        ctx.roundRect(-16, -10, 32, 20, 4);
+        ctx.fill();
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath();
+        ctx.roundRect(-14, -8, 28, 16, 3);
+        ctx.fill();
+      } else if (type === 'Cheese') {
+        // Yellow square cheese slice
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.roundRect(-13, -8, 26, 16, 2);
+        ctx.fill();
+        // Holes
+        ctx.fillStyle = '#ca8a04';
+        ctx.beginPath();
+        ctx.arc(-5, -2, 2.5, 0, Math.PI * 2);
+        ctx.arc(4, 2, 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 'Meat') {
+        // Brown cooked meat patty
+        ctx.fillStyle = '#78350f';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 'Sandwich') {
+        // Stacked sandwich
+        ctx.fillStyle = '#b45309';
+        ctx.beginPath();
+        ctx.roundRect(-16, 4, 32, 6, 2);
+        ctx.fill();
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-14, 0, 28, 4);
+        ctx.fillStyle = '#b45309';
+        ctx.beginPath();
+        ctx.roundRect(-16, -7, 32, 6, 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawSphere(ctx, x, y, radius, color, symbol) {
+      ctx.save();
+      const grad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, color);
+      grad.addColorStop(0.85, darkenColor(color, 0.6));
+      grad.addColorStop(1, '#000000');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      if (radius >= 11) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 ' + Math.round(radius * 0.85) + 'px ' + getComputedStyle(document.body).fontFamily;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 3;
+        ctx.fillText(symbol, x, y + 0.5);
+      }
+      ctx.restore();
+    }
+
+    function darkenColor(hex, factor) {
+      if (!hex || hex[0] !== '#') return hex;
+      const num = parseInt(hex.slice(1), 16);
+      let r = (num >> 16);
+      let g = ((num >> 8) & 0x00FF);
+      let b = (num & 0x0000FF);
+      r = Math.floor(r * factor);
+      g = Math.floor(g * factor);
+      b = Math.floor(b * factor);
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
+
+    /* -------------------------------------------------------------------------
+       INTERACTIVE CONTROLS & UPDATES
+       ------------------------------------------------------------------------- */
+    function adjustReactant(idx, delta) {
+      const keys = ['r1', 'r2', 'r3'];
+      const key = keys[idx];
+      const nextVal = appState.inputs[key] + delta;
+      if (nextVal < 0 || nextVal > 16) return;
+
+      appState.inputs[key] = nextVal;
+      playSound('step');
+      updateUI();
+      renderChambers();
+      checkMissionAutoProgress();
+    }
+
+    function setSubScreen(screen) {
+      appState.subScreen = screen;
+      playSound('click');
+
+      document.getElementById('btnSubMolecules').classList.toggle('active', screen === 'molecules');
+      document.getElementById('btnSubSandwiches').classList.toggle('active', screen === 'sandwiches');
+      document.getElementById('btnSubGame').classList.toggle('active', screen === 'game');
+
+      document.getElementById('reactionTypePills').style.display = (screen === 'molecules') ? 'flex' : 'none';
+      document.getElementById('sandwichTypePills').style.display = (screen === 'sandwiches') ? 'flex' : 'none';
+
+      document.getElementById('workspaceChambers').style.display = (screen === 'game') ? 'none' : 'flex';
+      document.getElementById('workspaceGame').style.display = (screen === 'game') ? 'flex' : 'none';
+
+      if (screen === 'molecules') {
+        selectReaction(appState.currentReaction);
+      } else if (screen === 'sandwiches') {
+        selectSandwichType(appState.currentSandwich);
+      } else if (screen === 'game') {
+        loadGameProblem();
+      }
+
+      setTimeout(resizeCanvases, 50);
+    }
+
+    function selectReaction(rxnKey) {
+      appState.currentReaction = rxnKey;
+      playSound('click');
+
+      ['water', 'ammonia', 'methane'].forEach(k => {
+        const btn = document.getElementById('rxn' + k.charAt(0).toUpperCase() + k.slice(1));
+        if (btn) btn.classList.toggle('active', k === rxnKey);
+      });
+
+      // Default reasonable starting numbers
+      if (rxnKey === 'water') {
+        appState.inputs.r1 = 6;
+        appState.inputs.r2 = 4;
+      } else if (rxnKey === 'ammonia') {
+        appState.inputs.r1 = 3;
+        appState.inputs.r2 = 6;
+      } else if (rxnKey === 'methane') {
+        appState.inputs.r1 = 3;
+        appState.inputs.r2 = 5;
+      }
+
+      document.getElementById('cardR3').style.display = 'none';
+      updateUI();
+      renderChambers();
+      checkMissionAutoProgress();
+    }
+
+    function selectSandwichType(swKey) {
+      appState.currentSandwich = swKey;
+      playSound('click');
+
+      document.getElementById('swCheese').classList.toggle('active', swKey === 'cheese');
+      document.getElementById('swMeat').classList.toggle('active', swKey === 'meat');
+
+      if (swKey === 'cheese') {
+        appState.inputs.r1 = 6;
+        appState.inputs.r2 = 2;
+        document.getElementById('cardR3').style.display = 'none';
+      } else {
+        appState.inputs.r1 = 8;
+        appState.inputs.r2 = 3;
+        appState.inputs.r3 = 3;
+        document.getElementById('cardR3').style.display = 'flex';
+      }
+
+      updateUI();
+      renderChambers();
+      checkMissionAutoProgress();
+    }
+
+    function setPreset(presetKey) {
+      playSound('step');
+      if (appState.subScreen === 'molecules') {
+        const rxn = REACTIONS[appState.currentReaction];
+        if (presetKey === 'exact') {
+          appState.inputs.r1 = rxn.r1.coeff * 3;
+          appState.inputs.r2 = rxn.r2.coeff * 3;
+        } else if (presetKey === 'excess1') {
+          appState.inputs.r1 = rxn.r1.coeff * 3 + 4;
+          appState.inputs.r2 = rxn.r2.coeff * 3;
+        } else if (presetKey === 'excess2') {
+          appState.inputs.r1 = rxn.r1.coeff * 3;
+          appState.inputs.r2 = rxn.r2.coeff * 3 + 3;
+        }
+      } else if (appState.subScreen === 'sandwiches') {
+        if (presetKey === 'exact') {
+          appState.inputs.r1 = 6;
+          appState.inputs.r2 = 3;
+        } else if (presetKey === 'excess1') {
+          appState.inputs.r1 = 10;
+          appState.inputs.r2 = 2;
+        } else if (presetKey === 'excess2') {
+          appState.inputs.r1 = 4;
+          appState.inputs.r2 = 5;
+        }
+      }
+      updateUI();
+      renderChambers();
+      checkMissionAutoProgress();
+    }
+
+    function updateUI() {
+      if (appState.subScreen === 'molecules') {
+        const rxn = REACTIONS[appState.currentReaction];
+        document.getElementById('equationDisplay').innerHTML = rxn.eqHtml;
+
+        document.getElementById('lblR1Name').innerHTML = rxn.r1.label + ':';
+        document.getElementById('lblR2Name').innerHTML = rxn.r2.label + ':';
+        document.getElementById('countR1').innerText = appState.inputs.r1;
+        document.getElementById('countR2').innerText = appState.inputs.r2;
+
+        const res = rxn.calc(appState.inputs.r1, appState.inputs.r2);
+        document.getElementById('lblLimitingVal').innerText = res.limiting.replace(' is Limiting', '');
+        document.getElementById('lblBatchesVal').innerText = res.batches;
+
+        document.getElementById('badgeLimitingPill').innerText = res.limiting;
+        if (res.limiting === 'Equimolar') {
+          document.getElementById('badgeLimitingPill').className = 'badge-balanced';
+          document.getElementById('badgeExcessPill').innerText = '0 Leftovers';
+          document.getElementById('diagLimitingExpl').innerText = 'Reactants are in perfect stoichiometric balance. No unreacted leftovers remain.';
+        } else {
+          document.getElementById('badgeLimitingPill').className = 'badge-limiting';
+          document.getElementById('badgeExcessPill').className = 'badge-excess';
+          if (res.leftR1 > 0) {
+            document.getElementById('badgeExcessPill').innerText = res.leftR1 + ' ' + rxn.r1.name + ' Excess';
+          } else {
+            document.getElementById('badgeExcessPill').innerText = res.leftR2 + ' ' + rxn.r2.name + ' Excess';
+          }
+          document.getElementById('diagLimitingExpl').innerText = res.limiting + ' will be completely consumed first, restricting the reaction to ' + res.batches + ' stoichiometric batches.';
+        }
+
+        const ratio = (appState.inputs.r1 / Math.max(1, appState.inputs.r2)).toFixed(2);
+        const req = (rxn.r1.coeff / rxn.r2.coeff).toFixed(2);
+        document.getElementById('diagMoleRatio').innerText = 'Ratio: ' + ratio + ' vs Req: ' + req;
+
+        // Atom conservation table
+        updateAtomTable();
+      } else if (appState.subScreen === 'sandwiches') {
+        const sw = SANDWICHES[appState.currentSandwich];
+        document.getElementById('equationDisplay').innerHTML = sw.eqHtml;
+
+        document.getElementById('lblR1Name').innerText = 'Bread:';
+        document.getElementById('lblR2Name').innerText = 'Cheese:';
+        document.getElementById('countR1').innerText = appState.inputs.r1;
+        document.getElementById('countR2').innerText = appState.inputs.r2;
+
+        if (appState.currentSandwich === 'meat') {
+          document.getElementById('lblR3Name').innerText = 'Meat:';
+          document.getElementById('countR3').innerText = appState.inputs.r3;
+        }
+
+        const res = (appState.currentSandwich === 'meat')
+          ? sw.calc(appState.inputs.r1, appState.inputs.r2, appState.inputs.r3)
+          : sw.calc(appState.inputs.r1, appState.inputs.r2);
+
+        document.getElementById('lblLimitingVal').innerText = res.limiting.replace(' is Limiting', '');
+        document.getElementById('lblBatchesVal').innerText = res.batches;
+        document.getElementById('badgeLimitingPill').innerText = res.limiting;
+        document.getElementById('diagLimitingExpl').innerText = res.limiting + ' determines how many total sandwiches can be assembled.';
+      }
+    }
+
+    function updateAtomTable() {
+      const tbody = document.getElementById('atomConservationBody');
+      if (appState.currentReaction === 'water') {
+        const hBefore = appState.inputs.r1 * 2;
+        const oBefore = appState.inputs.r2 * 2;
+        const res = REACTIONS.water.calc(appState.inputs.r1, appState.inputs.r2);
+        const hAfter = res.pYield * 2 + res.leftR1 * 2;
+        const oAfter = res.pYield * 1 + res.leftR2 * 2;
+
+        tbody.innerHTML = `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Hydrogen (H)</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;">${hBefore}</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #34d399;">${hAfter}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Oxygen (O)</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;">${oBefore}</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #34d399;">${oAfter}</td>
+          </tr>
+        `;
+      } else if (appState.currentReaction === 'ammonia') {
+        const nBefore = appState.inputs.r1 * 2;
+        const hBefore = appState.inputs.r2 * 2;
+        const res = REACTIONS.ammonia.calc(appState.inputs.r1, appState.inputs.r2);
+        const nAfter = res.pYield * 1 + res.leftR1 * 2;
+        const hAfter = res.pYield * 3 + res.leftR2 * 2;
+
+        tbody.innerHTML = `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Nitrogen (N)</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;">${nBefore}</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #34d399;">${nAfter}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Hydrogen (H)</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;">${hBefore}</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #34d399;">${hAfter}</td>
+          </tr>
+        `;
+      } else if (appState.currentReaction === 'methane') {
+        const cBefore = appState.inputs.r1 * 1;
+        const hBefore = appState.inputs.r1 * 4;
+        const oBefore = appState.inputs.r2 * 2;
+
+        const res = REACTIONS.methane.calc(appState.inputs.r1, appState.inputs.r2);
+        const cAfter = res.pYield1 * 1 + res.leftR1 * 1;
+        const hAfter = res.pYield2 * 2 + res.leftR1 * 4;
+        const oAfter = res.pYield1 * 2 + res.pYield2 * 1 + res.leftR2 * 2;
+
+        tbody.innerHTML = `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Carbon (C)</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;">${cBefore}</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #34d399;">${cAfter}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Hydrogen (H)</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;">${hBefore}</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #34d399;">${hAfter}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">Oxygen (O)</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #38bdf8;">${oBefore}</td>
+            <td style="text-align: center; font-family: var(--font-mono); color: #34d399;">${oAfter}</td>
+          </tr>
+        `;
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       PRACTICE GAME SYSTEM
+       ------------------------------------------------------------------------- */
+    const GAME_PROBLEMS = [
+      {
+        eq: '2 H₂ + 1 O₂ → 2 H₂O',
+        given: 'H₂: 8 molecules, O₂: 3 molecules',
+        labels: ['H₂O Products:', 'Leftover H₂:', 'Leftover O₂:'],
+        correct: [6, 2, 0]
+      },
+      {
+        eq: '1 N₂ + 3 H₂ → 2 NH₃',
+        given: 'N₂: 4 molecules, H₂: 9 molecules',
+        labels: ['NH₃ Products:', 'Leftover N₂:', 'Leftover H₂:'],
+        correct: [6, 1, 0]
+      },
+      {
+        eq: '1 CH₄ + 2 O₂ → 1 CO₂ + 2 H₂O',
+        given: 'CH₄: 4 molecules, O₂: 6 molecules',
+        labels: ['CO₂ Products:', 'H₂O Products:', 'Leftover CH₄:'],
+        correct: [3, 6, 1]
+      },
+      {
+        eq: '2 Bread + 1 Cheese → 1 Sandwich',
+        given: 'Bread: 10 slices, Cheese: 4 slices',
+        labels: ['Sandwiches Formed:', 'Leftover Bread:', 'Leftover Cheese:'],
+        correct: [4, 2, 0]
+      },
+      {
+        eq: '2 H₂ + 1 O₂ → 2 H₂O',
+        given: 'H₂: 5 molecules, O₂: 5 molecules',
+        labels: ['H₂O Products:', 'Leftover H₂:', 'Leftover O₂:'],
+        correct: [4, 1, 3]
+      }
+    ];
+
+    function selectGameLevel(lvl) {
+      appState.game.level = lvl;
+      playSound('click');
+      [1, 2, 3].forEach(l => {
+        const btn = document.getElementById('btnGameLvl' + l);
+        if (btn) btn.classList.toggle('active', l === lvl);
+      });
+      appState.game.problemIdx = 0;
+      loadGameProblem();
+    }
+
+    function loadGameProblem() {
+      const p = GAME_PROBLEMS[appState.game.problemIdx % GAME_PROBLEMS.length];
+      appState.game.currentProblem = p;
+      appState.game.userAns = [0, 0, 0];
+
+      document.getElementById('gameProblemTitle').innerText = 'Problem ' + (appState.game.problemIdx + 1) + ' of 5';
+      document.getElementById('gameEquation').innerText = p.eq;
+      document.getElementById('gameGivenDetails').innerHTML = p.given.replace(', ', '<br>');
+
+      document.getElementById('gameAnsLabel1').innerText = p.labels[0];
+      document.getElementById('gameAnsLabel2').innerText = p.labels[1];
+      document.getElementById('gameAnsLabel3').innerText = p.labels[2];
+
+      document.getElementById('gameAnsVal0').innerText = '0';
+      document.getElementById('gameAnsVal1').innerText = '0';
+      document.getElementById('gameAnsVal2').innerText = '0';
+
+      document.getElementById('gameFeedbackText').innerText = '';
+      document.getElementById('btnGameCheck').innerText = 'Check Answer';
+    }
+
+    function adjustGameAns(idx, delta) {
+      const next = Math.max(0, Math.min(20, appState.game.userAns[idx] + delta));
+      appState.game.userAns[idx] = next;
+      document.getElementById('gameAnsVal' + idx).innerText = next;
+      playSound('step');
+    }
+
+    function checkGameAnswer() {
+      const p = appState.game.currentProblem;
+      const isCorrect = (
+        appState.game.userAns[0] === p.correct[0] &&
+        appState.game.userAns[1] === p.correct[1] &&
+        appState.game.userAns[2] === p.correct[2]
+      );
+
+      const fb = document.getElementById('gameFeedbackText');
+      if (isCorrect) {
+        fb.style.color = '#34d399';
+        fb.innerText = '✓ Correct! Excellent stoichiometric deduction.';
+        playSound('success');
+        appState.game.score = Math.min(5, appState.game.score + 1);
+        document.getElementById('gameScoreLabel').innerText = 'Score: ' + appState.game.score + ' / 5 ★';
+
+        setTimeout(() => {
+          appState.game.problemIdx++;
+          loadGameProblem();
+        }, 1200);
+
+        if (appState.game.score >= 3) {
+          markMissionCompleted(5);
+        }
+      } else {
+        fb.style.color = '#fda4af';
+        fb.innerText = 'Incorrect. Check the limiting reactant ratios and try again.';
+        playSound('click');
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       GUIDED MISSIONS SYSTEM
+       ------------------------------------------------------------------------- */
+    function startMission(mNum) {
+      setAppMode('sim');
+      playSound('click');
+
+      if (mNum === 1) {
+        setSubScreen('sandwiches');
+        selectSandwichType('cheese');
+        appState.inputs.r1 = 6;
+        appState.inputs.r2 = 2;
+        updateUI();
+        renderChambers();
+        markMissionCompleted(1);
+      } else if (mNum === 2) {
+        setSubScreen('molecules');
+        selectReaction('water');
+        appState.inputs.r1 = 6;
+        appState.inputs.r2 = 4;
+        updateUI();
+        renderChambers();
+        markMissionCompleted(2);
+      } else if (mNum === 3) {
+        setSubScreen('molecules');
+        selectReaction('ammonia');
+        appState.inputs.r1 = 2;
+        appState.inputs.r2 = 6;
+        updateUI();
+        renderChambers();
+        markMissionCompleted(3);
+      } else if (mNum === 4) {
+        setSubScreen('molecules');
+        selectReaction('methane');
+        appState.inputs.r1 = 3;
+        appState.inputs.r2 = 4;
+        updateUI();
+        renderChambers();
+        markMissionCompleted(4);
+      } else if (mNum === 5) {
+        setSubScreen('game');
+        markMissionCompleted(5);
+      }
+    }
+
+    function markMissionCompleted(mNum) {
+      if (appState.missionsCompleted[mNum - 1]) return;
+      appState.missionsCompleted[mNum - 1] = true;
+      playSound('success');
+
+      const card = document.getElementById('missionCard' + mNum);
+      if (card) {
+        card.classList.add('completed');
+        const btn = card.querySelector('.btn-mission-action');
+        if (btn) btn.innerHTML = '✓ Completed';
+      }
+
+      const count = appState.missionsCompleted.filter(Boolean).length;
+      document.getElementById('missionBadgeCount').innerText = count + '/5';
+    }
+
+    function checkMissionAutoProgress() {
+      if (appState.subScreen === 'sandwiches' && appState.inputs.r1 === 6 && appState.inputs.r2 === 2) {
+        markMissionCompleted(1);
+      } else if (appState.subScreen === 'molecules') {
+        if (appState.currentReaction === 'water' && appState.inputs.r1 === 6 && appState.inputs.r2 === 4) {
+          markMissionCompleted(2);
+        }
+        if (appState.currentReaction === 'ammonia' && appState.inputs.r1 === 2 && appState.inputs.r2 === 6) {
+          markMissionCompleted(3);
+        }
+        if (appState.currentReaction === 'methane' && appState.inputs.r1 === 3 && appState.inputs.r2 === 4) {
+          markMissionCompleted(4);
+        }
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       ASSESSMENT QUIZ SYSTEM
+       ------------------------------------------------------------------------- */
+    function checkQuizAnswer(qNum, optIdx, isCorrect) {
+      if (appState.quizAnswers[qNum - 1] !== null) return;
+
+      appState.quizAnswers[qNum - 1] = isCorrect;
+      const card = document.getElementById('quizCard' + qNum);
+      const buttons = card.querySelectorAll('.quiz-option-btn');
+
+      buttons.forEach((btn, idx) => {
+        btn.classList.add('locked');
+        if (idx === optIdx) {
+          btn.classList.add(isCorrect ? 'correct' : 'wrong');
+        }
+      });
+
+      const feedback = document.getElementById('feedback' + qNum);
+      feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+
+      playSound(isCorrect ? 'success' : 'click');
+
+      const answered = appState.quizAnswers.filter(a => a !== null);
+      const correctCount = appState.quizAnswers.filter(a => a === true).length;
+      const scorePct = Math.round((correctCount / 5) * 100);
+      document.getElementById('quizScoreDisplay').innerText = scorePct + '%';
+      document.getElementById('certScoreVal').innerText = scorePct + '%';
+
+      if (window.parent) {
+        window.parent.postMessage({
+          type: 'ELEMENTA_SIM_SCORE',
+          simulation: 'reactants-products-and-leftovers',
+          score: scorePct,
+          completed: answered.length === 5
+        }, '*');
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       MODALS & TOPBAR ACTIONS
+       ------------------------------------------------------------------------- */
+    function openCertificateModal() {
+      playSound('click');
+      document.getElementById('certOverlay').classList.add('active');
+    }
+
+    function closeCertificateModal() {
+      playSound('click');
+      document.getElementById('certOverlay').classList.remove('active');
+    }
+
+    function downloadCertPDF() {
+      window.print();
+    }
+
+    function setAppMode(modeKey) {
+      if (typeof appState !== 'undefined' && appState && appState.mode !== undefined) appState.mode = modeKey;
+      if (typeof state !== 'undefined' && state && state.mode !== undefined) state.mode = modeKey;
+      if (typeof playSound === 'function') playSound('click');
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    function toggleAudio() {
+      appState.audioEnabled = !appState.audioEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      btn.classList.toggle('active', appState.audioEnabled);
+      playSound('click');
+    }
+
+    function resetSimulation() {
+      appState.subScreen = 'molecules';
+      appState.currentReaction = 'water';
+      appState.inputs = { r1: 6, r2: 4, r3: 0 };
+      setSubScreen('molecules');
+      playSound('click');
+      updateUI();
+      renderChambers();
+    }
+
+    function captureScreenshot() {
+      playSound('click');
+      // Create offscreen merged canvas
+      const off = document.createElement('canvas');
+      off.width = canvasBefore.width + canvasAfter.width;
+      off.height = Math.max(canvasBefore.height, canvasAfter.height);
+      const octx = off.getContext('2d');
+      octx.drawImage(canvasBefore, 0, 0);
+      octx.drawImage(canvasAfter, canvasBefore.width, 0);
+
+      const dataUrl = off.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = 'reactants_products_leftovers_elementa_' + Date.now() + '.png';
+      link.href = dataUrl;
+      link.click();
+    }
+
+    function toggleFullscreen() {
+      playSound('click');
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       INITIALIZATION
+       ------------------------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvases();
+      updateUI();
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

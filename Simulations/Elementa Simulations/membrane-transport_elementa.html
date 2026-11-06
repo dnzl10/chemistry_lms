@@ -1,0 +1,3775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Membrane Transport | Elementa LMS Edition</title>
+  <meta name="description" content="Next-generation interactive cellular membrane transport simulation for Elementa LMS. Master simple diffusion, facilitated channels, voltage gating, and active transport.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(14, 23, 42, 0.78);
+      --bg-card-hover: rgba(22, 34, 60, 0.88);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.35);
+      
+      --accent-cyan: #38bdf8;
+      --accent-purple: #c084fc;
+      --accent-yellow: #facc15;
+      --accent-pink: #f472b6;
+      --accent-green: #34d399;
+      --accent-orange: #fb923c;
+      --accent-red: #f87171;
+      
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      --topbar-height: 58px;
+      --tabs-height: 48px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Top Navigation Bar */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Mode Switcher Buttons */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.85) 0%, rgba(99, 102, 241, 0.85) 100%);
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+    }
+
+    .mode-pill-btn .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 10px;
+    }
+
+    /* Right Action Bar */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    /* Screens Header Bar */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .screen-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .screen-tab-btn.active {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.25);
+    }
+
+    .screen-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -7px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: var(--accent-cyan);
+      border-radius: 2px;
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    .screen-tab-number {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: var(--accent-cyan);
+      color: #080c14;
+      font-weight: 700;
+    }
+
+    /* Quick Preset Selector */
+    .presets-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preset-select {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .preset-select:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Main Workspace Layout */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Simulation Canvas Container */
+    .canvas-viewport-container {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at 50% 30%, #0a1124 0%, #050811 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* Canvas Overlays */
+    .canvas-hud {
+      position: absolute;
+      pointer-events: none;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px 18px;
+    }
+
+    .hud-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+    }
+
+    .region-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .region-indicator.outside {
+      border-left: 3px solid var(--accent-cyan);
+    }
+
+    .region-indicator.inside {
+      border-left: 3px solid var(--accent-purple);
+    }
+
+    .hud-bottom-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    /* Alert Banners (e.g. Outside Sodium Too Low!) */
+    .alert-banner {
+      position: absolute;
+      top: 24%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(185, 28, 28, 0.95) 100%);
+      color: #ffffff;
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      animation: alertPulse 1.4s infinite ease-in-out;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 40;
+    }
+
+    .alert-banner.visible {
+      opacity: 1;
+    }
+
+    @keyframes alertPulse {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.04); }
+    }
+
+    /* Floating Time / Playback Controls in Canvas */
+    .canvas-playback-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 18px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      padding: 6px 10px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      z-index: 30;
+    }
+
+    .playback-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .playback-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .playback-btn.play-pause {
+      background: var(--accent-cyan);
+      color: #080c14;
+      font-weight: 700;
+      width: 36px;
+      height: 36px;
+    }
+
+    .playback-btn.play-pause:hover {
+      background: #7dd3fc;
+      transform: scale(1.05);
+    }
+
+    .speed-selector {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px;
+      border-radius: 6px;
+      margin-left: 4px;
+      gap: 2px;
+    }
+
+    .speed-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 3px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .speed-btn.active {
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    /* Right Control Drawer / Side Panel */
+    aside.simulation-sidebar {
+      width: 340px;
+      background: rgba(11, 17, 32, 0.95);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+      z-index: 50;
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+      transition: width 0.25s ease;
+    }
+
+    .sidebar-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .section-title svg {
+      color: var(--accent-cyan);
+    }
+
+    /* Solute Rows */
+    .solute-control-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      transition: border-color 0.2s ease;
+    }
+
+    .solute-control-card:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .solute-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .solute-name-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+
+    .solute-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .solute-dot.o2 { background: var(--accent-cyan); color: var(--accent-cyan); }
+    .solute-dot.co2 { background: var(--accent-purple); color: var(--accent-purple); }
+    .solute-dot.na { background: var(--accent-yellow); color: var(--accent-yellow); }
+    .solute-dot.k { background: var(--accent-pink); color: var(--accent-pink); }
+    .solute-dot.glucose { background: var(--accent-green); color: var(--accent-green); border-radius: 3px; }
+    .solute-dot.atp { background: var(--accent-orange); color: var(--accent-orange); }
+
+    .solute-counts-summary {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .solute-counts-summary span.val {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    /* Double slider for Outside vs Inside */
+    .compartment-sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .comp-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .comp-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .comp-label-row span.count-val {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .slider-input-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--accent-cyan);
+      transition: transform 0.1s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .stepper-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: var(--text-muted);
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .stepper-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      color: var(--text-main);
+    }
+
+    /* Solute Quick Actions */
+    .quick-solute-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      gap: 6px;
+    }
+
+    .tiny-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-family: var(--font-body);
+      padding: 4px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .tiny-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+
+    /* Transport Protein Toolbox Grid */
+    .toolbox-category {
+      margin-bottom: 12px;
+    }
+
+    .toolbox-category-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .protein-cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .protein-toolbox-card {
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      cursor: grab;
+      transition: all 0.18s ease;
+      position: relative;
+    }
+
+    .protein-toolbox-card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(56, 189, 248, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .protein-toolbox-card.active-drag {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+
+    .protein-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .protein-type-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+
+    .protein-card-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.2;
+    }
+
+    .protein-card-desc {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
+    /* Slot status in sidebar */
+    .membrane-slots-status {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 6px;
+      border-radius: 8px;
+    }
+
+    .slot-pill {
+      flex: 1;
+      text-align: center;
+      padding: 4px;
+      border-radius: 5px;
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+
+    .slot-pill.occupied {
+      border-style: solid;
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    /* Voltage & Ligand Controls */
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .control-row-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .radio-pill-group {
+      display: flex;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 2px;
+      border-radius: 7px;
+      gap: 2px;
+    }
+
+    .radio-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .radio-pill-btn.active {
+      background: var(--accent-cyan);
+      color: #080c14;
+    }
+
+    .toggle-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .toggle-checkbox-label input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: var(--accent-cyan);
+    }
+
+    /* Analytics Chart Drawer / Bottom or Side */
+    .analytics-panel {
+      background: rgba(10, 16, 30, 0.9);
+      border-top: 1px solid var(--border-card);
+      padding: 10px 16px;
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 90px;
+      position: relative;
+    }
+
+    #liveChartCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .flux-meters-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .flux-metric-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      padding: 4px 6px;
+      text-align: center;
+    }
+
+    .metric-name {
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .metric-val {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Modal Overlays (Missions, Quiz, Theory) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Missions Styling */
+    .mission-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.4);
+      background: rgba(52, 211, 153, 0.05);
+    }
+
+    .mission-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .mission-title {
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: #ffffff;
+    }
+
+    .mission-status-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+
+    .mission-status-badge.pending {
+      background: rgba(251, 146, 60, 0.15);
+      color: var(--accent-orange);
+      border: 1px solid rgba(251, 146, 60, 0.3);
+    }
+
+    .mission-status-badge.done {
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .mission-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .mission-progress-bar-wrap {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .mission-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8 0%, #34d399 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* Quiz Styling */
+    .quiz-question-card {
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 14px;
+      border-radius: 10px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .quiz-question-text {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      line-height: 1.35;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .quiz-option-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-option-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    .quiz-option-btn.selected {
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.12);
+      color: #ffffff;
+    }
+
+    .quiz-option-btn.correct {
+      border-color: var(--accent-green);
+      background: rgba(52, 211, 153, 0.18);
+      color: #ffffff;
+    }
+
+    .quiz-option-btn.wrong {
+      border-color: var(--accent-red);
+      background: rgba(248, 113, 113, 0.18);
+      color: #ffffff;
+    }
+
+    .quiz-feedback-box {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: none;
+      line-height: 1.35;
+    }
+
+    .quiz-feedback-box.correct {
+      display: block;
+      background: rgba(52, 211, 153, 0.1);
+      border-left: 3px solid var(--accent-green);
+      color: #a7f3d0;
+    }
+
+    .quiz-feedback-box.wrong {
+      display: block;
+      background: rgba(248, 113, 113, 0.1);
+      border-left: 3px solid var(--accent-red);
+      color: #fecaca;
+    }
+
+    /* Buttons */
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    /* Certificate Box */
+    .certificate-view {
+      border: 2px dashed rgba(56, 189, 248, 0.5);
+      background: radial-gradient(circle at 50% 50%, rgba(14, 23, 42, 0.9) 0%, rgba(8, 12, 22, 0.95) 100%);
+      padding: 24px;
+      border-radius: 12px;
+      text-align: center;
+      margin-top: 14px;
+    }
+
+    .cert-heading {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      color: #7dd3fc;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .cert-sub {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .cert-student-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      display: inline-block;
+      padding: 0 20px 4px 20px;
+      margin-bottom: 10px;
+    }
+
+    /* Notification Toasts */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast-msg {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.8rem;
+      color: #ffffff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastSlide 0.3s ease forwards;
+    }
+
+    @keyframes toastSlide {
+      from { transform: translateX(50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+</head>
+<body>
+
+  <!-- Elementa Top Navigation Bar -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+            <path d="M2 12h20"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Cell Biology</span>
+        <span>›</span>
+        <span>Membrane Biophysics</span>
+        <span>›</span>
+        <span class="current">Transport Simulator</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Stereo Audio" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulationAll()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Screens Tabs (Replicating all 4 PhET Screens with Elementa enhancements) -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenSimple" onclick="switchScreen('simple')">
+        <span class="screen-tab-number">1</span>
+        Simple Diffusion
+      </button>
+      <button class="screen-tab-btn" id="tabScreenFacilitated" onclick="switchScreen('facilitated')">
+        <span class="screen-tab-number">2</span>
+        Facilitated Diffusion
+      </button>
+      <button class="screen-tab-btn" id="tabScreenActive" onclick="switchScreen('active')">
+        <span class="screen-tab-number">3</span>
+        Active Transport
+      </button>
+      <button class="screen-tab-btn" id="tabScreenPlayground" onclick="switchScreen('playground')">
+        <span class="screen-tab-number">4</span>
+        Playground Lab
+      </button>
+    </div>
+
+    <!-- Quick Presets -->
+    <div class="presets-wrap">
+      <span style="font-size: 0.72rem; color: var(--text-dim); font-weight:600;">PRESETS:</span>
+      <select class="preset-select" id="presetSelect" onchange="applyPreset(this.value)">
+        <option value="custom">Custom Configuration</option>
+        <option value="gas_equilibrium">Gas Exchange (O2 / CO2)</option>
+        <option value="neuron_rest">Resting Neuron (-70mV, Na+/K+ Leak)</option>
+        <option value="action_potential">Action Potential Spike (-50mV threshold)</option>
+        <option value="sglt_gut">Intestinal Glucose Absorption (SGLT + Pump)</option>
+        <option value="metabolic_starvation">Metabolic Arrest (Zero ATP)</option>
+      </select>
+    </div>
+  </nav>
+
+  <!-- Main Interactive Simulation Workspace -->
+  <main class="simulation-workspace">
+
+    <!-- Canvas Viewport -->
+    <div class="canvas-viewport-container" id="canvasViewport">
+      <canvas id="simCanvas"></canvas>
+
+      <!-- Head-up Display -->
+      <div class="canvas-hud">
+        <div class="hud-top-row">
+          <div class="region-indicator outside">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--accent-cyan);"></span>
+            Outside Cell (Extracellular Fluid)
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div id="vmDisplayBadge" class="region-indicator" style="display:none; font-family:var(--font-mono); color:var(--accent-yellow);">
+              Vm: -70 mV
+            </div>
+            <div id="atpDisplayBadge" class="region-indicator" style="display:none; font-family:var(--font-mono); color:var(--accent-orange);">
+              ATP Hydrolyzed: <span id="atpHydrolyzedCount" style="color:#ffffff; margin-left:4px;">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-bottom-row">
+          <div class="region-indicator inside">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--accent-purple);"></span>
+            Inside Cell (Cytoplasm)
+          </div>
+          <div style="font-size:0.7rem; color:var(--text-dim); background:rgba(0,0,0,0.4); padding:4px 8px; border-radius:6px;">
+            Drag channels onto membrane slots • Click solutes to interact
+          </div>
+        </div>
+      </div>
+
+      <!-- Outside Sodium Too Low Warning Banner (PhET specific feature) -->
+      <div class="alert-banner" id="bannerSodiumLow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        Outside Sodium Too Low!
+      </div>
+
+      <!-- Playback and Simulation Controls -->
+      <div class="canvas-playback-bar">
+        <button class="playback-btn play-pause" id="btnPlayPause" onclick="togglePlayPause()" title="Play / Pause">
+          <svg id="iconPlayPause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 18 12 6 20 6 4"></polygon></svg>
+        </button>
+
+        <button class="playback-btn" id="btnStep" onclick="stepSimulation()" title="Step Forward 1 Frame">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+        </button>
+
+        <div class="speed-selector">
+          <button class="speed-btn" onclick="setSpeed(0.5)">0.5x</button>
+          <button class="speed-btn active" onclick="setSpeed(1.0)">1x</button>
+          <button class="speed-btn" onclick="setSpeed(2.0)">2x</button>
+        </div>
+
+        <div style="width:1px; height:18px; background:rgba(255,255,255,0.1); margin:0 4px;"></div>
+
+        <button class="playback-btn" onclick="clearAllSolutes()" title="Clear All Solutes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Sidebar Control Panel -->
+    <aside class="simulation-sidebar">
+      
+      <!-- Solute Concentrations Section -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8m-4-4h8"></path></svg>
+            Solutes & Concentrations
+          </div>
+          <button class="tiny-btn" onclick="randomizeSolutes()">Randomize</button>
+        </div>
+
+        <div id="solutesContainer">
+          <!-- Populated by JavaScript according to active screen -->
+        </div>
+
+        <div class="quick-solute-bar">
+          <button class="tiny-btn" onclick="injectSoluteBulk('out', 10)">+10 Outside</button>
+          <button class="tiny-btn" onclick="injectSoluteBulk('in', 10)">+10 Inside</button>
+          <button class="tiny-btn" onclick="equalizeConcentrations()">Equalize</button>
+        </div>
+      </div>
+
+      <!-- Transport Protein Toolbox (Screens 2, 3, 4) -->
+      <div class="sidebar-section" id="sectionToolbox" style="display:none;">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+            Protein Channels Toolbox
+          </div>
+        </div>
+
+        <div id="toolboxCardsContainer">
+          <!-- Populated dynamically based on screen -->
+        </div>
+
+        <!-- Membrane Slots Mini Map -->
+        <div style="font-size:0.68rem; color:var(--text-dim); margin-top:10px; font-weight:600; text-transform:uppercase;">Membrane Insertion Slots (4):</div>
+        <div class="membrane-slots-status" id="slotsStatusMap">
+          <div class="slot-pill" id="slotStatus0" onclick="selectSlot(0)">Slot 1: Empty</div>
+          <div class="slot-pill" id="slotStatus1" onclick="selectSlot(1)">Slot 2: Empty</div>
+          <div class="slot-pill" id="slotStatus2" onclick="selectSlot(2)">Slot 3: Empty</div>
+          <div class="slot-pill" id="slotStatus3" onclick="selectSlot(3)">Slot 4: Empty</div>
+        </div>
+      </div>
+
+      <!-- Screen-Specific Controls (Ligands, Voltage-gating, Metabolism) -->
+      <div class="sidebar-section" id="sectionSpecialControls" style="display:none;">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Biophysical Controls
+          </div>
+        </div>
+
+        <!-- Ligand Controls -->
+        <div id="wrapLigandControls" class="control-row" style="display:none;">
+          <span class="control-row-label">Signaling Ligands:</span>
+          <div style="display:flex; gap:4px;">
+            <button class="tiny-btn" id="btnAddLigands" onclick="addLigands()">Add Ligands</button>
+            <button class="tiny-btn" id="btnRemoveLigands" onclick="removeLigands()">Remove</button>
+          </div>
+        </div>
+
+        <!-- Voltage Controls -->
+        <div id="wrapVoltageControls" style="display:none; margin-bottom:10px;">
+          <div class="control-row">
+            <span class="control-row-label">Membrane Potential:</span>
+            <div class="radio-pill-group">
+              <button class="radio-pill-btn active" id="btnVmNeg70" onclick="setVoltage(-70)">-70 mV</button>
+              <button class="radio-pill-btn" id="btnVmNeg50" onclick="setVoltage(-50)">-50 mV</button>
+              <button class="radio-pill-btn" id="btnVmPos30" onclick="setVoltage(30)">+30 mV</button>
+            </div>
+          </div>
+          <div class="control-row">
+            <label class="toggle-checkbox-label">
+              <input type="checkbox" id="chkCharges" onchange="toggleCharges(this.checked)">
+              Show Leaflet Charges (+/-)
+            </label>
+          </div>
+        </div>
+
+        <!-- Glucose Metabolism Toggle -->
+        <div id="wrapMetabolismControl" class="control-row" style="display:none;">
+          <label class="toggle-checkbox-label">
+            <input type="checkbox" id="chkMetabolism" onchange="toggleMetabolism(this.checked)" checked>
+            Intracellular Glucose Metabolism
+          </label>
+        </div>
+
+        <!-- Lipid Wiggle & Highlights Settings -->
+        <div class="control-row">
+          <label class="toggle-checkbox-label">
+            <input type="checkbox" id="chkHighlights" onchange="toggleHighlights(this.checked)" checked>
+            Crossing Highlights
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label class="toggle-checkbox-label">
+            <input type="checkbox" id="chkLipidAnim" onchange="toggleLipidAnimation(this.checked)" checked>
+            Lipid Bilayer Fluid Dynamics
+          </label>
+        </div>
+      </div>
+
+      <!-- Real-time Live Analytics Drawer -->
+      <div class="analytics-panel">
+        <div class="section-header" style="margin-bottom:6px;">
+          <div class="section-title" style="font-size:0.75rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            Live Concentration & Flux
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="liveChartCanvas"></canvas>
+        </div>
+
+        <div class="flux-meters-grid">
+          <div class="flux-metric-box">
+            <div class="metric-name">Net Flux</div>
+            <div class="metric-val" id="metricNetFlux">0.00</div>
+          </div>
+          <div class="flux-metric-box">
+            <div class="metric-name">Equilibrium</div>
+            <div class="metric-val" id="metricEquilibrium">0%</div>
+          </div>
+          <div class="flux-metric-box">
+            <div class="metric-name">Total Crossed</div>
+            <div class="metric-val" id="metricTotalCrossed">0</div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:14px;">
+          Complete these 5 curriculum-aligned lab challenges. Your real-time interactions are verified automatically by the Elementa LMS physics engine.
+        </p>
+
+        <!-- Mission 1 -->
+        <div class="mission-card" id="missionCard1">
+          <div class="mission-top">
+            <span class="mission-title">Mission 1: Fick's Law of Gaseous Diffusion</span>
+            <span class="mission-status-badge pending" id="missionBadge1">In Progress</span>
+          </div>
+          <div class="mission-desc">
+            Go to <b>Simple Diffusion</b>. Inject at least 20 O₂ or CO₂ molecules outside and observe non-polar molecules diffusing across the hydrophobic core until equilibrium is reached (Inside count ≥ 8).
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress1" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 2 -->
+        <div class="mission-card" id="missionCard2">
+          <div class="mission-top">
+            <span class="mission-title">Mission 2: Selective Permeability</span>
+            <span class="mission-status-badge pending" id="missionBadge2">Pending</span>
+          </div>
+          <div class="mission-desc">
+            In <b>Facilitated Diffusion</b>, insert a <b>Na⁺ Leakage Channel</b> into the membrane. Verify that Sodium ions can now cross down their concentration gradient, while Glucose molecules remain excluded.
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress2" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 3 -->
+        <div class="mission-card" id="missionCard3">
+          <div class="mission-top">
+            <span class="mission-title">Mission 3: Ligand Receptor Gating</span>
+            <span class="mission-status-badge pending" id="missionBadge3">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Install a <b>Ligand-Gated Channel</b>. Add signaling ligands to open the channel and record at least 5 ions flowing through the opened pore.
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress3" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 4 -->
+        <div class="mission-card" id="missionCard4">
+          <div class="mission-top">
+            <span class="mission-title">Mission 4: Voltage-Gated Threshold & Depolarization</span>
+            <span class="mission-status-badge pending" id="missionBadge4">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Install a <b>Voltage-Gated Na⁺ Channel</b>. At resting -70 mV it remains closed. Shift the membrane potential to <b>-50 mV threshold</b> to trigger conformational pore opening and ion flux!
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress4" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 5 -->
+        <div class="mission-card" id="missionCard5">
+          <div class="mission-top">
+            <span class="mission-title">Mission 5: Active Transport Stoichiometry (3 Na⁺ : 2 K⁺)</span>
+            <span class="mission-status-badge pending" id="missionBadge5">Pending</span>
+          </div>
+          <div class="mission-desc">
+            In <b>Active Transport</b>, place the <b>Na⁺/K⁺ ATPase Pump</b>. Observe primary active transport consuming ATP to pump 3 Na⁺ ions out and 2 K⁺ ions in against their electrochemical gradients!
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress5" style="width: 0%;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+
+      <div class="modal-body" id="quizBody">
+        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:16px;">
+          Answer these 5 conceptual problems based on your simulation data. Scores are immediately synchronized with the Elementa LMS Gradebook.
+        </p>
+
+        <!-- Question 1 -->
+        <div class="quiz-question-card" id="qq1">
+          <div class="quiz-q-num">Question 1 of 5 • Simple Diffusion</div>
+          <div class="quiz-question-text">
+            Why can Oxygen (O₂) and Carbon Dioxide (CO₂) cross the cell membrane without transport proteins, whereas Sodium ions (Na⁺) cannot?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 0)">
+              A. O₂ and CO₂ are small non-polar molecules soluble in the hydrophobic fatty acid core, while Na⁺ has a hydration shell and charge.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 1)">
+              B. Na⁺ ions are larger in molecular mass than O₂ and are physically too huge to pass through.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 2)">
+              C. O₂ uses ATP molecules to push directly through the phospholipid bilayer.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 3)">
+              D. The cell membrane actively attracts CO₂ via positive electrostatic charges.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb1"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="quiz-question-card" id="qq2">
+          <div class="quiz-q-num">Question 2 of 5 • Carrier Kinetics</div>
+          <div class="quiz-question-text">
+            What distinguishes facilitated diffusion through a carrier protein from simple diffusion as solute concentration increases to high levels?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 0)">
+              A. Facilitated diffusion exhibits saturation kinetics (reaches Vmax) due to a finite number of protein binding sites.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 1)">
+              B. Facilitated diffusion requires energy from ATP hydrolysis at high concentrations.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 2)">
+              C. Simple diffusion stops entirely once equilibrium is reached, whereas carriers pump indefinitely.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 3)">
+              D. Facilitated diffusion moves solutes exclusively against their concentration gradient.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb2"></div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="quiz-question-card" id="qq3">
+          <div class="quiz-q-num">Question 3 of 5 • Primary Active Transport</div>
+          <div class="quiz-question-text">
+            For every 1 molecule of ATP hydrolyzed by the Na⁺/K⁺ ATPase pump, what is the net movement and direction of ions?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 0)">
+              A. 3 Na⁺ pumped OUT of the cell, 2 K⁺ pumped INTO the cell.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 1)">
+              B. 2 Na⁺ pumped OUT of the cell, 3 K⁺ pumped INTO the cell.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 2)">
+              C. 3 Na⁺ pumped IN, 2 K⁺ pumped OUT.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 3)">
+              D. 1 Glucose and 2 Na⁺ pumped INTO the cell.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb3"></div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="quiz-question-card" id="qq4">
+          <div class="quiz-q-num">Question 4 of 5 • Secondary Active Transport</div>
+          <div class="quiz-question-text">
+            In the Na⁺/Glucose Cotransporter (SGLT), what provides the immediate driving energy to pull Glucose into the cell against its gradient?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 0)">
+              A. The steep electrochemical inward gradient of Na⁺ established previously by the Na⁺/K⁺ pump.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 1)">
+              B. Direct binding and hydrolysis of intracellular ATP by the cotransporter itself.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 2)">
+              C. The thermal motion of lipid headgroups squeezing glucose inward.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 3)">
+              D. The breakdown of CO₂ gas into high-energy bicarbonate radicals.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb4"></div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="quiz-question-card" id="qq5">
+          <div class="quiz-q-num">Question 5 of 5 • Voltage Gating</div>
+          <div class="quiz-question-text">
+            When an excitable cell membrane depolarizes from resting -70 mV to threshold -50 mV, how do Voltage-Gated Na⁺ channels respond?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 0)">
+              A. Charged amino acids in the S4 voltage sensor shift, opening the activation gate for rapid Na⁺ influx.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 1)">
+              B. The channel permanently disintegrates into the cytoplasm.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 2)">
+              C. The inactivation ball immediately blocks the pore before any ions can enter.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 3)">
+              D. The channel switches specificity to transport Potassium instead of Sodium.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb5"></div>
+        </div>
+
+        <!-- Certificate Container -->
+        <div id="quizCertificateWrap" style="display:none;">
+          <div class="certificate-view">
+            <div class="cert-heading">Certificate of Mastery</div>
+            <div class="cert-sub">Elementa Learning Management System • Cellular Biophysics</div>
+            <div class="cert-student-name" id="certStudentName">Student Scholar</div>
+            <p style="font-size:0.86rem; color:#cbd5e1; margin-bottom:12px;">
+              has demonstrated conceptual and practical mastery of <b>Cellular Membrane Transport, Ion Channels, and Bioenergetics</b>.
+            </p>
+            <div style="font-family:var(--font-mono); font-size:1.1rem; color:var(--accent-green); font-weight:700;" id="certScoreDisplay">
+              Grade: 100% (5/5) • Mastered
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-dim); margin-top:10px;" id="certDateDisplay">
+              Verified on Elementa LMS
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="submitQuiz()">Submit to Elementa LMS Gradebook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Cellular Transport Theory & Mathematical Models</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">1. The Fluid Mosaic Model</h3>
+        <p style="color:var(--text-muted); margin-bottom:14px;">
+          The plasma membrane comprises an amphipathic phospholipid bilayer. Polar phosphate head groups face the aqueous extracellular and intracellular fluids, while hydrophobic fatty acyl chains orient inward, forming an impermeable energetic barrier to hydrophilic ions and macromolecules.
+        </p>
+
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">2. Fick's First Law of Simple Diffusion</h3>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; font-family:var(--font-mono); margin-bottom:14px;">
+          J = -P &times; (C_inside - C_outside) = -D &times; (dC / dx)
+        </div>
+        <p style="color:var(--text-muted); margin-bottom:14px;">
+          Where <b>J</b> is net flux, <b>P</b> is membrane permeability, and <b>dC/dx</b> is concentration gradient. Small non-polar molecules like O₂ and CO₂ partition freely into the hydrophobic core.
+        </p>
+
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">3. Facilitated Diffusion & Saturation</h3>
+        <p style="color:var(--text-muted); margin-bottom:14px;">
+          Channel proteins (leakage, ligand-gated, voltage-gated) provide a water-filled pore with a selectivity filter. Transport rate follows Michaelis-Menten kinetics:
+        </p>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; font-family:var(--font-mono); margin-bottom:14px;">
+          v = (V_max &times; [S]) / (K_m + [S])
+        </div>
+
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">4. Primary vs Secondary Active Transport</h3>
+        <p style="color:var(--text-muted);">
+          <b>Na⁺/K⁺ ATPase (Primary):</b> Couples direct ATP hydrolysis to electrogenic transport (3 Na⁺ out, 2 K⁺ in), creating the negative resting potential and ion gradients.<br>
+          <b>Na⁺/Glucose SGLT (Secondary):</b> Uses symport coupling to drive glucose against its chemical gradient powered by downhill Na⁺ influx.
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Guide</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Simulation JavaScript Engine -->
+  <script>
+    /* ==========================================================================
+       ELEMENTA LMS MEMBRANE TRANSPORT SIMULATION ENGINE
+       - High precision 60FPS particle physics & Brownian motion
+       - Phospholipid bilayer fluid mosaic animation
+       - Selective channel pores, gating mechanics, and P-type ATPase pump cycles
+       - Web Audio API stereo sound engine
+       - LMS Missions and Scored Assessment integration
+       ========================================================================== */
+
+    // App State
+    const state = {
+      screen: 'simple', // 'simple' | 'facilitated' | 'active' | 'playground'
+      mode: 'sim',      // 'sim' | 'missions' | 'quiz' | 'theory'
+      running: true,
+      speed: 1.0,
+      soundEnabled: true,
+      highlightsEnabled: true,
+      lipidAnimation: true,
+      chargesVisible: false,
+      metabolismEnabled: true,
+      membranePotential: -70, // mV
+      atpHydrolyzed: 0,
+      ligandsActive: false,
+      totalCrossed: 0,
+      
+      // Membrane slots (4 slots spaced across horizontal axis)
+      slots: [null, null, null, null],
+      
+      // Selected slot for keyboard / UI assignment
+      selectedSlotIndex: 0,
+      
+      // Solutes Counts: outside and inside
+      solutes: {
+        o2: { out: 15, in: 0, color: '#38bdf8', radius: 4.5, isGas: true, symbol: 'O₂', name: 'Oxygen' },
+        co2: { out: 0, in: 15, color: '#c084fc', radius: 5.0, isGas: true, symbol: 'CO₂', name: 'Carbon Dioxide' },
+        na: { out: 25, in: 4, color: '#facc15', radius: 4.2, charge: 1, isGas: false, symbol: 'Na⁺', name: 'Sodium Ion' },
+        k: { out: 3, in: 25, color: '#f472b6', radius: 5.2, charge: 1, isGas: false, symbol: 'K⁺', name: 'Potassium Ion' },
+        glucose: { out: 12, in: 2, color: '#34d399', radius: 7.5, isGas: false, symbol: 'Glucose', name: 'Glucose' },
+        atp: { out: 0, in: 8, color: '#fb923c', radius: 6.5, isGas: false, symbol: 'ATP', name: 'ATP' }
+      },
+      
+      // Mission Statuses
+      missions: {
+        1: { done: false, progress: 0 },
+        2: { done: false, progress: 0 },
+        3: { done: false, progress: 0 },
+        4: { done: false, progress: 0 },
+        5: { done: false, progress: 0 }
+      },
+      
+      // Quiz State
+      quizAnswers: { 1: null, 2: null, 3: null, 4: null, 5: null }
+    };
+
+    // Quiz Answer Key
+    const QUIZ_KEY = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const QUIZ_RATIONALES = {
+      1: {
+        correct: "Correct! Small non-polar molecules like O₂ and CO₂ dissolve directly in the hydrophobic lipid interior, whereas charged Na⁺ ions face a massive electrostatic hydration barrier.",
+        wrong: "Incorrect. O₂ and CO₂ permeate easily because they are non-polar and hydrophobic, allowing them to traverse the lipid core without proteins."
+      },
+      2: {
+        correct: "Correct! Because carrier proteins have a specific and limited number of substrate binding sites, transport rate plateaus at Vmax once all carriers are saturated.",
+        wrong: "Incorrect. Carrier-mediated transport saturates at Vmax because binding sites become fully occupied (hyperbolic saturation curve), unlike simple diffusion which is linear."
+      },
+      3: {
+        correct: "Correct! The Na⁺/K⁺ ATPase pump moves 3 Na⁺ ions OUT and 2 K⁺ ions IN per ATP hydrolyzed, maintaining the negative resting potential.",
+        wrong: "Incorrect. The pump operates strictly with a 3 Na⁺ out : 2 K⁺ in stoichiometry per single ATP molecule hydrolyzed."
+      },
+      4: {
+        correct: "Correct! SGLT is secondary active transport; it harnesses the potential energy stored in the steep inward Na⁺ electrochemical gradient created by the Na⁺/K⁺ pump.",
+        wrong: "Incorrect. Secondary active transport does not directly hydrolyze ATP; it is powered by the inward sodium gradient."
+      },
+      5: {
+        correct: "Correct! The positively charged arginine residues in the S4 voltage-sensing domain shift outward in response to depolarization, causing conformational opening of the activation gate.",
+        wrong: "Incorrect. Depolarization to -50 mV activates the S4 voltage sensor, swinging open the channel activation gate to allow rapid sodium influx."
+      }
+    };
+
+    // Web Audio Synthesizer
+    class SimAudio {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playCrossing(direction) {
+        if (!state.soundEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const pan = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+          
+          const freq = direction === 'out-to-in' ? 580 : 440;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.3, this.ctx.currentTime + 0.08);
+          
+          gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+          
+          if (pan) {
+            pan.pan.value = direction === 'out-to-in' ? 0.6 : -0.6;
+            osc.connect(pan);
+            pan.connect(gain);
+          } else {
+            osc.connect(gain);
+          }
+          gain.connect(this.ctx.destination);
+          
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.14);
+        } catch (e) {}
+      }
+      playGateToggle(isOpen) {
+        if (!state.soundEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          const startF = isOpen ? 300 : 600;
+          const endF = isOpen ? 650 : 250;
+          osc.frequency.setValueAtTime(startF, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(endF, this.ctx.currentTime + 0.09);
+          
+          gain.gain.setValueAtTime(0.09, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.11);
+        } catch (e) {}
+      }
+      playAtpHydrolysis() {
+        if (!state.soundEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc1 = this.ctx.createOscillator();
+          const osc2 = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          osc1.type = 'sine';
+          osc2.type = 'triangle';
+          osc1.frequency.setValueAtTime(523.25, this.ctx.currentTime); // C5
+          osc1.frequency.exponentialRampToValueAtTime(783.99, this.ctx.currentTime + 0.18); // G5
+          osc2.frequency.setValueAtTime(261.63, this.ctx.currentTime);
+          
+          gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.22);
+          
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc1.start();
+          osc2.start();
+          osc1.stop(this.ctx.currentTime + 0.24);
+          osc2.stop(this.ctx.currentTime + 0.24);
+        } catch (e) {}
+      }
+      playWarning() {
+        if (!state.soundEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.16);
+        } catch (e) {}
+      }
+    }
+    const audio = new SimAudio();
+
+    // Canvas & Graphics Setup
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const chartCanvas = document.getElementById('liveChartCanvas');
+    const chartCtx = chartCanvas.getContext('2d');
+
+    let width = 800;
+    let height = 600;
+    let membraneY = 300;
+    const membraneThickness = 56;
+
+    // Active Particles List & Highlights
+    let particles = [];
+    let crossingGlows = [];
+    let historyData = [];
+    let simTime = 0;
+
+    // Solute Particle Class
+    class Particle {
+      constructor(type, x, y, compartment) {
+        this.type = type;
+        const config = state.solutes[type];
+        this.symbol = config.symbol;
+        this.color = config.color;
+        this.radius = config.radius;
+        this.isGas = config.isGas;
+        this.charge = config.charge || 0;
+        
+        this.x = x !== undefined ? x : Math.random() * (width - 40) + 20;
+        if (y !== undefined) {
+          this.y = y;
+        } else {
+          if (compartment === 'out') {
+            this.y = Math.random() * (membraneY - membraneThickness / 2 - 40) + 20;
+          } else {
+            this.y = Math.random() * (height - (membraneY + membraneThickness / 2) - 40) + membraneY + membraneThickness / 2 + 20;
+          }
+        }
+        
+        const speed = (this.isGas ? 2.2 : 1.6) * (Math.random() * 0.6 + 0.7);
+        const angle = Math.random() * Math.PI * 2;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        
+        this.inMembrane = false;
+        this.membraneProgress = 0;
+        this.targetY = 0;
+        this.boundToChannel = null;
+        this.metabolismTimer = Math.random() * 300 + 400; // for glucose
+      }
+
+      update() {
+        if (!state.running) return;
+
+        // If particle is traversing through a channel or membrane
+        if (this.inMembrane) {
+          this.y += this.vy * 0.8 * state.speed;
+          this.x += this.vx * 0.2 * state.speed;
+          
+          // Check if exited membrane
+          const topBound = membraneY - membraneThickness / 2;
+          const btmBound = membraneY + membraneThickness / 2;
+          if (this.y < topBound || this.y > btmBound) {
+            this.inMembrane = false;
+            this.boundToChannel = null;
+            // Add crossing highlight
+            if (state.highlightsEnabled) {
+              crossingGlows.push({ x: this.x, y: this.y, color: this.color, r: 12, alpha: 1.0 });
+            }
+            state.totalCrossed++;
+            audio.playCrossing(this.vy > 0 ? 'out-to-in' : 'in-to-out');
+            updateMissionProgress();
+          }
+          return;
+        }
+
+        // Normal Brownian motion
+        this.x += this.vx * state.speed;
+        this.y += this.vy * state.speed;
+
+        // Gentle thermal random steering
+        this.vx += (Math.random() - 0.5) * 0.15;
+        this.vy += (Math.random() - 0.5) * 0.15;
+        
+        // Speed dampening / clamp
+        const currentSpeed = Math.hypot(this.vx, this.vy);
+        const targetMax = this.isGas ? 2.6 : 2.0;
+        if (currentSpeed > targetMax) {
+          this.vx = (this.vx / currentSpeed) * targetMax;
+          this.vy = (this.vy / currentSpeed) * targetMax;
+        }
+
+        // Boundary bounce (walls)
+        if (this.x - this.radius < 10) {
+          this.x = 10 + this.radius;
+          this.vx *= -1;
+        } else if (this.x + this.radius > width - 10) {
+          this.x = width - 10 - this.radius;
+          this.vx *= -1;
+        }
+
+        if (this.y - this.radius < 10) {
+          this.y = 10 + this.radius;
+          this.vy *= -1;
+        } else if (this.y + this.radius > height - 10) {
+          this.y = height - 10 - this.radius;
+          this.vy *= -1;
+        }
+
+        // Membrane interaction
+        const topLipid = membraneY - membraneThickness / 2;
+        const btmLipid = membraneY + membraneThickness / 2;
+
+        // Coming from outside (moving down)
+        if (this.y + this.radius >= topLipid && this.y - this.radius <= topLipid + 6 && this.vy > 0) {
+          this.handleMembraneCollision('out-to-in');
+        }
+        // Coming from inside (moving up)
+        else if (this.y - this.radius <= btmLipid && this.y + this.radius >= btmLipid - 6 && this.vy < 0) {
+          this.handleMembraneCollision('in-to-out');
+        }
+
+        // Glucose intracellular metabolism (fades away to simulate glycolysis)
+        if (this.type === 'glucose' && state.metabolismEnabled && this.y > btmLipid) {
+          this.metabolismTimer--;
+          if (this.metabolismTimer <= 0) {
+            this.dissolve = true;
+          }
+        }
+      }
+
+      handleMembraneCollision(dir) {
+        // 1. Gas molecules (O2, CO2) dissolve and cross through the bilayer (Simple Diffusion)
+        if (this.isGas) {
+          if (Math.random() < 0.65) {
+            this.inMembrane = true;
+            this.vy = (dir === 'out-to-in' ? 1 : -1) * (Math.random() * 0.8 + 0.8);
+            return;
+          }
+        }
+
+        // 2. Check if hitting an open protein channel slot
+        const slotX = this.getNearestSlot(this.x);
+        if (slotX !== null) {
+          const protein = state.slots[slotX.index];
+          if (protein && protein.canTransport(this, dir)) {
+            // Align particle with channel pore
+            this.x = slotX.x;
+            this.inMembrane = true;
+            this.boundToChannel = protein;
+            this.vy = (dir === 'out-to-in' ? 1.6 : -1.6);
+            protein.onTransport(this, dir);
+            return;
+          }
+        }
+
+        // 3. Otherwise, reflect off the hydrophobic lipid heads
+        this.vy *= -1;
+      }
+
+      getNearestSlot(x) {
+        const slotPositions = [width * 0.20, width * 0.40, width * 0.60, width * 0.80];
+        for (let i = 0; i < slotPositions.length; i++) {
+          if (Math.abs(x - slotPositions[i]) < 26) {
+            return { index: i, x: slotPositions[i] };
+          }
+        }
+        return null;
+      }
+
+      draw(c) {
+        c.save();
+        c.fillStyle = this.color;
+        c.shadowColor = this.color;
+        c.shadowBlur = this.inMembrane ? 10 : 4;
+
+        if (this.type === 'glucose') {
+          // Hexagon shape
+          c.beginPath();
+          const r = this.radius;
+          for (let i = 0; i < 6; i++) {
+            const a = (i * Math.PI) / 3;
+            const px = this.x + r * Math.cos(a);
+            const py = this.y + r * Math.sin(a);
+            if (i === 0) c.moveTo(px, py);
+            else c.lineTo(px, py);
+          }
+          c.closePath();
+          c.fill();
+        } else if (this.type === 'o2') {
+          // Diatomic dumbbell
+          c.beginPath();
+          c.arc(this.x - 3, this.y, this.radius * 0.8, 0, Math.PI * 2);
+          c.arc(this.x + 3, this.y, this.radius * 0.8, 0, Math.PI * 2);
+          c.fill();
+        } else if (this.type === 'co2') {
+          // Triatomic linear
+          c.beginPath();
+          c.arc(this.x - 4, this.y, this.radius * 0.65, 0, Math.PI * 2);
+          c.arc(this.x + 4, this.y, this.radius * 0.65, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#94a3b8';
+          c.beginPath();
+          c.arc(this.x, this.y, this.radius * 0.75, 0, Math.PI * 2);
+          c.fill();
+        } else if (this.type === 'atp') {
+          // ATP Triad
+          c.beginPath();
+          c.arc(this.x - 4, this.y, 4, 0, Math.PI * 2);
+          c.arc(this.x, this.y, 4, 0, Math.PI * 2);
+          c.arc(this.x + 4, this.y, 4, 0, Math.PI * 2);
+          c.fill();
+        } else {
+          // Ion sphere with plus symbol
+          c.beginPath();
+          c.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          c.fill();
+
+          c.fillStyle = '#0f172a';
+          c.font = 'bold 8px monospace';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('+', this.x, this.y + 0.5);
+        }
+        c.restore();
+      }
+    }
+
+    // Transport Protein Base & Subclasses
+    class TransportProtein {
+      constructor(type, name, color) {
+        this.type = type;
+        this.name = name;
+        this.color = color;
+        this.isOpen = true;
+      }
+      canTransport(particle, dir) { return false; }
+      onTransport(particle, dir) {}
+      draw(c, x, y, width, height) {}
+    }
+
+    // 1. Leakage Channels (Na+ & K+)
+    class LeakageChannel extends TransportProtein {
+      constructor(ionType) {
+        super(
+          ionType + '_leak',
+          ionType === 'na' ? 'Na⁺ Leakage' : 'K⁺ Leakage',
+          ionType === 'na' ? '#facc15' : '#f472b6'
+        );
+        this.ionType = ionType;
+        this.isOpen = true;
+      }
+      canTransport(particle, dir) {
+        return particle.type === this.ionType;
+      }
+      onTransport(particle, dir) {}
+      draw(c, x, y, w, h) {
+        const halfH = h / 2;
+        c.save();
+        // Barrel subunits
+        c.fillStyle = this.color;
+        c.strokeStyle = '#0f172a';
+        c.lineWidth = 2;
+        
+        // Left subunit
+        c.beginPath();
+        c.roundRect(x - 22, y - halfH - 4, 16, h + 8, 5);
+        c.fill();
+        c.stroke();
+        
+        // Right subunit
+        c.beginPath();
+        c.roundRect(x + 6, y - halfH - 4, 16, h + 8, 5);
+        c.fill();
+        c.stroke();
+
+        // Open pore glow
+        c.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        c.fillRect(x - 6, y - halfH + 2, 12, h - 4);
+
+        // Label
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 9px var(--font-heading)';
+        c.textAlign = 'center';
+        c.fillText(this.ionType.toUpperCase(), x, y + 3);
+        c.restore();
+      }
+    }
+
+    // 2. Ligand-Gated Channels (Na+ & K+)
+    class LigandGatedChannel extends TransportProtein {
+      constructor(ionType) {
+        super(
+          ionType + '_ligand',
+          ionType === 'na' ? 'Na⁺ Ligand-Gated' : 'K⁺ Ligand-Gated',
+          ionType === 'na' ? '#eab308' : '#ec4899'
+        );
+        this.ionType = ionType;
+        this.isOpen = false;
+        this.gateAngle = 0; // 0 = closed, 1 = open
+      }
+      canTransport(particle, dir) {
+        return state.ligandsActive && particle.type === this.ionType;
+      }
+      onTransport(particle, dir) {}
+      draw(c, x, y, w, h) {
+        const halfH = h / 2;
+        this.isOpen = state.ligandsActive;
+        c.save();
+
+        c.fillStyle = this.color;
+        c.strokeStyle = '#0f172a';
+        c.lineWidth = 2;
+
+        // Subunits
+        c.beginPath();
+        c.roundRect(x - 24, y - halfH - 6, 17, h + 12, 6);
+        c.fill();
+        c.stroke();
+
+        c.beginPath();
+        c.roundRect(x + 7, y - halfH - 6, 17, h + 12, 6);
+        c.fill();
+        c.stroke();
+
+        // Extracellular Receptor Pocket on left subunit
+        c.fillStyle = '#38bdf8';
+        c.beginPath();
+        c.moveTo(x - 22, y - halfH - 6);
+        c.lineTo(x - 14, y - halfH - 12);
+        c.lineTo(x - 6, y - halfH - 6);
+        c.closePath();
+        c.fill();
+        c.stroke();
+
+        // If ligand is bound, draw signaling ligand seated in receptor
+        if (state.ligandsActive) {
+          c.fillStyle = '#60a5fa';
+          c.shadowColor = '#60a5fa';
+          c.shadowBlur = 8;
+          c.beginPath();
+          c.arc(x - 14, y - halfH - 9, 4.5, 0, Math.PI * 2);
+          c.fill();
+          c.shadowBlur = 0;
+
+          // Open pore light
+          c.fillStyle = 'rgba(56, 189, 248, 0.3)';
+          c.fillRect(x - 7, y - halfH, 14, h);
+        } else {
+          // Closed Gate bar across pore
+          c.fillStyle = '#f87171';
+          c.fillRect(x - 8, y - 4, 16, 8);
+        }
+
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 8px var(--font-heading)';
+        c.textAlign = 'center';
+        c.fillText('LIG', x, y + 3);
+        c.restore();
+      }
+    }
+
+    // 3. Voltage-Gated Channels (Na+ & K+)
+    class VoltageGatedChannel extends TransportProtein {
+      constructor(ionType) {
+        super(
+          ionType + '_voltage',
+          ionType === 'na' ? 'Na⁺ Voltage-Gated' : 'K⁺ Voltage-Gated',
+          ionType === 'na' ? '#f59e0b' : '#d946ef'
+        );
+        this.ionType = ionType;
+        this.inactivated = false;
+      }
+      canTransport(particle, dir) {
+        const vm = state.membranePotential;
+        if (this.ionType === 'na') {
+          // Na+ channel: opens at -50mV threshold; inactivates at +30mV
+          if (vm === -50) return particle.type === 'na';
+          return false;
+        } else {
+          // K+ channel: opens at +30mV (repolarization phase)
+          if (vm === 30) return particle.type === 'k';
+          return false;
+        }
+      }
+      onTransport(particle, dir) {}
+      draw(c, x, y, w, h) {
+        const halfH = h / 2;
+        const vm = state.membranePotential;
+        const isOpen = this.canTransport({ type: this.ionType }, 'out-to-in');
+        const isInactivated = (this.ionType === 'na' && vm === 30);
+
+        c.save();
+        c.fillStyle = this.color;
+        c.strokeStyle = '#0f172a';
+        c.lineWidth = 2;
+
+        // Channel structure
+        c.beginPath();
+        c.roundRect(x - 23, y - halfH - 4, 16, h + 8, 5);
+        c.fill();
+        c.stroke();
+
+        c.beginPath();
+        c.roundRect(x + 7, y - halfH - 4, 16, h + 8, 5);
+        c.fill();
+        c.stroke();
+
+        // Voltage sensor helix (S4) with + markers
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 7px var(--font-mono)';
+        c.textAlign = 'center';
+        c.fillText('+', x - 15, y - 8);
+        c.fillText('+', x - 15, y + 8);
+
+        if (isOpen) {
+          // Open pore glow
+          c.fillStyle = 'rgba(250, 204, 21, 0.35)';
+          c.fillRect(x - 7, y - halfH, 14, h);
+        } else if (isInactivated) {
+          // Ball-and-chain inactivation gate swung into pore
+          c.fillStyle = '#ef4444';
+          c.beginPath();
+          c.arc(x, y + halfH + 2, 7, 0, Math.PI * 2);
+          c.fill();
+          c.stroke();
+          // Chain
+          c.strokeStyle = '#ef4444';
+          c.lineWidth = 2;
+          c.beginPath();
+          c.moveTo(x - 12, y + halfH);
+          c.quadraticCurveTo(x - 6, y + halfH + 12, x, y + halfH + 2);
+          c.stroke();
+        } else {
+          // Closed activation gate
+          c.fillStyle = '#ef4444';
+          c.fillRect(x - 7, y - 3, 14, 6);
+        }
+
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 8px var(--font-heading)';
+        c.textAlign = 'center';
+        c.fillText('VG', x, y + 3);
+        c.restore();
+      }
+    }
+
+    // 4. Sodium-Potassium ATPase Pump (Primary Active Transport)
+    class SodiumPotassiumPump extends TransportProtein {
+      constructor() {
+        super('na_k_pump', 'Na⁺/K⁺ ATPase', '#fb923c');
+        this.cyclePhase = 0; // 0: E1 (open inside), 1: 3Na+ATP bound, 2: E2-P (open outside), 3: 2K bound
+        this.boundNa = 0;
+        this.boundK = 0;
+        this.atpTimer = 0;
+      }
+      canTransport(particle, dir) {
+        // E1: binds Na+ inside
+        if (dir === 'in-to-out' && particle.type === 'na') {
+          return true;
+        }
+        // E2: binds K+ outside
+        if (dir === 'out-to-in' && particle.type === 'k') {
+          return true;
+        }
+        return false;
+      }
+      onTransport(particle, dir) {
+        if (particle.type === 'na') {
+          this.boundNa++;
+          if (this.boundNa >= 3) {
+            this.boundNa = 0;
+            state.atpHydrolyzed++;
+            document.getElementById('atpHydrolyzedCount').textContent = state.atpHydrolyzed;
+            audio.playAtpHydrolysis();
+            // High energy hydrolysis spark
+            crossingGlows.push({ x: width * 0.4, y: membraneY, color: '#f97316', r: 24, alpha: 1.0 });
+          }
+        }
+      }
+      draw(c, x, y, w, h) {
+        const halfH = h / 2;
+        c.save();
+        c.fillStyle = '#ea580c';
+        c.strokeStyle = '#0f172a';
+        c.lineWidth = 2;
+
+        // Massive P-Type ATPase transporter shape
+        c.beginPath();
+        c.ellipse(x - 14, y, 14, halfH + 8, 0, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+
+        c.beginPath();
+        c.ellipse(x + 14, y, 14, halfH + 8, 0, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+
+        // Central ATP catalytic domain (inside facing)
+        c.fillStyle = '#fbbf24';
+        c.beginPath();
+        c.arc(x, y + halfH + 6, 8, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+
+        c.fillStyle = '#0f172a';
+        c.font = 'bold 7px var(--font-mono)';
+        c.textAlign = 'center';
+        c.fillText('ATP', x, y + halfH + 8);
+
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 8px var(--font-heading)';
+        c.fillText('3Na/2K', x, y - 2);
+        c.restore();
+      }
+    }
+
+    // 5. Sodium-Glucose Cotransporter (SGLT Secondary Active Transport)
+    class SodiumGlucoseCotransporter extends TransportProtein {
+      constructor() {
+        super('sglt', 'Na⁺/Glucose SGLT', '#10b981');
+      }
+      canTransport(particle, dir) {
+        // Only transports from outside to inside, requires outside Na+ > 5
+        const outNa = countCompartment('na', 'out');
+        const lowNaBanner = document.getElementById('bannerSodiumLow');
+        
+        if (outNa < 5) {
+          lowNaBanner.classList.add('visible');
+          return false;
+        } else {
+          lowNaBanner.classList.remove('visible');
+        }
+
+        if (dir === 'out-to-in') {
+          return particle.type === 'glucose' || particle.type === 'na';
+        }
+        return false;
+      }
+      onTransport(particle, dir) {}
+      draw(c, x, y, w, h) {
+        const halfH = h / 2;
+        c.save();
+        c.fillStyle = '#059669';
+        c.strokeStyle = '#0f172a';
+        c.lineWidth = 2;
+
+        // Cotransporter shape
+        c.beginPath();
+        c.roundRect(x - 22, y - halfH - 6, 17, h + 12, 6);
+        c.fill();
+        c.stroke();
+
+        c.beginPath();
+        c.roundRect(x + 5, y - halfH - 6, 17, h + 12, 6);
+        c.fill();
+        c.stroke();
+
+        // Symport arrow indicator
+        c.fillStyle = '#34d399';
+        c.beginPath();
+        c.moveTo(x - 6, y - 10);
+        c.lineTo(x + 6, y - 10);
+        c.lineTo(x, y + 10);
+        c.closePath();
+        c.fill();
+
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 8px var(--font-heading)';
+        c.textAlign = 'center';
+        c.fillText('SGLT', x, y - 14);
+        c.restore();
+      }
+    }
+
+    // Initialize Simulation Solutes and Screen State
+    function initSimulation() {
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      // Canvas interaction listeners
+      canvas.addEventListener('click', handleCanvasClick);
+      canvas.addEventListener('mousemove', handleCanvasHover);
+      
+      // Default initial screen
+      switchScreen('simple');
+      requestAnimationFrame(simLoop);
+    }
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvasViewport');
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      width = rect.width;
+      height = rect.height;
+      membraneY = height * 0.5;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+
+      chartCanvas.width = 300 * dpr;
+      chartCanvas.height = 90 * dpr;
+      chartCtx.scale(dpr, dpr);
+    }
+
+    // Screen Switching Logic
+    function switchScreen(screenKey) {
+      state.screen = screenKey;
+
+      // Update screen tab buttons
+      document.querySelectorAll('.screen-tab-btn').forEach(btn => btn.classList.remove('active'));
+      const activeTab = {
+        simple: 'tabScreenSimple',
+        facilitated: 'tabScreenFacilitated',
+        active: 'tabScreenActive',
+        playground: 'tabScreenPlayground'
+      }[screenKey];
+      if (document.getElementById(activeTab)) {
+        document.getElementById(activeTab).classList.add('active');
+      }
+
+      // Configure screen-specific UI controls
+      const secToolbox = document.getElementById('sectionToolbox');
+      const secSpecial = document.getElementById('sectionSpecialControls');
+      const wrapLigand = document.getElementById('wrapLigandControls');
+      const wrapVoltage = document.getElementById('wrapVoltageControls');
+      const wrapMetabolism = document.getElementById('wrapMetabolismControl');
+      const vmBadge = document.getElementById('vmDisplayBadge');
+      const atpBadge = document.getElementById('atpDisplayBadge');
+      const bannerLowNa = document.getElementById('bannerSodiumLow');
+      bannerLowNa.classList.remove('visible');
+
+      // Clear slots
+      state.slots = [null, null, null, null];
+
+      if (screenKey === 'simple') {
+        secToolbox.style.display = 'none';
+        secSpecial.style.display = 'none';
+        wrapLigand.style.display = 'none';
+        wrapVoltage.style.display = 'none';
+        wrapMetabolism.style.display = 'none';
+        vmBadge.style.display = 'none';
+        atpBadge.style.display = 'none';
+
+        // Solutes for simple diffusion
+        state.solutes.o2.out = 16; state.solutes.o2.in = 0;
+        state.solutes.co2.out = 0; state.solutes.co2.in = 16;
+        state.solutes.na.out = 15; state.solutes.na.in = 0;
+        state.solutes.glucose.out = 8; state.solutes.glucose.in = 0;
+        state.solutes.k.out = 0; state.solutes.k.in = 0;
+        state.solutes.atp.out = 0; state.solutes.atp.in = 0;
+
+      } else if (screenKey === 'facilitated') {
+        secToolbox.style.display = 'block';
+        secSpecial.style.display = 'block';
+        wrapLigand.style.display = 'flex';
+        wrapVoltage.style.display = 'block';
+        wrapMetabolism.style.display = 'none';
+        vmBadge.style.display = 'flex';
+        atpBadge.style.display = 'none';
+
+        // Pre-insert one Na+ leakage channel into slot 1
+        state.slots[1] = new LeakageChannel('na');
+
+        state.solutes.na.out = 24; state.solutes.na.in = 4;
+        state.solutes.k.out = 4; state.solutes.k.in = 24;
+        state.solutes.glucose.out = 10; state.solutes.glucose.in = 2;
+        state.solutes.o2.out = 0; state.solutes.o2.in = 0;
+        state.solutes.co2.out = 0; state.solutes.co2.in = 0;
+        state.solutes.atp.out = 0; state.solutes.atp.in = 0;
+
+      } else if (screenKey === 'active') {
+        secToolbox.style.display = 'block';
+        secSpecial.style.display = 'block';
+        wrapLigand.style.display = 'none';
+        wrapVoltage.style.display = 'none';
+        wrapMetabolism.style.display = 'flex';
+        vmBadge.style.display = 'none';
+        atpBadge.style.display = 'flex';
+
+        // Pre-insert pump into slot 1 and cotransporter into slot 2
+        state.slots[1] = new SodiumPotassiumPump();
+        state.slots[2] = new SodiumGlucoseCotransporter();
+
+        state.solutes.na.out = 20; state.solutes.na.in = 8;
+        state.solutes.k.out = 5; state.solutes.k.in = 22;
+        state.solutes.glucose.out = 12; state.solutes.glucose.in = 2;
+        state.solutes.atp.out = 0; state.solutes.atp.in = 12;
+        state.solutes.o2.out = 0; state.solutes.o2.in = 0;
+        state.solutes.co2.out = 0; state.solutes.co2.in = 0;
+
+      } else if (screenKey === 'playground') {
+        secToolbox.style.display = 'block';
+        secSpecial.style.display = 'block';
+        wrapLigand.style.display = 'flex';
+        wrapVoltage.style.display = 'block';
+        wrapMetabolism.style.display = 'flex';
+        vmBadge.style.display = 'flex';
+        atpBadge.style.display = 'flex';
+
+        // Pre-insert a mix
+        state.slots[0] = new LeakageChannel('na');
+        state.slots[1] = new LigandGatedChannel('k');
+        state.slots[2] = new SodiumPotassiumPump();
+        state.slots[3] = new SodiumGlucoseCotransporter();
+
+        state.solutes.o2.out = 10; state.solutes.o2.in = 5;
+        state.solutes.co2.out = 5; state.solutes.co2.in = 10;
+        state.solutes.na.out = 20; state.solutes.na.in = 5;
+        state.solutes.k.out = 5; state.solutes.k.in = 20;
+        state.solutes.glucose.out = 10; state.solutes.glucose.in = 2;
+        state.solutes.atp.out = 0; state.solutes.atp.in = 10;
+      }
+
+      renderSidebarSolutes();
+      renderToolboxCards();
+      updateSlotStatusUI();
+      rebuildParticlesFromCounts();
+      updateMissionProgress();
+    }
+
+    // Sidebar Solutes Renderer
+    function renderSidebarSolutes() {
+      const container = document.getElementById('solutesContainer');
+      container.innerHTML = '';
+
+      const relevantSolutes = {
+        simple: ['o2', 'co2', 'na', 'glucose'],
+        facilitated: ['na', 'k', 'glucose'],
+        active: ['na', 'k', 'glucose', 'atp'],
+        playground: ['o2', 'co2', 'na', 'k', 'glucose', 'atp']
+      }[state.screen];
+
+      relevantSolutes.forEach(key => {
+        const item = state.solutes[key];
+        const card = document.createElement('div');
+        card.className = 'solute-control-card';
+        card.innerHTML = `
+          <div class="solute-header-row">
+            <div class="solute-name-badge">
+              <span class="solute-dot ${key}"></span>
+              <span>${item.name} (${item.symbol})</span>
+            </div>
+            <div class="solute-counts-summary">
+              Out: <span class="val" id="cnt_out_${key}">${item.out}</span> | 
+              In: <span class="val" id="cnt_in_${key}">${item.in}</span>
+            </div>
+          </div>
+          <div class="compartment-sliders">
+            <div class="comp-col">
+              <div class="comp-label-row">
+                <span>Outside</span>
+                <span class="count-val" id="lbl_out_${key}">${item.out}</span>
+              </div>
+              <div class="slider-input-group">
+                <button class="stepper-btn" onclick="stepSolute('${key}', 'out', -1)">-</button>
+                <input type="range" min="0" max="45" value="${item.out}" id="slider_out_${key}" oninput="onSoluteSlider('${key}', 'out', this.value)">
+                <button class="stepper-btn" onclick="stepSolute('${key}', 'out', 1)">+</button>
+              </div>
+            </div>
+            <div class="comp-col">
+              <div class="comp-label-row">
+                <span>Inside</span>
+                <span class="count-val" id="lbl_in_${key}">${item.in}</span>
+              </div>
+              <div class="slider-input-group">
+                <button class="stepper-btn" onclick="stepSolute('${key}', 'in', -1)">-</button>
+                <input type="range" min="0" max="45" value="${item.in}" id="slider_in_${key}" oninput="onSoluteSlider('${key}', 'in', this.value)">
+                <button class="stepper-btn" onclick="stepSolute('${key}', 'in', 1)">+</button>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Toolbox Cards Renderer
+    function renderToolboxCards() {
+      const container = document.getElementById('toolboxCardsContainer');
+      container.innerHTML = '';
+
+      const proteinList = [];
+      if (state.screen === 'facilitated' || state.screen === 'playground') {
+        proteinList.push({ cat: 'Leakage Channels', items: [
+          { type: 'na_leak', name: 'Na⁺ Leakage', desc: 'Always open pore', icon: '#facc15' },
+          { type: 'k_leak', name: 'K⁺ Leakage', desc: 'Always open pore', icon: '#f472b6' }
+        ]});
+        proteinList.push({ cat: 'Ligand-Gated Channels', items: [
+          { type: 'na_ligand', name: 'Na⁺ Ligand-Gated', desc: 'Opens when ligand binds', icon: '#eab308' },
+          { type: 'k_ligand', name: 'K⁺ Ligand-Gated', desc: 'Opens when ligand binds', icon: '#ec4899' }
+        ]});
+        proteinList.push({ cat: 'Voltage-Gated Channels', items: [
+          { type: 'na_voltage', name: 'Na⁺ Voltage-Gated', desc: '-50mV activation threshold', icon: '#f59e0b' },
+          { type: 'k_voltage', name: 'K⁺ Voltage-Gated', desc: '+30mV repolarization', icon: '#d946ef' }
+        ]});
+      }
+
+      if (state.screen === 'active' || state.screen === 'playground') {
+        proteinList.push({ cat: 'Active Transporters', items: [
+          { type: 'na_k_pump', name: 'Na⁺/K⁺ ATPase Pump', desc: 'Consumes ATP (3Na out : 2K in)', icon: '#ea580c' },
+          { type: 'sglt', name: 'Na⁺/Glucose Cotransporter', desc: 'Secondary active symporter', icon: '#059669' }
+        ]});
+      }
+
+      proteinList.forEach(grp => {
+        const catDiv = document.createElement('div');
+        catDiv.className = 'toolbox-category';
+        catDiv.innerHTML = `<div class="toolbox-category-title">${grp.cat}</div>`;
+        
+        const grid = document.createElement('div');
+        grid.className = 'protein-cards-grid';
+
+        grp.items.forEach(p => {
+          const card = document.createElement('div');
+          card.className = 'protein-toolbox-card';
+          card.onclick = () => assignProteinToSelectedSlot(p.type);
+          card.innerHTML = `
+            <div class="protein-card-top">
+              <span class="solute-dot" style="background:${p.icon}; color:${p.icon};"></span>
+              <span class="protein-type-tag">Add</span>
+            </div>
+            <div class="protein-card-name">${p.name}</div>
+            <div class="protein-card-desc">${p.desc}</div>
+          `;
+          grid.appendChild(card);
+        });
+
+        catDiv.appendChild(grid);
+        container.appendChild(catDiv);
+      });
+    }
+
+    // Membrane Slots UI updates
+    function updateSlotStatusUI() {
+      for (let i = 0; i < 4; i++) {
+        const pill = document.getElementById('slotStatus' + i);
+        if (!pill) continue;
+        const protein = state.slots[i];
+        if (protein) {
+          pill.className = 'slot-pill occupied' + (state.selectedSlotIndex === i ? ' selected' : '');
+          pill.innerHTML = `S${i+1}: ${protein.name} <span style="cursor:pointer; margin-left:4px;" onclick="event.stopPropagation(); removeSlotProtein(${i});">&times;</span>`;
+        } else {
+          pill.className = 'slot-pill' + (state.selectedSlotIndex === i ? ' selected' : '');
+          pill.textContent = `Slot ${i+1}: Empty`;
+        }
+      }
+    }
+
+    function selectSlot(index) {
+      state.selectedSlotIndex = index;
+      updateSlotStatusUI();
+      showToast(`Slot ${index + 1} selected. Click any protein in the toolbox to insert.`);
+    }
+
+    function assignProteinToSelectedSlot(type) {
+      let pInstance = null;
+      if (type === 'na_leak') pInstance = new LeakageChannel('na');
+      else if (type === 'k_leak') pInstance = new LeakageChannel('k');
+      else if (type === 'na_ligand') pInstance = new LigandGatedChannel('na');
+      else if (type === 'k_ligand') pInstance = new LigandGatedChannel('k');
+      else if (type === 'na_voltage') pInstance = new VoltageGatedChannel('na');
+      else if (type === 'k_voltage') pInstance = new VoltageGatedChannel('k');
+      else if (type === 'na_k_pump') pInstance = new SodiumPotassiumPump();
+      else if (type === 'sglt') pInstance = new SodiumGlucoseCotransporter();
+
+      state.slots[state.selectedSlotIndex] = pInstance;
+      audio.playGateToggle(true);
+      showToast(`Inserted ${pInstance.name} into Slot ${state.selectedSlotIndex + 1}`);
+      
+      // Auto-advance to next empty slot
+      state.selectedSlotIndex = (state.selectedSlotIndex + 1) % 4;
+      updateSlotStatusUI();
+      updateMissionProgress();
+    }
+
+    function removeSlotProtein(index) {
+      if (state.slots[index]) {
+        showToast(`Removed ${state.slots[index].name} from Slot ${index + 1}`);
+        state.slots[index] = null;
+        updateSlotStatusUI();
+        audio.playGateToggle(false);
+      }
+    }
+
+    // Particle Generation from count state
+    function rebuildParticlesFromCounts() {
+      particles = [];
+      const relevant = {
+        simple: ['o2', 'co2', 'na', 'glucose'],
+        facilitated: ['na', 'k', 'glucose'],
+        active: ['na', 'k', 'glucose', 'atp'],
+        playground: ['o2', 'co2', 'na', 'k', 'glucose', 'atp']
+      }[state.screen];
+
+      relevant.forEach(type => {
+        const item = state.solutes[type];
+        // Outside
+        for (let i = 0; i < item.out; i++) {
+          particles.push(new Particle(type, undefined, undefined, 'out'));
+        }
+        // Inside
+        for (let i = 0; i < item.in; i++) {
+          particles.push(new Particle(type, undefined, undefined, 'in'));
+        }
+      });
+    }
+
+    function onSoluteSlider(type, comp, val) {
+      val = parseInt(val, 10);
+      state.solutes[type][comp] = val;
+      document.getElementById(`lbl_${comp}_${type}`).textContent = val;
+      document.getElementById(`cnt_${comp}_${type}`).textContent = val;
+      
+      // Adjust particle instances
+      syncParticles(type, comp, val);
+      updateMissionProgress();
+    }
+
+    function stepSolute(type, comp, delta) {
+      const current = state.solutes[type][comp];
+      const next = Math.max(0, Math.min(45, current + delta));
+      document.getElementById(`slider_${comp}_${type}`).value = next;
+      onSoluteSlider(type, comp, next);
+    }
+
+    function syncParticles(type, comp, targetCount) {
+      const topLipid = membraneY - membraneThickness / 2;
+      const btmLipid = membraneY + membraneThickness / 2;
+
+      const current = particles.filter(p => p.type === type && (comp === 'out' ? p.y < topLipid : p.y > btmLipid));
+      const diff = targetCount - current.length;
+
+      if (diff > 0) {
+        for (let i = 0; i < diff; i++) {
+          particles.push(new Particle(type, undefined, undefined, comp));
+        }
+      } else if (diff < 0) {
+        let removed = 0;
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          if (p.type === type && (comp === 'out' ? p.y < topLipid : p.y > btmLipid)) {
+            particles.splice(i, 1);
+            removed++;
+            if (removed >= Math.abs(diff)) break;
+          }
+        }
+      }
+    }
+
+    function countCompartment(type, comp) {
+      const topLipid = membraneY - membraneThickness / 2;
+      const btmLipid = membraneY + membraneThickness / 2;
+      return particles.filter(p => p.type === type && (comp === 'out' ? p.y < topLipid : p.y > btmLipid)).length;
+    }
+
+    // Playback and Simulation Controls
+    function togglePlayPause() {
+      state.running = !state.running;
+      const icon = document.getElementById('iconPlayPause');
+      if (state.running) {
+        icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+      } else {
+        icon.innerHTML = '<polygon points="6 4 18 12 6 20 6 4"></polygon>';
+      }
+    }
+
+    function stepSimulation() {
+      state.running = false;
+      const icon = document.getElementById('iconPlayPause');
+      icon.innerHTML = '<polygon points="6 4 18 12 6 20 6 4"></polygon>';
+      
+      // Step single iteration
+      particles.forEach(p => p.update());
+    }
+
+    function setSpeed(s) {
+      state.speed = s;
+      document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    function clearAllSolutes() {
+      Object.keys(state.solutes).forEach(k => {
+        state.solutes[k].out = 0;
+        state.solutes[k].in = 0;
+      });
+      particles = [];
+      renderSidebarSolutes();
+      showToast('Cleared all solutes');
+    }
+
+    function randomizeSolutes() {
+      Object.keys(state.solutes).forEach(k => {
+        state.solutes[k].out = Math.floor(Math.random() * 25);
+        state.solutes[k].in = Math.floor(Math.random() * 25);
+      });
+      renderSidebarSolutes();
+      rebuildParticlesFromCounts();
+      showToast('Randomized solute concentrations');
+    }
+
+    function injectSoluteBulk(comp, amount) {
+      const relevant = {
+        simple: 'o2',
+        facilitated: 'na',
+        active: 'glucose',
+        playground: 'na'
+      }[state.screen];
+
+      stepSolute(relevant, comp, amount);
+      showToast(`Injected +${amount} ${relevant.toUpperCase()} ${comp === 'out' ? 'Outside' : 'Inside'}`);
+    }
+
+    function equalizeConcentrations() {
+      Object.keys(state.solutes).forEach(k => {
+        const total = state.solutes[k].out + state.solutes[k].in;
+        const half = Math.floor(total / 2);
+        state.solutes[k].out = half;
+        state.solutes[k].in = half;
+      });
+      renderSidebarSolutes();
+      rebuildParticlesFromCounts();
+      showToast('Equalized Inside and Outside concentrations');
+    }
+
+    function resetSimulationAll() {
+      state.atpHydrolyzed = 0;
+      state.totalCrossed = 0;
+      document.getElementById('atpHydrolyzedCount').textContent = '0';
+      switchScreen(state.screen);
+      showToast('Simulation reset to initial parameters');
+    }
+
+    // Biophysical Controls Toggles
+    function addLigands() {
+      state.ligandsActive = true;
+      audio.playGateToggle(true);
+      showToast('Signaling ligands bound to extracellular receptors');
+      updateMissionProgress();
+    }
+
+    function removeLigands() {
+      state.ligandsActive = false;
+      audio.playGateToggle(false);
+      showToast('Signaling ligands dissociated; gates closed');
+    }
+
+    function setVoltage(mv) {
+      state.membranePotential = mv;
+      document.getElementById('btnVmNeg70').classList.toggle('active', mv === -70);
+      document.getElementById('btnVmNeg50').classList.toggle('active', mv === -50);
+      document.getElementById('btnVmPos30').classList.toggle('active', mv === 30);
+      
+      const badge = document.getElementById('vmDisplayBadge');
+      badge.textContent = `Vm: ${mv > 0 ? '+' : ''}${mv} mV`;
+      
+      audio.playGateToggle(mv !== -70);
+      showToast(`Membrane Potential set to ${mv > 0 ? '+' : ''}${mv} mV`);
+      updateMissionProgress();
+    }
+
+    function toggleCharges(val) {
+      state.chargesVisible = val;
+    }
+
+    function toggleMetabolism(val) {
+      state.metabolismEnabled = val;
+      showToast(val ? 'Intracellular glucose metabolism activated' : 'Glucose metabolism paused');
+    }
+
+    function toggleHighlights(val) {
+      state.highlightsEnabled = val;
+    }
+
+    function toggleLipidAnimation(val) {
+      state.lipidAnimation = val;
+    }
+
+    function toggleAudio() {
+      state.soundEnabled = !state.soundEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      btn.classList.toggle('active', state.soundEnabled);
+      showToast(state.soundEnabled ? 'Audio synthesis unmuted' : 'Audio muted');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    // Preset configurations
+    function applyPreset(presetKey) {
+      if (presetKey === 'gas_equilibrium') {
+        switchScreen('simple');
+        state.solutes.o2.out = 30; state.solutes.o2.in = 0;
+        state.solutes.co2.out = 0; state.solutes.co2.in = 30;
+        state.solutes.na.out = 0; state.solutes.na.in = 0;
+        state.solutes.glucose.out = 0; state.solutes.glucose.in = 0;
+      } else if (presetKey === 'neuron_rest') {
+        switchScreen('facilitated');
+        setVoltage(-70);
+        state.slots[1] = new LeakageChannel('k');
+        state.slots[2] = new LeakageChannel('na');
+        state.solutes.na.out = 35; state.solutes.na.in = 4;
+        state.solutes.k.out = 4; state.solutes.k.in = 35;
+      } else if (presetKey === 'action_potential') {
+        switchScreen('facilitated');
+        setVoltage(-50);
+        state.slots[1] = new VoltageGatedChannel('na');
+        state.slots[2] = new VoltageGatedChannel('k');
+        state.solutes.na.out = 35; state.solutes.na.in = 4;
+        state.solutes.k.out = 4; state.solutes.k.in = 35;
+      } else if (presetKey === 'sglt_gut') {
+        switchScreen('active');
+        state.slots[1] = new SodiumPotassiumPump();
+        state.slots[2] = new SodiumGlucoseCotransporter();
+        state.solutes.na.out = 30; state.solutes.na.in = 5;
+        state.solutes.glucose.out = 15; state.solutes.glucose.in = 2;
+        state.solutes.atp.out = 0; state.solutes.atp.in = 15;
+      } else if (presetKey === 'metabolic_starvation') {
+        switchScreen('active');
+        state.slots[1] = new SodiumPotassiumPump();
+        state.solutes.atp.in = 0;
+        state.solutes.na.out = 15; state.solutes.na.in = 15;
+        state.solutes.k.out = 15; state.solutes.k.in = 15;
+      }
+      renderSidebarSolutes();
+      rebuildParticlesFromCounts();
+      updateSlotStatusUI();
+      showToast(`Applied preset: ${presetKey.replace('_', ' ').toUpperCase()}`);
+    }
+
+    // Main 60FPS Animation Loop
+    function simLoop(timestamp) {
+      simTime++;
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Draw Bilayer Membrane and Lipid Dynamics
+      drawPhospholipidBilayer(ctx);
+
+      // 2. Draw Installed Protein Channels in Slots
+      drawMembraneSlots(ctx);
+
+      // 3. Update & Draw Solute Particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update();
+        if (p.dissolve) {
+          crossingGlows.push({ x: p.x, y: p.y, color: '#34d399', r: 8, alpha: 0.8 });
+          particles.splice(i, 1);
+          continue;
+        }
+        p.draw(ctx);
+      }
+
+      // 4. Draw Crossing Glows
+      drawCrossingHighlights(ctx);
+
+      // 5. Draw Charges along Leaflets if active
+      if (state.chargesVisible) {
+        drawLeafletCharges(ctx);
+      }
+
+      // 6. Update Live Metrics & Real-time Chart
+      if (simTime % 15 === 0) {
+        updateAnalyticsData();
+      }
+
+      requestAnimationFrame(simLoop);
+    }
+
+    // Phospholipid Bilayer Graphics with Fluid Mosaic Motion
+    function drawPhospholipidBilayer(c) {
+      const topY = membraneY - membraneThickness / 2;
+      const btmY = membraneY + membraneThickness / 2;
+      const wiggle = state.lipidAnimation ? Math.sin(simTime * 0.05) * 1.5 : 0;
+
+      // Hydrophobic core background
+      c.save();
+      const coreGrad = c.createLinearGradient(0, topY, 0, btmY);
+      coreGrad.addColorStop(0, '#111827');
+      coreGrad.addColorStop(0.5, '#030712');
+      coreGrad.addColorStop(1, '#111827');
+      c.fillStyle = coreGrad;
+      c.fillRect(0, topY, width, membraneThickness);
+
+      // Outer & Inner Leaflet Lipids (Phosphate heads + Hydrocarbon tails)
+      const headRadius = 4.2;
+      const lipidSpacing = 11;
+      const count = Math.ceil(width / lipidSpacing);
+
+      // Outer Leaflet (Facing Extracellular)
+      for (let i = 0; i < count; i++) {
+        const x = i * lipidSpacing + 5;
+        const wave = state.lipidAnimation ? Math.sin(simTime * 0.06 + i * 0.4) * 2 : 0;
+        const headY = topY + wave;
+
+        // Skip drawing if inside an occupied channel slot
+        if (isSlotZone(x)) continue;
+
+        // Wiggling fatty acid tails
+        c.strokeStyle = '#d97706';
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.moveTo(x - 2, headY + 3);
+        c.quadraticCurveTo(x - 4 + wiggle, topY + 14, x - 1, topY + 22);
+        c.moveTo(x + 2, headY + 3);
+        c.quadraticCurveTo(x + 4 - wiggle, topY + 14, x + 1, topY + 22);
+        c.stroke();
+
+        // Polar head
+        c.fillStyle = '#f59e0b';
+        c.beginPath();
+        c.arc(x, headY, headRadius, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      // Inner Leaflet (Facing Cytoplasm)
+      for (let i = 0; i < count; i++) {
+        const x = i * lipidSpacing + 5;
+        const wave = state.lipidAnimation ? Math.cos(simTime * 0.06 + i * 0.4) * 2 : 0;
+        const headY = btmY + wave;
+
+        if (isSlotZone(x)) continue;
+
+        // Wiggling fatty acid tails
+        c.strokeStyle = '#d97706';
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.moveTo(x - 2, headY - 3);
+        c.quadraticCurveTo(x - 4 - wiggle, btmY - 14, x - 1, btmY - 22);
+        c.moveTo(x + 2, headY - 3);
+        c.quadraticCurveTo(x + 4 + wiggle, btmY - 14, x + 1, btmY - 22);
+        c.stroke();
+
+        // Polar head
+        c.fillStyle = '#f59e0b';
+        c.beginPath();
+        c.arc(x, headY, headRadius, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      c.restore();
+    }
+
+    function isSlotZone(x) {
+      if (state.screen === 'simple') return false;
+      const slotPositions = [width * 0.20, width * 0.40, width * 0.60, width * 0.80];
+      for (let i = 0; i < slotPositions.length; i++) {
+        if (state.slots[i] && Math.abs(x - slotPositions[i]) < 24) return true;
+      }
+      return false;
+    }
+
+    // Membrane Slots Rendering
+    function drawMembraneSlots(c) {
+      if (state.screen === 'simple') return;
+
+      const slotPositions = [width * 0.20, width * 0.40, width * 0.60, width * 0.80];
+      const slotW = 44;
+      const slotH = membraneThickness;
+
+      for (let i = 0; i < slotPositions.length; i++) {
+        const x = slotPositions[i];
+        const protein = state.slots[i];
+
+        if (protein) {
+          protein.draw(c, x, membraneY, slotW, slotH);
+        } else {
+          // Empty slot dashed outline
+          c.save();
+          c.strokeStyle = state.selectedSlotIndex === i ? 'rgba(56, 189, 248, 0.7)' : 'rgba(255, 255, 255, 0.2)';
+          c.setLineDash([4, 4]);
+          c.lineWidth = 1.5;
+          c.strokeRect(x - slotW / 2, membraneY - slotH / 2 - 4, slotW, slotH + 8);
+
+          c.fillStyle = state.selectedSlotIndex === i ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255, 255, 255, 0.03)';
+          c.fillRect(x - slotW / 2, membraneY - slotH / 2 - 4, slotW, slotH + 8);
+
+          c.fillStyle = state.selectedSlotIndex === i ? 'var(--accent-cyan)' : 'var(--text-dim)';
+          c.font = 'bold 8px var(--font-heading)';
+          c.textAlign = 'center';
+          c.fillText(`SLOT ${i+1}`, x, membraneY + 3);
+          c.restore();
+        }
+      }
+    }
+
+    // Crossing Highlights (glow circles that expand and fade)
+    function drawCrossingHighlights(c) {
+      for (let i = crossingGlows.length - 1; i >= 0; i--) {
+        const g = crossingGlows[i];
+        c.save();
+        c.beginPath();
+        c.arc(g.x, g.y, g.r, 0, Math.PI * 2);
+        c.fillStyle = g.color;
+        c.globalAlpha = g.alpha;
+        c.shadowColor = g.color;
+        c.shadowBlur = 12;
+        c.fill();
+        c.restore();
+
+        g.r += 0.8;
+        g.alpha -= 0.04;
+        if (g.alpha <= 0) {
+          crossingGlows.splice(i, 1);
+        }
+      }
+    }
+
+    // Leaflet Surface Charges
+    function drawLeafletCharges(c) {
+      const topY = membraneY - membraneThickness / 2 - 12;
+      const btmY = membraneY + membraneThickness / 2 + 16;
+      const vm = state.membranePotential;
+
+      c.save();
+      c.font = 'bold 11px monospace';
+      c.textAlign = 'center';
+
+      const step = 28;
+      const count = Math.floor(width / step);
+
+      if (vm === -70) {
+        // Outside +++, Inside ---
+        c.fillStyle = '#38bdf8';
+        for (let i = 0; i < count; i++) c.fillText('+', i * step + 14, topY);
+        c.fillStyle = '#f87171';
+        for (let i = 0; i < count; i++) c.fillText('-', i * step + 14, btmY);
+      } else if (vm === -50) {
+        // Outside +, Inside -
+        c.fillStyle = '#38bdf8';
+        for (let i = 0; i < count; i += 2) c.fillText('+', i * step + 14, topY);
+        c.fillStyle = '#f87171';
+        for (let i = 0; i < count; i += 2) c.fillText('-', i * step + 14, btmY);
+      } else if (vm === 30) {
+        // Reversed: Outside -, Inside +
+        c.fillStyle = '#f87171';
+        for (let i = 0; i < count; i += 2) c.fillText('-', i * step + 14, topY);
+        c.fillStyle = '#38bdf8';
+        for (let i = 0; i < count; i += 2) c.fillText('+', i * step + 14, btmY);
+      }
+      c.restore();
+    }
+
+    // Live Analytics & Real-Time Chart Drawing
+    function updateAnalyticsData() {
+      const topLipid = membraneY - membraneThickness / 2;
+      const btmLipid = membraneY + membraneThickness / 2;
+
+      let totalOut = 0;
+      let totalIn = 0;
+
+      particles.forEach(p => {
+        if (p.y < topLipid) totalOut++;
+        else if (p.y > btmLipid) totalIn++;
+      });
+
+      // Update counters in sidebar
+      Object.keys(state.solutes).forEach(type => {
+        const outCnt = countCompartment(type, 'out');
+        const inCnt = countCompartment(type, 'in');
+        const lblOut = document.getElementById(`lbl_out_${type}`);
+        const lblIn = document.getElementById(`lbl_in_${type}`);
+        if (lblOut) lblOut.textContent = outCnt;
+        if (lblIn) lblIn.textContent = inCnt;
+      });
+
+      // Net Flux calculation
+      const netFlux = ((totalOut - totalIn) / Math.max(1, totalOut + totalIn)).toFixed(2);
+      document.getElementById('metricNetFlux').textContent = (netFlux > 0 ? '+' : '') + netFlux;
+      
+      const totalAll = totalOut + totalIn;
+      const eqPercent = totalAll > 0 ? Math.round((1 - Math.abs(totalOut - totalIn) / totalAll) * 100) : 100;
+      document.getElementById('metricEquilibrium').textContent = eqPercent + '%';
+      document.getElementById('metricTotalCrossed').textContent = state.totalCrossed;
+
+      // Store history for chart
+      historyData.push({ out: totalOut, in: totalIn });
+      if (historyData.length > 50) historyData.shift();
+
+      drawLiveChart();
+    }
+
+    function drawLiveChart() {
+      const cw = chartCanvas.width / (window.devicePixelRatio || 1);
+      const ch = chartCanvas.height / (window.devicePixelRatio || 1);
+      chartCtx.clearRect(0, 0, cw, ch);
+
+      if (historyData.length < 2) return;
+
+      const maxVal = Math.max(50, ...historyData.map(d => Math.max(d.out, d.in)));
+      const stepX = cw / (historyData.length - 1);
+
+      // Outside curve (cyan)
+      chartCtx.beginPath();
+      chartCtx.strokeStyle = '#38bdf8';
+      chartCtx.lineWidth = 2;
+      historyData.forEach((d, idx) => {
+        const x = idx * stepX;
+        const y = ch - (d.out / maxVal) * (ch - 10) - 5;
+        if (idx === 0) chartCtx.moveTo(x, y);
+        else chartCtx.lineTo(x, y);
+      });
+      chartCtx.stroke();
+
+      // Inside curve (purple)
+      chartCtx.beginPath();
+      chartCtx.strokeStyle = '#c084fc';
+      chartCtx.lineWidth = 2;
+      historyData.forEach((d, idx) => {
+        const x = idx * stepX;
+        const y = ch - (d.in / maxVal) * (ch - 10) - 5;
+        if (idx === 0) chartCtx.moveTo(x, y);
+        else chartCtx.lineTo(x, y);
+      });
+      chartCtx.stroke();
+
+      // Chart Legend
+      chartCtx.fillStyle = '#38bdf8';
+      chartCtx.font = '8px monospace';
+      chartCtx.fillText('Outside', 4, 10);
+      chartCtx.fillStyle = '#c084fc';
+      chartCtx.fillText('Inside', 45, 10);
+    }
+
+    // Canvas Click Interactions (Slot selection / Click to remove)
+    function handleCanvasClick(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      if (state.screen === 'simple') return;
+
+      const slotPositions = [width * 0.20, width * 0.40, width * 0.60, width * 0.80];
+      for (let i = 0; i < slotPositions.length; i++) {
+        if (Math.abs(clickX - slotPositions[i]) < 24 && Math.abs(clickY - membraneY) < 30) {
+          selectSlot(i);
+          return;
+        }
+      }
+    }
+
+    function handleCanvasHover(e) {
+      const rect = canvas.getBoundingClientRect();
+      const hoverX = e.clientX - rect.left;
+      const hoverY = e.clientY - rect.top;
+
+      if (state.screen === 'simple') {
+        canvas.style.cursor = 'default';
+        return;
+      }
+
+      const slotPositions = [width * 0.20, width * 0.40, width * 0.60, width * 0.80];
+      let onSlot = false;
+      for (let i = 0; i < slotPositions.length; i++) {
+        if (Math.abs(hoverX - slotPositions[i]) < 24 && Math.abs(hoverY - membraneY) < 30) {
+          onSlot = true;
+          break;
+        }
+      }
+      canvas.style.cursor = onSlot ? 'pointer' : 'default';
+    }
+
+    // Guided Missions Real-Time Auto-Validation
+    function updateMissionProgress() {
+      // Mission 1: Simple Diffusion of Gases
+      if (!state.missions[1].done) {
+        const inGas = countCompartment('o2', 'in') + countCompartment('co2', 'in');
+        const prog = Math.min(100, Math.round((inGas / 8) * 100));
+        document.getElementById('missionProgress1').style.width = prog + '%';
+        if (inGas >= 8) {
+          completeMission(1);
+        }
+      }
+
+      // Mission 2: Selective Permeability (Na+ leakage channel + Na+ crossed)
+      if (!state.missions[2].done) {
+        const hasLeak = state.slots.some(s => s && s.type === 'na_leak');
+        const inNa = countCompartment('na', 'in');
+        if (hasLeak) {
+          const prog = Math.min(100, Math.round((inNa / 6) * 100));
+          document.getElementById('missionProgress2').style.width = prog + '%';
+          if (inNa >= 6) {
+            completeMission(2);
+          }
+        }
+      }
+
+      // Mission 3: Ligand Receptor Gating
+      if (!state.missions[3].done) {
+        const hasLigandChan = state.slots.some(s => s && (s.type === 'na_ligand' || s.type === 'k_ligand'));
+        if (hasLigandChan && state.ligandsActive) {
+          document.getElementById('missionProgress3').style.width = '100%';
+          completeMission(3);
+        }
+      }
+
+      // Mission 4: Voltage Gated Threshold
+      if (!state.missions[4].done) {
+        const hasVoltage = state.slots.some(s => s && (s.type === 'na_voltage' || s.type === 'k_voltage'));
+        if (hasVoltage && state.membranePotential === -50) {
+          document.getElementById('missionProgress4').style.width = '100%';
+          completeMission(4);
+        }
+      }
+
+      // Mission 5: Active Transport Na/K Pump
+      if (!state.missions[5].done) {
+        const hasPump = state.slots.some(s => s && s.type === 'na_k_pump');
+        if (hasPump && state.atpHydrolyzed >= 3) {
+          document.getElementById('missionProgress5').style.width = '100%';
+          completeMission(5);
+        }
+      }
+    }
+
+    function completeMission(id) {
+      if (state.missions[id].done) return;
+      state.missions[id].done = true;
+      state.missions[id].progress = 100;
+      
+      const badge = document.getElementById('missionBadge' + id);
+      const card = document.getElementById('missionCard' + id);
+      if (badge && card) {
+        badge.className = 'mission-status-badge done';
+        badge.textContent = 'Completed!';
+        card.classList.add('completed');
+      }
+
+      // Update badge counter in topbar
+      const doneCount = Object.values(state.missions).filter(m => m.done).length;
+      document.getElementById('missionBadgeCount').textContent = `${doneCount}/5`;
+      showToast(`🏆 Mission ${id} Completed! Elementa XP Awarded!`);
+      
+      // Dispatch Elementa LMS Event
+      dispatchLmsEvent('ELEMENTA_MISSION_COMPLETE', { missionId: id, totalDone: doneCount });
+    }
+
+    // Modal Control (Sim / Missions / Quiz / Theory)
+    function setAppMode(modeKey) {
+      state.mode = modeKey;
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+      
+      if (modeKey === 'sim') {
+        document.getElementById('btnModeSim').classList.add('active');
+        closeAllModals();
+      } else if (modeKey === 'missions') {
+        document.getElementById('btnModeMissions').classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        document.getElementById('btnModeQuiz').classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        document.getElementById('btnModeTheory').classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    // Scored Assessment Quiz Handlers
+    function selectQuizAnswer(qNum, optionIdx) {
+      state.quizAnswers[qNum] = optionIdx;
+      const qCard = document.getElementById('qq' + qNum);
+      const options = qCard.querySelectorAll('.quiz-option-btn');
+      options.forEach((opt, idx) => {
+        opt.classList.toggle('selected', idx === optionIdx);
+      });
+    }
+
+    function submitQuiz() {
+      let score = 0;
+      let allAnswered = true;
+
+      for (let i = 1; i <= 5; i++) {
+        if (state.quizAnswers[i] === null) {
+          allAnswered = false;
+          break;
+        }
+      }
+
+      if (!allAnswered) {
+        showToast('Please answer all 5 questions before submitting.');
+        return;
+      }
+
+      for (let i = 1; i <= 5; i++) {
+        const userChoice = state.quizAnswers[i];
+        const isCorrect = userChoice === QUIZ_KEY[i];
+        if (isCorrect) score += 20;
+
+        const qCard = document.getElementById('qq' + i);
+        const options = qCard.querySelectorAll('.quiz-option-btn');
+        options.forEach((opt, idx) => {
+          if (idx === QUIZ_KEY[i]) opt.classList.add('correct');
+          else if (idx === userChoice) opt.classList.add('wrong');
+        });
+
+        const fbBox = document.getElementById('qfb' + i);
+        fbBox.className = 'quiz-feedback-box ' + (isCorrect ? 'correct' : 'wrong');
+        fbBox.textContent = isCorrect ? QUIZ_RATIONALES[i].correct : QUIZ_RATIONALES[i].wrong;
+      }
+
+      // Show Certificate
+      const certWrap = document.getElementById('quizCertificateWrap');
+      certWrap.style.display = 'block';
+      document.getElementById('certScoreDisplay').textContent = `Score: ${score}% (${score/20}/5) • Grade: ${score >= 80 ? 'A (Distinction)' : 'B (Passing)'}`;
+      document.getElementById('certDateDisplay').textContent = `Verified on Elementa LMS • ${new Date().toLocaleDateString()}`;
+
+      // Dispatch LMS Gradebook Integration PostMessage
+      dispatchLmsEvent('ELEMENTA_GRADE_SUBMIT', {
+        score: score,
+        maxScore: 100,
+        percentage: score,
+        passed: score >= 70,
+        sim: 'membrane-transport'
+      });
+
+      showToast(`Grade ${score}% submitted to Elementa LMS Gradebook!`);
+      document.getElementById('btnSubmitQuiz').textContent = 'Synchronized with LMS Gradebook ✓';
+      document.getElementById('btnSubmitQuiz').disabled = true;
+    }
+
+    // Elementa LMS SCORM / PostMessage Bridge
+    function dispatchLmsEvent(eventName, payload) {
+      const data = {
+        source: 'Elementa_Simulation',
+        sim: 'Membrane_Transport',
+        event: eventName,
+        payload: payload,
+        timestamp: Date.now()
+      };
+      
+      // Post to parent LMS frame if embedded
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(data, '*');
+      }
+      console.log('[Elementa LMS Event Dispatched]', data);
+    }
+
+    // Screenshot Capture
+    function captureScreenshot() {
+      const link = document.createElement('a');
+      link.download = 'elementa-membrane-transport-lab.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Lab screenshot captured and downloaded');
+    }
+
+    // Toast Notification Utility
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast-msg';
+      toast.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>${msg}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    // Boot up
+    window.addEventListener('DOMContentLoaded', initSimulation);
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

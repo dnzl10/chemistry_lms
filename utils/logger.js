@@ -14,21 +14,45 @@
 const db = require('../db');
 
 /**
- * Log a single activity entry.
- *
- * @param {object}      req         Express request object (must have req.user)
- * @param {string}      action      Snake-case action key  e.g. 'APPROVE_QUESTION'
- * @param {string}      [description] Human-readable detail string
+ * Log a single activity entry with forensic network telemetry.
+ * Supports both:
+ * 1. logActivity(req, action, description, overrideActorId, overrideActorRole)
+ * 2. logActivity(actorId, actorRole, action, description)
  */
-async function logActivity(req, action, description = null) {
+async function logActivity(arg1, arg2, arg3 = null, arg4 = null, arg5 = null) {
     try {
-        const actorId   = req.user?.user_id  ?? null;
-        const actorRole = req.user?.role      ?? 'Student';
+        let actorId = null;
+        let actorRole = 'Student';
+        let ipAddress = null;
+        let userAgent = null;
+        let sessionId = null;
+        let action = '';
+        let description = null;
+
+        if (arg1 && typeof arg1 === 'object' && (arg1.headers || arg1.session || arg1.user)) {
+            // Called with Express request object
+            const req = arg1;
+            action = arg2;
+            description = arg3;
+            actorId = arg4 || req.user?.user_id || null;
+            actorRole = arg5 || req.user?.role || 'Student';
+
+            const rawIp = req.headers ? (req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress) : null;
+            ipAddress = rawIp ? rawIp.replace('::ffff:', '') : null;
+            userAgent = (req.headers?.['user-agent'] || '').slice(0, 255) || null;
+            sessionId = req.sessionID || null;
+        } else {
+            // Direct ID invocation: (actorId, actorRole, action, description)
+            actorId = arg1 || null;
+            actorRole = arg2 || 'Admin';
+            action = arg3 || '';
+            description = arg4 || null;
+        }
 
         await db.query(
-            `INSERT INTO activity_logs (actor_id, actor_role, action, description)
-             VALUES (?, ?, ?, ?)`,
-            [actorId, actorRole, action, description]
+            `INSERT INTO activity_logs (actor_id, actor_role, ip_address, user_agent, session_id, action, description)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [actorId, actorRole, ipAddress, userAgent, sessionId, action, description]
         );
     } catch (_) {
         // Non-fatal — a logging failure must never crash a route

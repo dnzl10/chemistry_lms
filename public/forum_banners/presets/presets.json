@@ -1,0 +1,74 @@
+[
+  {
+    "id": "preset-molecules",
+    "filename": "preset-molecules.svg",
+    "url": "/forum_banners/presets/preset-molecules.svg",
+    "title": "Molecular Geometry & Bonding",
+    "category": "Inorganic & General",
+    "description": "3D tetrahedral bonds, atom nodes, and covalent orbital structures",
+    "primaryColor": "#0ea5e9"
+  },
+  {
+    "id": "preset-glassware",
+    "filename": "preset-glassware.svg",
+    "url": "/forum_banners/presets/preset-glassware.svg",
+    "title": "Laboratory Apparatus & Glassware",
+    "category": "Experimental Chemistry",
+    "description": "Volumetric flasks, titration beakers, and chemical solutions",
+    "primaryColor": "#10b981"
+  },
+  {
+    "id": "preset-periodic",
+    "filename": "preset-periodic.svg",
+    "url": "/forum_banners/presets/preset-periodic.svg",
+    "title": "Periodic Table & Atomic Spectra",
+    "category": "Atomic Theory",
+    "description": "Periodic elements, electron shells, and orbital quantum levels",
+    "primaryColor": "#a855f7"
+  },
+  {
+    "id": "preset-reactions",
+    "filename": "preset-reactions.svg",
+    "url": "/forum_banners/presets/preset-reactions.svg",
+    "title": "Reaction Kinetics & Titration",
+    "category": "Physical Chemistry",
+    "description": "Dynamic chemical equilibrium, titration curves, and catalyst activation",
+    "primaryColor": "#f43f5e"
+  },
+  {
+    "id": "preset-dna",
+    "filename": "preset-dna.svg",
+    "url": "/forum_banners/presets/preset-dna.svg",
+    "title": "Biochemistry & Molecular Genetics",
+    "category": "Biochemistry",
+    "description": "Double-helix DNA strands, nucleotide bonds, and enzymatic biochemistry",
+    "primaryColor": "#3b82f6"
+  },
+  {
+    "id": "preset-thermo",
+    "filename": "preset-thermo.svg",
+    "url": "/forum_banners/presets/preset-thermo.svg",
+    "title": "Thermochemistry & Enthalpy",
+    "category": "Physical Chemistry",
+    "description": "Exothermic heat release, flame kinetics, and Gibbs free energy",
+    "primaryColor": "#f97316"
+  },
+  {
+    "id": "preset-organic",
+    "filename": "preset-organic.svg",
+    "url": "/forum_banners/presets/preset-organic.svg",
+    "title": "Organic Synthesis & Mechanisms",
+    "category": "Organic Chemistry",
+    "description": "Skeletal structures, functional groups, and nucleophilic substitution",
+    "primaryColor": "#10b981"
+  },
+  {
+    "id": "preset-electro",
+    "filename": "preset-electro.svg",
+    "url": "/forum_banners/presets/preset-electro.svg",
+    "title": "Electrochemistry & Galvanic Cells",
+    "category": "Analytical & Physical",
+    "description": "Redox half-reactions, salt bridge ion flow, and electrochemical potential",
+    "primaryColor": "#06b6d4"
+  }
+]

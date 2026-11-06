@@ -1,0 +1,2920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rutherford Scattering | Elementa LMS Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --topbar-height: 58px;
+      --tabs-height: 48px;
+      --bg-base: #0a0d14;
+      --bg-surface: #111726;
+      --bg-card: rgba(18, 26, 43, 0.75);
+      --bg-card-hover: rgba(26, 38, 64, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.3);
+      --primary: #38bdf8;
+      --primary-glow: rgba(56, 189, 248, 0.35);
+      --accent: #818cf8;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --alpha-color: #f97316;
+      --proton-color: #ef4444;
+      --neutron-color: #94a3b8;
+      --electron-color: #38bdf8;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --transition-fast: 0.15s ease;
+      --transition-normal: 0.25s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Topbar matching acid-base-solutions_elementa.html */
+    .elementa-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1.5rem;
+      background: rgba(13, 19, 33, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-icon-wrap {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 14px var(--primary-glow);
+    }
+
+    .brand-name {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .lms-breadcrumb .current {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    /* Mode Selector Pills */
+    .top-mode-pills {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(10, 15, 26, 0.8);
+      padding: 0.25rem;
+      border-radius: 30px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .mode-pill-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 1rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, #0284c7, #4f46e5);
+      box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
+    }
+
+    .badge-counter {
+      font-size: 0.7rem;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 0.1rem 0.4rem;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    /* Top Action Buttons */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+
+    .action-btn.icon-only {
+      padding: 0.45rem;
+    }
+
+    .action-btn.active {
+      color: var(--primary);
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    /* Main Container */
+    .main-viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      width: 100%;
+      height: calc(100vh - 61px);
+      overflow-y: auto;
+    }
+
+    .app-screen.active {
+      display: flex;
+    }
+
+    /* ======================================================== */
+    /* SIMULATION LAB SCREEN                                    */
+    /* ======================================================== */
+    .sim-lab-layout {
+      display: grid;
+      grid-template-columns: 1fr 370px;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .sim-viewport-area {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      height: 100%;
+      position: relative;
+      min-width: 0;
+    }
+
+    /* Secondary Screen Switcher Bar */
+    .sim-subbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(18, 26, 43, 0.6);
+      backdrop-filter: blur(10px);
+      padding: 0.5rem 0.85rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .screen-tab-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .screen-tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .screen-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    .screen-tab-btn.active {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+
+    .scale-selector-group {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(10, 15, 26, 0.7);
+      padding: 0.2rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .scale-pill-btn {
+      padding: 0.3rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .scale-pill-btn.active {
+      background: var(--primary);
+      color: #0b1120;
+      font-weight: 700;
+    }
+
+    /* Simulation Canvas Container */
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at center, #0f172a 0%, #070a12 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      min-height: 420px;
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Canvas Overlays */
+    .canvas-hud-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .hud-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(10, 15, 26, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    .hud-badge strong {
+      color: var(--primary);
+    }
+
+    .legend-overlay {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(10, 15, 26, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      font-size: 0.74rem;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .playback-controls-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(10, 15, 26, 0.85);
+      backdrop-filter: blur(12px);
+      padding: 6px 14px;
+      border-radius: 30px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .play-btn-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0284c7, #4f46e5);
+      color: #ffffff;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+      transition: transform var(--transition-fast);
+    }
+
+    .play-btn-circle:hover {
+      transform: scale(1.06);
+    }
+
+    .playback-sub-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .playback-sub-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--text-main);
+    }
+
+    /* Gun Status Light */
+    .gun-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 0 8px;
+      border-left: 1px solid var(--border-subtle);
+    }
+
+    .gun-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #475569;
+    }
+
+    .gun-status-dot.active {
+      background: #f97316;
+      box-shadow: 0 0 8px #f97316;
+    }
+
+    /* Sidebar Control Deck */
+    .sim-control-deck {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      height: 100%;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .control-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.95rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .card-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.8rem;
+    }
+
+    .card-title-icon {
+      color: var(--primary);
+    }
+
+    .control-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .control-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .control-val-badge {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--primary);
+      background: rgba(56, 189, 248, 0.12);
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .styled-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .styled-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 8px var(--primary-glow);
+      cursor: pointer;
+      transition: transform var(--transition-fast);
+    }
+
+    .styled-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .toggle-checkbox-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.35rem 0;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .switch-toggle {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+    }
+
+    .switch-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .2s;
+      border-radius: 20px;
+    }
+
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .switch-slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .switch-slider:before {
+      transform: translateX(16px);
+    }
+
+    /* Live Detector Angular Histogram */
+    .histogram-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .detector-bar-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 40px;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+    }
+
+    .detector-bar-bg {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .detector-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    .detector-bar-fill.deflected {
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+    }
+
+    /* ======================================================== */
+    /* GUIDED MISSIONS SCREEN                                   */
+    /* ======================================================== */
+    .missions-layout {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      width: 100%;
+    }
+
+    .missions-header {
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .missions-header h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.35rem;
+    }
+
+    .missions-header p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .missions-stats-card {
+      display: flex;
+      gap: 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius-md);
+    }
+
+    .stat-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .stat-pill-label {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .stat-pill-val {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--primary);
+      font-family: var(--font-mono);
+    }
+
+    .mission-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .mission-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 1.25rem;
+      transition: all var(--transition-normal);
+    }
+
+    .mission-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+
+    .mission-idx-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      font-family: var(--font-mono);
+    }
+
+    .mission-card.completed .mission-idx-badge {
+      background: rgba(52, 211, 153, 0.15);
+      border-color: rgba(52, 211, 153, 0.4);
+      color: var(--success);
+    }
+
+    .mission-details h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mission-details p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .mission-tags {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+    }
+
+    .tag-badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .btn-mission-action {
+      padding: 0.6rem 1.1rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #0284c7, #4f46e5);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-mission-action:hover {
+      box-shadow: 0 0 14px var(--primary-glow);
+      transform: scale(1.03);
+    }
+
+    .status-completed-pill {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--success);
+      background: rgba(52, 211, 153, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      padding: 0.4rem 0.85rem;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    /* ======================================================== */
+    /* ASSESSMENT QUIZ SCREEN                                   */
+    /* ======================================================== */
+    .quiz-layout {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      width: 100%;
+    }
+
+    .quiz-card-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      backdrop-filter: blur(14px);
+    }
+
+    .quiz-progress-bar-wrap {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .quiz-progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      width: 20%;
+      transition: width 0.3s ease;
+    }
+
+    .quiz-question-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .quiz-q-num {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .quiz-score-badge {
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .quiz-question-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1.45;
+      margin-bottom: 1.5rem;
+      color: #ffffff;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .quiz-option-btn {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+
+    .quiz-option-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--border-accent);
+      transform: translateX(4px);
+    }
+
+    .quiz-option-btn.selected {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .quiz-option-btn.correct {
+      border-color: var(--success) !important;
+      background: rgba(52, 211, 153, 0.15) !important;
+    }
+
+    .quiz-option-btn.incorrect {
+      border-color: var(--danger) !important;
+      background: rgba(248, 113, 113, 0.15) !important;
+    }
+
+    .option-letter-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-feedback-box {
+      display: none;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+
+    .quiz-feedback-box.correct {
+      display: block;
+      background: rgba(52, 211, 153, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: #a7f3d0;
+    }
+
+    .quiz-feedback-box.incorrect {
+      display: block;
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      color: #fca5a5;
+    }
+
+    .quiz-actions-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.8rem;
+    }
+
+    /* ======================================================== */
+    /* STANDARDIZED ELEMENTA MODAL SUITE                        */
+    /* ======================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open,
+    .modal-backdrop.active {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      display: flex !important;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .modal-backdrop.open .modal-dialog,
+    .modal-backdrop.active .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    /* Override hidden/absolute inner simulation screen views inside modals */
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+
+    .modal-backdrop .document-page-scroll,
+    .modal-backdrop .scrollable-page-layout {
+      height: auto !important;
+      overflow-y: visible !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+
+    .modal-backdrop .doc-hero,
+    .modal-backdrop .section-hero {
+      margin-bottom: 16px !important;
+    }
+
+    .cert-card {
+      background: linear-gradient(145deg, #111827, #0b0f19);
+      border: 2px solid #fbbf24;
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      max-width: 580px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(251, 191, 36, 0.25);
+      position: relative;
+    }
+
+    .cert-seal {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 1.25rem;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+    }
+
+    /* ======================================================== */
+    /* THEORY & FORMULAS SCREEN                                 */
+    /* ======================================================== */
+    .theory-layout {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      width: 100%;
+    }
+
+    .theory-header {
+      margin-bottom: 2rem;
+    }
+
+    .theory-header h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.35rem;
+    }
+
+    .theory-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .theory-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.4rem;
+      backdrop-filter: blur(10px);
+      transition: all var(--transition-normal);
+    }
+
+    .theory-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+
+    .theory-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .theory-card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .theory-card-header h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .theory-formula-block {
+      background: rgba(10, 15, 26, 0.8);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--primary);
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      margin: 0.8rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .theory-card p {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 0.6rem;
+    }
+
+    .theory-card ul {
+      margin-left: 1.2rem;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .theory-card li {
+      margin-bottom: 0.3rem;
+    }
+
+    /* Responsiveness */
+    @media (max-width: 1024px) {
+      .sim-lab-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow-y: auto;
+      }
+      .canvas-container {
+        height: 460px;
+      }
+    }
+  
+    /* Standard Sleek Elementa Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+</head>
+<body>
+
+  <!-- ELEMENTA TOPBAR -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 2v7.31"></path>
+            <path d="M14 9.3V1.99"></path>
+            <path d="M8.5 2h7"></path>
+            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+            <path d="M5.52 16h12.96"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Atomic Structure</span>
+        <span>›</span>
+        <span class="current">Rutherford Scattering</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT -->
+  <main class="simulation-workspace main-viewport">
+
+    <!-- 1. SIMULATION LAB SCREEN -->
+    <section class="app-screen active" id="screenSim">
+      <div class="sim-lab-layout">
+        
+        <!-- Simulation Viewport -->
+        <div class="sim-viewport-area">
+          
+          <!-- Sub-bar: Model and Scale Switcher -->
+          <div class="sim-subbar">
+            <div class="screen-tab-group">
+              <button class="screen-tab-btn active" id="tabRutherford" onclick="selectModel('rutherford')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="9"></circle></svg>
+                Rutherford Atom
+              </button>
+              <button class="screen-tab-btn" id="tabPlumPudding" onclick="selectModel('plumpudding')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="8" cy="9" r="1" fill="currentColor"></circle><circle cx="16" cy="10" r="1" fill="currentColor"></circle><circle cx="12" cy="15" r="1" fill="currentColor"></circle></svg>
+                Plum Pudding Atom
+              </button>
+            </div>
+
+            <!-- Rutherford Scale Toggle (only shown for Rutherford) -->
+            <div class="scale-selector-group" id="scaleSelectorGroup">
+              <button class="scale-pill-btn active" id="scaleNuclear" onclick="setScale('nuclear')">Nuclear Scale (10<sup>-14</sup> m)</button>
+              <button class="scale-pill-btn" id="scaleAtomic" onclick="setScale('atomic')">Atomic Scale (10<sup>-10</sup> m)</button>
+            </div>
+          </div>
+
+          <!-- Canvas Container -->
+          <div class="canvas-container">
+            <canvas id="simCanvas"></canvas>
+
+            <!-- HUD Overlay -->
+            <div class="canvas-hud-overlay">
+              <div class="hud-badge">
+                <span>Model:</span>
+                <strong id="hudModelText">Rutherford Nuclear</strong>
+              </div>
+              <div class="hud-badge">
+                <span>Scale:</span>
+                <strong id="hudScaleText">10<sup>-14</sup> m (Single Nucleus)</strong>
+              </div>
+              <div class="hud-badge">
+                <span>Target:</span>
+                <strong id="hudTargetText">Gold (Au, Z = 79, N = 118)</strong>
+              </div>
+            </div>
+
+            <!-- Legend Overlay -->
+            <div class="legend-overlay" id="legendOverlay">
+              <div class="legend-item">
+                <div class="legend-dot" style="background: var(--alpha-color);"></div>
+                <span>Alpha Particle (α, +2e)</span>
+              </div>
+              <div class="legend-item" id="legendProton">
+                <div class="legend-dot" style="background: var(--proton-color);"></div>
+                <span>Proton (+1e)</span>
+              </div>
+              <div class="legend-item" id="legendNeutron">
+                <div class="legend-dot" style="background: var(--neutron-color);"></div>
+                <span>Neutron (0)</span>
+              </div>
+              <div class="legend-item" id="legendElectron" style="display: none;">
+                <div class="legend-dot" style="background: var(--electron-color);"></div>
+                <span>Electrons (-1e)</span>
+              </div>
+            </div>
+
+            <!-- Playback & Gun Controls Bar -->
+            <div class="playback-controls-bar">
+              <button class="playback-sub-btn" id="btnSingleStep" title="Step Forward" onclick="stepSim()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+              </button>
+
+              <button class="play-btn-circle" id="btnPlayPause" title="Play / Pause" onclick="togglePlayPause()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" id="playIcon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              </button>
+
+              <button class="playback-sub-btn" id="btnClearTraces" title="Clear Traces" onclick="clearTraces()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+
+              <!-- Gun Trigger -->
+              <div class="gun-indicator">
+                <div class="gun-status-dot active" id="gunStatusDot"></div>
+                <span>Alpha Gun:</span>
+                <label class="switch-toggle" style="transform: scale(0.85); margin-left: 2px;">
+                  <input type="checkbox" id="chkGunStream" checked onchange="toggleGunStream(this.checked)">
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Right Control Deck -->
+        <aside class="simulation-sidebar sim-control-deck">
+
+          <!-- Alpha Source Properties Card -->
+          <div class="control-card">
+            <div class="card-title">
+              <span>Alpha Particle Beam</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="card-title-icon"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            </div>
+
+            <div class="control-row">
+              <div class="control-label-row">
+                <span>Alpha Particle Energy (E<sub>α</sub>)</span>
+                <span class="control-val-badge" id="valEnergy">6.0 MeV</span>
+              </div>
+              <input type="range" class="styled-slider" id="sliderEnergy" min="3.0" max="12.0" step="0.5" value="6.0" oninput="updateEnergy(this.value)">
+            </div>
+
+            <div class="control-row">
+              <div class="control-label-row">
+                <span>Beam Emission Rate</span>
+                <span class="control-val-badge" id="valRate">Normal</span>
+              </div>
+              <input type="range" class="styled-slider" id="sliderRate" min="1" max="3" step="1" value="2" oninput="updateRate(this.value)">
+            </div>
+
+            <label class="toggle-checkbox-row">
+              <span>Show Particle Traces</span>
+              <span class="switch-toggle">
+                <input type="checkbox" id="chkTraces" checked onchange="toggleTraces(this.checked)">
+                <span class="switch-slider"></span>
+              </span>
+            </label>
+
+            <label class="toggle-checkbox-row">
+              <span>Show Electrostatic Force Vector</span>
+              <span class="switch-toggle">
+                <input type="checkbox" id="chkForceVector" checked onchange="toggleForceVector(this.checked)">
+                <span class="switch-slider"></span>
+              </span>
+            </label>
+          </div>
+
+          <!-- Target Nucleus Properties Card (Rutherford only) -->
+          <div class="control-card" id="cardNucleusProps">
+            <div class="card-title">
+              <span>Target Nucleus Composition</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="card-title-icon"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+            </div>
+
+            <div class="control-row">
+              <div class="control-label-row">
+                <span>Protons (Atomic Number Z)</span>
+                <span class="control-val-badge" id="valProtons">79 (Au)</span>
+              </div>
+              <input type="range" class="styled-slider" id="sliderProtons" min="20" max="100" step="1" value="79" oninput="updateProtons(this.value)">
+            </div>
+
+            <div class="control-row">
+              <div class="control-label-row">
+                <span>Neutrons (N)</span>
+                <span class="control-val-badge" id="valNeutrons">118</span>
+              </div>
+              <input type="range" class="styled-slider" id="sliderNeutrons" min="20" max="150" step="1" value="118" oninput="updateNeutrons(this.value)">
+            </div>
+
+            <div style="font-size: 0.74rem; color: var(--text-dim); margin-top: 0.4rem; line-height: 1.4;">
+              Nuclear Charge: <strong style="color: #ef4444;" id="valTotalCharge">+79e</strong> | Mass: <strong style="color: #94a3b8;" id="valTotalMass">197 u</strong>
+            </div>
+          </div>
+
+          <!-- Plum Pudding Model Explanation (Shown only for Plum Pudding) -->
+          <div class="control-card" id="cardPlumPuddingInfo" style="display: none;">
+            <div class="card-title">
+              <span>Thomson Plum Pudding Model</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="card-title-icon"><circle cx="12" cy="12" r="10"></circle></svg>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.6rem;">
+              In J.J. Thomson's 1904 model, positive charge is spread uniformly throughout a diffuse sphere of atomic radius (10<sup>-10</sup> m). 
+            </p>
+            <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.45;">
+              Because the positive charge is dilute, the electric field is minuscule everywhere. Energetic alpha particles shoot directly straight through with virtually zero deflection (&lt; 0.1°).
+            </p>
+          </div>
+
+          <!-- Real-time Angular Scattering Detector Histogram -->
+          <div class="control-card histogram-card">
+            <div class="card-title">
+              <span>Scattering Angular Detector</span>
+              <span style="font-size: 0.7rem; font-weight: normal; color: var(--primary); cursor: pointer;" onclick="resetDetector()">Reset Counts</span>
+            </div>
+
+            <div class="detector-bar-row">
+              <span>0° - 10°</span>
+              <div class="detector-bar-bg"><div class="detector-bar-fill" id="barUndeflected"></div></div>
+              <span id="countUndeflected">0</span>
+            </div>
+
+            <div class="detector-bar-row">
+              <span>10° - 45°</span>
+              <div class="detector-bar-bg"><div class="detector-bar-fill" id="barModerate"></div></div>
+              <span id="countModerate">0</span>
+            </div>
+
+            <div class="detector-bar-row">
+              <span>45° - 90°</span>
+              <div class="detector-bar-bg"><div class="detector-bar-fill deflected" id="barLarge"></div></div>
+              <span id="countLarge">0</span>
+            </div>
+
+            <div class="detector-bar-row">
+              <span>90° - 180°</span>
+              <div class="detector-bar-bg"><div class="detector-bar-fill deflected" id="barBackscatter"></div></div>
+              <span id="countBackscatter">0</span>
+            </div>
+
+            <div style="font-size: 0.7rem; color: var(--text-dim); text-align: right; margin-top: 4px;">
+              Total Counted: <strong id="valTotalParticles" style="color: var(--text-main);">0</strong>
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+    </section>
+
+    
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 2. GUIDED MISSIONS SCREEN -->
+    <section class="app-screen" id="screenMissions">
+      <div class="missions-layout">
+        <div class="missions-header">
+          <div>
+            <h2>Guided Laboratory Missions</h2>
+            <p>Complete these interactive inquiry-based challenges to master atomic scattering physics.</p>
+          </div>
+          <div class="missions-stats-card">
+            <div class="stat-pill">
+              <span class="stat-pill-label">Completed</span>
+              <span class="stat-pill-val" id="statMissionsCompleted">0 / 5</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-pill-label">XP Earned</span>
+              <span class="stat-pill-val" id="statMissionsXP">0 XP</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mission-grid">
+          
+          <!-- Mission 1 -->
+          <div class="mission-card" id="mcard-1">
+            <div class="mission-idx-badge">01</div>
+            <div class="mission-details">
+              <h3>The Plum Pudding Prediction</h3>
+              <p>Switch to the Plum Pudding model. Observe 50 alpha particles traversing the diffuse atomic charge. Note whether any alpha particles deflect at angles greater than 5°.</p>
+              <div class="mission-tags">
+                <span class="tag-badge">Thomson Model</span>
+                <span class="tag-badge">+100 XP</span>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(1)">
+              Start Mission
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Mission 2 -->
+          <div class="mission-card" id="mcard-2">
+            <div class="mission-idx-badge">02</div>
+            <div class="mission-details">
+              <h3>Observing Rutherford Backscattering</h3>
+              <p>Switch to the Rutherford Nuclear Scale view with Gold (Z = 79). Observe the rare backscattering events where an alpha particle reflects backward (deflection angle &gt; 90°).</p>
+              <div class="mission-tags">
+                <span class="tag-badge">Backscattering</span>
+                <span class="tag-badge">+150 XP</span>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(2)">
+              Start Mission
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Mission 3 -->
+          <div class="mission-card" id="mcard-3">
+            <div class="mission-idx-badge">03</div>
+            <div class="mission-details">
+              <h3>Kinetic Energy vs Deflection Angle</h3>
+              <p>Compare the scattering angle of alpha particles at minimum energy (3.0 MeV) versus maximum energy (12.0 MeV). Notice how higher energy decreases deflection due to shorter interaction time.</p>
+              <div class="mission-tags">
+                <span class="tag-badge">Beam Energy</span>
+                <span class="tag-badge">+150 XP</span>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(3)">
+              Start Mission
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Mission 4 -->
+          <div class="mission-card" id="mcard-4">
+            <div class="mission-idx-badge">04</div>
+            <div class="mission-details">
+              <h3>Nuclear Charge Dependence (Atomic Number Z)</h3>
+              <p>Decrease the atomic number Z from 79 (Gold) down to 20 (Calcium). Observe the reduction in the Coulomb repulsion force and note how the backscattering frequency diminishes.</p>
+              <div class="mission-tags">
+                <span class="tag-badge">Coulomb's Law</span>
+                <span class="tag-badge">+150 XP</span>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(4)">
+              Start Mission
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Mission 5 -->
+          <div class="mission-card" id="mcard-5">
+            <div class="mission-idx-badge">05</div>
+            <div class="mission-details">
+              <h3>Atomic Scale: The Vast Emptiness of the Atom</h3>
+              <p>Switch to the Atomic Scale view. Watch how the vast majority of alpha particles pass completely straight through the foil lattice, proving that an atom is mostly empty space.</p>
+              <div class="mission-tags">
+                <span class="tag-badge">Lattice Foil</span>
+                <span class="tag-badge">+200 XP</span>
+              </div>
+            </div>
+            <button class="btn-mission-action" onclick="startMission(5)">
+              Start Mission
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- 3. ASSESSMENT QUIZ SCREEN -->
+    <section class="app-screen" id="screenQuiz">
+      <div class="quiz-layout">
+        <div class="quiz-card-container">
+          
+          <div class="quiz-progress-bar-wrap">
+            <div class="quiz-progress-bar-fill" id="quizProgressBar"></div>
+          </div>
+
+          <div class="quiz-question-meta">
+            <span class="quiz-q-num" id="quizQNumber">Question 1 of 5</span>
+            <span class="quiz-score-badge" id="quizScoreBadge">Score: 0 / 5</span>
+          </div>
+
+          <h2 class="quiz-question-title" id="quizQTitle">Loading question...</h2>
+
+          <div class="quiz-options-list" id="quizOptionsList">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div class="quiz-feedback-box" id="quizFeedbackBox">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div class="quiz-actions-row">
+            <button class="btn-mission-action" id="btnNextQuestion" style="display: none;" onclick="nextQuestion()">
+              Continue
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </section>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- 4. THEORY & FORMULAS SCREEN -->
+    <section class="app-screen" id="screenTheory">
+      <div class="theory-layout">
+        <div class="theory-header">
+          <h2>Theoretical Foundations & Mathematical Models</h2>
+          <p>Core physics governing Rutherford scattering, Coulomb electrostatic repulsion, and the discovery of the atomic nucleus.</p>
+        </div>
+
+        <div class="theory-cards-grid">
+          
+          <!-- Card 1 -->
+          <div class="theory-card">
+            <div class="theory-card-header">
+              <div class="theory-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+              </div>
+              <h3>Rutherford's 1911 Discovery</h3>
+            </div>
+            <p>In 1911, Ernest Rutherford directed a beam of alpha particles (He<sup>2+</sup>) at a thin sheet of gold foil. Under Thomson's plum pudding model, all particles were expected to shoot straight through with minimal deflection.</p>
+            <p>Instead, roughly 1 in 8,000 particles bounced straight backward (scattering angle θ &gt; 90°), proving that the positive charge and almost all the mass of the atom are concentrated in an ultra-dense, tiny central core: the <strong>nucleus</strong>.</p>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="theory-card">
+            <div class="theory-card-header">
+              <div class="theory-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+              </div>
+              <h3>Coulomb Repulsion Force</h3>
+            </div>
+            <p>Alpha particles carry a charge of q<sub>1</sub> = +2e. The target nucleus carries a positive charge of q<sub>2</sub> = +Ze. The repulsive force follows Coulomb's inverse-square law:</p>
+            <div class="theory-formula-block">
+              F = (1 / 4πε<sub>0</sub>) • (2Z e<sup>2</sup>) / r<sup>2</sup>
+            </div>
+            <ul>
+              <li><strong>Z:</strong> Atomic number (number of protons)</li>
+              <li><strong>e:</strong> Elementary charge (1.602 × 10<sup>-19</sup> C)</li>
+              <li><strong>r:</strong> Distance between alpha particle and target nucleus</li>
+            </ul>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="theory-card">
+            <div class="theory-card-header">
+              <div class="theory-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14l6-6 6 6"></path></svg>
+              </div>
+              <h3>Scattering Angle vs Impact Parameter</h3>
+            </div>
+            <p>The deflection angle θ depends inversely on the impact parameter <strong>b</strong> (the perpendicular distance of closest approach if undeflected):</p>
+            <div class="theory-formula-block">
+              cot(θ / 2) = (4πε<sub>0</sub> E<sub>k</sub> / Z e<sup>2</sup>) • b
+            </div>
+            <ul>
+              <li>As impact parameter <strong>b → 0</strong>, head-on collision occurs, and θ → 180° (full backscattering).</li>
+              <li>As impact parameter <strong>b increases</strong>, deflection angle rapidly approaches 0°.</li>
+            </ul>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="theory-card">
+            <div class="theory-card-header">
+              <div class="theory-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              </div>
+              <h3>Distance of Closest Approach</h3>
+            </div>
+            <p>For a direct head-on collision (b = 0), all initial kinetic energy E<sub>k</sub> converts to electric potential energy at the turning point r<sub>min</sub>:</p>
+            <div class="theory-formula-block">
+              r<sub>min</sub> = (1 / 4πε<sub>0</sub>) • (2Z e<sup>2</sup>) / E<sub>k</sub>
+            </div>
+            <p>For a 7.7 MeV alpha particle on gold (Z = 79), r<sub>min</sub> ≈ 3.0 × 10<sup>-14</sup> m. This set the very first physical upper bound on the radius of the atomic nucleus!</p>
+          </div>
+
+          <!-- Card 5 -->
+          <div class="theory-card">
+            <div class="theory-card-header">
+              <div class="theory-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              </div>
+              <h3>Thomson's Plum Pudding Failure</h3>
+            </div>
+            <p>In Thomson's model, positive charge was distributed over a volume of radius R ≈ 10<sup>-10</sup> m. The maximum electric field at the surface of this sphere is:</p>
+            <div class="theory-formula-block">
+              E<sub>max</sub> = (1 / 4πε<sub>0</sub>) • (Z e) / R<sup>2</sup>
+            </div>
+            <p>Because R is four orders of magnitude larger than a nucleus, the electric field is 10<sup>8</sup> times weaker! An alpha particle passing through would experience maximum deflection of less than 0.05°, making backscattering physically impossible under Thomson's model.</p>
+          </div>
+
+          <!-- Card 6 -->
+          <div class="theory-card">
+            <div class="theory-card-header">
+              <div class="theory-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              </div>
+              <h3>Rutherford Differential Cross Section</h3>
+            </div>
+            <p>The number of alpha particles scattered at angle θ per unit solid angle is given by Rutherford's famous formula:</p>
+            <div class="theory-formula-block">
+              N(θ) ∝ 1 / sin<sup>4</sup>(θ / 2)
+            </div>
+            <p>This steep inverse fourth-power relationship explains why almost all particles pass straight through undeflected, while backscattering at large angles is exceedingly rare.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+<!-- CERTIFICATE MODAL -->
+  <div class="modal-backdrop" id="certModal">
+    <div class="cert-card">
+      <div class="cert-seal">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h2 style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 0.5rem;">Certificate of Mastery</h2>
+      <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.5rem;">Has successfully completed the Rutherford Scattering Laboratory & Assessment with distinction.</p>
+      <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-family: var(--font-mono); font-size: 1.1rem; color: #38bdf8;" id="certScoreDisplay">
+        Score: 5 / 5 (100%)
+      </div>
+      <button class="btn-mission-action" style="margin: 0 auto;" onclick="closeModal()">
+        Return to Lab
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* ======================================================== */
+    /* STATE MANAGEMENT & SIMULATION ENGINE                     */
+    /* ======================================================== */
+    const state = {
+      appMode: 'sim', // sim, missions, quiz, theory
+      model: 'rutherford', // rutherford, plumpudding
+      scale: 'nuclear', // nuclear, atomic
+      isPlaying: true,
+      gunStream: true,
+      audioEnabled: true,
+      showTraces: true,
+      showForceVector: true,
+      
+      // Physics parameters
+      energyMeV: 6.0,
+      rateLevel: 2, // 1=slow, 2=normal, 3=fast
+      protonsZ: 79, // Gold
+      neutronsN: 118,
+      
+      // Histogram counts
+      detector: {
+        undeflected: 0, // 0-10 deg
+        moderate: 0,    // 10-45 deg
+        large: 0,       // 45-90 deg
+        backscatter: 0, // 90-180 deg
+        total: 0
+      },
+
+      // Missions
+      missionsCompleted: [false, false, false, false, false],
+      xp: 0
+    };
+
+    // Element symbols lookup
+    const elementSymbols = {
+      20: 'Ca', 26: 'Fe', 29: 'Cu', 47: 'Ag', 78: 'Pt', 79: 'Au', 82: 'Pb', 92: 'U'
+    };
+
+    function getElementSymbol(z) {
+      return elementSymbols[z] || 'Z=' + z;
+    }
+
+    /* Web Audio Sound Synthesizer */
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playGeigerClick(deflection) {
+      if (!state.audioEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        // Higher deflection generates higher pitched chime
+        if (deflection > 45) {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880 + (deflection - 45) * 10, ctx.currentTime);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.12);
+        } else {
+          // Subtle geiger tick for straight alpha pass
+          const bufferSize = ctx.sampleRate * 0.005;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          gain.gain.setValueAtTime(0.02, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.005);
+          noise.connect(gain);
+          gain.connect(ctx.destination);
+          noise.start();
+        }
+      } catch (e) {}
+    }
+
+    function toggleAudio() {
+      state.audioEnabled = !state.audioEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      if (state.audioEnabled) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+
+    /* Navigation Mode */
+    function setAppMode(modeKey) {
+      if (typeof state !== 'undefined' && state && state.appMode !== undefined) state.appMode = modeKey;
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+        if (typeof initQuiz === 'function') initQuiz();
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('open');
+        el.classList.add('active');
+      }
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('open');
+        el.classList.remove('active');
+      }
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => {
+        m.classList.remove('open');
+        m.classList.remove('active');
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    /* Screen Selector */
+    function selectModel(model) {
+      state.model = model;
+      document.getElementById('tabRutherford').classList.toggle('active', model === 'rutherford');
+      document.getElementById('tabPlumPudding').classList.toggle('active', model === 'plumpudding');
+      
+      const scaleGrp = document.getElementById('scaleSelectorGroup');
+      const cardNuc = document.getElementById('cardNucleusProps');
+      const cardPlum = document.getElementById('cardPlumPuddingInfo');
+      const legProton = document.getElementById('legendProton');
+      const legNeutron = document.getElementById('legendNeutron');
+      const legElectron = document.getElementById('legendElectron');
+
+      if (model === 'rutherford') {
+        scaleGrp.style.display = 'flex';
+        cardNuc.style.display = 'block';
+        cardPlum.style.display = 'none';
+        legProton.style.display = 'flex';
+        legNeutron.style.display = 'flex';
+        legElectron.style.display = 'none';
+        document.getElementById('hudModelText').textContent = 'Rutherford Nuclear';
+      } else {
+        scaleGrp.style.display = 'none';
+        cardNuc.style.display = 'none';
+        cardPlum.style.display = 'block';
+        legProton.style.display = 'none';
+        legNeutron.style.display = 'none';
+        legElectron.style.display = 'flex';
+        document.getElementById('hudModelText').textContent = 'Thomson Plum Pudding';
+        document.getElementById('hudScaleText').textContent = '10⁻¹⁰ m (Atomic Sphere)';
+      }
+      particles = [];
+      traces = [];
+      resetDetector();
+      updateHUD();
+    }
+
+    function setScale(scale) {
+      state.scale = scale;
+      document.getElementById('scaleNuclear').classList.toggle('active', scale === 'nuclear');
+      document.getElementById('scaleAtomic').classList.toggle('active', scale === 'atomic');
+      
+      particles = [];
+      traces = [];
+      resetDetector();
+      updateHUD();
+    }
+
+    function updateHUD() {
+      if (state.model === 'rutherford') {
+        if (state.scale === 'nuclear') {
+          document.getElementById('hudScaleText').innerHTML = '10<sup>-14</sup> m (Single Nucleus)';
+        } else {
+          document.getElementById('hudScaleText').innerHTML = '10<sup>-10</sup> m (Gold Foil Lattice)';
+        }
+        const sym = getElementSymbol(state.protonsZ);
+        document.getElementById('hudTargetText').innerHTML = sym + ' (Z = ' + state.protonsZ + ', N = ' + state.neutronsN + ')';
+      } else {
+        document.getElementById('hudScaleText').innerHTML = '10<sup>-10</sup> m (Diffuse Atom Sphere)';
+        document.getElementById('hudTargetText').innerHTML = 'Diffuse Positive Sphere + Electrons';
+      }
+    }
+
+    /* Simulation Controls */
+    function togglePlayPause() {
+      state.isPlaying = !state.isPlaying;
+      const icon = document.getElementById('playIcon');
+      if (state.isPlaying) {
+        icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+      } else {
+        icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+      }
+    }
+
+    function stepSim() {
+      if (state.isPlaying) togglePlayPause();
+      updateSimulation(0.016);
+      drawSimulation();
+    }
+
+    function clearTraces() {
+      traces = [];
+    }
+
+    function toggleGunStream(val) {
+      state.gunStream = val;
+      document.getElementById('gunStatusDot').classList.toggle('active', val);
+    }
+
+    function toggleTraces(val) {
+      state.showTraces = val;
+      if (!val) traces = [];
+    }
+
+    function toggleForceVector(val) {
+      state.showForceVector = val;
+    }
+
+    function updateEnergy(val) {
+      state.energyMeV = parseFloat(val);
+      document.getElementById('valEnergy').textContent = state.energyMeV.toFixed(1) + ' MeV';
+    }
+
+    function updateRate(val) {
+      state.rateLevel = parseInt(val);
+      const labels = ['Low', 'Normal', 'High'];
+      document.getElementById('valRate').textContent = labels[state.rateLevel - 1];
+    }
+
+    function updateProtons(val) {
+      state.protonsZ = parseInt(val);
+      const sym = getElementSymbol(state.protonsZ);
+      document.getElementById('valProtons').textContent = state.protonsZ + ' (' + sym + ')';
+      document.getElementById('valTotalCharge').textContent = '+' + state.protonsZ + 'e';
+      document.getElementById('valTotalMass').textContent = (state.protonsZ + state.neutronsN) + ' u';
+      updateHUD();
+      generateNucleonClusters();
+    }
+
+    function updateNeutrons(val) {
+      state.neutronsN = parseInt(val);
+      document.getElementById('valNeutrons').textContent = state.neutronsN;
+      document.getElementById('valTotalMass').textContent = (state.protonsZ + state.neutronsN) + ' u';
+      updateHUD();
+      generateNucleonClusters();
+    }
+
+    function resetSimulation() {
+      state.energyMeV = 6.0;
+      state.protonsZ = 79;
+      state.neutronsN = 118;
+      state.rateLevel = 2;
+      state.gunStream = true;
+      state.showTraces = true;
+      state.showForceVector = true;
+      document.getElementById('sliderEnergy').value = 6.0;
+      document.getElementById('sliderProtons').value = 79;
+      document.getElementById('sliderNeutrons').value = 118;
+      document.getElementById('sliderRate').value = 2;
+      document.getElementById('chkGunStream').checked = true;
+      document.getElementById('chkTraces').checked = true;
+      document.getElementById('chkForceVector').checked = true;
+      document.getElementById('gunStatusDot').classList.add('active');
+      document.getElementById('valEnergy').textContent = '6.0 MeV';
+      document.getElementById('valProtons').textContent = '79 (Au)';
+      document.getElementById('valNeutrons').textContent = '118';
+      document.getElementById('valRate').textContent = 'Normal';
+      document.getElementById('valTotalCharge').textContent = '+79e';
+      document.getElementById('valTotalMass').textContent = '197 u';
+      particles = [];
+      traces = [];
+      resetDetector();
+      selectModel('rutherford');
+      setScale('nuclear');
+    }
+
+    function resetDetector() {
+      state.detector = { undeflected: 0, moderate: 0, large: 0, backscatter: 0, total: 0 };
+      updateHistogramUI();
+    }
+
+    function updateHistogramUI() {
+      const d = state.detector;
+      const total = d.total || 1;
+      document.getElementById('countUndeflected').textContent = d.undeflected;
+      document.getElementById('countModerate').textContent = d.moderate;
+      document.getElementById('countLarge').textContent = d.large;
+      document.getElementById('countBackscatter').textContent = d.backscatter;
+      document.getElementById('valTotalParticles').textContent = d.total;
+
+      document.getElementById('barUndeflected').style.width = ((d.undeflected / total) * 100).toFixed(1) + '%';
+      document.getElementById('barModerate').style.width = ((d.moderate / total) * 100).toFixed(1) + '%';
+      document.getElementById('barLarge').style.width = ((d.large / total) * 100).toFixed(1) + '%';
+      document.getElementById('barBackscatter').style.width = ((d.backscatter / total) * 100).toFixed(1) + '%';
+    }
+
+    function recordParticleScattering(initialAngle, finalAngle) {
+      let deltaAngle = Math.abs(finalAngle - initialAngle) * (180 / Math.PI);
+      while (deltaAngle > 180) deltaAngle = 360 - deltaAngle;
+
+      state.detector.total++;
+      if (deltaAngle < 10) {
+        state.detector.undeflected++;
+      } else if (deltaAngle < 45) {
+        state.detector.moderate++;
+      } else if (deltaAngle < 90) {
+        state.detector.large++;
+      } else {
+        state.detector.backscatter++;
+      }
+      playGeigerClick(deltaAngle);
+      updateHistogramUI();
+    }
+
+    /* ======================================================== */
+    /* 2D CANVAS PHYSICS SIMULATOR                              */
+    /* ======================================================== */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = 0, height = 0;
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      width = rect.width;
+      height = rect.height;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      generateNucleonClusters();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // Particle representation
+    let particles = [];
+    let traces = [];
+    let spawnTimer = 0;
+
+    // Nucleon visual spheres clustered around center
+    let nucleons = [];
+    function generateNucleonClusters() {
+      nucleons = [];
+      const total = Math.min(state.protonsZ + state.neutronsN, 220);
+      const protonCount = Math.round((state.protonsZ / (state.protonsZ + state.neutronsN)) * total);
+      
+      const coreRadius = Math.cbrt(total) * 4.2;
+      for (let i = 0; i < total; i++) {
+        const isProton = i < protonCount;
+        const u = Math.random();
+        const r = coreRadius * Math.cbrt(u);
+        const theta = Math.random() * 2 * Math.PI;
+        nucleons.push({
+          x: r * Math.cos(theta),
+          y: r * Math.sin(theta),
+          radius: 2.8,
+          isProton: isProton
+        });
+      }
+    }
+
+    // Plum pudding electrons
+    const ppElectrons = [];
+    for (let i = 0; i < 24; i++) {
+      const angle = Math.random() * 2 * Math.PI;
+      const dist = Math.sqrt(Math.random()) * 110;
+      ppElectrons.push({ x: dist * Math.cos(angle), y: dist * Math.sin(angle), r: 3.5 });
+    }
+
+    // Atomic scale grid lattice of nuclei
+    function getAtomicLattice() {
+      const lattice = [];
+      const spacing = 120;
+      const startX = width * 0.45;
+      const cols = 3;
+      const rows = Math.ceil(height / spacing) + 1;
+      for (let c = 0; c < cols; c++) {
+        for (let r = -1; r < rows; r++) {
+          lattice.push({
+            x: startX + c * spacing,
+            y: r * spacing + (c % 2 === 1 ? spacing * 0.5 : 0)
+          });
+        }
+      }
+      return lattice;
+    }
+
+    function spawnAlphaParticle() {
+      // Velocity scales with sqrt of kinetic energy
+      const baseSpeed = 480 * Math.sqrt(state.energyMeV / 6.0);
+      
+      let startY;
+      if (state.model === 'rutherford') {
+        if (state.scale === 'nuclear') {
+          // Fire at varying impact parameters from near center to edge
+          const maxImpact = height * 0.45;
+          startY = height * 0.5 + (Math.random() * 2 - 1) * maxImpact;
+        } else {
+          // Atomic scale: broad beam
+          startY = Math.random() * height;
+        }
+      } else {
+        // Plum Pudding: fire through diffuse atom centered at (width*0.5, height*0.5)
+        startY = height * 0.5 + (Math.random() * 2 - 1) * 130;
+      }
+
+      particles.push({
+        x: 20,
+        y: startY,
+        vx: baseSpeed,
+        vy: 0,
+        initialAngle: 0,
+        path: [{ x: 20, y: startY }],
+        recorded: false
+      });
+    }
+
+    function updateSimulation(dt) {
+      if (!state.isPlaying) return;
+
+      // Spawning alpha particles
+      if (state.gunStream) {
+        spawnTimer += dt;
+        const interval = state.rateLevel === 3 ? 0.04 : (state.rateLevel === 2 ? 0.08 : 0.16);
+        if (spawnTimer >= interval) {
+          spawnAlphaParticle();
+          spawnTimer = 0;
+        }
+      }
+
+      const centerX = width * 0.5;
+      const centerY = height * 0.5;
+
+      // Coulomb constant scaling factor
+      // F = k * (2 * Z) / r^2
+      const coulombScale = (state.protonsZ / 79) * 4.2e6 / (state.energyMeV / 6.0);
+
+      const lattice = state.scale === 'atomic' && state.model === 'rutherford' ? getAtomicLattice() : [];
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+
+        if (state.model === 'rutherford') {
+          if (state.scale === 'nuclear') {
+            // Single central nucleus Coulomb repulsion
+            const dx = p.x - centerX;
+            const dy = p.y - centerY;
+            const r2 = dx * dx + dy * dy;
+            const r = Math.sqrt(r2);
+
+            if (r > 6) {
+              const force = coulombScale / r2;
+              const ax = (dx / r) * force;
+              const ay = (dy / r) * force;
+
+              p.vx += ax * dt;
+              p.vy += ay * dt;
+            }
+          } else {
+            // Atomic Scale: lattice of tiny nuclei
+            for (let j = 0; j < lattice.length; j++) {
+              const nuc = lattice[j];
+              const dx = p.x - nuc.x;
+              const dy = p.y - nuc.y;
+              const r2 = dx * dx + dy * dy;
+              const r = Math.sqrt(r2);
+              if (r < 70 && r > 2) {
+                const force = (coulombScale * 0.04) / r2;
+                p.vx += (dx / r) * force * dt;
+                p.vy += (dy / r) * force * dt;
+              }
+            }
+          }
+        } else {
+          // Plum pudding: very slight soft drift inside diffuse radius 120px
+          const dx = p.x - centerX;
+          const dy = p.y - centerY;
+          const r = Math.sqrt(dx * dx + dy * dy);
+          if (r < 120) {
+            // Negligible repulsion, practically zero angle shift (< 0.05 deg)
+            p.vy += (Math.random() - 0.5) * 0.5;
+          }
+        }
+
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+
+        p.path.push({ x: p.x, y: p.y });
+
+        // Record scattering angle when exiting screen bounds
+        if (!p.recorded && (p.x > width + 40 || p.x < -40 || p.y < -40 || p.y > height + 40)) {
+          const finalAngle = Math.atan2(p.vy, p.vx);
+          recordParticleScattering(p.initialAngle, finalAngle);
+          p.recorded = true;
+
+          if (state.showTraces && p.path.length > 2) {
+            traces.push(p.path);
+            if (traces.length > 180) traces.shift();
+          }
+          particles.splice(i, 1);
+        }
+      }
+    }
+
+    function drawSimulation() {
+      ctx.clearRect(0, 0, width, height);
+
+      const centerX = width * 0.5;
+      const centerY = height * 0.5;
+
+      // Draw background reference grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.lineWidth = 1;
+      const gridGap = 40;
+      for (let x = 0; x < width; x += gridGap) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += gridGap) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Draw Screen Elements
+      if (state.model === 'rutherford') {
+        if (state.scale === 'nuclear') {
+          // Draw Coulomb Potential Glow around nucleus
+          const glowRadius = Math.min(width, height) * 0.35;
+          const radGrad = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, glowRadius);
+          radGrad.addColorStop(0, 'rgba(239, 68, 68, 0.25)');
+          radGrad.addColorStop(0.4, 'rgba(239, 68, 68, 0.08)');
+          radGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+          ctx.fillStyle = radGrad;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Draw Nucleons (Protons & Neutrons)
+          for (let i = 0; i < nucleons.length; i++) {
+            const n = nucleons[i];
+            ctx.beginPath();
+            ctx.arc(centerX + n.x, centerY + n.y, n.radius, 0, Math.PI * 2);
+            ctx.fillStyle = n.isProton ? '#ef4444' : '#94a3b8';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+
+          // Center nucleus label
+          ctx.font = '11px "Inter", sans-serif';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.textAlign = 'center';
+          ctx.fillText(getElementSymbol(state.protonsZ) + ' Nucleus (+ ' + state.protonsZ + 'e)', centerX, centerY + 45);
+
+        } else {
+          // Atomic Scale: Gold Foil Lattice
+          const lattice = getAtomicLattice();
+          for (let i = 0; i < lattice.length; i++) {
+            const nuc = lattice[i];
+            
+            // Outer electron cloud boundary
+            ctx.beginPath();
+            ctx.arc(nuc.x, nuc.y, 50, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.02)';
+            ctx.fill();
+            ctx.stroke();
+
+            // Tiny central nucleus
+            ctx.beginPath();
+            ctx.arc(nuc.x, nuc.y, 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+          }
+
+          ctx.font = '12px "Inter", sans-serif';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+          ctx.textAlign = 'center';
+          ctx.fillText('Gold Foil Lattice (Microscopic Atomic View)', centerX, height - 25);
+        }
+      } else {
+        // Plum Pudding Model
+        const atomRadius = 125;
+        
+        // Diffuse positive charge cloud
+        const ppGrad = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, atomRadius);
+        ppGrad.addColorStop(0, 'rgba(239, 68, 68, 0.28)');
+        ppGrad.addColorStop(0.8, 'rgba(239, 68, 68, 0.18)');
+        ppGrad.addColorStop(1, 'rgba(239, 68, 68, 0.05)');
+        ctx.fillStyle = ppGrad;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, atomRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Embedded electrons
+        for (let i = 0; i < ppElectrons.length; i++) {
+          const e = ppElectrons[i];
+          ctx.beginPath();
+          ctx.arc(centerX + e.x, centerY + e.y, e.r, 0, Math.PI * 2);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+
+        ctx.font = '12px "Inter", sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.textAlign = 'center';
+        ctx.fillText('Diffuse Positive Charge Sphere with Embedded Electrons', centerX, centerY + atomRadius + 24);
+      }
+
+      // Draw Alpha Gun Source
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(4, height * 0.5 - 28, 22, 56, [0, 8, 8, 0]);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = state.gunStream ? '#f97316' : '#64748b';
+      ctx.beginPath();
+      ctx.arc(22, height * 0.5, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw Historical Particle Traces
+      if (state.showTraces) {
+        ctx.lineWidth = 1.2;
+        for (let t = 0; t < traces.length; t++) {
+          const path = traces[t];
+          if (path.length < 2) continue;
+          ctx.beginPath();
+          ctx.moveTo(path[0].x, path[0].y);
+          for (let p = 1; p < path.length; p++) {
+            ctx.lineTo(path[p].x, path[p].y);
+          }
+          ctx.strokeStyle = 'rgba(249, 115, 22, 0.22)';
+          ctx.stroke();
+        }
+      }
+
+      // Draw Active Alpha Particles and current trace
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
+        // Current trajectory line
+        if (state.showTraces && p.path.length > 1) {
+          ctx.beginPath();
+          ctx.moveTo(p.path[0].x, p.path[0].y);
+          for (let k = 1; k < p.path.length; k++) {
+            ctx.lineTo(p.path[k].x, p.path[k].y);
+          }
+          ctx.strokeStyle = 'rgba(249, 115, 22, 0.65)';
+          ctx.lineWidth = 1.6;
+          ctx.stroke();
+        }
+
+        // Particle circle (He-4 nucleus)
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#f97316';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Electrostatic force vector
+        if (state.showForceVector && state.model === 'rutherford' && state.scale === 'nuclear') {
+          const dx = p.x - centerX;
+          const dy = p.y - centerY;
+          const r = Math.sqrt(dx * dx + dy * dy);
+          if (r < 220 && r > 10) {
+            const vectorLen = Math.min(60, 4000 / (r * 0.8));
+            const nx = dx / r;
+            const ny = dy / r;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x + nx * vectorLen, p.y + ny * vectorLen);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    // Animation Loop
+    let lastTime = performance.now();
+    function animate(time) {
+      const dt = Math.min(0.033, (time - lastTime) / 1000);
+      lastTime = time;
+
+      if (state.appMode === 'sim') {
+        updateSimulation(dt);
+        drawSimulation();
+      }
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    /* ======================================================== */
+    /* GUIDED MISSIONS LOGIC                                    */
+    /* ======================================================== */
+    function startMission(id) {
+      setAppMode('sim');
+      if (id === 1) {
+        selectModel('plumpudding');
+      } else if (id === 2) {
+        selectModel('rutherford');
+        setScale('nuclear');
+        updateEnergy(5.0);
+        updateProtons(79);
+      } else if (id === 3) {
+        selectModel('rutherford');
+        setScale('nuclear');
+        updateEnergy(3.0);
+      } else if (id === 4) {
+        selectModel('rutherford');
+        setScale('nuclear');
+        updateProtons(20);
+      } else if (id === 5) {
+        selectModel('rutherford');
+        setScale('atomic');
+      }
+
+      // Mark completed after user engages
+      setTimeout(() => {
+        if (!state.missionsCompleted[id - 1]) {
+          state.missionsCompleted[id - 1] = true;
+          state.xp += 150;
+          updateMissionUI();
+        }
+      }, 3500);
+    }
+
+    function updateMissionUI() {
+      let count = 0;
+      for (let i = 0; i < 5; i++) {
+        if (state.missionsCompleted[i]) {
+          count++;
+          const card = document.getElementById('mcard-' + (i + 1));
+          if (card && !card.classList.contains('completed')) {
+            card.classList.add('completed');
+            const btn = card.querySelector('.btn-mission-action');
+            if (btn) {
+              btn.outerHTML = '<div class="status-completed-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Completed</div>';
+            }
+          }
+        }
+      }
+      document.getElementById('missionBadgeCount').textContent = count + '/5';
+      document.getElementById('statMissionsCompleted').textContent = count + ' / 5';
+      document.getElementById('statMissionsXP').textContent = state.xp + ' XP';
+    }
+
+    /* ======================================================== */
+    /* ASSESSMENT QUIZ SYSTEM                                   */
+    /* ======================================================== */
+    const quizData = [
+      {
+        question: "Why did Ernest Rutherford conclude that the mass and positive charge of an atom must be concentrated in a tiny central nucleus?",
+        options: [
+          "Because all alpha particles were uniformly deflected by 45°",
+          "Because a small fraction (about 1 in 8,000) of alpha particles were scattered at angles greater than 90° (backscattered)",
+          "Because electrons were observed orbiting outside the atom at high speeds",
+          "Because alpha particles gained mass and slowed down when passing through gold foil"
+        ],
+        correct: 1,
+        explanation: "In Thomson's plum pudding model, positive charge was diffuse, creating an electric field far too weak to turn an alpha particle around. Observing backscattering (θ > 90°) proved that the positive charge and mass are packed into an ultra-dense nucleus."
+      },
+      {
+        question: "What is an alpha (α) particle comprised of?",
+        options: [
+          "A single energetic electron",
+          "A bundle of high-frequency gamma electromagnetic radiation",
+          "A helium-4 nucleus consisting of 2 protons and 2 neutrons (charge +2e)",
+          "A neutral proton-electron dipole pair"
+        ],
+        correct: 2,
+        explanation: "An alpha particle is the nucleus of a helium-4 atom (He²⁺), containing 2 protons and 2 neutrons, giving it a mass of 4 u and an electric charge of +2e."
+      },
+      {
+        question: "How does increasing the kinetic energy (E<sub>α</sub>) of the incident alpha particles affect their scattering deflection angle?",
+        options: [
+          "Deflection decreases because the particles travel faster, spending less time in the Coulomb repulsive field",
+          "Deflection increases because higher energy causes stronger electrostatic repulsion",
+          "Deflection remains unchanged because Coulomb's Law depends only on nuclear charge Z",
+          "The particle turns into a neutron through nuclear capture"
+        ],
+        correct: 0,
+        explanation: "Higher kinetic energy means higher velocity (v = √(2E/m)). The alpha particle spends less interaction time near the nucleus, resulting in a smaller impulse and reduced angular deflection."
+      },
+      {
+        question: "If the target foil is changed from Gold (Z = 79) to Aluminum (Z = 13), how does the probability of large-angle backscattering change?",
+        options: [
+          "It increases dramatically because lighter nuclei are easier to hit",
+          "It decreases substantially because Coulomb repulsion force is proportional to Z (F ∝ Z)",
+          "It remains exactly identical because both elements have identical lattice densities",
+          "It causes all alpha particles to be fully absorbed"
+        ],
+        correct: 1,
+        explanation: "The electrostatic force between alpha particles and the nucleus is directly proportional to the nuclear charge: F = (1 / 4πε₀) • (2Z e²) / r². A smaller Z produces a much weaker repulsive force, drastically reducing large-angle scattering."
+      },
+      {
+        question: "What does the observation that the vast majority (> 99.9%) of alpha particles pass straight through the gold foil undeflected indicate?",
+        options: [
+          "Gold foil has microscopic holes drilled through it",
+          "Alpha particles can pass directly through solid atomic nuclei without interaction",
+          "The atom is composed almost entirely of empty space",
+          "Electrons cancel out the nuclear charge everywhere in space"
+        ],
+        correct: 2,
+        explanation: "Because the nucleus has a radius of ~10⁻¹⁴ m while the atom has a radius of ~10⁻¹⁰ m, the volume of the nucleus is only 10⁻¹² of the atomic volume. Almost all alpha particles encounter only empty space!"
+      }
+    ];
+
+    let currentQ = 0;
+    let quizScore = 0;
+    let answered = false;
+
+    function initQuiz() {
+      currentQ = 0;
+      quizScore = 0;
+      answered = false;
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      answered = false;
+      const q = quizData[currentQ];
+      document.getElementById('quizQNumber').textContent = 'Question ' + (currentQ + 1) + ' of ' + quizData.length;
+      document.getElementById('quizScoreBadge').textContent = 'Score: ' + quizScore + ' / ' + quizData.length;
+      document.getElementById('quizProgressBar').style.width = ((currentQ / quizData.length) * 100) + '%';
+      document.getElementById('quizQTitle').innerHTML = q.question;
+
+      const optList = document.getElementById('quizOptionsList');
+      optList.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D'];
+
+      q.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-option-btn';
+        btn.innerHTML = '<div class="option-letter-badge">' + letters[idx] + '</div><span>' + optText + '</span>';
+        btn.onclick = () => selectQuizAnswer(idx);
+        optList.appendChild(btn);
+      });
+
+      const fb = document.getElementById('quizFeedbackBox');
+      fb.className = 'quiz-feedback-box';
+      fb.innerHTML = '';
+      document.getElementById('btnNextQuestion').style.display = 'none';
+    }
+
+    function selectQuizAnswer(chosenIdx) {
+      if (answered) return;
+      answered = true;
+
+      const q = quizData[currentQ];
+      const optButtons = document.querySelectorAll('.quiz-option-btn');
+      const fb = document.getElementById('quizFeedbackBox');
+
+      optButtons.forEach(btn => btn.disabled = true);
+
+      if (chosenIdx === q.correct) {
+        quizScore++;
+        optButtons[chosenIdx].classList.add('correct');
+        fb.className = 'quiz-feedback-box correct';
+        fb.innerHTML = '<strong>Correct!</strong> ' + q.explanation;
+      } else {
+        optButtons[chosenIdx].classList.add('incorrect');
+        optButtons[q.correct].classList.add('correct');
+        fb.className = 'quiz-feedback-box incorrect';
+        fb.innerHTML = '<strong>Incorrect.</strong> ' + q.explanation;
+      }
+
+      document.getElementById('quizScoreBadge').textContent = 'Score: ' + quizScore + ' / ' + quizData.length;
+      document.getElementById('btnNextQuestion').style.display = 'inline-flex';
+    }
+
+    function nextQuestion() {
+      currentQ++;
+      if (currentQ < quizData.length) {
+        renderQuestion();
+      } else {
+        // Complete Quiz
+        document.getElementById('quizProgressBar').style.width = '100%';
+        document.getElementById('certScoreDisplay').textContent = 'Score: ' + quizScore + ' / ' + quizData.length + ' (' + Math.round((quizScore / quizData.length) * 100) + '%)';
+        document.getElementById('certModal').classList.add('active');
+
+        // Post score to LMS host
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'ELEMENTA_SIM_SCORE',
+            simId: 'rutherford-scattering',
+            score: quizScore,
+            maxScore: quizData.length,
+            percentage: Math.round((quizScore / quizData.length) * 100)
+          }, '*');
+        }
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('certModal').classList.remove('active');
+      setAppMode('sim');
+    }
+
+    /* Lab Screenshot */
+    function captureScreenshot() {
+      const link = document.createElement('a');
+      link.download = 'rutherford-scattering-elementa.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    /* Fullscreen Toggle */
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    // Initialize simulation on load
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      selectModel('rutherford');
+      setScale('nuclear');
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

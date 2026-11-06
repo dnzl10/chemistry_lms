@@ -1,0 +1,2860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blackbody Spectrum | Elementa LMS Edition</title>
+  <meta name="description" content="Interactive Blackbody Spectrum Laboratory for Elementa LMS. Explore Planck's radiation law, Wien's displacement law, Stefan-Boltzmann power scaling, and the Ultraviolet Catastrophe with real-time spectrum physics.">
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(14, 23, 42, 0.78);
+      --bg-card-hover: rgba(22, 34, 60, 0.88);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.35);
+
+      --color-uv: #a855f7;        /* Ultraviolet: Purple */
+      --color-visible: #38bdf8;   /* Visible: Cyan/Rainbow */
+      --color-ir: #ef4444;        /* Infrared: Red */
+      --color-ha: #10b981;        /* Emerald */
+
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+      --topbar-height: 58px;
+      --tabs-height: 48px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #0d1527 0%, var(--bg-dark) 100%);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* Top Navigation Bar - Exact Acid-Base Structure */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Mode Switcher Buttons */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.85) 0%, rgba(99, 102, 241, 0.85) 100%);
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+    }
+
+    .mode-pill-btn .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 10px;
+    }
+
+    /* Right Action Bar */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    /* Screen Selector Header Bar */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .screen-tab-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .screen-tab-btn.active {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+    }
+
+    .screen-tab-number {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: #38bdf8;
+      color: #070a12;
+      font-weight: 800;
+    }
+
+    .equation-banner-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #94a3b8;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Workspace Body */
+    main.elementa-workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 18px;
+      max-width: 1680px;
+      width: 100%;
+      margin: 0 auto;
+      gap: 14px;
+    }
+
+    .mode-view {
+      display: none;
+      width: 100%;
+      flex: 1;
+    }
+
+    .mode-view.active {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Simulation Layout Grid */
+    .sim-layout-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+      flex: 1;
+      min-height: 620px;
+    }
+
+    @media (max-width: 1180px) {
+      .sim-layout-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Graph Stage Wrapper */
+    .graph-stage-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      border-radius: 14px;
+      border: 1px solid var(--border-glow);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .stage-toolbar {
+      padding: 8px 16px;
+      background: rgba(15, 23, 42, 0.9);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .stage-tools-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .checkbox-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .checkbox-chip input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: #38bdf8;
+      width: 14px;
+      height: 14px;
+    }
+
+    .graph-canvas-holder {
+      flex: 1;
+      position: relative;
+      cursor: crosshair;
+      min-height: 520px;
+      display: flex;
+    }
+
+    canvas.sim-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating Zoom Controls */
+    .zoom-ctrl-floating {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 4px;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+
+    .zoom-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 14px;
+    }
+
+    .zoom-btn:hover {
+      background: #38bdf8;
+      color: #070a12;
+    }
+
+    /* Sidebar Panels */
+    .sim-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel-header-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Star Visualizer Box */
+    .star-vis-box {
+      height: 130px;
+      border-radius: 10px;
+      background: radial-gradient(circle at center, #0b1329 0%, #030712 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .rgb-bars-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 11px;
+    }
+
+    .rgb-bar-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .rgb-meter {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    .rgb-meter-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.1s ease;
+    }
+
+    /* Thermometer & Temperature Slider */
+    .temp-control-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(10, 15, 28, 0.7);
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .thermometer-tube {
+      width: 18px;
+      height: 110px;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #94a3b8;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .thermometer-fill {
+      width: 100%;
+      background: #f59e0b;
+      transition: height 0.08s ease, background-color 0.2s;
+    }
+
+    .temp-controls-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .temp-readout-large {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    input[type="range"].styled-range {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #3b82f6, #f59e0b, #ef4444, #ffffff, #60a5fa);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"].styled-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #38bdf8;
+      border: 2px solid #fff;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    input[type="range"].styled-range::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .btn-nudge-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 4px;
+    }
+
+    .btn-nudge {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 4px 0;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .btn-nudge:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      border-color: #38bdf8;
+    }
+
+    /* Preset Buttons */
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preset-btn:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #fff;
+    }
+
+    /* Live Diagnostics Card */
+    .diag-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .diag-item {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .diag-item .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
+
+    .diag-item .val {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    /* Missions & Quiz Layouts */
+    .inquiry-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .mission-card-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mission-card-item:hover {
+      border-color: #38bdf8;
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    .mission-card-item.active {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+    }
+
+    .quiz-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quiz-option-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .quiz-option-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: #38bdf8;
+    }
+
+    .quiz-option-card.correct {
+      background: rgba(16, 185, 129, 0.2) !important;
+      border-color: #10b981 !important;
+      color: #fff;
+    }
+
+    .quiz-option-card.incorrect {
+      background: rgba(239, 68, 68, 0.2) !important;
+      border-color: #ef4444 !important;
+      color: #fff;
+    }
+
+    .feedback-box {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .feedback-box.correct {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #a7f3d0;
+    }
+
+    .feedback-box.incorrect {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fecdd3;
+    }
+
+    /* Theory screen layout */
+    .theory-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      line-height: 1.6;
+    }
+
+    .formula-callout {
+      background: rgba(0, 0, 0, 0.4);
+      border-left: 4px solid #38bdf8;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: #7dd3fc;
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .certificate-card {
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+      border-radius: 16px;
+      max-width: 640px;
+      width: 100%;
+      padding: 34px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  
+    /* ==========================================================================
+       ELEMENTA STANDARD MODALS (acid-base-solutions baseline)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    .modal-backdrop .scrollable-page-layout,
+    .modal-backdrop .inquiry-layout,
+    .modal-backdrop .theory-content,
+    .modal-backdrop .inquiry-suite-layout {
+      max-width: 100% !important;
+      padding: 0 !important;
+    }
+    .modal-backdrop .missions-header,
+    .modal-backdrop .theory-header {
+      margin-bottom: 16px !important;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- LMS Header - Exact Acid-Base Structure -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 2v7.31"></path>
+            <path d="M14 9.3V1.99"></path>
+            <path d="M8.5 2h7"></path>
+            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+            <path d="M5.52 16h12.96"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Physics</span>
+        <span>›</span>
+        <span>Quantum Mechanics & Thermodynamics</span>
+        <span>›</span>
+        <span class="current">Blackbody Spectrum</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Screen Selector Sub-Navigation Bar -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenPlanck" onclick="switchSimScreen('planck')">
+        <span class="screen-tab-number">1</span>
+        Planck Spectrum & Wien's Law
+      </button>
+      <button class="screen-tab-btn" id="tabScreenUvCatastrophe" onclick="switchSimScreen('uvCatastrophe')">
+        <span class="screen-tab-number">2</span>
+        UV Catastrophe (Classical vs Quantum)
+      </button>
+      <button class="screen-tab-btn" id="tabScreenEnergyBands" onclick="switchSimScreen('energyBands')">
+        <span class="screen-tab-number">3</span>
+        Stefan-Boltzmann & Energy Bands
+      </button>
+    </div>
+
+    <!-- Equation Banner Strip -->
+    <div class="equation-banner-strip" id="equationBanner">
+      <span style="color:#7dd3fc; font-weight:700;">Planck's Law:</span>
+      <span id="equationText">B(λ, T) = (2πhc² / λ⁵) / (e^(hc/λkT) - 1)  •  λ_peak • T = 2898 µm•K</span>
+    </div>
+  </nav>
+
+  <!-- Workspace Container -->
+  <main class="simulation-workspace elementa-workspace">
+
+    <!-- MODE 1: SIMULATION LAB -->
+    <div class="mode-view active" id="viewModeSim">
+      <div class="sim-layout-grid">
+        <!-- Main Graph Canvas Stage -->
+        <div class="graph-stage-card">
+          <!-- Toolbar -->
+          <div class="stage-toolbar">
+            <div class="stage-tools-group">
+              <span style="font-weight:700;color:#38bdf8;">Planck Radiation Spectrum</span>
+              <button class="action-btn" onclick="saveSnapshotCurve()" style="height:28px;padding:0 8px;font-size:11px;">
+                📷 Save Snapshot Curve
+              </button>
+              <button class="action-btn" onclick="clearSnapshotCurves()" style="height:28px;padding:0 8px;font-size:11px;">
+                Clear Snapshots
+              </button>
+              <div id="snapshotChipsList" style="display:flex;gap:4px;"></div>
+            </div>
+
+            <div class="stage-tools-group">
+              <label class="checkbox-chip">
+                <input type="checkbox" id="chkValues" checked onchange="state.showGraphValues = this.checked; drawSpectrumGraph();">
+                <span>Graph Values</span>
+              </label>
+              <label class="checkbox-chip">
+                <input type="checkbox" id="chkIntensity" checked onchange="state.showIntensity = this.checked; drawSpectrumGraph();">
+                <span>Intensity</span>
+              </label>
+              <label class="checkbox-chip">
+                <input type="checkbox" id="chkLabels" checked onchange="state.showLabels = this.checked; drawSpectrumGraph();">
+                <span>Labels</span>
+              </label>
+              <label class="checkbox-chip">
+                <input type="checkbox" id="chkRayleigh" onchange="state.showRayleighJeans = this.checked; drawSpectrumGraph();">
+                <span>Classical (Rayleigh-Jeans)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Canvas Holder -->
+          <div class="graph-canvas-holder" id="graphCanvasHolder">
+            <canvas class="sim-canvas" id="canvasGraph"></canvas>
+
+            <!-- Vertical Zoom Floating Buttons (Top-Left) -->
+            <div class="zoom-ctrl-floating" style="top:55px; left:12px;">
+              <button class="zoom-btn" title="Zoom In Y-Axis" onclick="zoomVertical(0.65)">+</button>
+              <button class="zoom-btn" title="Zoom Out Y-Axis" onclick="zoomVertical(1.5)">−</button>
+            </div>
+
+            <!-- Horizontal Zoom Floating Buttons (Bottom-Right) -->
+            <div class="zoom-ctrl-floating" style="bottom:65px; right:15px; flex-direction:row;">
+              <button class="zoom-btn" title="Zoom In X-Axis" onclick="zoomHorizontal(0.65)">+</button>
+              <button class="zoom-btn" title="Zoom Out X-Axis" onclick="zoomHorizontal(1.5)">−</button>
+              <button class="zoom-btn" title="Auto-Scale Axes" onclick="autoFitAxes()" style="width:auto;padding:0 8px;font-size:11px;">Auto Fit</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Control Sidebar -->
+        <aside class="simulation-sidebar sim-sidebar">
+          <!-- Blackbody Visualizer Card -->
+          <div class="panel-card">
+            <div class="panel-header-title">
+              <span>Blackbody Object</span>
+              <span id="starAnalogBadge" style="font-size:11px;color:#7dd3fc;">☀️ Sun Photosphere (5800 K)</span>
+            </div>
+
+            <div class="star-vis-box" id="starCanvasHolder">
+              <canvas id="canvasStar" style="width:100%;height:100%;display:block;"></canvas>
+            </div>
+
+            <!-- RGB Channels Readout -->
+            <div class="rgb-bars-container">
+              <div class="rgb-bar-col">
+                <div style="display:flex;justify-content:space-between;color:#f87171;">
+                  <span>R</span><span id="valR">255</span>
+                </div>
+                <div class="rgb-meter">
+                  <div class="rgb-meter-fill" id="barR" style="background:#ef4444;width:100%;"></div>
+                </div>
+              </div>
+              <div class="rgb-bar-col">
+                <div style="display:flex;justify-content:space-between;color:#4ade80;">
+                  <span>G</span><span id="valG">240</span>
+                </div>
+                <div class="rgb-meter">
+                  <div class="rgb-meter-fill" id="barG" style="background:#22c55e;width:94%;"></div>
+                </div>
+              </div>
+              <div class="rgb-bar-col">
+                <div style="display:flex;justify-content:space-between;color:#60a5fa;">
+                  <span>B</span><span id="valB">210</span>
+                </div>
+                <div class="rgb-meter">
+                  <div class="rgb-meter-fill" id="barB" style="background:#3b82f6;width:82%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Temperature Controller Card -->
+          <div class="panel-card">
+            <div class="panel-header-title">
+              <span>Temperature Controller</span>
+              <span style="font-size:10px;color:var(--text-dim);">200 K – 11,000 K</span>
+            </div>
+
+            <div class="temp-control-wrap">
+              <!-- Thermometer Graphic -->
+              <div class="thermometer-tube" id="thermometerTube">
+                <div class="thermometer-fill" id="thermometerFill" style="height:52%;"></div>
+              </div>
+
+              <!-- Slider & Readouts -->
+              <div class="temp-controls-right">
+                <div class="temp-readout-large">
+                  <span id="tempDisplayVal">5800 K</span>
+                </div>
+
+                <input type="range" class="styled-range" id="tempSlider" min="200" max="11000" step="10" value="5800" oninput="setTemperature(parseFloat(this.value))">
+
+                <!-- Nudge Buttons -->
+                <div class="btn-nudge-grid">
+                  <button class="btn-nudge" onclick="adjustTemperature(-100)">−100K</button>
+                  <button class="btn-nudge" onclick="adjustTemperature(-10)">−10K</button>
+                  <button class="btn-nudge" onclick="adjustTemperature(10)">+10K</button>
+                  <button class="btn-nudge" onclick="adjustTemperature(100)">+100K</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="preset-grid">
+              <button class="preset-btn" onclick="applyPreset('earth')">🌍 Earth (250 K)</button>
+              <button class="preset-btn" onclick="applyPreset('lightBulb')">💡 Bulb (3000 K)</button>
+              <button class="preset-btn" onclick="applyPreset('sun')">☀️ Sun (5800 K)</button>
+              <button class="preset-btn" onclick="applyPreset('siriusA')">⭐ Sirius A (9950 K)</button>
+            </div>
+          </div>
+
+          <!-- Live Physics Diagnostics Card -->
+          <div class="panel-card">
+            <div class="panel-header-title">
+              <span>Spectral Radiance Diagnostics</span>
+            </div>
+
+            <div class="diag-grid">
+              <div class="diag-item">
+                <span class="label">Peak Wavelength (λ peak)</span>
+                <span class="val" id="diagPeakWl">0.500 µm (500 nm)</span>
+              </div>
+              <div class="diag-item">
+                <span class="label">Peak Radiance B max</span>
+                <span class="val" id="diagPeakPower">84.46 MW/m²/µm</span>
+              </div>
+              <div class="diag-item" style="grid-column: span 2;">
+                <span class="label">Total Intensity (I = σ T⁴)</span>
+                <span class="val" id="diagIntensity">6.42e+7 W/m² (64.20 MW/m²)</span>
+              </div>
+            </div>
+
+            <!-- Energy Partition Breakdown -->
+            <div style="background:rgba(0,0,0,0.25);padding:8px;border-radius:6px;font-size:11px;display:flex;justify-content:space-between;">
+              <span>UV: <strong id="fracUV" style="color:#c084fc;">12.2%</strong></span>
+              <span>Visible: <strong id="fracVis" style="color:#38bdf8;">39.1%</strong></span>
+              <span>IR: <strong id="fracIR" style="color:#f87171;">48.7%</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- MODE 2: GUIDED MISSIONS -->
+    <div class="mode-view" id="viewModeMissions">
+      <div class="inquiry-layout">
+        <!-- Missions List Sidebar -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="mission-card-item active" id="mcard-1" onclick="selectMission(1)">
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;">
+              <span>Mission 1: The Solar Radiation Peak</span>
+              <span id="mbadge-1" style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8;">Pending</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">Explore the Sun's visible emission peak at 5800 K.</div>
+          </div>
+
+          <div class="mission-card-item" id="mcard-2" onclick="selectMission(2)">
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;">
+              <span>Mission 2: Wien's Inverse Proportionality</span>
+              <span id="mbadge-2" style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8;">Pending</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">Double temperature and observe λ peak halve.</div>
+          </div>
+
+          <div class="mission-card-item" id="mcard-3" onclick="selectMission(3)">
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;">
+              <span>Mission 3: Stefan-Boltzmann T⁴ Scaling</span>
+              <span id="mbadge-3" style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8;">Pending</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">Verify the 16x intensity jump from 3000 K to 6000 K.</div>
+          </div>
+
+          <div class="mission-card-item" id="mcard-4" onclick="selectMission(4)">
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;">
+              <span>Mission 4: Planetary Infrared Radiation</span>
+              <span id="mbadge-4" style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8;">Pending</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">Zoom out to inspect Earth's thermal emission at 250 K.</div>
+          </div>
+
+          <div class="mission-card-item" id="mcard-5" onclick="selectMission(5)">
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;">
+              <span>Mission 5: Multi-Star Spectroscopy</span>
+              <span id="mbadge-5" style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8;">Pending</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">Save reference curves to visually compare spectra.</div>
+          </div>
+        </div>
+
+        <!-- Mission Detail View -->
+        <div class="panel-card" style="padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h2 id="missionTitle" style="font-size:20px;color:#38bdf8;">Mission 1: The Solar Radiation Peak</h2>
+            <button class="action-btn" onclick="setAppMode('sim')" style="background:#0284c7;color:#fff;border:none;padding:6px 16px;">
+              Go to Simulation Lab ➜
+            </button>
+          </div>
+
+          <p id="missionDesc" style="font-size:14px;line-height:1.6;color:#cbd5e1;margin-top:12px;">
+            Set the blackbody temperature to the Sun preset (5800 K). Observe where the peak emission (λ peak) lies in the electromagnetic spectrum and verify it falls within the visible region (~0.50 µm).
+          </p>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;margin-top:16px;">
+            <h3 style="font-size:13px;text-transform:uppercase;color:#10b981;margin-bottom:8px;">Target Criteria:</h3>
+            <ul id="missionCriteriaList" style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px;">
+              <!-- Filled by JS -->
+            </ul>
+          </div>
+
+          <div id="missionCompletedBanner" style="display:none;background:rgba(16,185,129,0.15);border:1px solid #10b981;border-radius:10px;padding:16px;text-align:center;margin-top:16px;">
+            <h3 style="color:#10b981;font-size:16px;margin-bottom:4px;">🎉 Mission Objective Completed!</h3>
+            <p style="font-size:13px;color:#cbd5e1;">You have demonstrated empirical mastery of this thermodynamic principle. Verified in Elementa LMS gradebook.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- MODE 3: ASSESSMENT QUIZ -->
+    <div class="mode-view" id="viewModeQuiz">
+      <div style="max-width:860px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-card);padding:16px 20px;border-radius:12px;border:1px solid var(--border-glow);">
+          <div>
+            <h2 style="font-size:18px;color:#fff;">Blackbody Spectrum Mastery Assessment</h2>
+            <div style="font-size:12px;color:var(--text-muted);">Answer all 5 questions. Earn 80%+ to unlock your official Certificate of Mastery.</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:22px;font-weight:800;color:#38bdf8;" id="quizScoreVal">0 / 5</div>
+            <div style="font-size:11px;color:var(--text-dim);">Score</div>
+          </div>
+        </div>
+
+        <div id="quizQuestionsContainer" style="display:flex;flex-direction:column;gap:14px;">
+          <!-- Dynamically populated -->
+        </div>
+
+        <div style="text-align:center;padding:16px 0;">
+          <button class="action-btn" id="btnClaimCert" onclick="openCertificateModal()" style="padding:12px 28px;font-size:14px;background:#0284c7;color:#fff;border:none;margin:0 auto;display:none;">
+            🏆 View Official Certificate of Mastery
+          </button>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- MODE 4: THEORY & FORMULAS -->
+    <div class="mode-view" id="viewModeTheory">
+      <div class="theory-content">
+        <h2 style="color:#38bdf8;font-size:22px;">Theoretical Foundations of Blackbody Radiation</h2>
+        <p>A blackbody is an idealized physical body that absorbs all incident electromagnetic radiation, regardless of frequency or angle of incidence. When in thermal equilibrium, it emits electromagnetic radiation termed <strong>blackbody radiation</strong>.</p>
+
+        <h3 style="color:#7dd3fc;margin-top:10px;">1. Planck's Radiation Law</h3>
+        <p>In 1900, Max Planck derived the exact spectral power density distribution by postulating that energy is exchanged in discrete packets called quanta ($E = h
+u$):</p>
+        <div class="formula-callout">
+          B(λ, T) = (2π h c² / λ⁵) • [ 1 / (exp(hc / λkT) − 1) ]
+        </div>
+        <p>Where $h = 6.626 	imes 10^{-34}	ext{ J}cdot	ext{s}$, $c = 2.998 	imes 10^8	ext{ m/s}$, and $k = 1.381 	imes 10^{-23}	ext{ J/K}$.</p>
+
+        <h3 style="color:#7dd3fc;margin-top:10px;">2. Wien's Displacement Law</h3>
+        <p>By differentiating Planck's function and setting $dB/dlambda = 0$, we obtain the relationship between the peak wavelength and absolute temperature:</p>
+        <div class="formula-callout">
+          λ_peak • T = b ≈ 2897.8 µm • K   (or 2.898 × 10⁻³ m • K)
+        </div>
+        <p>As an object heats up, its peak emission shifts to shorter wavelengths (higher frequencies and photon energies).</p>
+
+        <h3 style="color:#7dd3fc;margin-top:10px;">3. Stefan-Boltzmann Law</h3>
+        <p>Integrating Planck's law across all wavelengths from $0$ to $infty$ yields the total radiant power per unit surface area:</p>
+        <div class="formula-callout">
+          I = ∫₀^∞ B(λ, T) dλ = σ T⁴   (where σ = 5.67037 × 10⁻⁸ W/m²K⁴)
+        </div>
+        <p>A doubling of temperature produces a $2^4 = 16$-fold increase in emitted radiant power!</p>
+
+        <h3 style="color:#7dd3fc;margin-top:10px;">4. The Ultraviolet Catastrophe</h3>
+        <p>Classical electrodynamics (Rayleigh-Jeans law: $B_{RJ} = rac{2ckT}{lambda^4}$) assumed continuous energy modes, predicting infinite energy at short wavelengths ($lambda 	o 0$). Planck's quantum hypothesis resolved this paradox, launching modern quantum mechanics.</p>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Certificate Modal -->
+  <div class="modal-overlay" id="certModal">
+    <div class="certificate-card">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#38bdf8;font-weight:700;">
+        ELEMENTA LEARNING MANAGEMENT SYSTEM • VERIFIED CREDENTIAL
+      </div>
+      <div style="font-size:24px;font-weight:800;background:linear-gradient(135deg, #38bdf8, #818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+        Certificate of Laboratory Mastery
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);">This certifies that</p>
+      <div style="font-size:22px;font-weight:800;color:#fff;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:6px;max-width:360px;margin:0 auto;">
+        Alex Vance
+      </div>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.5;">
+        has successfully completed all rigorous empirical investigations and theoretical examinations for
+        <strong>Blackbody Radiation Spectrum & Quantum Physics</strong> with verified distinction.
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0;background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);">Final Score</div>
+          <div style="font-size:15px;font-weight:700;color:#10b981;" id="certScore">100%</div>
+        </div>
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);">Verification Hash</div>
+          <div style="font-size:11px;font-family:monospace;color:#38bdf8;">ELM-BLACKBODY-99B</div>
+        </div>
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);">Date Issued</div>
+          <div style="font-size:12px;color:#fff;" id="certDate">October 3, 2026</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:center;gap:10px;">
+        <button class="action-btn" onclick="printCertificate()" style="background:#0284c7;color:#fff;border:none;">Print / Save PDF</button>
+        <button class="action-btn" onclick="closeCertificateModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       ELEMENTA SIMULATIONS: BLACKBODY SPECTRUM & QUANTUM RADIATION ENGINE
+       ========================================================================= */
+
+    // Physical Constants (CODATA 2018 / SI)
+    const CONSTANTS = {
+      h: 6.62607015e-34,      // Planck constant (J·s)
+      c: 299792458,           // Speed of light (m/s)
+      k: 1.380649e-23,        // Boltzmann constant (J/K)
+      sigma: 5.670374419e-8,  // Stefan-Boltzmann constant (W/(m²·K⁴))
+      wienB: 2897.7729,       // Wien's constant (µm·K)
+      c1: 374.177185,         // 2*pi*h*c^2 in MW·µm⁴/m²
+      c2: 14387.7688          // h*c/k in µm·K
+    };
+
+    // Preset Celestial & Terrestrial Objects
+    const PRESETS = {
+      earth: {
+        name: "Earth",
+        temp: 250,
+        desc: "Terrestrial thermal infrared radiator (250 K). Emits negligible visible light.",
+        analog: "Planetary Surface",
+        defaultXZoom: 24, // µm
+        defaultYZoom: 0.0001
+      },
+      lightBulb: {
+        name: "Light Bulb",
+        temp: 3000,
+        desc: "Incandescent tungsten filament (3000 K). Majority of emission is in near-infrared.",
+        analog: "Tungsten Filament",
+        defaultXZoom: 4.5,
+        defaultYZoom: 1.2
+      },
+      sun: {
+        name: "Sun",
+        temp: 5800,
+        desc: "Solar photosphere (5800 K, G2V yellow dwarf). Peak emission in visible cyan-green.",
+        analog: "Solar Photosphere",
+        defaultXZoom: 3.0,
+        defaultYZoom: 100
+      },
+      siriusA: {
+        name: "Sirius A",
+        temp: 9950,
+        desc: "A1V white-blue main sequence star (9950 K). Peak emission in near-ultraviolet.",
+        analog: "Blue-White Star",
+        defaultXZoom: 1.5,
+        defaultYZoom: 850
+      }
+    };
+
+    // State Variables
+    let appMode = 'sim'; // 'sim', 'missions', 'quiz', 'theory'
+    let activeScreen = 'planck'; // 'planck', 'uvCatastrophe', 'energyBands'
+    let audioEnabled = true;
+
+    // Simulation State
+    const state = {
+      temperature: 5800, // Kelvin (range: 200 - 11000 K)
+      xMaxWavelength: 3.0, // µm (X-axis max)
+      yMaxPower: 100, // MW/(m²·µm) (Y-axis max)
+      showGraphValues: true,
+      showIntensity: true,
+      showLabels: true,
+      showBands: true,
+      showRayleighJeans: false,
+      savedCurves: [], // Array of { temp, color, label }
+      isDraggingThermometer: false,
+      isDraggingWienPeak: false
+    };
+
+    // Guided Missions Definition
+    const missions = [
+      {
+        id: 1,
+        title: "The Solar Radiation Peak",
+        desc: "Set the blackbody temperature to the Sun preset (5800 K). Observe where the peak emission (λ peak) lies in the electromagnetic spectrum and verify it falls within the visible region (~0.50 µm).",
+        criteria: [
+          "Temperature set to 5800 K (Sun)",
+          "Verify λ peak ≈ 0.50 µm (500 nm)",
+          "Inspect visible spectral band"
+        ],
+        completed: false
+      },
+      {
+        id: 2,
+        title: "Wien's Inverse Proportionality",
+        desc: "Wien's Displacement Law states that peak wavelength is inversely proportional to temperature (λ peak = b / T). Test at 3000 K (λ peak ≈ 0.97 µm), then double the temperature to 6000 K and confirm that λ peak halves to ~0.48 µm.",
+        criteria: [
+          "Set temperature to 3000 K (record λ peak)",
+          "Increase temperature to 6000 K",
+          "Confirm λ peak is reduced by exactly 50%"
+        ],
+        tested3000: false,
+        tested6000: false,
+        completed: false
+      },
+      {
+        id: 3,
+        title: "Stefan-Boltzmann T⁴ Scaling",
+        desc: "The total radiant intensity scales with the fourth power of absolute temperature (I = σ T⁴). Increase temperature from 3000 K to 6000 K (factor of 2) and verify that total intensity increases by 2⁴ = 16 times!",
+        criteria: [
+          "Observe intensity at 3000 K (~4.59 MW/m²)",
+          "Observe intensity at 6000 K (~73.5 MW/m²)",
+          "Confirm 16x intensity scaling"
+        ],
+        completed: false
+      },
+      {
+        id: 4,
+        title: "Planetary Infrared Radiation",
+        desc: "Switch to the Earth preset (250 K). Because Earth is relatively cool, its thermal radiation is shifted far into the infrared. Zoom the horizontal axis out to 24 µm and observe that Earth emits almost zero visible light.",
+        criteria: [
+          "Set temperature to Earth (250 K)",
+          "Zoom horizontal axis out to ≥ 20 µm",
+          "Observe λ peak > 11 µm in thermal infrared"
+        ],
+        completed: false
+      },
+      {
+        id: 5,
+        title: "Comparative Multi-Star Spectroscopy",
+        desc: "Freeze reference curves using the 'Save Snapshot Curve' tool. Save at least two different snapshot curves (e.g., Sirius A and Light Bulb) on the graph simultaneously to compare their emission profiles.",
+        criteria: [
+          "Save first snapshot reference curve",
+          "Change temperature and save second reference curve",
+          "Compare visible vs infrared dominance on the graph"
+        ],
+        completed: false
+      }
+    ];
+
+    let selectedMissionId = 1;
+
+    // Scored Quiz Questions
+    const QUIZ_QUESTIONS = [
+      {
+        id: 1,
+        question: "According to Wien's Displacement Law (λ_peak • T = 2898 µm•K), what happens to the wavelength of peak emission as an object's temperature increases?",
+        options: [
+          "The peak wavelength shifts toward longer wavelengths (lower energy)",
+          "The peak wavelength shifts toward shorter wavelengths (higher frequency and photon energy)",
+          "The peak wavelength remains invariant regardless of temperature",
+          "The peak wavelength becomes zero at 0 °C"
+        ],
+        answer: 1,
+        explanation: "Correct! Wien's Law states λ_peak = b / T. As temperature increases, the peak wavelength decreases inversely, shifting from infrared into visible and ultraviolet."
+      },
+      {
+        id: 2,
+        question: "According to the Stefan-Boltzmann Law (I = σ T⁴), if a star's surface temperature is doubled (from T to 2T), by what factor does its radiant intensity (power per unit area) increase?",
+        options: [
+          "2 times",
+          "4 times (2²)",
+          "8 times (2³)",
+          "16 times (2⁴)"
+        ],
+        answer: 3,
+        explanation: "Correct! Radiant power scales with the fourth power of absolute temperature: (2T)⁴ = 2⁴ • T⁴ = 16 • T⁴."
+      },
+      {
+        id: 3,
+        question: "What physical failure in classical physics was termed the 'Ultraviolet Catastrophe' in the late 19th century?",
+        options: [
+          "Classical Rayleigh-Jeans theory predicted infinite energy output at very short wavelengths (λ → 0)",
+          "Ultraviolet light was thought to destroy atomic nuclei instantaneously",
+          "The assumption that light traveled slower in vacuum than in glass",
+          "The inability of telescopes to focus blue light"
+        ],
+        answer: 0,
+        explanation: "Correct! Classical equipartition theorem predicted spectral radiance B ∝ 1/λ⁴. Integrating over all wavelengths to zero resulted in an infinite total energy output. Max Planck resolved this by introducing discrete energy quanta E = hν."
+      },
+      {
+        id: 4,
+        question: "The Sun's surface temperature is approximately 5800 K. In which region of the electromagnetic spectrum is its peak spectral radiance located?",
+        options: [
+          "Far Infrared (~15 µm)",
+          "Microwave (~1 mm)",
+          "Visible Light (~0.50 µm / 500 nm, blue-green)",
+          "Hard X-Rays (~0.001 µm)"
+        ],
+        answer: 2,
+        explanation: "Correct! Using Wien's Law: λ_peak = 2898 / 5800 ≈ 0.50 µm = 500 nm, right in the visible blue-green spectrum, which matches the spectral peak of human daylight vision."
+      },
+      {
+        id: 5,
+        question: "The Earth has an average thermal temperature around 250–288 K. Why does the Earth NOT visibly glow in the dark like a lightbulb or red-hot stove burner?",
+        options: [
+          "Earth absorbs 100% of visible light without re-emitting anything",
+          "Earth's thermal emission peak is at ~11.6 µm in the infrared, and visible emission is astronomically close to zero",
+          "Earth has no thermal energy",
+          "Gravity prevents photons from escaping the surface"
+        ],
+        answer: 1,
+        explanation: "Correct! At 250 K, Wien's peak is at ~11.6 µm (deep in the thermal infrared). The probability of producing visible photons (0.4–0.7 µm) at this temperature is virtually zero."
+      }
+    ];
+
+    let userQuizAnswers = {};
+
+    /* =========================================================================
+       AUDIO SYNTHESIZER (Web Audio API)
+       ========================================================================= */
+    let audioCtx = null;
+    let thermalHumOsc = null;
+    let thermalHumGain = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, type, duration, gainVal) {
+      if (!audioEnabled) return;
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal || 0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + (duration || 0.15));
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + (duration || 0.15));
+      } catch(e) {}
+    }
+
+    function playClick() {
+      playTone(1000, 'sine', 0.04, 0.05);
+    }
+
+    function playShutter() {
+      if (!audioEnabled) return;
+      playTone(600, 'triangle', 0.06, 0.08);
+      setTimeout(() => playTone(900, 'sine', 0.08, 0.06), 70);
+    }
+
+    function playFanfare() {
+      if (!audioEnabled) return;
+      try {
+        initAudio();
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          setTimeout(() => playTone(freq, 'triangle', 0.22, 0.1), idx * 85);
+        });
+      } catch(e) {}
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      if (btn) {
+        btn.classList.toggle('active', audioEnabled);
+        btn.title = audioEnabled ? 'Sound FX: ON' : 'Sound FX: OFF';
+      }
+    }
+
+    /* =========================================================================
+       MATHEMATICAL & PHYSICAL FORMULAS
+       ========================================================================= */
+
+    // Planck's Law: Spectral Radiance B(lambda, T) in MW / (m² · µm)
+    // lambda is in µm, T is in Kelvin
+    function planckSpectralRadiance(lambda, T) {
+      if (lambda <= 0 || T <= 0) return 0;
+      // c1 = 374.177 MW·µm⁴/m²
+      // c2 = 14387.77 µm·K
+      const exponent = CONSTANTS.c2 / (lambda * T);
+      if (exponent > 700) return 0; // prevent Math.exp overflow
+      const denom = Math.pow(lambda, 5) * (Math.exp(exponent) - 1);
+      if (denom <= 0 || !isFinite(denom)) return 0;
+      return CONSTANTS.c1 / denom;
+    }
+
+    // Classical Rayleigh-Jeans Law: B_RJ(lambda, T) in MW / (m² · µm)
+    function rayleighJeansRadiance(lambda, T) {
+      if (lambda <= 0 || T <= 0) return 0;
+      // 2 * c * k * T / lambda^4
+      // In same units as planck: (c1 / c2) * T / lambda^4
+      const factor = (CONSTANTS.c1 / CONSTANTS.c2); // ≈ 0.0260066
+      return (factor * T) / Math.pow(lambda, 4);
+    }
+
+    // Wien's Displacement Law: Peak Wavelength in µm
+    function wienPeakWavelength(T) {
+      if (T <= 0) return 0;
+      return CONSTANTS.wienB / T;
+    }
+
+    // Stefan-Boltzmann Law: Total Radiant Intensity in W/m²
+    function stefanBoltzmannIntensity(T) {
+      return CONSTANTS.sigma * Math.pow(T, 4);
+    }
+
+    // Convert Temperature (Kelvin) to RGB color
+    function temperatureToRGB(T) {
+      // 1. PhET Renormalized RGB method for physical fidelity:
+      // Sampling red (650 nm), green (550 nm), blue (450 nm)
+      const rRad = planckSpectralRadiance(0.650, T);
+      const gRad = planckSpectralRadiance(0.550, T);
+      const bRad = planckSpectralRadiance(0.450, T);
+      const maxRad = Math.max(rRad, gRad, bRad);
+
+      let r = 0, g = 0, b = 0;
+      if (maxRad > 0) {
+        // Temperature brightness scaling
+        const renormT = Math.max(0, T - 798);
+        const brightness = Math.min(1.0, 0.02 * Math.sqrt(renormT));
+
+        r = Math.floor(255 * brightness * (rRad / maxRad));
+        g = Math.floor(255 * brightness * (gRad / maxRad));
+        b = Math.floor(255 * brightness * (bRad / maxRad));
+      }
+
+      // 2. Also calculate normalized chromaticity for the star surface
+      // (ensures high temperature stars look brilliant blue-white)
+      let cr = 0, cg = 0, cb = 0;
+      const tNorm = T / 100;
+      if (tNorm <= 66) {
+        cr = 255;
+        cg = 99.4708025861 * Math.log(tNorm) - 161.1195681661;
+        if (tNorm <= 19) cb = 0;
+        else cb = 138.5177312231 * Math.log(tNorm - 10) - 305.0447927307;
+      } else {
+        cr = 329.698727446 * Math.pow(tNorm - 60, -0.1332047592);
+        cg = 288.1221695283 * Math.pow(tNorm - 60, -0.0755148492);
+        cb = 255;
+      }
+      cr = Math.max(0, Math.min(255, Math.round(cr)));
+      cg = Math.max(0, Math.min(255, Math.round(cg)));
+      cb = Math.max(0, Math.min(255, Math.round(cb)));
+
+      // If temperature is below 800K, it fades toward charcoal black
+      const visFade = Math.min(1.0, Math.max(0, (T - 400) / 1000));
+      const starR = Math.round(cr * visFade);
+      const starG = Math.round(cg * visFade);
+      const starB = Math.round(cb * visFade);
+
+      return {
+        r: r,
+        g: g,
+        b: b,
+        starColor: 'rgb(' + starR + ',' + starG + ',' + starB + ')',
+        rgbChannels: { r: starR, g: starG, b: starB }
+      };
+    }
+
+    // Numerical integration of Planck curve into spectral fractions (UV, Visible, IR)
+    function calculateSpectralFractions(T) {
+      // Integration bounds in µm
+      // UV: 0 to 0.38 µm
+      // Visible: 0.38 to 0.78 µm
+      // IR: > 0.78 µm
+      let uvSum = 0, visSum = 0, irSum = 0;
+      const steps = 150;
+
+      // UV integration (0.01 to 0.38)
+      const dUv = (0.38 - 0.01) / steps;
+      for (let i = 0; i < steps; i++) {
+        const l = 0.01 + (i + 0.5) * dUv;
+        uvSum += planckSpectralRadiance(l, T) * dUv;
+      }
+
+      // Visible integration (0.38 to 0.78)
+      const dVis = (0.78 - 0.38) / steps;
+      for (let i = 0; i < steps; i++) {
+        const l = 0.38 + (i + 0.5) * dVis;
+        visSum += planckSpectralRadiance(l, T) * dVis;
+      }
+
+      // IR integration (0.78 to 30.0)
+      const dIr = (30.0 - 0.78) / steps;
+      for (let i = 0; i < steps; i++) {
+        const l = 0.78 + (i + 0.5) * dIr;
+        irSum += planckSpectralRadiance(l, T) * dIr;
+      }
+
+      const total = uvSum + visSum + irSum;
+      if (total <= 0) return { uv: 0, vis: 0, ir: 100 };
+
+      return {
+        uv: Math.round((uvSum / total) * 1000) / 10,
+        vis: Math.round((visSum / total) * 1000) / 10,
+        ir: Math.round((irSum / total) * 1000) / 10
+      };
+    }
+
+    /* =========================================================================
+       CANVAS RENDERING: BLACKBODY SPECTRUM GRAPH
+       ========================================================================= */
+    const canvasGraph = document.getElementById('canvasGraph');
+    const ctxGraph = canvasGraph.getContext('2d');
+
+    const canvasStar = document.getElementById('canvasStar');
+    const ctxStar = canvasStar.getContext('2d');
+
+    function resizeCanvases() {
+      const holderG = document.getElementById('graphCanvasHolder');
+      if (holderG) {
+        const dpr = window.devicePixelRatio || 1;
+        canvasGraph.width = holderG.clientWidth * dpr;
+        canvasGraph.height = holderG.clientHeight * dpr;
+        ctxGraph.setTransform(1, 0, 0, 1, 0, 0);
+        ctxGraph.scale(dpr, dpr);
+      }
+
+      const holderS = document.getElementById('starCanvasHolder');
+      if (holderS) {
+        const dpr = window.devicePixelRatio || 1;
+        canvasStar.width = holderS.clientWidth * dpr;
+        canvasStar.height = holderS.clientHeight * dpr;
+        ctxStar.setTransform(1, 0, 0, 1, 0, 0);
+        ctxStar.scale(dpr, dpr);
+      }
+
+      drawCurrentSimulation();
+    }
+
+    window.addEventListener('resize', resizeCanvases);
+
+    function drawCurrentSimulation() {
+      drawSpectrumGraph();
+      drawGlowingStar();
+      updateDiagnosticsUI();
+      evaluateMissions();
+    }
+
+    // MAIN SPECTRUM GRAPH DRAW ROUTINE
+    function drawSpectrumGraph() {
+      const w = canvasGraph.width / (window.devicePixelRatio || 1);
+      const h = canvasGraph.height / (window.devicePixelRatio || 1);
+
+      ctxGraph.clearRect(0, 0, w, h);
+
+      // Margins & Plot Box
+      const padL = 75;
+      const padR = 30;
+      const padT = 45; // space for spectrum bands bar
+      const padB = 55;
+
+      const plotW = w - padL - padR;
+      const plotH = h - padT - padB;
+
+      // Coordinate Transform Helpers
+      function toX(lambda) {
+        return padL + (lambda / state.xMaxWavelength) * plotW;
+      }
+      function toY(power) {
+        return padT + plotH - (power / state.yMaxPower) * plotH;
+      }
+
+      // Background grid
+      ctxGraph.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctxGraph.lineWidth = 1;
+
+      // X Grid ticks
+      const xTickCount = 6;
+      for (let i = 0; i <= xTickCount; i++) {
+        const val = (i / xTickCount) * state.xMaxWavelength;
+        const gx = toX(val);
+        ctxGraph.beginPath();
+        ctxGraph.moveTo(gx, padT);
+        ctxGraph.lineTo(gx, padT + plotH);
+        ctxGraph.stroke();
+
+        ctxGraph.fillStyle = 'var(--text-dim)';
+        ctxGraph.font = '11px ui-monospace, SFMono-Regular, monospace';
+        ctxGraph.textAlign = 'center';
+        ctxGraph.fillText(val.toFixed(2), gx, padT + plotH + 18);
+      }
+
+      // Y Grid ticks
+      const yTickCount = 5;
+      for (let i = 0; i <= yTickCount; i++) {
+        const val = (i / yTickCount) * state.yMaxPower;
+        const gy = toY(val);
+        ctxGraph.beginPath();
+        ctxGraph.moveTo(padL, gy);
+        ctxGraph.lineTo(padL + plotW, gy);
+        ctxGraph.stroke();
+
+        ctxGraph.fillStyle = 'var(--text-dim)';
+        ctxGraph.font = '11px ui-monospace, SFMono-Regular, monospace';
+        ctxGraph.textAlign = 'right';
+        ctxGraph.fillText(formatScientificOrFixed(val), padL - 10, gy + 4);
+      }
+
+      // TOP ELECTROMAGNETIC SPECTRUM REGION BAR
+      if (state.showLabels) {
+        drawSpectrumRegionsBar(ctxGraph, padL, padT - 26, plotW, 20, state.xMaxWavelength);
+      }
+
+      // DRAW VISIBLE SPECTRUM VERTICAL RAINBOW BAND IN GRAPH AREA
+      if (state.showBands) {
+        const visLeft = Math.max(padL, toX(0.38));
+        const visRight = Math.min(padL + plotW, toX(0.78));
+        if (visRight > visLeft) {
+          const rainbowGrad = ctxGraph.createLinearGradient(visLeft, 0, visRight, 0);
+          rainbowGrad.addColorStop(0, 'rgba(120, 0, 255, 0.12)');
+          rainbowGrad.addColorStop(0.2, 'rgba(0, 80, 255, 0.14)');
+          rainbowGrad.addColorStop(0.4, 'rgba(0, 230, 255, 0.15)');
+          rainbowGrad.addColorStop(0.6, 'rgba(0, 255, 100, 0.15)');
+          rainbowGrad.addColorStop(0.8, 'rgba(255, 230, 0, 0.15)');
+          rainbowGrad.addColorStop(1, 'rgba(255, 30, 0, 0.12)');
+
+          ctxGraph.fillStyle = rainbowGrad;
+          ctxGraph.fillRect(visLeft, padT, visRight - visLeft, plotH);
+
+          // Subtle visible boundaries
+          ctxGraph.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctxGraph.setLineDash([3, 3]);
+          ctxGraph.beginPath();
+          ctxGraph.moveTo(visLeft, padT);
+          ctxGraph.lineTo(visLeft, padT + plotH);
+          ctxGraph.moveTo(visRight, padT);
+          ctxGraph.lineTo(visRight, padT + plotH);
+          ctxGraph.stroke();
+          ctxGraph.setLineDash([]);
+        }
+      }
+
+      // DRAW SAVED REFERENCE SNAPSHOT CURVES
+      state.savedCurves.forEach((snap, idx) => {
+        drawPlanckCurvePath(ctxGraph, snap.temp, state.xMaxWavelength, state.yMaxPower, toX, toY, padL, padT, plotW, plotH, snap.color, true);
+        // Tag label for snapshot
+        const sPeakWl = wienPeakWavelength(snap.temp);
+        const sPeakP = planckSpectralRadiance(sPeakWl, snap.temp);
+        const sx = toX(sPeakWl);
+        const sy = toY(sPeakP);
+        if (sx >= padL && sx <= padL + plotW && sy >= padT && sy <= padT + plotH) {
+          ctxGraph.fillStyle = snap.color;
+          ctxGraph.font = 'bold 10px sans-serif';
+          ctxGraph.textAlign = 'left';
+          ctxGraph.fillText(snap.label + ' (' + snap.temp + 'K)', sx + 8, sy - 6);
+        }
+      });
+
+      // DRAW RAYLEIGH-JEANS CLASSICAL CURVE (if active or on Screen 2)
+      if (state.showRayleighJeans || activeScreen === 'uvCatastrophe') {
+        drawRayleighJeansCurve(ctxGraph, state.temperature, state.xMaxWavelength, state.yMaxPower, toX, toY, padL, padT, plotW, plotH);
+      }
+
+      // DRAW MAIN PLANCK CURVE
+      const mainCurveColor = '#38bdf8';
+      drawPlanckCurvePath(ctxGraph, state.temperature, state.xMaxWavelength, state.yMaxPower, toX, toY, padL, padT, plotW, plotH, mainCurveColor, false, true);
+
+      // PEAK INDICATOR & WEIN'S LAW CROSSHAIR
+      const peakLambda = wienPeakWavelength(state.temperature);
+      const peakDensity = planckSpectralRadiance(peakLambda, state.temperature);
+      const peakX = toX(peakLambda);
+      const peakY = toY(peakDensity);
+
+      const isInsidePlot = (peakX >= padL && peakX <= padL + plotW && peakY >= padT && peakY <= padT + plotH);
+
+      if (isInsidePlot) {
+        // Dashed Crosshairs
+        ctxGraph.strokeStyle = 'rgba(244, 63, 94, 0.7)';
+        ctxGraph.lineWidth = 1.5;
+        ctxGraph.setLineDash([4, 4]);
+
+        // Vertical drop to X-axis
+        ctxGraph.beginPath();
+        ctxGraph.moveTo(peakX, peakY);
+        ctxGraph.lineTo(peakX, padT + plotH);
+        ctxGraph.stroke();
+
+        // Horizontal line to Y-axis
+        ctxGraph.beginPath();
+        ctxGraph.moveTo(padL, peakY);
+        ctxGraph.lineTo(peakX, peakY);
+        ctxGraph.stroke();
+        ctxGraph.setLineDash([]);
+
+        // Glowing Peak Bead
+        ctxGraph.fillStyle = '#f43f5e';
+        ctxGraph.beginPath();
+        ctxGraph.arc(peakX, peakY, 6, 0, Math.PI * 2);
+        ctxGraph.fill();
+        ctxGraph.strokeStyle = '#ffffff';
+        ctxGraph.lineWidth = 2;
+        ctxGraph.stroke();
+
+        // Graph Values Tooltip Badge
+        if (state.showGraphValues) {
+          const badgeText = 'λ peak = ' + peakLambda.toFixed(3) + ' µm (' + Math.round(peakLambda * 1000) + ' nm)';
+          const pwrText = 'B max = ' + peakDensity.toFixed(2) + ' MW/m²/µm';
+
+          ctxGraph.font = 'bold 11px ui-monospace, SFMono-Regular, monospace';
+          const tagW = Math.max(ctxGraph.measureText(badgeText).width, ctxGraph.measureText(pwrText).width) + 16;
+          const tagH = 36;
+          const tagX = Math.min(padL + plotW - tagW, Math.max(padL + 10, peakX - tagW / 2));
+          const tagY = Math.max(padT + 10, peakY - tagH - 12);
+
+          // Box
+          ctxGraph.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          ctxGraph.strokeStyle = '#f43f5e';
+          ctxGraph.lineWidth = 1.5;
+          roundRect(ctxGraph, tagX, tagY, tagW, tagH, 6, true, true);
+
+          ctxGraph.fillStyle = '#ffffff';
+          ctxGraph.textAlign = 'center';
+          ctxGraph.fillText(badgeText, tagX + tagW / 2, tagY + 15);
+          ctxGraph.fillStyle = '#38bdf8';
+          ctxGraph.fillText(pwrText, tagX + tagW / 2, tagY + 29);
+        }
+      }
+
+      // AXIS BORDER LINES
+      ctxGraph.strokeStyle = '#64748b';
+      ctxGraph.lineWidth = 2;
+      ctxGraph.beginPath();
+      // Y-axis
+      ctxGraph.moveTo(padL, padT);
+      ctxGraph.lineTo(padL, padT + plotH);
+      // X-axis
+      ctxGraph.lineTo(padL + plotW, padT + plotH);
+      ctxGraph.stroke();
+
+      // AXIS LABELS
+      ctxGraph.fillStyle = '#f8fafc';
+      ctxGraph.font = 'bold 12px sans-serif';
+      ctxGraph.textAlign = 'center';
+      // X-Axis Label
+      ctxGraph.fillText('Wavelength λ (µm)  •  [ 1 µm = 1000 nm ]', padL + plotW / 2, padT + plotH + 42);
+
+      // Y-Axis Label (Rotated)
+      ctxGraph.save();
+      ctxGraph.translate(22, padT + plotH / 2);
+      ctxGraph.rotate(-Math.PI / 2);
+      ctxGraph.fillText('Spectral Power Density  B(λ, T)  [ MW / (m² · µm) ]', 0, 0);
+      ctxGraph.restore();
+    }
+
+    // Helper: Draw Planck Curve with high adaptive resolution
+    function drawPlanckCurvePath(ctx, temp, xMax, yMax, toX, toY, padL, padT, plotW, plotH, strokeColor, isDashed, fillUnder) {
+      const samples = 350;
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.moveTo(padL, padT + plotH);
+
+      const peakWl = wienPeakWavelength(temp);
+
+      for (let i = 0; i <= samples; i++) {
+        // Sample distribution: denser near peak
+        const frac = i / samples;
+        const l = frac * xMax;
+        const p = planckSpectralRadiance(l, temp);
+        const cx = toX(l);
+        const cy = Math.max(padT - 50, toY(p)); // clamp top
+
+        if (i === 0) ctx.lineTo(cx, cy);
+        else ctx.lineTo(cx, cy);
+      }
+
+      if (fillUnder) {
+        ctx.lineTo(toX(xMax), padT + plotH);
+        ctx.closePath();
+
+        // Area Fill Gradient
+        const areaGrad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+        areaGrad.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+        areaGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.15)');
+        areaGrad.addColorStop(1, 'rgba(56, 189, 248, 0.02)');
+        ctx.fillStyle = areaGrad;
+        ctx.fill();
+      }
+
+      // Stroke Line
+      ctx.beginPath();
+      for (let i = 0; i <= samples; i++) {
+        const frac = i / samples;
+        const l = frac * xMax;
+        const p = planckSpectralRadiance(l, temp);
+        const cx = toX(l);
+        const cy = Math.max(padT - 10, toY(p));
+
+        if (i === 0) ctx.moveTo(cx, cy);
+        else ctx.lineTo(cx, cy);
+      }
+
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = isDashed ? 2 : 3;
+      if (isDashed) ctx.setLineDash([5, 4]);
+      else ctx.setLineDash([]);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // Helper: Draw Rayleigh-Jeans Curve (Ultraviolet Catastrophe)
+    function drawRayleighJeansCurve(ctx, temp, xMax, yMax, toX, toY, padL, padT, plotW, plotH) {
+      ctx.save();
+      ctx.beginPath();
+      let started = false;
+
+      // Start from 0.05 to prevent division by zero
+      for (let i = 1; i <= 250; i++) {
+        const l = (i / 250) * xMax;
+        const rjP = rayleighJeansRadiance(l, temp);
+        const cx = toX(l);
+        const cy = toY(rjP);
+
+        if (cy >= padT && cy <= padT + plotH) {
+          if (!started) {
+            ctx.moveTo(cx, cy);
+            started = true;
+          } else {
+            ctx.lineTo(cx, cy);
+          }
+        }
+      }
+
+      ctx.strokeStyle = '#ef4444'; // Red for classical catastrophe
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 3]);
+      ctx.stroke();
+
+      // Label on Rayleigh-Jeans curve
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Classical (Rayleigh-Jeans: λ⁻⁴ → ∞)', toX(xMax * 0.35), padT + 30);
+
+      ctx.restore();
+    }
+
+    // Helper: Draw Electromagnetic Spectrum Regions Bar
+    function drawSpectrumRegionsBar(ctx, bx, by, bw, bh, xMax) {
+      // Regions:
+      // X-Ray: 0 to 0.01 µm
+      // UV: 0.01 to 0.38 µm
+      // Visible: 0.38 to 0.78 µm
+      // Infrared: 0.78 to xMax
+      const x0 = bx;
+      const xUvEnd = bx + (Math.min(xMax, 0.38) / xMax) * bw;
+      const xVisEnd = bx + (Math.min(xMax, 0.78) / xMax) * bw;
+      const xEnd = bx + bw;
+
+      // 1. Ultraviolet Section
+      if (xUvEnd > x0) {
+        ctx.fillStyle = '#581c87';
+        ctx.fillRect(x0, by, xUvEnd - x0, bh);
+        ctx.fillStyle = '#e9d5ff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        if (xUvEnd - x0 > 40) ctx.fillText('ULTRAVIOLET (UV)', (x0 + xUvEnd) / 2, by + 14);
+      }
+
+      // 2. Visible Section
+      if (xVisEnd > xUvEnd) {
+        const visGrad = ctx.createLinearGradient(xUvEnd, 0, xVisEnd, 0);
+        visGrad.addColorStop(0, '#7c3aed');
+        visGrad.addColorStop(0.2, '#2563eb');
+        visGrad.addColorStop(0.4, '#06b6d4');
+        visGrad.addColorStop(0.6, '#10b981');
+        visGrad.addColorStop(0.8, '#eab308');
+        visGrad.addColorStop(1, '#ef4444');
+
+        ctx.fillStyle = visGrad;
+        ctx.fillRect(xUvEnd, by, xVisEnd - xUvEnd, bh);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        if (xVisEnd - xUvEnd > 45) ctx.fillText('VISIBLE', (xUvEnd + xVisEnd) / 2, by + 14);
+      }
+
+      // 3. Infrared Section
+      if (xEnd > xVisEnd) {
+        ctx.fillStyle = '#7f1d1d';
+        ctx.fillRect(xVisEnd, by, xEnd - xVisEnd, bh);
+        ctx.fillStyle = '#fecaca';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        if (xEnd - xVisEnd > 40) ctx.fillText('INFRARED (IR)', (xVisEnd + xEnd) / 2, by + 14);
+      }
+
+      // Border outline
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, bw, bh);
+    }
+
+    // DRAW GLOWING BLACKBODY STAR / OBJECT
+    function drawGlowingStar() {
+      const sw = canvasStar.width / (window.devicePixelRatio || 1);
+      const sh = canvasStar.height / (window.devicePixelRatio || 1);
+
+      ctxStar.clearRect(0, 0, sw, sh);
+
+      const cx = sw / 2;
+      const cy = sh / 2;
+      const baseRadius = 45;
+
+      const colorData = temperatureToRGB(state.temperature);
+
+      // Corona / Halo expansion with temperature
+      // Higher temperature = larger glowing corona
+      const haloExpansion = Math.min(50, Math.sqrt(state.temperature) * 0.45);
+      const outerRadius = baseRadius + haloExpansion;
+
+      // Outer Corona Gradient
+      const coronaGrad = ctxStar.createRadialGradient(cx, cy, baseRadius * 0.7, cx, cy, outerRadius);
+      coronaGrad.addColorStop(0, colorData.starColor);
+      coronaGrad.addColorStop(0.5, colorData.starColor.replace('rgb', 'rgba').replace(')', ',0.4)'));
+      coronaGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctxStar.fillStyle = coronaGrad;
+      ctxStar.beginPath();
+      ctxStar.arc(cx, cy, outerRadius, 0, Math.PI * 2);
+      ctxStar.fill();
+
+      // Main Star Sphere
+      const starGrad = ctxStar.createRadialGradient(cx - baseRadius * 0.3, cy - baseRadius * 0.3, baseRadius * 0.1, cx, cy, baseRadius);
+      starGrad.addColorStop(0, '#ffffff'); // bright core specular
+      starGrad.addColorStop(0.3, colorData.starColor);
+      starGrad.addColorStop(1, colorData.starColor);
+
+      ctxStar.fillStyle = starGrad;
+      ctxStar.beginPath();
+      ctxStar.arc(cx, cy, baseRadius, 0, Math.PI * 2);
+      ctxStar.fill();
+
+      // Star Limb Darkening Stroke
+      ctxStar.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctxStar.lineWidth = 1.5;
+      ctxStar.stroke();
+    }
+
+    // Helper: Round Rectangle
+    function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    // Helper: Format number with scientific notation or fixed
+    function formatScientificOrFixed(val) {
+      if (val === 0) return '0';
+      if (val < 0.01) return val.toExponential(1);
+      if (val >= 1000) return Math.round(val).toString();
+      return val.toFixed(1);
+    }
+
+    /* =========================================================================
+       UI CONTROLS & DIAGNOSTICS UPDATE
+       ========================================================================= */
+
+    function updateDiagnosticsUI() {
+      const T = state.temperature;
+      const peakWl = wienPeakWavelength(T);
+      const peakP = planckSpectralRadiance(peakWl, T);
+      const intensity = stefanBoltzmannIntensity(T);
+      const colorData = temperatureToRGB(T);
+      const fractions = calculateSpectralFractions(T);
+
+      // Temperature Readouts
+      const tempDisplay = document.getElementById('tempDisplayVal');
+      if (tempDisplay) tempDisplay.innerText = Math.round(T) + ' K';
+
+      const slider = document.getElementById('tempSlider');
+      if (slider) slider.value = Math.round(T);
+
+      // Thermometer Mercury Level
+      const mercuryFill = document.getElementById('thermometerFill');
+      if (mercuryFill) {
+        // Range 200 K to 11000 K
+        const frac = Math.max(0, Math.min(1, (T - 200) / (11000 - 200)));
+        mercuryFill.style.height = (frac * 100) + '%';
+        mercuryFill.style.backgroundColor = colorData.starColor;
+      }
+
+      // RGB Channel Readouts
+      const rBar = document.getElementById('barR');
+      const gBar = document.getElementById('barG');
+      const bBar = document.getElementById('barB');
+      const rVal = document.getElementById('valR');
+      const gVal = document.getElementById('valG');
+      const bVal = document.getElementById('valB');
+
+      if (rBar) rBar.style.width = (colorData.rgbChannels.r / 255 * 100) + '%';
+      if (gBar) gBar.style.width = (colorData.rgbChannels.g / 255 * 100) + '%';
+      if (bBar) bBar.style.width = (colorData.rgbChannels.b / 255 * 100) + '%';
+      if (rVal) rVal.innerText = colorData.rgbChannels.r;
+      if (gVal) gVal.innerText = colorData.rgbChannels.g;
+      if (bVal) bVal.innerText = colorData.rgbChannels.b;
+
+      // Celestial Analog Badge
+      const analogBadge = document.getElementById('starAnalogBadge');
+      if (analogBadge) {
+        if (Math.abs(T - 250) < 50) analogBadge.innerText = '🌍 Earth Analog (250 K)';
+        else if (Math.abs(T - 3000) < 200) analogBadge.innerText = '💡 Light Bulb (3000 K)';
+        else if (Math.abs(T - 5800) < 250) analogBadge.innerText = '☀️ Sun Photosphere (5800 K)';
+        else if (Math.abs(T - 9950) < 300) analogBadge.innerText = '⭐ Sirius A Star (9950 K)';
+        else if (T > 8000) analogBadge.innerText = '✨ Hot Blue Star (' + Math.round(T) + ' K)';
+        else if (T < 1000) analogBadge.innerText = '🌑 Infrared Object (' + Math.round(T) + ' K)';
+        else analogBadge.innerText = '🔥 Radiating Body (' + Math.round(T) + ' K)';
+      }
+
+      // Readout Diagnostics Cards
+      const peakWlEl = document.getElementById('diagPeakWl');
+      if (peakWlEl) peakWlEl.innerText = peakWl.toFixed(3) + ' µm (' + Math.round(peakWl * 1000) + ' nm)';
+
+      const peakPEl = document.getElementById('diagPeakPower');
+      if (peakPEl) peakPEl.innerText = formatScientificOrFixed(peakP) + ' MW/m²/µm';
+
+      const intensEl = document.getElementById('diagIntensity');
+      if (intensEl) {
+        const mwVal = intensity / 1e6;
+        intensEl.innerText = intensity.toExponential(2) + ' W/m² (' + mwVal.toFixed(2) + ' MW/m²)';
+      }
+
+      // Fractions Breakdown
+      const uvFrac = document.getElementById('fracUV');
+      const visFrac = document.getElementById('fracVis');
+      const irFrac = document.getElementById('fracIR');
+      if (uvFrac) uvFrac.innerText = fractions.uv + '%';
+      if (visFrac) visFrac.innerText = fractions.vis + '%';
+      if (irFrac) irFrac.innerText = fractions.ir + '%';
+    }
+
+    // SET TEMPERATURE
+    function setTemperature(newT) {
+      state.temperature = Math.max(200, Math.min(11000, newT));
+
+      // Check Mission 2 and 3 tracking
+      if (Math.abs(state.temperature - 3000) < 50) {
+        missions[1].tested3000 = true;
+      }
+      if (Math.abs(state.temperature - 6000) < 50) {
+        missions[1].tested6000 = true;
+      }
+
+      drawCurrentSimulation();
+    }
+
+    function adjustTemperature(delta) {
+      setTemperature(state.temperature + delta);
+      playClick();
+    }
+
+    function applyPreset(presetKey) {
+      const preset = PRESETS[presetKey];
+      if (!preset) return;
+      setTemperature(preset.temp);
+      state.xMaxWavelength = preset.defaultXZoom;
+      state.yMaxPower = preset.defaultYZoom;
+      playClick();
+      drawCurrentSimulation();
+    }
+
+    // ZOOM CONTROLS
+    function zoomHorizontal(factor) {
+      // Zoom in (factor < 1) or out (factor > 1)
+      state.xMaxWavelength = Math.max(0.75, Math.min(48.0, state.xMaxWavelength * factor));
+      playClick();
+      drawSpectrumGraph();
+    }
+
+    function zoomVertical(factor) {
+      state.yMaxPower = Math.max(0.0001, Math.min(2500, state.yMaxPower * factor));
+      playClick();
+      drawSpectrumGraph();
+    }
+
+    function autoFitAxes() {
+      const peakWl = wienPeakWavelength(state.temperature);
+      const peakP = planckSpectralRadiance(peakWl, state.temperature);
+
+      // Auto scale: xMax at ~2.5x peak wavelength, yMax at ~1.25x peak power
+      state.xMaxWavelength = Math.max(0.75, Math.min(48.0, peakWl * 2.5));
+      state.yMaxPower = Math.max(0.0001, Math.min(2500, peakP * 1.25));
+
+      playClick();
+      drawSpectrumGraph();
+    }
+
+    // SNAPSHOT COMPARISON CURVES
+    function saveSnapshotCurve() {
+      if (state.savedCurves.length >= 3) {
+        alert("Maximum 3 snapshot curves reached. Click 'Clear Snapshots' to save new ones.");
+        return;
+      }
+
+      const colors = ['#f59e0b', '#34d399', '#a855f7'];
+      const chosenColor = colors[state.savedCurves.length];
+      const T = Math.round(state.temperature);
+
+      let label = T + 'K';
+      if (Math.abs(T - 250) < 50) label = 'Earth';
+      else if (Math.abs(T - 3000) < 100) label = 'Bulb';
+      else if (Math.abs(T - 5800) < 150) label = 'Sun';
+      else if (Math.abs(T - 9950) < 200) label = 'Sirius A';
+
+      state.savedCurves.push({
+        temp: T,
+        color: chosenColor,
+        label: label
+      });
+
+      playShutter();
+      updateSnapshotChips();
+      drawSpectrumGraph();
+      evaluateMissions();
+    }
+
+    function clearSnapshotCurves() {
+      state.savedCurves = [];
+      playClick();
+      updateSnapshotChips();
+      drawSpectrumGraph();
+    }
+
+    function updateSnapshotChips() {
+      const container = document.getElementById('snapshotChipsList');
+      if (!container) return;
+      container.innerHTML = state.savedCurves.map((s, idx) => `
+        <span style="font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.06);border:1px solid ${s.color};color:${s.color};display:inline-flex;align-items:center;gap:4px;">
+          ● ${s.label} (${s.temp} K)
+        </span>
+      `).join('');
+    }
+
+    /* =========================================================================
+       SCREEN & MODE SWITCHING (Matching acid-base topbar)
+       ========================================================================= */
+
+    function setAppMode(modeKey) {
+      appMode = modeKey;
+      playClick();
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        setTimeout(resizeCanvases, 30);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    function switchSimScreen(screenKey) {
+      activeScreen = screenKey;
+      playClick();
+
+      const tabs = document.querySelectorAll('.screen-tab-btn');
+      tabs.forEach(t => t.classList.remove('active'));
+
+      const activeTab = document.getElementById('tabScreen' + capitalize(screenKey));
+      if (activeTab) activeTab.classList.add('active');
+
+      const bannerText = document.getElementById('equationText');
+      if (bannerText) {
+        if (screenKey === 'planck') {
+          bannerText.innerText = "B(λ, T) = (2πhc² / λ⁵) / (e^(hc/λkT) - 1)  •  λ_peak • T = 2898 µm•K";
+        } else if (screenKey === 'uvCatastrophe') {
+          bannerText.innerText = "Rayleigh-Jeans Divergence: B_RJ = (2ckT / λ⁴) → ∞ as λ → 0 (Ultraviolet Catastrophe)";
+        } else if (screenKey === 'energyBands') {
+          bannerText.innerText = "Stefan-Boltzmann Total Flux: I = ∫ B dλ = σ T⁴  (σ = 5.670 × 10⁻⁸ W/m²K⁴)";
+        }
+      }
+
+      drawCurrentSimulation();
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    /* =========================================================================
+       ELEMENTA GUIDED MISSIONS ENGINE
+       ========================================================================= */
+
+    function selectMission(missionId) {
+      selectedMissionId = missionId;
+      playClick();
+
+      for (let i = 1; i <= 5; i++) {
+        const card = document.getElementById('mcard-' + i);
+        if (card) card.classList.toggle('active', i === missionId);
+      }
+
+      const m = missions.find(x => x.id === missionId);
+      const titleEl = document.getElementById('missionTitle');
+      const descEl = document.getElementById('missionDesc');
+      const listEl = document.getElementById('missionCriteriaList');
+      const banner = document.getElementById('missionCompletedBanner');
+
+      if (titleEl) titleEl.innerText = 'Mission ' + m.id + ': ' + m.title;
+      if (descEl) descEl.innerText = m.desc;
+      if (listEl) {
+        listEl.innerHTML = m.criteria.map(c => `
+          <li style="display:flex;align-items:center;gap:8px;">
+            <span style="color:${m.completed ? 'var(--color-ha)' : 'var(--border-glow)'};">
+              ${m.completed ? '✓' : '○'}
+            </span>
+            <span>${c}</span>
+          </li>
+        `).join('');
+      }
+      if (banner) banner.style.display = m.completed ? 'block' : 'none';
+    }
+
+    function evaluateMissions() {
+      let anyChanged = false;
+
+      // Mission 1: The Solar Radiation Peak (5800 K)
+      if (!missions[0].completed) {
+        if (Math.abs(state.temperature - 5800) < 50) {
+          missions[0].completed = true;
+          anyChanged = true;
+        }
+      }
+
+      // Mission 2: Wien's Inverse Proportionality (tested 3000 K and 6000 K)
+      if (!missions[1].completed) {
+        if (missions[1].tested3000 && missions[1].tested6000) {
+          missions[1].completed = true;
+          anyChanged = true;
+        }
+      }
+
+      // Mission 3: Stefan-Boltzmann T^4 scaling (tested 6000K)
+      if (!missions[2].completed) {
+        if (missions[1].tested6000 && state.temperature >= 6000) {
+          missions[2].completed = true;
+          anyChanged = true;
+        }
+      }
+
+      // Mission 4: Planetary Infrared Radiation (Earth 250K with xMax >= 20)
+      if (!missions[3].completed) {
+        if (Math.abs(state.temperature - 250) < 50 && state.xMaxWavelength >= 20) {
+          missions[3].completed = true;
+          anyChanged = true;
+        }
+      }
+
+      // Mission 5: Comparative Multi-Star Spectroscopy (>= 2 snapshot curves)
+      if (!missions[4].completed) {
+        if (state.savedCurves.length >= 2) {
+          missions[4].completed = true;
+          anyChanged = true;
+        }
+      }
+
+      if (anyChanged) {
+        updateMissionUI();
+        playFanfare();
+        notifyLMS('ELEMENTA_MISSION_COMPLETE', {
+          completedMissions: missions.filter(m => m.completed).length,
+          totalMissions: 5
+        });
+      }
+    }
+
+    function updateMissionUI() {
+      const completedCount = missions.filter(m => m.completed).length;
+      const badge = document.getElementById('missionBadgeCount');
+      if (badge) badge.innerText = completedCount + '/5';
+
+      missions.forEach(m => {
+        const mBadge = document.getElementById('mbadge-' + m.id);
+        if (mBadge) {
+          mBadge.innerText = m.completed ? 'Mastered' : 'Pending';
+          mBadge.style.background = m.completed ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.08)';
+          mBadge.style.color = m.completed ? '#34d399' : '#94a3b8';
+        }
+      });
+
+      if (selectedMissionId) selectMission(selectedMissionId);
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ & LMS INTEGRATION
+       ========================================================================= */
+
+    function renderQuiz() {
+      const container = document.getElementById('quizQuestionsContainer');
+      if (!container) return;
+
+      container.innerHTML = QUIZ_QUESTIONS.map((q, qIdx) => {
+        const optionsHtml = q.options.map((opt, optIdx) => `
+          <div class="quiz-option-card" id="qopt-${qIdx}-${optIdx}" onclick="handleQuizAnswer(${qIdx}, ${optIdx})">
+            <span style="font-family:monospace;font-weight:700;color:var(--text-muted);width:20px;">
+              ${String.fromCharCode(65 + optIdx)})
+            </span>
+            <span>${opt}</span>
+          </div>
+        `).join('');
+
+        return `
+          <div class="quiz-card" id="qcard-${qIdx}">
+            <div style="font-weight:700;font-size:15px;line-height:1.4;">
+              <span style="color:#38bdf8;">Question ${qIdx + 1}:</span> ${q.question}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+              ${optionsHtml}
+            </div>
+            <div class="feedback-box" id="qfeedback-${qIdx}"></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleQuizAnswer(qIdx, optIdx) {
+      if (userQuizAnswers[qIdx] !== undefined) return;
+      userQuizAnswers[qIdx] = optIdx;
+
+      const q = QUIZ_QUESTIONS[qIdx];
+      const isCorrect = (optIdx === q.answer);
+      playTone(isCorrect ? 880 : 330, isCorrect ? 'triangle' : 'sawtooth', 0.2);
+
+      const optEl = document.getElementById(`qopt-${qIdx}-${optIdx}`);
+      if (optEl) optEl.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (!isCorrect) {
+        const correctOptEl = document.getElementById(`qopt-${qIdx}-${q.answer}`);
+        if (correctOptEl) correctOptEl.classList.add('correct');
+      }
+
+      const fb = document.getElementById(`qfeedback-${qIdx}`);
+      if (fb) {
+        fb.style.display = 'block';
+        fb.className = 'feedback-box ' + (isCorrect ? 'correct' : 'incorrect');
+        fb.innerHTML = `<strong>${isCorrect ? '✓ Correct!' : '✗ Incorrect.'}</strong> ${q.explanation}`;
+      }
+
+      // Tally Score
+      const correctCount = Object.keys(userQuizAnswers).filter(idx => userQuizAnswers[idx] === QUIZ_QUESTIONS[idx].answer).length;
+      const scoreVal = document.getElementById('quizScoreVal');
+      if (scoreVal) scoreVal.innerText = correctCount + ' / 5';
+
+      if (Object.keys(userQuizAnswers).length === 5) {
+        const pct = Math.round((correctCount / 5) * 100);
+        if (pct >= 80) {
+          const certBtn = document.getElementById('btnClaimCert');
+          if (certBtn) certBtn.style.display = 'inline-block';
+          playFanfare();
+        }
+
+        notifyLMS('ELEMENTA_GRADE_SUBMIT', {
+          score: pct,
+          maxScore: 100,
+          passed: pct >= 80,
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    function openCertificateModal() {
+      const correctCount = Object.keys(userQuizAnswers).filter(idx => userQuizAnswers[idx] === QUIZ_QUESTIONS[idx].answer).length;
+      const certScore = document.getElementById('certScore');
+      if (certScore) certScore.innerText = Math.round((correctCount / 5) * 100) + '%';
+      const certDate = document.getElementById('certDate');
+      if (certDate) {
+        certDate.innerText = new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+      const modal = document.getElementById('certModal');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeCertificateModal() {
+      const modal = document.getElementById('certModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function printCertificate() {
+      window.print();
+    }
+
+    // Reset Simulation
+    function resetSimulation() {
+      state.temperature = 5800;
+      state.xMaxWavelength = 3.0;
+      state.yMaxPower = 100;
+      state.savedCurves = [];
+      updateSnapshotChips();
+      playClick();
+      drawCurrentSimulation();
+    }
+
+    // Screenshot Capture
+    function captureScreenshot() {
+      const dataUrl = canvasGraph.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = 'elementa-blackbody-spectrum-' + Date.now() + '.png';
+      link.href = dataUrl;
+      link.click();
+      playClick();
+    }
+
+    // Toggle Fullscreen
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    // Elementa LMS Parent Bridge
+    function notifyLMS(type, payload) {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(Object.assign({
+          sender: 'ELEMENTA_BLACKBODY_SPECTRUM',
+          type: type
+        }, payload), '*');
+      }
+    }
+
+    // Initializer
+    window.addEventListener('DOMContentLoaded', () => {
+      renderQuiz();
+      selectMission(1);
+      setTimeout(() => {
+        resizeCanvases();
+        drawCurrentSimulation();
+      }, 60);
+    });
+
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

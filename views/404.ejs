@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : '404 - Reagent Not Found | Elementa LMS' %></title>
+    
+    <!-- Google Fonts: Outfit (Display) + Plus Jakarta Sans (Body) + JetBrains Mono (Diagnostics) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            950: '#040914',
+                            900: '#071124',
+                            850: '#0b1730',
+                            800: '#0f2042',
+                            700: '#172f5d',
+                            600: '#234482',
+                        },
+                        mabini: {
+                            maroon: '#7A1321',
+                            crimson: '#9E1B32',
+                            gold: '#D4AF37',
+                            amber: '#F59E0B',
+                        },
+                        chem: {
+                            cyan: '#00E5FF',
+                            teal: '#0D9488',
+                            emerald: '#10B981',
+                            violet: '#8B5CF6',
+                            plasma: '#38BDF8',
+                            rose: '#F43F5E'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Outfit', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    boxShadow: {
+                        'glow-cyan': '0 0 30px -5px rgba(0, 229, 255, 0.35)',
+                        'glow-gold': '0 0 25px -5px rgba(212, 175, 55, 0.35)',
+                        'glow-rose': '0 0 30px -5px rgba(244, 63, 94, 0.35)',
+                        'hud': '0 20px 50px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #040914;
+        }
+
+        /* Ambient Laboratory Background Overlay */
+        .ambient-bg {
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle at 50% 25%, rgba(0, 229, 255, 0.08) 0%, transparent 60%),
+                              radial-gradient(circle at 85% 75%, rgba(122, 19, 33, 0.12) 0%, transparent 55%),
+                              radial-gradient(circle at 15% 85%, rgba(13, 148, 136, 0.10) 0%, transparent 50%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Laboratory Grid Overlay */
+        .grid-pattern {
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Scanline Animation */
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* Flask Bubble Animation */
+        @keyframes bubbleUp {
+            0% { transform: translateY(0) scale(0.8); opacity: 0; }
+            50% { opacity: 0.9; }
+            100% { transform: translateY(-38px) scale(1.2); opacity: 0; }
+        }
+
+        .bubble-1 { animation: bubbleUp 2.4s infinite ease-in; }
+        .bubble-2 { animation: bubbleUp 3.1s infinite ease-in 0.8s; }
+        .bubble-3 { animation: bubbleUp 2.8s infinite ease-in 1.5s; }
+
+        @keyframes orbitSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .orbit-spin {
+            animation: orbitSpin 14s linear infinite;
+        }
+
+        .orbit-reverse {
+            animation: orbitSpin 18s linear infinite reverse;
+        }
+    </style>
+</head>
+
+<body class="min-h-full flex flex-col justify-between text-slate-200 antialiased relative selection:bg-cyan-500 selection:text-navy-950">
+    <div class="ambient-bg"></div>
+    <div class="grid-pattern"></div>
+    <div class="scanlines"></div>
+
+    <% 
+        const currentUser = (typeof user !== 'undefined' && user) ? user : null; 
+        const userRole = (typeof role !== 'undefined' && role) ? role : (currentUser ? currentUser.role : 'Guest');
+        const pathAttempted = (typeof requestedPath !== 'undefined' && requestedPath) ? requestedPath : '';
+        const customMsg = (typeof customMessage !== 'undefined' && customMessage) ? customMessage : null;
+        const statusCode = (typeof errorCode !== 'undefined' && errorCode) ? errorCode : 404;
+        const badgeText = (typeof errorBadge !== 'undefined' && errorBadge) ? errorBadge : (statusCode === 500 ? 'HTTP 500 • Containment Breach' : (statusCode === 403 ? 'HTTP 403 • Unregistered Account' : 'HTTP 404 • Missing Reagent / Catalyst'));
+        const headingText = (typeof errorTitle !== 'undefined' && errorTitle) ? errorTitle : (statusCode === 500 ? 'Internal Reaction Failure' : (statusCode === 403 ? 'Access Not Authorized' : 'Reaction Not Found'));
+    %>
+
+    <% 
+        const shouldShowHeader = (typeof hideHeader === 'undefined' || !hideHeader);
+    %>
+
+    <% if (shouldShowHeader) { %>
+    <!-- Top Navigation Header -->
+    <header class="relative z-10 w-full border-b border-white/5 bg-navy-950/70 backdrop-blur-md px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <a href="/" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-mabini-maroon to-navy-900 border border-mabini-gold/30 flex items-center justify-center p-1.5 shadow-glow-gold transition-transform group-hover:scale-105">
+                    <img src="/assets/logo.png" alt="Elementa Logo" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='/assets/mabini_logo1.png';">
+                </div>
+                <div>
+                    <div class="font-display font-bold text-lg tracking-wider text-white flex items-center gap-2">
+                        ELEMENTA <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-chem-cyan font-mono font-medium">LMS</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 font-sans tracking-wide">Mabini Colleges Inc. &bull; General Chemistry</div>
+                </div>
+            </a>
+
+            <!-- User Context Pill -->
+            <div class="flex items-center gap-3">
+                <% if (currentUser) { %>
+                    <div class="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-navy-900/80 border border-white/10 text-xs text-slate-300">
+                        <span class="w-2 h-2 rounded-full <%= userRole === 'Admin' ? 'bg-amber-400 animate-pulse' : (userRole === 'Teacher' ? 'bg-chem-cyan animate-pulse' : 'bg-emerald-400') %>"></span>
+                        <span class="font-medium text-white"><%= currentUser.first_name || currentUser.name || 'User' %></span>
+                        <span class="text-slate-500">|</span>
+                        <span class="font-mono text-[11px] font-semibold tracking-wider uppercase <%= userRole === 'Admin' ? 'text-amber-400' : (userRole === 'Teacher' ? 'text-chem-cyan' : 'text-emerald-400') %>">
+                            <%= userRole %>
+                        </span>
+                    </div>
+                <% } else { %>
+                    <a href="/login" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all">
+                        <svg class="w-3.5 h-3.5 text-chem-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        Sign In
+                    </a>
+                <% } %>
+            </div>
+        </div>
+    </header>
+    <% } %>
+
+    <!-- Main Content Container -->
+    <main class="relative z-10 flex-1 flex items-center justify-center px-4 py-12 md:py-16">
+        <div class="w-full max-w-3xl">
+            
+            <!-- Arcade Glass HUD Card -->
+            <div class="relative rounded-3xl bg-navy-900/80 border border-white/10 backdrop-blur-xl p-8 md:p-12 shadow-hud overflow-hidden">
+                <!-- Top Accent Bar -->
+                <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-chem-cyan via-chem-violet to-mabini-maroon"></div>
+
+                <!-- Corner Diagnostic Decals -->
+                <div class="absolute top-4 left-5 text-[10px] font-mono text-cyan-400/40 uppercase tracking-widest hidden sm:block">
+                    [SYS_ERR: FLASK_NOT_RESOLVED]
+                </div>
+                <div class="absolute top-4 right-5 text-[10px] font-mono text-cyan-400/40 uppercase tracking-widest hidden sm:block">
+                    [SECTOR: 0x404_NULL]
+                </div>
+
+                <div class="flex flex-col items-center text-center">
+                    
+                    <!-- Animated Chemistry / Arcade Graphic -->
+                    <div class="relative w-36 h-36 md:w-44 md:h-44 mb-6 flex items-center justify-center">
+                        <!-- Orbiting Ring 1 -->
+                        <div class="absolute inset-0 rounded-full border-2 border-dashed border-chem-cyan/30 orbit-spin"></div>
+                        <!-- Orbiting Ring 2 -->
+                        <div class="absolute inset-2 rounded-full border border-dotted border-chem-violet/30 orbit-reverse"></div>
+                        <!-- Inner Glow Core -->
+                        <div class="absolute inset-6 rounded-full bg-cyan-500/10 blur-xl"></div>
+                        
+                        <!-- Chemical Flask SVG Illustration -->
+                        <div class="relative z-10 w-24 h-24 md:w-28 md:h-28 text-chem-cyan filter drop-shadow-glow-cyan">
+                            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                                <!-- Flask Neck & Lip -->
+                                <path d="M26 8H38" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                                <path d="M28 8V24L14 48C12 51.5 14.5 56 18.5 56H45.5C49.5 56 52 51.5 50 48L36 24V8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                
+                                <!-- Liquid Level -->
+                                <path d="M17.5 42L22 35C24 32 28 32 30 35L34 41C36 44 40 44 42 41L46.5 42C48.5 44.5 47.5 52 45 52H19C16.5 52 15.5 44.5 17.5 42Z" fill="url(#liquidGradient)" opacity="0.8"/>
+                                
+                                <!-- Liquid Bubbles -->
+                                <circle cx="28" cy="46" r="2" fill="#00E5FF" class="bubble-1"/>
+                                <circle cx="36" cy="43" r="1.5" fill="#38BDF8" class="bubble-2"/>
+                                <circle cx="32" cy="48" r="2" fill="#8B5CF6" class="bubble-3"/>
+
+                                <!-- Atom Core in Vapor -->
+                                <circle cx="32" cy="18" r="2.5" fill="#F59E0B" />
+                                
+                                <defs>
+                                    <linearGradient id="liquidGradient" x1="16" y1="35" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+                                        <stop stop-color="#00E5FF"/>
+                                        <stop offset="0.6" stop-color="#0D9488"/>
+                                        <stop offset="1" stop-color="#8B5CF6"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+
+                        <!-- Isotope Badges (Floating) -->
+                        <div class="absolute -bottom-1 -left-2 px-2 py-0.5 rounded-md bg-navy-950 border border-chem-cyan/40 text-[11px] font-mono font-bold text-chem-cyan shadow-lg">
+                            <%= statusCode === 500 ? '5.00 u' : (statusCode === 403 ? '4.03 u' : '4.04 u') %>
+                        </div>
+                        <div class="absolute -top-1 -right-2 px-2 py-0.5 rounded-md bg-navy-950 border border-rose-500/40 text-[11px] font-mono font-bold text-rose-400 shadow-lg">
+                            STATE: <%= statusCode === 500 ? 'FAULT' : (statusCode === 403 ? 'FORBIDDEN' : 'NULL') %>
+                        </div>
+                    </div>
+
+                    <!-- Status Title & Tag -->
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono font-semibold tracking-wider uppercase mb-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping"></span>
+                        <%= badgeText %>
+                    </div>
+
+                    <h1 class="text-3xl md:text-5xl font-display font-extrabold text-white tracking-tight mb-3">
+                        <%= headingText %>
+                    </h1>
+
+                    <p class="text-sm md:text-base text-slate-300 max-w-lg mb-6 leading-relaxed">
+                        <% if (customMsg) { %>
+                            <%= customMsg %>
+                        <% } else { %>
+                            The experiment or page you are looking for has decayed, undergone vaporization, or does not exist on this station.
+                        <% } %>
+                    </p>
+
+                    <!-- Diagnostic Telemetry HUD -->
+                    <% if (pathAttempted) { %>
+                        <div class="w-full max-w-md bg-navy-950/80 border border-white/5 rounded-xl p-3.5 mb-8 text-left font-mono text-xs text-slate-400 flex items-center justify-between gap-3 overflow-hidden">
+                            <div class="flex items-center gap-2 overflow-hidden truncate">
+                                <span class="text-chem-cyan shrink-0">GET</span>
+                                <span class="text-slate-200 truncate" title="<%= pathAttempted %>"><%= pathAttempted %></span>
+                            </div>
+                            <button onclick="navigator.clipboard.writeText(window.location.href); this.innerText='COPIED'; setTimeout(() => this.innerText='COPY', 2000)" 
+                                    class="shrink-0 px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 transition-colors uppercase tracking-wider font-semibold">
+                                COPY
+                            </button>
+                        </div>
+                    <% } %>
+
+                    <!-- Primary Action Buttons (Role-Aware) -->
+                    <div class="flex flex-wrap items-center justify-center gap-3 w-full max-w-md mb-8">
+                        
+                        <!-- 1. Universal "Go Back" Button -->
+                        <button onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/'; }" 
+                                class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-sans font-semibold text-sm text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95 shadow-sm">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Go Back
+                        </button>
+
+                        <!-- 2. Role-Targeted Hub Button -->
+                        <% if (userRole === 'Admin') { %>
+                            <a href="/admin/dashboard" 
+                               class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-sans font-semibold text-sm text-navy-950 bg-gradient-to-r from-mabini-gold to-amber-400 hover:from-amber-400 hover:to-mabini-gold shadow-glow-gold transition-all hover:scale-105 active:scale-95">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Return to Admin Console
+                            </a>
+                        <% } else if (userRole === 'Teacher') { %>
+                            <a href="/teacher/dashboard" 
+                               class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-sans font-semibold text-sm text-navy-950 bg-gradient-to-r from-chem-cyan to-teal-400 hover:from-teal-400 hover:to-chem-cyan shadow-glow-cyan transition-all hover:scale-105 active:scale-95">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                Return to Faculty Hub
+                            </a>
+                        <% } else if (userRole === 'Student') { %>
+                            <a href="/dashboard" 
+                               class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-sans font-semibold text-sm text-navy-950 bg-gradient-to-r from-chem-cyan via-chem-plasma to-chem-emerald hover:opacity-95 shadow-glow-cyan transition-all hover:scale-105 active:scale-95">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                                Return to Student Station
+                            </a>
+                        <% } else { %>
+                            <a href="/login" 
+                               class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-sans font-semibold text-sm text-navy-950 bg-gradient-to-r from-chem-cyan to-teal-400 hover:from-teal-400 hover:to-chem-cyan shadow-glow-cyan transition-all hover:scale-105 active:scale-95">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                </svg>
+                                Back to Sign In
+                            </a>
+                            <a href="/" 
+                               class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-sans font-semibold text-sm text-white bg-gradient-to-r from-mabini-maroon to-mabini-crimson hover:opacity-90 shadow-md transition-all hover:scale-105 active:scale-95">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                                Back to Main Portal
+                            </a>
+                        <% } %>
+
+                    </div>
+
+                    <!-- Auxiliary Quick Links (Role Specific) -->
+                    <div class="pt-6 border-t border-white/5 w-full flex flex-col items-center">
+                        <span class="text-xs uppercase tracking-widest font-mono text-slate-500 mb-3">Quick Waypoints</span>
+                        <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-medium text-slate-400">
+                            <% if (userRole === 'Admin') { %>
+                                <a href="/admin/user_access_control" class="hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-amber-400"></span> User Access Control
+                                </a>
+                                <a href="/admin/academic_management" class="hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-amber-400"></span> Academic Management
+                                </a>
+                                <a href="/admin/system_audit" class="hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-amber-400"></span> System Audit
+                                </a>
+                            <% } else if (userRole === 'Teacher') { %>
+                                <a href="/teacher/class-view" class="hover:text-chem-cyan transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-chem-cyan"></span> Classroom Roster
+                                </a>
+                                <a href="/teacher/question-bank" class="hover:text-chem-cyan transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-chem-cyan"></span> Question Bank
+                                </a>
+                                <a href="/teacher/forums" class="hover:text-chem-cyan transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-chem-cyan"></span> Discussion Forums
+                                </a>
+                            <% } else if (userRole === 'Student') { %>
+                                <a href="/subject-student" class="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-emerald-400"></span> General Chemistry Subjects
+                                </a>
+                                <a href="/forum-student" class="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-emerald-400"></span> Peer Forum
+                                </a>
+                                <a href="/leaderboard-student" class="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                                    <span class="w-1 h-1 rounded-full bg-emerald-400"></span> Arcade Leaderboards
+                                </a>
+                            <% } else { %>
+                                <a href="/" class="hover:text-white transition-colors">Course Overview</a>
+                                <span class="text-slate-600">&bull;</span>
+                                <a href="/login" class="hover:text-white transition-colors">Learner Login</a>
+                                <span class="text-slate-600">&bull;</span>
+                                <a href="/landing" class="hover:text-white transition-colors">STEM Curriculum</a>
+                            <% } %>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer Details -->
+            <div class="mt-8 text-center text-xs font-mono text-slate-500 flex flex-col sm:flex-row items-center justify-center gap-2">
+                <span>Mabini Colleges Inc. Senior High School</span>
+                <span class="hidden sm:inline text-slate-700">&bull;</span>
+                <span>Elementa Chemical Arcade Engine v2.0</span>
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>
+

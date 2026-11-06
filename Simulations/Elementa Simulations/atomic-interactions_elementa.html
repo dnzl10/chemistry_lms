@@ -1,0 +1,2394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Atomic Interactions | Elementa LMS Edition</title>
+  <meta name="description" content="Next-generation interactive Lennard-Jones potential and atomic bond simulator for Elementa LMS. Explore van der Waals attraction, Pauli repulsion, potential wells, and molecular oscillations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(14, 23, 42, 0.78);
+      --bg-card-hover: rgba(22, 34, 60, 0.88);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.35);
+
+      --color-neon: #f97316;       /* Neon: Vibrant Orange/Red */
+      --color-argon: #06b6d4;      /* Argon: Cyan/Teal */
+      --color-oxygen: #ec4899;     /* Oxygen: Hot Pink / Crimson */
+      --color-custom: #a855f7;     /* Custom: Purple */
+
+      --color-repulsive: #f43f5e;  /* Repulsive Force: Rose */
+      --color-attractive: #10b981; /* Attractive Force: Emerald */
+      --color-total: #38bdf8;      /* Total Force: Cyan */
+
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --topbar-height: 58px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* Top Navigation Bar */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Mode Switcher Buttons */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.85) 0%, rgba(99, 102, 241, 0.85) 100%);
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+    }
+
+    .mode-pill-btn .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 10px;
+    }
+
+    /* Right Action Bar */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    /* Main Workspace Layout */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Canvas Viewport for Interactive Graph & Atoms */
+    .canvas-viewport-container {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at 50% 50%, #0c1427 0%, #050811 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* Floating Playback Bar */
+    .canvas-playback-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 18px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      padding: 6px 12px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 30;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .playback-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .playback-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .playback-btn.play-pause {
+      background: #38bdf8;
+      color: #080c14;
+      font-weight: 700;
+      width: 36px;
+      height: 36px;
+    }
+
+    .speed-selector {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px;
+      border-radius: 6px;
+      gap: 2px;
+    }
+
+    .speed-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 3px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .speed-btn.active {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-return-atom {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #7dd3fc;
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-return-atom:hover {
+      background: rgba(56, 189, 248, 0.25);
+      color: #ffffff;
+    }
+
+    /* Right Sidebar Control Panel */
+    aside.simulation-sidebar {
+      width: 350px;
+      background: rgba(11, 17, 32, 0.95);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+      z-index: 50;
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .sidebar-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .section-title svg { color: #38bdf8; }
+
+    /* Custom Radio Option Cards */
+    .radio-card-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .radio-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .radio-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .radio-card.active {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+
+    .radio-card-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .radio-bullet {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .radio-card.active .radio-bullet {
+      border-color: #38bdf8;
+    }
+
+    .radio-card.active .radio-bullet::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #38bdf8;
+    }
+
+    .atom-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    /* Force Vector Toggle Pills */
+    .views-toggle-pills {
+      display: flex;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+      margin-bottom: 10px;
+    }
+
+    .view-pill-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .view-pill-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    /* Sliders */
+    .param-slider-group {
+      margin-bottom: 12px;
+    }
+
+    .param-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .param-value-tag {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 6px #38bdf8;
+      transition: transform 0.1s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Quantitative Readout Grid */
+    .data-cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .data-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .data-card-title {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .data-card-value {
+      font-family: var(--font-mono);
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    /* Modals (Missions, Quiz, Theory) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Missions Styling */
+    .mission-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.4);
+      background: rgba(52, 211, 153, 0.05);
+    }
+
+    .mission-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .mission-title {
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: #ffffff;
+    }
+
+    .mission-status-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+
+    .mission-status-badge.pending {
+      background: rgba(251, 146, 60, 0.15);
+      color: #fb923c;
+      border: 1px solid rgba(251, 146, 60, 0.3);
+    }
+
+    .mission-status-badge.done {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .mission-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .mission-progress-bar-wrap {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .mission-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8 0%, #34d399 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* Quiz Styling */
+    .quiz-question-card {
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 14px;
+      border-radius: 10px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .quiz-question-text {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      line-height: 1.35;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .quiz-option-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-option-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    .quiz-option-btn.selected {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      color: #ffffff;
+    }
+
+    .quiz-option-btn.correct {
+      border-color: #34d399;
+      background: rgba(52, 211, 153, 0.18);
+      color: #ffffff;
+    }
+
+    .quiz-option-btn.wrong {
+      border-color: #f87171;
+      background: rgba(248, 113, 113, 0.18);
+      color: #ffffff;
+    }
+
+    .quiz-feedback-box {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: none;
+      line-height: 1.35;
+    }
+
+    .quiz-feedback-box.correct {
+      display: block;
+      background: rgba(52, 211, 153, 0.1);
+      border-left: 3px solid #34d399;
+      color: #a7f3d0;
+    }
+
+    .quiz-feedback-box.wrong {
+      display: block;
+      background: rgba(248, 113, 113, 0.1);
+      border-left: 3px solid #f87171;
+      color: #fecaca;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    /* Certificate Box */
+    .certificate-view {
+      border: 2px dashed rgba(56, 189, 248, 0.5);
+      background: radial-gradient(circle at 50% 50%, rgba(14, 23, 42, 0.9) 0%, rgba(8, 12, 22, 0.95) 100%);
+      padding: 24px;
+      border-radius: 12px;
+      text-align: center;
+      margin-top: 14px;
+    }
+
+    .cert-heading {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      color: #7dd3fc;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .cert-sub {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .cert-student-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      display: inline-block;
+      padding: 0 20px 4px 20px;
+      margin-bottom: 10px;
+    }
+
+    /* Toasts */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast-msg {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.8rem;
+      color: #ffffff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastSlide 0.3s ease forwards;
+    }
+
+    @keyframes toastSlide {
+      from { transform: translateX(50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+</head>
+<body>
+
+  <!-- Elementa Top Navigation Bar -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <circle cx="19" cy="12" r="2"></circle>
+            <circle cx="5" cy="12" r="2"></circle>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Physics & Chemistry</span>
+        <span>›</span>
+        <span>Molecular Biophysics</span>
+        <span>›</span>
+        <span class="current">Atomic Interactions</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Interactive Simulation Workspace -->
+  <main class="simulation-workspace">
+
+    <!-- Canvas Viewport for Interactive Graph & Atoms -->
+    <div class="canvas-viewport-container" id="canvasViewport">
+      <canvas id="simCanvas"></canvas>
+
+      <!-- Playback Bar -->
+      <div class="canvas-playback-bar">
+        <button class="playback-btn play-pause" id="btnPlayPause" onclick="togglePlayPause()" title="Play / Pause">
+          <svg id="iconPlayPause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        </button>
+
+        <button class="playback-btn" id="btnStep" onclick="stepSimulation()" title="Step Forward 1 Frame">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+        </button>
+
+        <div class="speed-selector">
+          <button class="speed-btn" onclick="setSpeed(0.5)">0.5x</button>
+          <button class="speed-btn active" onclick="setSpeed(1.0)">1x</button>
+          <button class="speed-btn" onclick="setSpeed(2.0)">2x</button>
+        </div>
+
+        <div style="width:1px; height:18px; background:rgba(255,255,255,0.1); margin:0 4px;"></div>
+
+        <button class="btn-return-atom" onclick="returnAtom()" title="Return Moving Atom to Equilibrium Position">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+          Return Atom
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Sidebar Control Panel -->
+    <aside class="simulation-sidebar">
+      
+      <!-- Atom Pair Selection -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path></svg>
+            Select Atom Pair
+          </div>
+        </div>
+
+        <div class="radio-card-group">
+          <div class="radio-card active" onclick="selectAtomPair('neon')" id="rc_neon">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <div class="atom-dot" style="background:var(--color-neon); color:var(--color-neon);"></div>
+              <span>Neon - Neon (Ne - Ne)</span>
+            </div>
+          </div>
+
+          <div class="radio-card" onclick="selectAtomPair('argon')" id="rc_argon">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <div class="atom-dot" style="background:var(--color-argon); color:var(--color-argon);"></div>
+              <span>Argon - Argon (Ar - Ar)</span>
+            </div>
+          </div>
+
+          <div class="radio-card" onclick="selectAtomPair('oxygen')" id="rc_oxygen">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <div class="atom-dot" style="background:var(--color-oxygen); color:var(--color-oxygen);"></div>
+              <span>Oxygen - Oxygen (O - O)</span>
+            </div>
+          </div>
+
+          <div class="radio-card" onclick="selectAtomPair('neon_argon')" id="rc_neon_argon">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <div style="display:flex; gap:2px;">
+                <div class="atom-dot" style="background:var(--color-neon); color:var(--color-neon);"></div>
+                <div class="atom-dot" style="background:var(--color-argon); color:var(--color-argon);"></div>
+              </div>
+              <span>Neon - Argon (Ne - Ar)</span>
+            </div>
+          </div>
+
+          <div class="radio-card" onclick="selectAtomPair('custom')" id="rc_custom">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <div class="atom-dot" style="background:var(--color-custom); color:var(--color-custom);"></div>
+              <span>Adjustable Attraction</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Parameters Sliders (shown when Adjustable Attraction is selected) -->
+        <div id="wrapCustomSliders" style="display:none; margin-top:10px; background:rgba(0,0,0,0.25); padding:10px; border-radius:8px;">
+          <div class="param-slider-group">
+            <div class="param-label-row">
+              <span>Interaction Strength (ε):</span>
+              <span class="param-value-tag" id="valCustomEpsilon">1.00 kJ/mol</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-dim); margin-bottom:3px;">
+              <span>weak</span>
+              <span>strong</span>
+            </div>
+            <input type="range" min="0.1" max="10.0" step="0.1" value="1.0" id="sliderEpsilon" oninput="onCustomEpsilonChange(this.value)">
+          </div>
+
+          <div class="param-slider-group" style="margin-bottom:0;">
+            <div class="param-label-row">
+              <span>Atom Diameter (σ):</span>
+              <span class="param-value-tag" id="valCustomSigma">340 pm</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-dim); margin-bottom:3px;">
+              <span>small</span>
+              <span>large</span>
+            </div>
+            <input type="range" min="200" max="450" step="5" value="340" id="sliderSigma" oninput="onCustomSigmaChange(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Forces Display Selector -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            Forces
+          </div>
+        </div>
+
+        <div class="views-toggle-pills">
+          <button class="view-pill-btn active" id="btnForceTotal" onclick="setForceMode('total')">Total</button>
+          <button class="view-pill-btn" id="btnForceComponent" onclick="setForceMode('component')">Components</button>
+          <button class="view-pill-btn" id="btnForceHide" onclick="setForceMode('hide')">Hide</button>
+        </div>
+
+        <div style="font-size:0.72rem; color:var(--text-dim); display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--color-total);"></span>
+            <span>Total Force (Net Interaction)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--color-attractive);"></span>
+            <span>Attractive Force (van der Waals / Dispersion)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--color-repulsive);"></span>
+            <span>Repulsive Force (Electron Overlap / Pauli)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quantitative Measurements & Live Energy -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            Quantitative Metrics
+          </div>
+        </div>
+
+        <div class="data-cards-grid">
+          <div class="data-card">
+            <div class="data-card-title">Interatomic Distance (r)</div>
+            <div class="data-card-value" id="disp_distance" style="color:#38bdf8;">382 pm</div>
+          </div>
+          <div class="data-card">
+            <div class="data-card-title">Equilibrium Distance (r₀)</div>
+            <div class="data-card-value" id="disp_r0" style="color:#34d399;">382 pm</div>
+          </div>
+          <div class="data-card">
+            <div class="data-card-title">Potential Energy (PE)</div>
+            <div class="data-card-value" id="disp_pe" style="color:#a855f7;">-1.00 kJ/mol</div>
+          </div>
+          <div class="data-card">
+            <div class="data-card-title">Kinetic Energy (KE)</div>
+            <div class="data-card-value" id="disp_ke" style="color:#fb923c;">0.00 kJ/mol</div>
+          </div>
+          <div class="data-card" style="grid-column: span 2;">
+            <div class="data-card-title">Total Force (F)</div>
+            <div class="data-card-value" id="disp_force" style="color:#38bdf8;">0.00 pN</div>
+          </div>
+        </div>
+
+        <!-- Live Mechanical Energy Bar Graph -->
+        <div style="margin-top:14px;">
+          <div style="font-size:0.68rem; font-weight:700; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px;">
+            Mechanical Energy Conservation:
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:2px;">
+                <span>Potential Energy (PE)</span>
+                <span id="barValPE" style="font-family:var(--font-mono); color:#a855f7;">-1.00 kJ/mol</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+                <div id="barFillPE" style="height:100%; width:50%; background:#a855f7; transition:width 0.05s ease;"></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:2px;">
+                <span>Kinetic Energy (KE)</span>
+                <span id="barValKE" style="font-family:var(--font-mono); color:#fb923c;">0.00 kJ/mol</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+                <div id="barFillKE" style="height:100%; width:0%; background:#fb923c; transition:width 0.05s ease;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:14px;">
+          Complete these 5 curriculum-aligned biophysics challenges. Your real-time interactions are verified automatically by the Elementa LMS physics engine.
+        </p>
+
+        <!-- Mission 1 -->
+        <div class="mission-card" id="missionCard1">
+          <div class="mission-top">
+            <span class="mission-title">Mission 1: The Equilibrium Bond Distance (r₀)</span>
+            <span class="mission-status-badge pending" id="missionBadge1">In Progress</span>
+          </div>
+          <div class="mission-desc">
+            For the <b>Argon - Argon</b> pair, position the moving atom exactly at the bottom of the potential well where <b>Total Force equals zero</b> (around 382 pm) and the Potential Energy equals -ε (-1.00 kJ/mol).
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress1" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 2 -->
+        <div class="mission-card" id="missionCard2">
+          <div class="mission-top">
+            <span class="mission-title">Mission 2: Dispersion vs. Electron Cloud Overlap</span>
+            <span class="mission-status-badge pending" id="missionBadge2">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Switch forces to <b>Components</b>. Drag the atom very close into the repulsive regime (&lt; 340 pm) and observe the massive spike in the repulsive force (Pauli exclusion / electron overlap).
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress2" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 3 -->
+        <div class="mission-card" id="missionCard3">
+          <div class="mission-top">
+            <span class="mission-title">Mission 3: Molecular Oscillations & Energy Exchange</span>
+            <span class="mission-status-badge pending" id="missionBadge3">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Pull the moving atom out to a distance &gt; 460 pm and release it. Watch it oscillate within the potential well, trading Potential Energy for Kinetic Energy as it rushes past equilibrium!
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress3" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 4 -->
+        <div class="mission-card" id="missionCard4">
+          <div class="mission-top">
+            <span class="mission-title">Mission 4: Comparing Noble Gases (Neon vs. Argon)</span>
+            <span class="mission-status-badge pending" id="missionBadge4">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Select <b>Neon - Neon</b> and observe its shallower well (ε = 0.35 kJ/mol) and smaller equilibrium distance (~309 pm) compared to Argon (ε = 1.00 kJ/mol, r₀ ~382 pm).
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress4" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 5 -->
+        <div class="mission-card" id="missionCard5">
+          <div class="mission-top">
+            <span class="mission-title">Mission 5: Engineering a Custom Chemical Bond</span>
+            <span class="mission-status-badge pending" id="missionBadge5">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Select <b>Adjustable Attraction</b>. Set Interaction Strength ε &gt; 5.0 kJ/mol and Atom Diameter σ &lt; 260 pm. Release the atom to witness rapid, high-frequency harmonic vibrations in a deep potential trap!
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress5" style="width: 0%;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+
+      <div class="modal-body" id="quizBody">
+        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:16px;">
+          Answer these 5 conceptual and quantitative problems. Scores are synchronized with the Elementa LMS Gradebook.
+        </p>
+
+        <!-- Question 1 -->
+        <div class="quiz-question-card" id="qq1">
+          <div class="quiz-q-num">Question 1 of 5 • Equilibrium Separation</div>
+          <div class="quiz-question-text">
+            In the Lennard-Jones (12-6) potential V(r) = 4ε[(σ/r)¹² - (σ/r)⁶], what is the relationship between the atom diameter σ and the equilibrium bond distance r₀ where the net force is zero?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 0)">
+              A. r₀ = 2^(1/6) σ ≈ 1.122 σ
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 1)">
+              B. r₀ = σ exactly
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 2)">
+              C. r₀ = 2 σ
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 3)">
+              D. r₀ = σ / 2
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb1"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="quiz-question-card" id="qq2">
+          <div class="quiz-q-num">Question 2 of 5 • Physical Origin of Forces</div>
+          <div class="quiz-question-text">
+            What physical mechanisms correspond to the attractive (1/r⁶) and repulsive (1/r¹²) terms in the Lennard-Jones potential?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 0)">
+              A. Attraction arises from London dispersion (induced dipole-dipole interactions), while repulsion arises from Pauli exclusion (electron cloud overlap).
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 1)">
+              B. Attraction arises from gravitational pull, while repulsion arises from nuclear magnetic moments.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 2)">
+              C. Both terms arise strictly from covalent sharing of outer shell valence neutrons.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 3)">
+              D. Repulsion is electrostatic attraction, while attraction is centrifugal force.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb2"></div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="quiz-question-card" id="qq3">
+          <div class="quiz-q-num">Question 3 of 5 • Noble Gas Trends</div>
+          <div class="quiz-question-text">
+            Why does Argon (Ar) have a significantly deeper potential well (ε ≈ 1.00 kJ/mol) than Neon (Ne) (ε ≈ 0.35 kJ/mol)?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 0)">
+              A. Argon has more electrons and a larger, more polarizable electron cloud, leading to stronger London dispersion forces.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 1)">
+              B. Argon atoms form permanent covalent double bonds at room temperature.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 2)">
+              C. Neon atoms lack atomic nuclei.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 3)">
+              D. Argon has a positive net electrical charge.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb3"></div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="quiz-question-card" id="qq4">
+          <div class="quiz-q-num">Question 4 of 5 • Energy Turning Points</div>
+          <div class="quiz-question-text">
+            When an atom oscillates within a conservative potential well with total mechanical energy E_total, what is true at the turning points of the motion?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 0)">
+              A. Kinetic energy is zero (KE = 0) and Potential energy equals total energy (PE = E_total).
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 1)">
+              B. Kinetic energy is at its maximum and force is zero.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 2)">
+              C. The atom reaches infinite speed.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 3)">
+              D. Potential energy reaches zero.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb4"></div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="quiz-question-card" id="qq5">
+          <div class="quiz-q-num">Question 5 of 5 • Lorentz-Berthelot Mixing Rules</div>
+          <div class="quiz-question-text">
+            When calculating the interaction parameters for a mixed pair of atoms (such as Neon and Argon), how are σ_Ne-Ar and ε_Ne-Ar standardly approximated?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 0)">
+              A. Arithmetic mean for diameter σ = (σ₁ + σ₂)/2, and geometric mean for energy ε = √(ε₁ · ε₂).
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 1)">
+              B. Both σ and ε are equal to the larger atom's values.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 2)">
+              C. σ and ε are both summed together directly: σ₁ + σ₂ and ε₁ + ε₂.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 3)">
+              D. The mixed interaction is always zero.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb5"></div>
+        </div>
+
+        <!-- Certificate Container -->
+        <div id="quizCertificateWrap" style="display:none;">
+          <div class="certificate-view">
+            <div class="cert-heading">Certificate of Mastery</div>
+            <div class="cert-sub">Elementa Learning Management System • Molecular Biophysics</div>
+            <div class="cert-student-name" id="certStudentName">Student Scholar</div>
+            <p style="font-size:0.86rem; color:#cbd5e1; margin-bottom:12px;">
+              has demonstrated conceptual and quantitative mastery of <b>Lennard-Jones Potentials, Van der Waals Forces, and Molecular Oscillations</b>.
+            </p>
+            <div style="font-family:var(--font-mono); font-size:1.1rem; color:#34d399; font-weight:700;" id="certScoreDisplay">
+              Grade: 100% (5/5) • Mastered
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-dim); margin-top:10px;" id="certDateDisplay">
+              Verified on Elementa LMS
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="submitQuiz()">Submit to Elementa LMS Gradebook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Lennard-Jones Potential & Molecular Theory</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">1. The Lennard-Jones (12-6) Model</h3>
+        <p style="color:var(--text-muted); margin-bottom:14px;">
+          The Lennard-Jones potential mathematically describes the net interaction energy between two non-bonding neutral atoms or spherical molecules:
+        </p>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; font-family:var(--font-mono); margin-bottom:14px;">
+          V(r) = 4ε [ (σ/r)¹² - (σ/r)⁶ ]
+        </div>
+        <p style="color:var(--text-muted); margin-bottom:14px;">
+          Where <b>ε (epsilon)</b> is the depth of the potential energy well (bond strength), and <b>σ (sigma)</b> is the collision diameter where V(σ) = 0.
+        </p>
+
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">2. Interatomic Force Vectors</h3>
+        <p style="color:var(--text-muted); margin-bottom:10px;">
+          Force is the negative spatial derivative of the potential energy: F(r) = -dV/dr:
+        </p>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; font-family:var(--font-mono); margin-bottom:14px;">
+          F(r) = (24ε / σ) [ 2(σ/r)¹³ - (σ/r)⁷ ]
+        </div>
+        <p style="color:var(--text-muted); margin-bottom:14px;">
+          <b>Repulsive Term (∝ r⁻¹³):</b> Arises from quantum mechanical Pauli exclusion when electron clouds overlap.<br>
+          <b>Attractive Term (∝ -r⁻⁷):</b> Arises from London dispersion (fluctuating instantaneous dipoles).
+        </p>
+
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">3. Equilibrium Condition (r₀)</h3>
+        <p style="color:var(--text-muted);">
+          Setting F(r) = 0 yields the stable equilibrium separation: <b>r₀ = 2^(1/6) σ ≈ 1.122462 σ</b>. At this distance, the net force is zero and potential energy reaches its global minimum V(r₀) = -ε.
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Simulation JavaScript Engine -->
+  <script>
+    /* ==========================================================================
+       ELEMENTA LMS ATOMIC INTERACTIONS SIMULATION ENGINE
+       - Exact Lennard-Jones (12-6) biophysical potential & force vector solver
+       - Real-time numerical integration (Velocity Verlet) with energy conservation
+       - Dynamic potential energy curve graphing with bead tracker
+       - Web Audio API harmonic pitch & collision synthesis
+       - LMS Guided Missions and Assessment Quiz integration
+       ========================================================================== */
+
+    // App State
+    const state = {
+      pair: 'argon', // 'neon' | 'argon' | 'oxygen' | 'neon_argon' | 'custom'
+      mode: 'sim',    // 'sim' | 'missions' | 'quiz' | 'theory'
+      running: true,
+      speed: 1.0,
+      soundEnabled: true,
+      forceMode: 'total', // 'total' | 'component' | 'hide'
+
+      // Atom Species Database
+      species: {
+        neon: { name: 'Neon - Neon', sigma: 275, epsilon: 0.35, color1: '#f97316', color2: '#f97316', mass: 20.18 },
+        argon: { name: 'Argon - Argon', sigma: 340, epsilon: 1.00, color1: '#06b6d4', color2: '#06b6d4', mass: 39.95 },
+        oxygen: { name: 'Oxygen - Oxygen', sigma: 300, epsilon: 8.00, color1: '#ec4899', color2: '#ec4899', mass: 32.00 },
+        neon_argon: { name: 'Neon - Argon', sigma: 307.5, epsilon: 0.59, color1: '#f97316', color2: '#06b6d4', mass: 30.06 },
+        custom: { name: 'Adjustable Attraction', sigma: 340, epsilon: 1.00, color1: '#a855f7', color2: '#a855f7', mass: 35.00 }
+      },
+
+      // Custom parameters
+      customEpsilon: 1.00,
+      customSigma: 340,
+
+      // Dynamics State
+      r: 382,           // current separation in pm
+      v: 0,             // velocity in pm / time_unit
+      totalEnergy: -1.0,// total mechanical energy
+      isDragging: false,
+      pinnedX: 180,     // screen X coord of pinned left atom
+      scaleRToPx: 1.0,  // conversion factor: px per pm
+
+      // Mission Statuses
+      missions: {
+        1: { done: false, progress: 0 },
+        2: { done: false, progress: 0 },
+        3: { done: false, progress: 0 },
+        4: { done: false, progress: 0 },
+        5: { done: false, progress: 0 }
+      },
+
+      // Quiz State
+      quizAnswers: { 1: null, 2: null, 3: null, 4: null, 5: null }
+    };
+
+    const QUIZ_KEY = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const QUIZ_RATIONALES = {
+      1: {
+        correct: "Correct! Differentiating V(r) and setting dV/dr = 0 gives r₀ = (2)^(1/6) σ ≈ 1.122 σ.",
+        wrong: "Incorrect. The potential minimum occurs when the repulsive and attractive forces cancel, at r₀ = 2^(1/6) σ ≈ 1.122 σ."
+      },
+      2: {
+        correct: "Correct! The r⁻⁶ attractive term represents London dispersion induced dipoles; the r⁻¹² term models the Pauli repulsion between filled electron shells.",
+        wrong: "Incorrect. Van der Waals attraction is due to fluctuating induced dipoles; short-range repulsion is due to electron cloud overlap and Pauli exclusion."
+      },
+      3: {
+        correct: "Correct! Argon's electron cloud contains 18 electrons (vs 10 in Neon) and is held further from the nucleus, resulting in much greater polarizability and stronger dispersion attraction.",
+        wrong: "Incorrect. Larger electron clouds with more electrons are more polarizable, creating stronger transient dipoles and higher interaction energies (ε)."
+      },
+      4: {
+        correct: "Correct! Turning points are where the atom stops momentarily (v = 0, KE = 0) and reverses direction, so PE = E_total.",
+        wrong: "Incorrect. At turning points, velocity is zero, so Kinetic Energy is zero and Potential Energy equals Total Energy."
+      },
+      5: {
+        correct: "Correct! The Lorentz-Berthelot rules take the arithmetic average for collision radius σ and the geometric average for well depth ε.",
+        wrong: "Incorrect. The standard Lorentz-Berthelot combining rules use the arithmetic mean for σ and the geometric mean for ε."
+      }
+    };
+
+    // Web Audio Synthesizer
+    class SimAudio {
+      constructor() { this.ctx = null; }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      }
+      playClick() {
+        if (!state.soundEnabled) return;
+        this.init(); if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.05);
+          gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(); osc.stop(this.ctx.currentTime + 0.07);
+        } catch(e) {}
+      }
+      playZeroCrossing() {
+        if (!state.soundEnabled) return;
+        this.init(); if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, this.ctx.currentTime); // C5
+          gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(); osc.stop(this.ctx.currentTime + 0.11);
+        } catch(e) {}
+      }
+    }
+    const audio = new SimAudio();
+
+    // Canvas Setup
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = 800;
+    let height = 600;
+    let graphY = 160;
+    let graphH = 180;
+    let atomTrackY = 440;
+
+    // Lennard-Jones Mathematics
+    function getCurrentParams() {
+      if (state.pair === 'custom') {
+        const s = state.customSigma;
+        const e = state.customEpsilon;
+        return { sigma: s, epsilon: e, r0: Math.pow(2, 1/6) * s, color1: '#a855f7', color2: '#a855f7', mass: 35.0 };
+      }
+      const p = state.species[state.pair];
+      return { sigma: p.sigma, epsilon: p.epsilon, r0: Math.pow(2, 1/6) * p.sigma, color1: p.color1, color2: p.color2, mass: p.mass };
+    }
+
+    function calcPotential(r, sigma, epsilon) {
+      if (r <= 50) return 100.0;
+      const sr = sigma / r;
+      const sr6 = Math.pow(sr, 6);
+      const sr12 = sr6 * sr6;
+      return 4 * epsilon * (sr12 - sr6);
+    }
+
+    function calcForces(r, sigma, epsilon) {
+      if (r <= 50) return { rep: 200, att: 0, total: 200 };
+      const sr = sigma / r;
+      const sr7 = Math.pow(sr, 7);
+      const sr13 = sr7 * Math.pow(sr, 6);
+      
+      // F_rep pushes right on moving atom (+), F_att pulls left (-)
+      const fRep = (48 * epsilon / sigma) * sr13;
+      const fAtt = -(24 * epsilon / sigma) * sr7;
+      const fTotal = fRep + fAtt;
+      return { rep: fRep, att: fAtt, total: fTotal };
+    }
+
+    // Canvas Resize & Setup
+    function initSimulation() {
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      canvas.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      
+      canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+
+      selectAtomPair('argon');
+      requestAnimationFrame(simLoop);
+    }
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvasViewport');
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      width = rect.width;
+      height = rect.height;
+
+      graphY = height * 0.12;
+      graphH = height * 0.38;
+      atomTrackY = height * 0.74;
+      state.pinnedX = width * 0.22;
+      state.scaleRToPx = (width * 0.55) / 500; // 500 pm spans 55% of canvas
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+    }
+
+    function selectAtomPair(pairKey) {
+      state.pair = pairKey;
+      document.querySelectorAll('.radio-card').forEach(rc => rc.classList.remove('active'));
+      const activeCard = document.getElementById('rc_' + pairKey);
+      if (activeCard) activeCard.classList.add('active');
+
+      document.getElementById('wrapCustomSliders').style.display = pairKey === 'custom' ? 'block' : 'none';
+
+      returnAtom();
+      showToast(`Selected: ${state.species[pairKey].name}`);
+      updateMissionProgress();
+    }
+
+    function returnAtom() {
+      const p = getCurrentParams();
+      state.r = p.r0;
+      state.v = 0;
+      state.totalEnergy = -p.epsilon;
+      audio.playClick();
+      updateMetrics();
+    }
+
+    function setForceMode(mode) {
+      state.forceMode = mode;
+      document.getElementById('btnForceTotal').classList.toggle('active', mode === 'total');
+      document.getElementById('btnForceComponent').classList.toggle('active', mode === 'component');
+      document.getElementById('btnForceHide').classList.toggle('active', mode === 'hide');
+      updateMissionProgress();
+    }
+
+    function onCustomEpsilonChange(val) {
+      state.customEpsilon = parseFloat(val);
+      document.getElementById('valCustomEpsilon').textContent = state.customEpsilon.toFixed(2) + ' kJ/mol';
+      updateMetrics();
+      updateMissionProgress();
+    }
+
+    function onCustomSigmaChange(val) {
+      state.customSigma = parseFloat(val);
+      document.getElementById('valCustomSigma').textContent = state.customSigma + ' pm';
+      updateMetrics();
+      updateMissionProgress();
+    }
+
+    function togglePlayPause() {
+      state.running = !state.running;
+      const icon = document.getElementById('iconPlayPause');
+      if (state.running) {
+        icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+      } else {
+        icon.innerHTML = '<polygon points="6 4 18 12 6 20 6 4"></polygon>';
+      }
+    }
+
+    function stepSimulation() {
+      state.running = false;
+      const icon = document.getElementById('iconPlayPause');
+      icon.innerHTML = '<polygon points="6 4 18 12 6 20 6 4"></polygon>';
+      stepPhysics(0.016);
+    }
+
+    function setSpeed(s) {
+      state.speed = s;
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    // Physical Dynamics Loop (Velocity Verlet)
+    function simLoop() {
+      if (state.running && !state.isDragging) {
+        const dt = 0.016 * state.speed;
+        stepPhysics(dt);
+      }
+      updateMetrics();
+
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Draw Potential Energy Curve Graph
+      drawPotentialCurveGraph(ctx);
+
+      // 2. Draw Atom Track and Interactive Atoms
+      drawAtomTrack(ctx);
+
+      requestAnimationFrame(simLoop);
+    }
+
+    function stepPhysics(dt) {
+      const p = getCurrentParams();
+      const forces = calcForces(state.r, p.sigma, p.epsilon);
+      
+      // Acceleration a = F / m (scaled for smooth animation)
+      const accel = (forces.total / p.mass) * 18.0;
+
+      // Verlet update
+      state.r += state.v * dt * 100 + 0.5 * accel * dt * dt * 100;
+      
+      // Boundary clamp
+      if (state.r < p.sigma * 0.75) {
+        state.r = p.sigma * 0.75;
+        state.v *= -0.5; // inelastic reflection
+      } else if (state.r > 600) {
+        state.r = 600;
+        state.v *= -0.5;
+      }
+
+      const nextForces = calcForces(state.r, p.sigma, p.epsilon);
+      const nextAccel = (nextForces.total / p.mass) * 18.0;
+      state.v += 0.5 * (accel + nextAccel) * dt;
+
+      // Subtle zero-crossing chime
+      if (Math.abs(state.r - p.r0) < 2.0 && Math.abs(state.v) > 0.1) {
+        audio.playZeroCrossing();
+      }
+
+      updateMissionProgress();
+    }
+
+    function updateMetrics() {
+      const p = getCurrentParams();
+      const pe = calcPotential(state.r, p.sigma, p.epsilon);
+      const forces = calcForces(state.r, p.sigma, p.epsilon);
+      
+      // Kinetic energy: 0.5 * m * v^2
+      const ke = state.isDragging ? 0 : 0.5 * p.mass * Math.pow(state.v, 2) * 0.05;
+      const totalE = state.isDragging ? pe : pe + ke;
+
+      document.getElementById('disp_distance').textContent = Math.round(state.r) + ' pm';
+      document.getElementById('disp_r0').textContent = Math.round(p.r0) + ' pm';
+      document.getElementById('disp_pe').textContent = pe.toFixed(2) + ' kJ/mol';
+      document.getElementById('disp_ke').textContent = ke.toFixed(2) + ' kJ/mol';
+      document.getElementById('disp_force').textContent = (forces.total * 10).toFixed(1) + ' pN';
+
+      // Update energy bars
+      const maxRange = Math.max(10, p.epsilon * 2.5);
+      const peFrac = Math.min(1, Math.max(0, (pe + p.epsilon * 1.5) / maxRange));
+      const keFrac = Math.min(1, Math.max(0, ke / maxRange));
+
+      document.getElementById('barValPE').textContent = pe.toFixed(2) + ' kJ/mol';
+      document.getElementById('barFillPE').style.width = Math.round(peFrac * 100) + '%';
+      document.getElementById('barValKE').textContent = ke.toFixed(2) + ' kJ/mol';
+      document.getElementById('barFillKE').style.width = Math.round(keFrac * 100) + '%';
+    }
+
+    // Potential Energy Curve Graph Drawing
+    function drawPotentialCurveGraph(c) {
+      c.save();
+      const gx = width * 0.12;
+      const gy = graphY;
+      const gw = width * 0.76;
+      const gh = graphH;
+
+      const p = getCurrentParams();
+
+      // Graph Background Card
+      c.fillStyle = 'rgba(15, 23, 42, 0.7)';
+      c.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      c.lineWidth = 1;
+      c.roundRect(gx, gy, gw, gh, 10);
+      c.fill();
+      c.stroke();
+
+      // Axis lines: V = 0 zero-energy line
+      const zeroY = gy + gh * 0.45;
+      c.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(gx + 40, zeroY);
+      c.lineTo(gx + gw - 20, zeroY);
+      c.stroke();
+
+      c.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      c.font = '8px var(--font-mono)';
+      c.fillText('PE = 0', gx + 10, zeroY + 3);
+
+      // Y-axis Label
+      c.save();
+      c.translate(gx + 12, gy + gh / 2);
+      c.rotate(-Math.PI / 2);
+      c.textAlign = 'center';
+      c.font = 'bold 9px var(--font-heading)';
+      c.fillStyle = '#94a3b8';
+      c.fillText('POTENTIAL ENERGY (kJ/mol)', 0, 0);
+      c.restore();
+
+      // Energy scale factor
+      const yPerEnergy = (gh * 0.42) / p.epsilon;
+
+      // Plot Lennard-Jones Curve V(r)
+      c.strokeStyle = '#38bdf8';
+      c.lineWidth = 2.5;
+      c.beginPath();
+
+      const rMin = p.sigma * 0.88;
+      const rMax = 580;
+      let firstPoint = true;
+
+      for (let rVal = rMin; rVal <= rMax; rVal += 3) {
+        const vVal = calcPotential(rVal, p.sigma, p.epsilon);
+        const px = state.pinnedX + rVal * state.scaleRToPx;
+        const py = zeroY - vVal * yPerEnergy;
+
+        if (px >= gx + 35 && px <= gx + gw - 15) {
+          if (firstPoint) {
+            c.moveTo(px, py);
+            firstPoint = false;
+          } else {
+            c.lineTo(px, py);
+          }
+        }
+      }
+      c.stroke();
+
+      // Minimum Well Point Marker (r0, -epsilon)
+      const r0Px = state.pinnedX + p.r0 * state.scaleRToPx;
+      const r0Py = zeroY + p.epsilon * yPerEnergy;
+      c.fillStyle = '#34d399';
+      c.beginPath();
+      c.arc(r0Px, r0Py, 4, 0, Math.PI * 2);
+      c.fill();
+
+      // Current Atom Position Marker (Bead on Curve)
+      const currentPE = calcPotential(state.r, p.sigma, p.epsilon);
+      const curPx = state.pinnedX + state.r * state.scaleRToPx;
+      const curPy = zeroY - currentPE * yPerEnergy;
+
+      // Vertical guideline connecting atom on track to curve
+      c.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+      c.setLineDash([3, 3]);
+      c.beginPath();
+      c.moveTo(curPx, curPy);
+      c.lineTo(curPx, atomTrackY);
+      c.stroke();
+      c.setLineDash([]);
+
+      // Glowing Bead on Curve
+      c.fillStyle = '#ffffff';
+      c.shadowColor = '#38bdf8';
+      c.shadowBlur = 10;
+      c.beginPath();
+      c.arc(curPx, curPy, 6, 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 0;
+
+      // Total Energy line if oscillating
+      if (!state.isDragging && state.totalEnergy !== undefined) {
+        const teY = zeroY - state.totalEnergy * yPerEnergy;
+        if (teY >= gy + 5 && teY <= gy + gh - 5) {
+          c.strokeStyle = '#fb923c';
+          c.lineWidth = 1.5;
+          c.setLineDash([4, 4]);
+          c.beginPath();
+          c.moveTo(gx + 40, teY);
+          c.lineTo(gx + gw - 20, teY);
+          c.stroke();
+          c.setLineDash([]);
+
+          c.fillStyle = '#fb923c';
+          c.font = '8px var(--font-mono)';
+          c.fillText('E_total', gx + gw - 15, teY + 3);
+        }
+      }
+
+      c.restore();
+    }
+
+    // Atom Track & Interactive Atoms Drawing
+    function drawAtomTrack(c) {
+      c.save();
+      const p = getCurrentParams();
+
+      // Horizontal Distance Track Guideline
+      c.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(state.pinnedX - 40, atomTrackY);
+      c.lineTo(width * 0.90, atomTrackY);
+      c.stroke();
+
+      // Distance Ruler Arrow
+      const movingX = state.pinnedX + state.r * state.scaleRToPx;
+      c.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(state.pinnedX, atomTrackY + 45);
+      c.lineTo(movingX, atomTrackY + 45);
+      c.stroke();
+
+      // Ruler arrowheads
+      c.beginPath();
+      c.moveTo(state.pinnedX + 6, atomTrackY + 42);
+      c.lineTo(state.pinnedX, atomTrackY + 45);
+      c.lineTo(state.pinnedX + 6, atomTrackY + 48);
+      c.moveTo(movingX - 6, atomTrackY + 42);
+      c.lineTo(movingX, atomTrackY + 45);
+      c.lineTo(movingX - 6, atomTrackY + 48);
+      c.stroke();
+
+      c.fillStyle = '#ffffff';
+      c.font = 'bold 10px var(--font-mono)';
+      c.textAlign = 'center';
+      c.fillText(`r = ${Math.round(state.r)} pm`, (state.pinnedX + movingX) / 2, atomTrackY + 60);
+
+      // 1. Pinned Atom (Left)
+      drawSingleAtom(c, state.pinnedX, atomTrackY, p.sigma / 2 * 0.22, p.color1, 'Pinned', true);
+
+      // 2. Moving Atom (Right)
+      drawSingleAtom(c, movingX, atomTrackY, p.sigma / 2 * 0.22, p.color2, 'Moving', false);
+
+      // 3. Draw Force Vectors on moving atom
+      if (state.forceMode !== 'hide') {
+        const forces = calcForces(state.r, p.sigma, p.epsilon);
+        const fScale = 1.2;
+
+        if (state.forceMode === 'component') {
+          // Repulsive force vector (red/rose pointing right)
+          drawForceArrow(c, movingX, atomTrackY - 35, forces.rep * fScale, 'var(--color-repulsive)', 'Repulsive');
+          // Attractive force vector (green pointing left)
+          drawForceArrow(c, movingX, atomTrackY - 20, forces.att * fScale, 'var(--color-attractive)', 'Attractive');
+        }
+        
+        // Total force vector (cyan)
+        drawForceArrow(c, movingX, atomTrackY - 50, forces.total * fScale, 'var(--color-total)', 'Total Force');
+      }
+
+      c.restore();
+    }
+
+    function drawSingleAtom(c, x, y, radius, color, label, isPinned) {
+      c.save();
+      // Glowing outer electron cloud (van der Waals boundary)
+      const grad = c.createRadialGradient(x, y, 2, x, y, radius);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, color);
+      grad.addColorStop(0.85, color);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+      c.fillStyle = grad;
+      c.beginPath();
+      c.arc(x, y, radius, 0, Math.PI * 2);
+      c.fill();
+
+      // Core nucleus sphere
+      c.fillStyle = '#ffffff';
+      c.beginPath();
+      c.arc(x, y, 5, 0, Math.PI * 2);
+      c.fill();
+
+      // Pin icon or draggable handle
+      if (isPinned) {
+        c.fillStyle = '#ef4444';
+        c.beginPath();
+        c.arc(x, y - radius - 10, 6, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = '#ffffff';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(x, y - radius - 4);
+        c.lineTo(x, y - 6);
+        c.stroke();
+      }
+
+      c.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      c.font = 'bold 9px var(--font-heading)';
+      c.textAlign = 'center';
+      c.fillText(label.toUpperCase(), x, y + radius + 16);
+
+      c.restore();
+    }
+
+    function drawForceArrow(c, x, y, length, color, label) {
+      if (Math.abs(length) < 2) return;
+      c.save();
+      c.strokeStyle = color;
+      c.fillStyle = color;
+      c.lineWidth = 2.5;
+
+      const targetX = x + length;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(targetX, y);
+      c.stroke();
+
+      // Arrowhead
+      const headSize = 6;
+      const dir = length > 0 ? 1 : -1;
+      c.beginPath();
+      c.moveTo(targetX, y);
+      c.lineTo(targetX - dir * headSize, y - 4);
+      c.lineTo(targetX - dir * headSize, y + 4);
+      c.closePath();
+      c.fill();
+
+      c.font = '8px var(--font-mono)';
+      c.textAlign = dir > 0 ? 'left' : 'right';
+      c.fillText(label, targetX + dir * 6, y + 3);
+      c.restore();
+    }
+
+    // Drag-and-Drop Interaction for Moving Atom
+    function handleMouseDown(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      startDrag(mx, my);
+    }
+
+    function handleMouseMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      moveDrag(mx, my);
+    }
+
+    function handleMouseUp() {
+      endDrag();
+    }
+
+    function handleTouchStart(e) {
+      if (e.touches.length === 1) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.touches[0].clientX - rect.left;
+        const my = e.touches[0].clientY - rect.top;
+        if (startDrag(mx, my)) e.preventDefault();
+      }
+    }
+
+    function handleTouchMove(e) {
+      if (state.isDragging && e.touches.length === 1) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.touches[0].clientX - rect.left;
+        const my = e.touches[0].clientY - rect.top;
+        moveDrag(mx, my);
+        e.preventDefault();
+      }
+    }
+
+    function handleTouchEnd() {
+      endDrag();
+    }
+
+    function startDrag(mx, my) {
+      const p = getCurrentParams();
+      const movingX = state.pinnedX + state.r * state.scaleRToPx;
+      const radius = p.sigma / 2 * 0.22;
+
+      // Check click on moving atom
+      if (Math.hypot(mx - movingX, my - atomTrackY) < radius + 20) {
+        state.isDragging = true;
+        state.v = 0;
+        audio.playClick();
+        return true;
+      }
+      return false;
+    }
+
+    function moveDrag(mx, my) {
+      if (state.isDragging) {
+        const p = getCurrentParams();
+        const newR = (mx - state.pinnedX) / state.scaleRToPx;
+        state.r = Math.min(580, Math.max(p.sigma * 0.8, newR));
+        state.v = 0;
+        state.totalEnergy = calcPotential(state.r, p.sigma, p.epsilon);
+        updateMissionProgress();
+      }
+    }
+
+    function endDrag() {
+      if (state.isDragging) {
+        state.isDragging = false;
+        audio.playClick();
+        updateMissionProgress();
+      }
+    }
+
+    // Guided Missions Real-Time Auto-Validation
+    function updateMissionProgress() {
+      const p = getCurrentParams();
+
+      // Mission 1: Equilibrium separation
+      if (!state.missions[1].done) {
+        if (state.pair === 'argon' && Math.abs(state.r - p.r0) < 4) {
+          document.getElementById('missionProgress1').style.width = '100%';
+          completeMission(1);
+        }
+      }
+
+      // Mission 2: Repulsive regime inspection
+      if (!state.missions[2].done) {
+        if (state.forceMode === 'component' && state.r < p.sigma * 0.98) {
+          document.getElementById('missionProgress2').style.width = '100%';
+          completeMission(2);
+        }
+      }
+
+      // Mission 3: Molecular oscillations
+      if (!state.missions[3].done) {
+        if (!state.isDragging && Math.abs(state.v) > 0.4) {
+          document.getElementById('missionProgress3').style.width = '100%';
+          completeMission(3);
+        }
+      }
+
+      // Mission 4: Neon exploration
+      if (!state.missions[4].done) {
+        if (state.pair === 'neon') {
+          document.getElementById('missionProgress4').style.width = '100%';
+          completeMission(4);
+        }
+      }
+
+      // Mission 5: Custom deep well
+      if (!state.missions[5].done) {
+        if (state.pair === 'custom' && state.customEpsilon >= 5.0 && state.customSigma <= 260) {
+          document.getElementById('missionProgress5').style.width = '100%';
+          completeMission(5);
+        }
+      }
+    }
+
+    function completeMission(id) {
+      if (state.missions[id].done) return;
+      state.missions[id].done = true;
+      state.missions[id].progress = 100;
+
+      const badge = document.getElementById('missionBadge' + id);
+      const card = document.getElementById('missionCard' + id);
+      if (badge && card) {
+        badge.className = 'mission-status-badge done';
+        badge.textContent = 'Completed!';
+        card.classList.add('completed');
+      }
+
+      const doneCount = Object.values(state.missions).filter(m => m.done).length;
+      document.getElementById('missionBadgeCount').textContent = `${doneCount}/5`;
+      showToast(`🏆 Mission ${id} Completed! Elementa XP Awarded!`);
+
+      dispatchLmsEvent('ELEMENTA_MISSION_COMPLETE', { missionId: id, totalDone: doneCount });
+    }
+
+    // Modal Control (Sim / Missions / Quiz / Theory)
+    function setAppMode(modeKey) {
+      state.mode = modeKey;
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        document.getElementById('btnModeSim').classList.add('active');
+        closeAllModals();
+      } else if (modeKey === 'missions') {
+        document.getElementById('btnModeMissions').classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        document.getElementById('btnModeQuiz').classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        document.getElementById('btnModeTheory').classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    // Scored Assessment Quiz Handlers
+    function selectQuizAnswer(qNum, optionIdx) {
+      state.quizAnswers[qNum] = optionIdx;
+      const qCard = document.getElementById('qq' + qNum);
+      const options = qCard.querySelectorAll('.quiz-option-btn');
+      options.forEach((opt, idx) => {
+        opt.classList.toggle('selected', idx === optionIdx);
+      });
+    }
+
+    function submitQuiz() {
+      let score = 0;
+      let allAnswered = true;
+
+      for (let i = 1; i <= 5; i++) {
+        if (state.quizAnswers[i] === null) {
+          allAnswered = false;
+          break;
+        }
+      }
+
+      if (!allAnswered) {
+        showToast('Please answer all 5 questions before submitting.');
+        return;
+      }
+
+      for (let i = 1; i <= 5; i++) {
+        const userChoice = state.quizAnswers[i];
+        const isCorrect = userChoice === QUIZ_KEY[i];
+        if (isCorrect) score += 20;
+
+        const qCard = document.getElementById('qq' + i);
+        const options = qCard.querySelectorAll('.quiz-option-btn');
+        options.forEach((opt, idx) => {
+          if (idx === QUIZ_KEY[i]) opt.classList.add('correct');
+          else if (idx === userChoice) opt.classList.add('wrong');
+        });
+
+        const fbBox = document.getElementById('qfb' + i);
+        fbBox.className = 'quiz-feedback-box ' + (isCorrect ? 'correct' : 'wrong');
+        fbBox.textContent = isCorrect ? QUIZ_RATIONALES[i].correct : QUIZ_RATIONALES[i].wrong;
+      }
+
+      // Show Certificate
+      const certWrap = document.getElementById('quizCertificateWrap');
+      certWrap.style.display = 'block';
+      document.getElementById('certScoreDisplay').textContent = `Score: ${score}% (${score/20}/5) • Grade: ${score >= 80 ? 'A (Distinction)' : 'B (Passing)'}`;
+      document.getElementById('certDateDisplay').textContent = `Verified on Elementa LMS • ${new Date().toLocaleDateString()}`;
+
+      // Dispatch LMS Gradebook Integration PostMessage
+      dispatchLmsEvent('ELEMENTA_GRADE_SUBMIT', {
+        score: score,
+        maxScore: 100,
+        percentage: score,
+        passed: score >= 70,
+        sim: 'atomic-interactions'
+      });
+
+      showToast(`Grade ${score}% submitted to Elementa LMS Gradebook!`);
+      document.getElementById('btnSubmitQuiz').textContent = 'Synchronized with LMS Gradebook ✓';
+      document.getElementById('btnSubmitQuiz').disabled = true;
+    }
+
+    // Elementa LMS SCORM / PostMessage Bridge
+    function dispatchLmsEvent(eventName, payload) {
+      const data = {
+        source: 'Elementa_Simulation',
+        sim: 'Atomic_Interactions',
+        event: eventName,
+        payload: payload,
+        timestamp: Date.now()
+      };
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(data, '*');
+      }
+      console.log('[Elementa LMS Event Dispatched]', data);
+    }
+
+    function toggleAudio() {
+      state.soundEnabled = !state.soundEnabled;
+      document.getElementById('btnSoundToggle').classList.toggle('active', state.soundEnabled);
+      showToast(state.soundEnabled ? 'Audio synthesis unmuted' : 'Audio muted');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function captureScreenshot() {
+      const link = document.createElement('a');
+      link.download = 'elementa-atomic-interactions.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Lab screenshot captured and downloaded');
+    }
+
+    function resetSimulation() {
+      state.pair = 'argon';
+      state.forceMode = 'total';
+      state.customEpsilon = 1.0;
+      state.customSigma = 340;
+      selectAtomPair('argon');
+      setForceMode('total');
+      returnAtom();
+      showToast('Simulation reset to default state');
+    }
+
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast-msg';
+      toast.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>${msg}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    window.addEventListener('DOMContentLoaded', initSimulation);
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

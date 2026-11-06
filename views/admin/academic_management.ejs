@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academic Management | Chemistry Arcade</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/admin_spa_handler.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .swal2-container { z-index: 100000 !important; }
+    </style>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body {
@@ -210,6 +215,10 @@
                         <i class="fas fa-lightbulb w-5 text-lime-400 group-hover:scale-110 transition-transform"></i>
                         <span class="font-semibold text-sm">Resources & Engagement</span>
                     </a>
+                    <a href="/admin/simulation-quizzes" class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                        <i class="fas fa-flask-vial w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-semibold text-sm">Simulation Quizzes</span>
+                    </a>
                 </div>
             </div>
             <div>
@@ -278,7 +287,7 @@
 
         <!-- SCROLLABLE CONTENT -->
         <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
-            <div class="p-4 md:p-8 flex-1 fade-in">
+            <div id="adminMainContent" class="p-4 md:p-8 flex-1 fade-in">
 
                 <!-- ── BREADCRUMB ── -->
                 <div class="breadcrumb flex items-center mb-5" id="breadcrumb">
@@ -439,7 +448,8 @@
                                 </div>
                                 <div class="flex gap-1" onclick="event.stopPropagation()">
                                     <button class="btn-icon btn-edit" title="Edit Subject"
-                                        onclick="openEditSubject(<%- JSON.stringify(s) %>)">
+                                        data-subject="<%= JSON.stringify(s) %>"
+                                        onclick="openEditSubject(JSON.parse(this.dataset.subject))">
                                         <i class="fas fa-pen"></i>
                                     </button>
                                     <button class="btn-icon btn-delete" title="Delete Subject"
@@ -601,33 +611,6 @@
                             </div>
                         </div>
 
-                        <!-- Competitive Matches -->
-                        <div class="mb-6">
-                            <div class="flex items-center justify-between mb-3">
-                                <p class="font-bold text-slate-700 flex items-center gap-2">
-                                    <i class="fas fa-swords text-rose-500"></i> Competitive Match History
-                                </p>
-                            </div>
-                            <div id="matchesContainer">
-                                <div class="text-center py-6 text-slate-400 text-sm">Select a subject to load match history.</div>
-                            </div>
-                        </div>
-
-                        <!-- Hardware Button Mapping -->
-                        <div>
-                            <div class="flex items-center justify-between mb-3">
-                                <p class="font-bold text-slate-700 flex items-center gap-2">
-                                    <i class="fas fa-microchip text-indigo-500"></i> Hardware Button Mapping
-                                </p>
-                                <button onclick="openModal('modalAddMapping')"
-                                    class="btn-arcade flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl">
-                                    <i class="fas fa-plus"></i> Add Mapping
-                                </button>
-                            </div>
-                            <div id="mappingContainer">
-                                <div class="text-center py-6 text-slate-400 text-sm">Loading hardware mappings…</div>
-                            </div>
-                        </div>
                     </div>
 
                 </div><!-- end drillPanel -->
@@ -843,7 +826,7 @@
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Description</label>
-                <textarea id="editSubjectDesc" name="description" rows="2" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white resize-none"></textarea>
+                <textarea id="editSubjectDesc" name="description" rows="2" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white resize-none overflow-hidden" oninput="autoResizeTextarea(this)"></textarea>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeModal('modalEditSubject')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
@@ -853,27 +836,68 @@
     </div>
 </div>
 
-<!-- ADD QUARTER -->
+<!-- ADD QUARTER WITH TOPICS -->
 <div id="modalAddQuarter" class="modal-overlay">
-    <div class="modal-box modal-box-sm p-0">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div><h3 class="font-black text-indigo-900 text-lg">Add Quarter</h3></div>
-            <button onclick="closeModal('modalAddQuarter')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="addQuarterForm" onsubmit="submitAddQuarter(event)" class="p-6 space-y-4">
-            <input type="hidden" id="addQuarterSubjectId">
+    <div class="modal-box p-0 max-w-2xl w-full flex flex-col" style="max-height:90vh;">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-6 border-b border-slate-100 shrink-0 bg-white rounded-t-2xl">
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Quarter Number *</label>
-                <select name="quarter_number" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                <h3 class="font-black text-indigo-900 text-lg flex items-center gap-2">
+                    <i class="fas fa-calendar-plus text-indigo-600"></i> Add Quarter
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Define quarter number and required topics. A quarter cannot be created empty.</p>
+            </div>
+            <button type="button" onclick="requestCloseAddQuarter()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Form Body (scrollable) -->
+        <form id="addQuarterForm" onsubmit="handleQuarterSubmitAttempt(event)" class="p-6 space-y-6 overflow-y-auto flex-1">
+            <input type="hidden" id="addQuarterSubjectId">
+
+            <!-- Quarter Selection Section -->
+            <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                <label class="block text-xs font-bold text-indigo-900 mb-1.5 uppercase tracking-wider flex items-center justify-between">
+                    <span>Quarter Number *</span>
+                    <span class="text-[11px] font-normal text-indigo-600 lowercase">select quarter sequence</span>
+                </label>
+                <select id="addQuarterNumber" name="quarter_number" class="search-input w-full px-3.5 py-2.5 rounded-xl border border-indigo-200 text-sm bg-white font-bold text-indigo-950 focus:border-indigo-500">
                     <option value="1">Quarter 1</option>
                     <option value="2">Quarter 2</option>
                     <option value="3">Quarter 3</option>
                     <option value="4">Quarter 4</option>
                 </select>
             </div>
-            <div class="flex justify-end gap-3 pt-2">
-                <button type="button" onclick="closeModal('modalAddQuarter')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Add</button>
+
+            <!-- Topics Section -->
+            <div>
+                <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fas fa-book-bookmark text-indigo-600"></i> Quarter Topics *
+                        </h4>
+                        <p class="text-[11px] text-slate-400">At least one topic with video URL is required.</p>
+                    </div>
+                    <button type="button" onclick="addQuarterTopicCard()" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm border border-indigo-200/60">
+                        <i class="fas fa-plus-circle"></i> Add Another Topic
+                    </button>
+                </div>
+
+                <!-- Container where topic cards are rendered -->
+                <div id="quarterTopicsContainer" class="space-y-4">
+                    <!-- Dynamic topic cards -->
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-between pt-4 border-t border-slate-100 shrink-0">
+                <button type="button" onclick="requestCloseAddQuarter()" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">
+                    Cancel
+                </button>
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white text-sm font-bold transition shadow-md flex items-center gap-2">
+                    <i class="fas fa-save"></i> Save Quarter &amp; Topics
+                </button>
             </div>
         </form>
     </div>
@@ -881,7 +905,7 @@
 
 <!-- ADD TOPIC -->
 <div id="modalAddTopic" class="modal-overlay">
-    <div class="modal-box modal-box-sm p-0">
+    <div class="modal-box p-0 max-w-xl">
         <div class="flex items-center justify-between p-6 border-b border-slate-100">
             <div><h3 class="font-black text-indigo-900 text-lg">Add Topic</h3></div>
             <button onclick="closeModal('modalAddTopic')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
@@ -894,10 +918,31 @@
                     class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Arcade Theme ID</label>
-                <input type="text" name="theme_id" placeholder="default_lab"
-                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
-                <p class="text-[10px] text-slate-400 mt-1">Leave blank for default_lab theme</p>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Topic Description *</label>
+                <textarea name="topic_description" required rows="2" placeholder="Brief description..." class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Objectives *</label>
+                <textarea name="topic_objectives" required rows="2" placeholder="List objectives here..." class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Video URL *</label>
+                <div class="relative">
+                    <input type="url" id="addTopicVideo" name="video_url" required placeholder="e.g. https://www.youtube.com/watch?v=... or embed URL"
+                        oninput="handleTopicVideoPreview('add')" onchange="handleTopicVideoPreview('add')"
+                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white pr-9">
+                    <button type="button" id="addTopicVideoClearBtn" onclick="clearTopicVideoPreview('add')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm hidden" title="Clear URL">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1">Supports YouTube (watch, embed, share, shorts), Vimeo, or direct MP4 video URLs.</p>
+                <div id="addTopicVideoPreviewContainer" class="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 overflow-hidden transition-all hidden">
+                    <div class="flex items-center justify-between pb-2 px-1 text-xs font-bold text-slate-600">
+                        <span class="flex items-center gap-1.5 text-indigo-600"><i class="fas fa-play-circle"></i> Video Preview</span>
+                        <span id="addTopicVideoBadge" class="text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1"><i class="fas fa-check-circle"></i> Valid URL</span>
+                    </div>
+                    <div class="w-full aspect-video rounded-lg overflow-hidden bg-slate-900 shadow-inner flex items-center justify-center border border-slate-200" id="addTopicVideoFrameWrapper"></div>
+                </div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeModal('modalAddTopic')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
@@ -909,7 +954,7 @@
 
 <!-- EDIT TOPIC -->
 <div id="modalEditTopic" class="modal-overlay">
-    <div class="modal-box modal-box-sm p-0">
+    <div class="modal-box p-0 max-w-xl">
         <div class="flex items-center justify-between p-6 border-b border-slate-100">
             <div><h3 class="font-black text-indigo-900 text-lg">Edit Topic</h3></div>
             <button onclick="closeModal('modalEditTopic')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
@@ -921,8 +966,31 @@
                 <input type="text" id="editTopicName" name="topic_name" required class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Arcade Theme ID</label>
-                <input type="text" id="editTopicTheme" name="theme_id" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Topic Description *</label>
+                <textarea id="editTopicDesc" name="topic_description" required rows="2" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Objectives *</label>
+                <textarea id="editTopicObj" name="topic_objectives" required rows="2" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Video URL *</label>
+                <div class="relative">
+                    <input type="url" id="editTopicVideo" name="video_url" required
+                        oninput="handleTopicVideoPreview('edit')" onchange="handleTopicVideoPreview('edit')"
+                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white pr-9">
+                    <button type="button" id="editTopicVideoClearBtn" onclick="clearTopicVideoPreview('edit')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm hidden" title="Clear URL">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1">Supports YouTube (watch, embed, share, shorts), Vimeo, or direct MP4 video URLs.</p>
+                <div id="editTopicVideoPreviewContainer" class="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 overflow-hidden transition-all hidden">
+                    <div class="flex items-center justify-between pb-2 px-1 text-xs font-bold text-slate-600">
+                        <span class="flex items-center gap-1.5 text-indigo-600"><i class="fas fa-play-circle"></i> Video Preview</span>
+                        <span id="editTopicVideoBadge" class="text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1"><i class="fas fa-check-circle"></i> Valid URL</span>
+                    </div>
+                    <div class="w-full aspect-video rounded-lg overflow-hidden bg-slate-900 shadow-inner flex items-center justify-center border border-slate-200" id="editTopicVideoFrameWrapper"></div>
+                </div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeModal('modalEditTopic')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
@@ -932,11 +1000,89 @@
     </div>
 </div>
 
+<!-- ENROLLMENT CONFIG MODAL -->
+<div id="modalClassConfig" class="modal-overlay">
+    <div class="modal-box p-0 max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
+            <div>
+                <h3 class="font-black text-indigo-900 text-lg" id="modalClassConfigTitle">Enrollment Config</h3>
+                <p class="text-xs text-slate-500" id="modalClassConfigSubtitle">Loading...</p>
+            </div>
+            <button onclick="closeModal('modalClassConfig')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 overflow-y-auto grow space-y-8 bg-slate-50">
+            <!-- Settings Section -->
+            <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-800 mb-4"><i class="fas fa-sliders-h text-indigo-500 mr-2"></i>Enrollment Settings</h2>
+                <form id="frmEnrollSettingsAdmin" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="hidden" id="config_class_id">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Start Date</label>
+                        <input type="datetime-local" id="config_start" name="enrollment_start" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">End Date</label>
+                        <input type="datetime-local" id="config_end" name="enrollment_end" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Max Capacity</label>
+                        <input type="number" id="config_cap" name="max_capacity" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500" placeholder="No limit">
+                        <p class="text-[10px] text-slate-400 mt-1" id="config_enrolled_txt">Current enrolled: 0</p>
+                    </div>
+                    <div class="md:col-span-3 flex justify-end mt-2">
+                        <button type="button" onclick="saveEnrollSettingsAdmin()" class="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition"><i class="fas fa-save mr-2"></i> Save Settings</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Whitelist Section -->
+            <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-800 mb-4"><i class="fas fa-clipboard-list text-emerald-500 mr-2"></i>Class Whitelist</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                        <h3 class="font-bold text-slate-700 mb-2">Upload CSV/Excel</h3>
+                        <p class="text-[11px] text-slate-500 mb-3">Upload a file containing 'email' and 'student_name'.</p>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Invitation Expiration</label>
+                        <input type="datetime-local" id="wl_expire_csv_admin" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm mb-3">
+                        <input type="file" id="whitelistFileAdmin" accept=".csv, .xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mb-3">
+                        <button type="button" onclick="uploadWhitelistAdmin()" class="bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-sm w-full"><i class="fas fa-upload mr-2"></i> Send Invitations</button>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                        <h3 class="font-bold text-slate-700 mb-2">Manual Add</h3>
+                        <input type="email" id="wl_email_admin" placeholder="Student Email" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm mb-2">
+                        <input type="text" id="wl_name_admin" placeholder="Student Name (Optional)" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm mb-2">
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Invitation Expiration</label>
+                        <input type="datetime-local" id="wl_expire_manual_admin" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm mb-3">
+                        <button type="button" onclick="addWhitelistAdmin()" class="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-sm w-full"><i class="fas fa-paper-plane mr-2"></i> Send Invitation</button>
+                    </div>
+                </div>
+
+                <div class="table-wrap rounded-xl border border-slate-100 overflow-hidden bg-white">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-500 border-b border-slate-100">
+                            <tr>
+                                <th class="p-3 text-left font-black text-[10px] uppercase tracking-wide">Email</th>
+                                <th class="p-3 text-left font-black text-[10px] uppercase tracking-wide">Name</th>
+                                <th class="p-3 text-center font-black text-[10px] uppercase tracking-wide">Status</th>
+                                <th class="p-3 text-center font-black text-[10px] uppercase tracking-wide">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50" id="whitelistTableAdmin">
+                            <tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-spinner fa-spin mr-2"></i>Loading whitelist...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ADD CLASS -->
 <div id="modalAddClass" class="modal-overlay">
     <div class="modal-box p-0">
         <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div><h3 class="font-black text-indigo-900 text-lg">Add Class</h3></div>
+            <div><h3 class="font-black text-indigo-900 text-lg" id="modalAddClassTitle">Add Class</h3></div>
             <button onclick="closeModal('modalAddClass')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
         </div>
         <form id="addClassForm" onsubmit="submitAddClass(event)" class="p-6 space-y-4">
@@ -988,60 +1134,51 @@
                     class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Target Class</label>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Target Scope</label>
                 <select name="class_id" id="annClassTarget" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
-                    <option value="">All Classes (Subject-wide)</option>
+                    <option value="">Subject-wide (All classes in this subject)</option>
+                    <option value="__GLOBAL__">🌐 Global Campus Broadcast (All Students & Subjects)</option>
                 </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Action Required Date / Deadline</label>
+                <input type="datetime-local" name="due_date" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Official Attachment / Proof <span class="font-normal text-slate-400 lowercase">(PDF, Image, or Word document)</span></label>
+                <input type="file" name="attachment" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp">
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Content *</label>
                 <textarea name="content" rows="4" required placeholder="Write your announcement here…"
                     class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white resize-none"></textarea>
             </div>
-            <div class="flex items-center gap-2">
-                <input type="checkbox" name="is_priority" id="isPriority" class="w-4 h-4 rounded text-rose-500">
-                <label for="isPriority" class="text-sm font-bold text-slate-600">Mark as Priority</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="is_priority" id="isPriority" class="w-4 h-4 rounded text-rose-500">
+                    <label for="isPriority" class="font-bold text-slate-600"><i class="fas fa-flag text-rose-400 mr-1"></i> Priority Pin</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="is_critical" id="isCriticalAdmin" class="w-4 h-4 rounded text-rose-600">
+                    <label for="isCriticalAdmin" class="font-black text-rose-600"><i class="fas fa-triangle-exclamation text-rose-500 mr-1"></i> Critical Intercept Modal</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="allow_replies" id="allowRepliesAdmin" class="w-4 h-4 rounded text-indigo-500">
+                    <label for="allowRepliesAdmin" class="font-bold text-slate-600"><i class="fas fa-comments text-indigo-400 mr-1"></i> Allow Discussion</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="forward_webhook" id="fwdWebhookAdmin" class="w-4 h-4 rounded text-indigo-600">
+                    <label for="fwdWebhookAdmin" class="font-bold text-slate-600"><i class="fab fa-discord text-indigo-500 mr-1"></i> Forward to Webhook</label>
+                </div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeModal('modalAddAnnouncement')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-paper-plane mr-1"></i> Post</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-paper-plane mr-1"></i> Post Announcement</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- ADD HARDWARE MAPPING -->
-<div id="modalAddMapping" class="modal-overlay">
-    <div class="modal-box modal-box-sm p-0">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div><h3 class="font-black text-indigo-900 text-lg">Add Button Mapping</h3></div>
-            <button onclick="closeModal('modalAddMapping')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="addMappingForm" onsubmit="submitAddMapping(event)" class="p-6 space-y-4">
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Button Pin *</label>
-                <input type="number" name="button_pin" required placeholder="e.g. 17" min="0" max="99"
-                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Element Symbol *</label>
-                <input type="text" name="element_symbol" required placeholder="e.g. O, H, Na" maxlength="10"
-                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Player Side *</label>
-                <select name="player_side" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
-                    <option value="1">Player 1</option>
-                    <option value="2">Player 2</option>
-                </select>
-            </div>
-            <div class="flex justify-end gap-3 pt-2">
-                <button type="button" onclick="closeModal('modalAddMapping')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="btn-arcade px-5 py-2.5 rounded-xl text-sm"><i class="fas fa-microchip mr-1"></i> Save Mapping</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <!-- BULK SUBJECT IMPORT -->
 <div id="modalBulkSubject" class="modal-overlay">
@@ -1128,6 +1265,107 @@
     </div>
 </div>
 
+<!-- MIGRATE STUDENTS MODAL -->
+<div id="modalMigrateStudents" class="modal-overlay">
+    <div class="modal-box p-0 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden shadow-2xl rounded-3xl">
+        <!-- Header -->
+        <div class="p-6 bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white flex items-center justify-between border-b border-indigo-700/50">
+            <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 text-xl font-bold shadow-inner">
+                    <i class="fas fa-right-left"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-lg text-white tracking-wide">Migrate / Transition Students</h3>
+                    <p class="text-xs text-indigo-200 mt-0.5" id="migrateModalSubtitle">Advance or transfer students across subjects &amp; sections</p>
+                </div>
+            </div>
+            <button onclick="closeModal('modalMigrateStudents')" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-rose-500/80 text-white/80 hover:text-white transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto space-y-5 flex-1 bg-slate-50/50">
+            <!-- Source Details Card -->
+            <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col gap-2.5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Source Course &amp; Section</span>
+                        <p class="font-bold text-slate-800 text-sm" id="migrateSourceClassDisplay">Loading...</p>
+                    </div>
+                    <span id="migrateStudentCountBadge" class="px-3 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        0 Students
+                    </span>
+                </div>
+                <!-- Collapsible student chips preview -->
+                <div id="migrateSelectedStudentsPreview" class="max-h-28 overflow-y-auto p-2 bg-slate-50 border border-slate-100 rounded-xl flex flex-wrap gap-1.5">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Destination Selection Card -->
+            <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+                <p class="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                    <i class="fas fa-bullseye text-indigo-600"></i> Destination Selection
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <!-- Target Subject -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Target Subject *</label>
+                        <select id="migrateTargetSubject" onchange="onMigrateSubjectChange()" class="w-full text-xs font-bold text-slate-800 p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                            <option value="">— Select Target Subject —</option>
+                        </select>
+                    </div>
+
+                    <!-- Target Section -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Target Section / Class *</label>
+                        <select id="migrateTargetClass" onchange="onMigrateTargetClassChange()" disabled class="w-full text-xs font-bold text-slate-800 p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-400">
+                            <option value="">— Select Subject First —</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Migration Mode Choice -->
+                <div class="pt-2 border-t border-slate-100">
+                    <label class="block text-xs font-bold text-slate-700 mb-2">Migration Action Mode</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <label class="relative flex items-start gap-2.5 p-3 rounded-xl border border-indigo-200 bg-indigo-50/40 cursor-pointer hover:bg-indigo-50 transition">
+                            <input type="radio" name="migrateActionMode" value="advance" checked class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
+                            <div>
+                                <span class="block text-xs font-bold text-indigo-950">Advance Course (Recommended)</span>
+                                <span class="block text-[11px] text-indigo-700/80 leading-snug">Enrolls in target course while keeping completed enrollment record in prerequisite.</span>
+                            </div>
+                        </label>
+                        <label class="relative flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
+                            <input type="radio" name="migrateActionMode" value="transfer" class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
+                            <div>
+                                <span class="block text-xs font-bold text-slate-900">Transfer &amp; Move</span>
+                                <span class="block text-[11px] text-slate-500 leading-snug">Enrolls into target class and un-enrolls students from the current source section.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Verification & Warnings Box -->
+            <div id="migrateVerificationBox" class="hidden p-4 rounded-2xl border shadow-sm">
+                <!-- Dynamically injected check results -->
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 bg-white border-t border-slate-200 flex items-center justify-between">
+            <button type="button" onclick="closeModal('modalMigrateStudents')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+                Cancel
+            </button>
+            <button id="btnExecuteMigrate" disabled onclick="confirmAndExecuteMigration()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white font-black text-xs shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                <i class="fas fa-right-left"></i> Confirm &amp; Execute Migration
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"><i id="toastIcon" class="fas"></i> <span id="toastMsg"></span></div>
 
@@ -1157,7 +1395,23 @@ function closeModal(id) {
     document.body.style.overflow = '';
 }
 document.querySelectorAll('.modal-overlay').forEach(o => {
-    o.addEventListener('click', function(e) { if (e.target === this) closeModal(this.id); });
+    o.addEventListener('click', function(e) {
+        if (e.target === this) {
+            if (this.id === 'modalAddQuarter') {
+                requestCloseAddQuarter();
+            } else {
+                closeModal(this.id);
+            }
+        }
+    });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+        const qm = document.getElementById('modalAddQuarter');
+        if (qm && qm.classList.contains('open')) {
+            requestCloseAddQuarter();
+        }
+    }
 });
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -1238,7 +1492,6 @@ function switchDrillTab(tabId, btn) {
     // Lazy load tab data
     if (tabId === 'dt-progress')       loadProgress();
     if (tabId === 'dt-announcements')  loadAnnouncements();
-    if (tabId === 'dt-arcade')         loadArcadeData();
 }
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
@@ -1256,7 +1509,11 @@ async function submitAddSY(e) {
     e.preventDefault();
     const fd   = new FormData(document.getElementById('addSYForm'));
     const data = await apiPost('/admin/am/school-years', { sy_range: fd.get('sy_range') });
-    if (data.success) { showToast('School year added!', 'success'); closeModal('modalAddSY'); setTimeout(() => location.reload(), 1000); }
+    if (data.success) {
+        showToast('School year added!', 'success');
+        closeModal('modalAddSY');
+        refreshAdminContent({ message: 'Updating school years...' });
+    }
     else showToast(data.message || 'Failed.', 'error');
 }
 
@@ -1269,7 +1526,11 @@ async function submitEditSY(e) {
     e.preventDefault();
     const id   = document.getElementById('editSYId').value;
     const data = await apiPost(`/admin/am/school-years/${id}`, { sy_range: document.getElementById('editSYRange').value });
-    if (data.success) { showToast('School year updated!', 'success'); closeModal('modalEditSY'); setTimeout(() => location.reload(), 1000); }
+    if (data.success) {
+        showToast('School year updated!', 'success');
+        closeModal('modalEditSY');
+        refreshAdminContent({ message: 'Updating school years...' });
+    }
     else showToast(data.message || 'Failed.', 'error');
 }
 
@@ -1282,7 +1543,10 @@ function confirmActivateSY(syId, syRange) {
         onConfirm: async () => {
             const data = await apiPost(`/admin/am/school-years/${syId}/activate`, {});
             closeModal('modalConfirm');
-            if (data.success) { showToast('School year activated!', 'success'); setTimeout(() => location.reload(), 1000); }
+            if (data.success) {
+                showToast('School year activated!', 'success');
+                refreshAdminContent({ message: 'Activating school year...' });
+            }
             else showToast(data.message || 'Failed.', 'error');
         }
     });
@@ -1297,7 +1561,10 @@ function confirmDeleteSY(syId, syRange) {
         onConfirm: async () => {
             const data = await apiDelete(`/admin/am/school-years/${syId}`);
             closeModal('modalConfirm');
-            if (data.success) { showToast('Deleted.', 'success'); setTimeout(() => location.reload(), 1000); }
+            if (data.success) {
+                showToast('Deleted.', 'success');
+                refreshAdminContent({ message: 'Removing school year...' });
+            }
             else showToast(data.message || 'Failed.', 'error');
         }
     });
@@ -1355,8 +1622,17 @@ async function submitAddSubject(e) {
     e.preventDefault();
     const fd = new FormData(document.getElementById('addSubjectForm'));
     const data = await apiPost('/admin/am/subjects', Object.fromEntries(fd));
-    if (data.success) { showToast('Subject created!', 'success'); closeModal('modalAddSubject'); setTimeout(() => location.reload(), 1000); }
+    if (data.success) {
+        showToast('Subject created!', 'success');
+        closeModal('modalAddSubject');
+        refreshAdminContent({ message: 'Creating subject...' });
+    }
     else showToast(data.message || 'Failed.', 'error');
+}
+
+function autoResizeTextarea(el) {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
 }
 
 function openEditSubject(s) {
@@ -1366,6 +1642,7 @@ function openEditSubject(s) {
     document.getElementById('editSubjectSemester').value    = s.semester || 1;
     document.getElementById('editSubjectEnrollCode').value  = s.enrollment_code || '';
     document.getElementById('editSubjectDesc').value        = s.description || '';
+    autoResizeTextarea(document.getElementById('editSubjectDesc'));
     openModal('modalEditSubject');
 }
 async function submitEditSubject(e) {
@@ -1381,7 +1658,11 @@ async function submitEditSubject(e) {
     };
     if (!payload.subject_name) { showToast('Subject name is required.', 'error'); return; }
     const data = await apiPost(`/admin/am/subjects/${id}`, payload);
-    if (data.success) { showToast('Subject updated!', 'success'); closeModal('modalEditSubject'); setTimeout(() => location.reload(), 1000); }
+    if (data.success) {
+        showToast('Subject updated!', 'success');
+        closeModal('modalEditSubject');
+        refreshAdminContent({ message: 'Updating subject...' });
+    }
     else showToast(data.message || 'Failed to update subject.', 'error');
 }
 
@@ -1394,7 +1675,10 @@ function confirmDeleteSubject(subjectId, name, qCount, tCount) {
         onConfirm: async () => {
             const data = await apiDelete(`/admin/am/subjects/${subjectId}`);
             closeModal('modalConfirm');
-            if (data.success) { showToast('Subject deleted.', 'success'); setTimeout(() => location.reload(), 1000); }
+            if (data.success) {
+                showToast('Subject deleted.', 'success');
+                refreshAdminContent({ message: 'Removing subject...' });
+            }
             else showToast(data.message || 'Failed.', 'error');
         }
     });
@@ -1442,7 +1726,7 @@ async function loadQuarters() {
                                 <div class="flex items-center gap-3">
                                     <span class="badge ${t.is_locked ? 'badge-locked' : 'badge-unlocked'} text-[9px]">${t.is_locked ? '🔒' : '🔓'}</span>
                                     <span class="text-sm font-bold text-slate-700">${t.topic_name}</span>
-                                    <span class="text-[10px] text-slate-400 font-mono">${t.theme_id || 'default_lab'}</span>
+
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <button class="btn-icon ${t.is_locked ? 'btn-unlock' : 'btn-lock'}" onclick="toggleTopicLock(${t.topic_id}, ${t.is_locked})">
@@ -1462,16 +1746,381 @@ async function loadQuarters() {
     } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load quarters.</p>`; }
 }
 
+// ─── Add Quarter with Topics State & Functions ──────────────────────────────
+let quarterTopicsList = [];
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function initQuarterTopics() {
+    quarterTopicsList = [
+        { topic_name: '', topic_description: '', topic_objectives: '', video_url: '' }
+    ];
+    renderQuarterTopicsCards();
+}
+
 function openAddQuarter() {
     document.getElementById('addQuarterSubjectId').value = activeDrillSubjectId;
+    const numSel = document.getElementById('addQuarterNumber');
+    if (numSel) numSel.value = '1';
+    initQuarterTopics();
     openModal('modalAddQuarter');
 }
-async function submitAddQuarter(e) {
-    e.preventDefault();
-    const fd   = new FormData(document.getElementById('addQuarterForm'));
-    const data = await apiPost(`/admin/am/subjects/${activeDrillSubjectId}/quarters`, { quarter_number: fd.get('quarter_number') });
-    if (data.success) { showToast('Quarter added!', 'success'); closeModal('modalAddQuarter'); loadQuarters(); }
-    else showToast(data.message || 'Failed.', 'error');
+
+function syncQuarterTopicsFromDOM() {
+    const cards = document.querySelectorAll('.quarter-topic-card');
+    if (cards.length > 0) {
+        quarterTopicsList = Array.from(cards).map(card => ({
+            topic_name: card.querySelector('.q-topic-name')?.value || '',
+            topic_description: card.querySelector('.q-topic-desc')?.value || '',
+            topic_objectives: card.querySelector('.q-topic-obj')?.value || '',
+            video_url: card.querySelector('.q-topic-video')?.value || ''
+        }));
+    }
+    if (quarterTopicsList.length === 0) {
+        quarterTopicsList = [{ topic_name: '', topic_description: '', topic_objectives: '', video_url: '' }];
+    }
+}
+
+function renderQuarterTopicsCards() {
+    const container = document.getElementById('quarterTopicsContainer');
+    if (!container) return;
+
+    container.innerHTML = quarterTopicsList.map((t, idx) => `
+        <div class="quarter-topic-card p-4 rounded-2xl border border-slate-200 bg-white relative transition shadow-sm hover:border-indigo-300" data-index="${idx}">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white text-xs font-black flex items-center justify-center shadow-sm">
+                        ${idx + 1}
+                    </span>
+                    <span class="text-xs font-black text-slate-800 tracking-wide uppercase">Topic #${idx + 1}</span>
+                    ${idx === 0 ? '<span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">Required</span>' : ''}
+                </div>
+                ${quarterTopicsList.length > 1 ? `
+                    <button type="button" onclick="removeQuarterTopicCard(${idx})" class="text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg transition flex items-center gap-1.5" title="Remove Topic">
+                        <i class="fas fa-trash-can"></i> Remove
+                    </button>
+                ` : `
+                    <span class="text-[11px] font-semibold text-slate-400 italic">At least 1 topic required</span>
+                `}
+            </div>
+
+            <div class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Topic Name <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" class="q-topic-name w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none font-medium text-slate-800" 
+                        placeholder="e.g. Atomic Structure & Chemical Bonds" value="${escapeHtml(t.topic_name)}" required>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">
+                            Topic Description <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea rows="2" class="q-topic-desc w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none text-slate-800" 
+                            placeholder="Brief summary of concepts covered..." required>${escapeHtml(t.topic_description)}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">
+                            Learning Objectives <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea rows="2" class="q-topic-obj w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none text-slate-800" 
+                            placeholder="Key competencies and takeaways..." required>${escapeHtml(t.topic_objectives)}</textarea>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Video Lesson URL <span class="text-rose-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="url" class="q-topic-video w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none text-slate-800 pr-9" 
+                            placeholder="e.g. https://www.youtube.com/watch?v=... or Vimeo / MP4" value="${escapeHtml(t.video_url)}"
+                            oninput="handleQuarterTopicVideoPreview(${idx})" onchange="handleQuarterTopicVideoPreview(${idx})" required>
+                        <button type="button" onclick="clearQuarterTopicVideo(${idx})" class="q-topic-video-clear absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm ${t.video_url ? '' : 'hidden'}" title="Clear URL">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-1">Supports YouTube (watch, embed, share, shorts), Vimeo, or direct MP4 video URLs.</p>
+
+                    <div id="qTopicPreview_${idx}" class="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 overflow-hidden transition-all hidden">
+                        <div class="flex items-center justify-between pb-2 px-1 text-xs font-bold text-slate-600">
+                            <span class="flex items-center gap-1.5 text-indigo-600"><i class="fas fa-play-circle"></i> Video Preview</span>
+                            <span id="qTopicBadge_${idx}" class="text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1"></span>
+                        </div>
+                        <div id="qTopicWrapper_${idx}" class="w-full aspect-video rounded-lg overflow-hidden bg-slate-900 shadow-inner flex items-center justify-center border border-slate-200"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    quarterTopicsList.forEach((t, idx) => {
+        if (t.video_url) {
+            handleQuarterTopicVideoPreview(idx);
+        }
+    });
+}
+
+function addQuarterTopicCard() {
+    syncQuarterTopicsFromDOM();
+    quarterTopicsList.push({ topic_name: '', topic_description: '', topic_objectives: '', video_url: '' });
+    renderQuarterTopicsCards();
+    setTimeout(() => {
+        const container = document.getElementById('quarterTopicsContainer');
+        if (container && container.lastElementChild) {
+            container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            container.lastElementChild.querySelector('.q-topic-name')?.focus();
+        }
+    }, 50);
+}
+
+function removeQuarterTopicCard(idx) {
+    syncQuarterTopicsFromDOM();
+    if (quarterTopicsList.length <= 1) {
+        showToast('A quarter must contain at least one topic.', 'error');
+        return;
+    }
+    quarterTopicsList.splice(idx, 1);
+    renderQuarterTopicsCards();
+}
+
+function handleQuarterTopicVideoPreview(idx) {
+    const card = document.querySelector(`.quarter-topic-card[data-index="${idx}"]`);
+    if (!card) return;
+    const input = card.querySelector('.q-topic-video');
+    const clearBtn = card.querySelector('.q-topic-video-clear');
+    const container = document.getElementById(`qTopicPreview_${idx}`);
+    const badge = document.getElementById(`qTopicBadge_${idx}`);
+    const wrapper = document.getElementById(`qTopicWrapper_${idx}`);
+    if (!input || !container || !wrapper) return;
+
+    const val = input.value.trim();
+    if (clearBtn) {
+        if (val) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+    }
+
+    if (!val) {
+        container.classList.add('hidden');
+        wrapper.innerHTML = '';
+        return;
+    }
+
+    const info = parseVideoEmbedInfo(val);
+    if (!info) {
+        container.classList.remove('hidden');
+        if (badge) {
+            badge.className = 'text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 font-semibold flex items-center gap-1';
+            badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Invalid URL';
+        }
+        wrapper.innerHTML = `
+            <div class="text-center p-4 text-slate-400">
+                <i class="fas fa-video-slash text-2xl text-slate-300 mb-1 block"></i>
+                <p class="text-xs font-semibold text-slate-500">Unrecognized video URL</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">Please provide a valid YouTube, Vimeo, or direct video (.mp4) link.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.classList.remove('hidden');
+    if (badge) {
+        badge.className = 'text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1';
+        badge.innerHTML = `<i class="fas fa-check-circle"></i> ${info.platform} Ready`;
+    }
+
+    if (info.type === 'iframe') {
+        wrapper.innerHTML = `
+            <iframe src="${info.src}" class="w-full h-full border-0 rounded-lg" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        `;
+    } else if (info.type === 'video') {
+        wrapper.innerHTML = `
+            <video src="${info.src}" controls class="w-full h-full object-contain rounded-lg bg-black">
+                Your browser does not support the video tag.
+            </video>
+        `;
+    } else {
+        wrapper.innerHTML = `
+            <iframe src="${info.src}" class="w-full h-full border-0 rounded-lg" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+        `;
+    }
+}
+
+function clearQuarterTopicVideo(idx) {
+    const card = document.querySelector(`.quarter-topic-card[data-index="${idx}"]`);
+    if (!card) return;
+    const input = card.querySelector('.q-topic-video');
+    if (input) {
+        input.value = '';
+        handleQuarterTopicVideoPreview(idx);
+    }
+}
+
+function isAddQuarterDirty() {
+    syncQuarterTopicsFromDOM();
+    if (quarterTopicsList.length > 1) return true;
+    const t = quarterTopicsList[0];
+    if (!t) return false;
+    return !!(
+        (t.topic_name && t.topic_name.trim()) ||
+        (t.topic_description && t.topic_description.trim()) ||
+        (t.topic_objectives && t.topic_objectives.trim()) ||
+        (t.video_url && t.video_url.trim())
+    );
+}
+
+async function requestCloseAddQuarter() {
+    if (isAddQuarterDirty()) {
+        const result = await Swal.fire({
+            title: 'Discard unsaved changes?',
+            text: 'You have unsaved quarter and topic details. If you exit now, your entered information will be lost.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: '<i class="fas fa-trash-can mr-1"></i> Discard and Exit',
+            cancelButtonText: 'Stay and Continue Editing',
+            reverseButtons: true,
+            focusCancel: true
+        });
+        if (result.isConfirmed) {
+            forceCloseAddQuarter();
+        }
+    } else {
+        forceCloseAddQuarter();
+    }
+}
+
+function forceCloseAddQuarter() {
+    closeModal('modalAddQuarter');
+    const form = document.getElementById('addQuarterForm');
+    if (form) form.reset();
+    quarterTopicsList = [];
+    const container = document.getElementById('quarterTopicsContainer');
+    if (container) container.innerHTML = '';
+}
+
+async function handleQuarterSubmitAttempt(e) {
+    if (e) e.preventDefault();
+    syncQuarterTopicsFromDOM();
+
+    if (!quarterTopicsList || quarterTopicsList.length === 0) {
+        showToast('Please add at least one topic for this quarter.', 'error');
+        return;
+    }
+
+    for (let i = 0; i < quarterTopicsList.length; i++) {
+        const t = quarterTopicsList[i];
+        const num = i + 1;
+        const card = document.querySelector(`.quarter-topic-card[data-index="${i}"]`);
+
+        if (!t.topic_name || !t.topic_name.trim()) {
+            showToast(`Topic #${num} is missing a Topic Name.`, 'error');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.querySelector('.q-topic-name')?.focus();
+            }
+            return;
+        }
+        if (!t.topic_description || !t.topic_description.trim()) {
+            showToast(`Topic #${num} is missing a Topic Description.`, 'error');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.querySelector('.q-topic-desc')?.focus();
+            }
+            return;
+        }
+        if (!t.topic_objectives || !t.topic_objectives.trim()) {
+            showToast(`Topic #${num} is missing Objectives.`, 'error');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.querySelector('.q-topic-obj')?.focus();
+            }
+            return;
+        }
+        if (!t.video_url || !t.video_url.trim()) {
+            showToast(`Topic #${num} is missing a Video URL.`, 'error');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.querySelector('.q-topic-video')?.focus();
+            }
+            return;
+        }
+        const parsed = parseVideoEmbedInfo(t.video_url.trim());
+        if (!parsed) {
+            showToast(`Topic #${num} has an invalid or unrecognized video URL.`, 'error');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.querySelector('.q-topic-video')?.focus();
+            }
+            return;
+        }
+    }
+
+    const quarterNum = document.getElementById('addQuarterNumber').value;
+    const topicCount = quarterTopicsList.length;
+
+    const confirmSave = await Swal.fire({
+        title: `Save Quarter ${quarterNum}?`,
+        html: `You are about to create <b>Quarter ${quarterNum}</b> with <b>${topicCount} topic${topicCount > 1 ? 's' : ''}</b>.<br><span class="text-xs text-slate-500 mt-1 inline-block">These topics will be immediately assigned to this quarter.</span>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#4f46e5',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: '<i class="fas fa-check mr-1"></i> Yes, Save Quarter',
+        cancelButtonText: 'Review Again',
+        reverseButtons: true,
+        focusConfirm: true
+    });
+
+    if (!confirmSave.isConfirmed) return;
+
+    try {
+        const payload = {
+            quarter_number: parseInt(quarterNum, 10),
+            topics: quarterTopicsList.map(t => ({
+                topic_name: t.topic_name.trim(),
+                topic_description: t.topic_description.trim(),
+                topic_objectives: t.topic_objectives.trim(),
+                video_url: t.video_url.trim()
+            }))
+        };
+
+        const res = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/quarters`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(data.message || `Quarter ${quarterNum} created with ${topicCount} topic(s)!`, 'success');
+            forceCloseAddQuarter();
+            loadQuarters();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Creation Failed',
+                text: data.message || 'Unable to create quarter and topics. Please try again.',
+                confirmButtonColor: '#4f46e5'
+            });
+        }
+    } catch (err) {
+        console.error('Error saving quarter and topics:', err);
+        showToast('Network or server error while creating quarter.', 'error');
+    }
 }
 
 async function toggleQuarterLock(quarterId, isLocked) {
@@ -1496,15 +2145,143 @@ function confirmDeleteQuarter(quarterId, num) {
 }
 
 // ─── Topics ───────────────────────────────────────────────────────────────────
+function parseVideoEmbedInfo(rawUrl) {
+    if (!rawUrl || !rawUrl.trim()) return null;
+    rawUrl = rawUrl.trim();
+
+    // YouTube: standard watch, short (youtu.be), embed, shorts
+    const ytMatch = rawUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/i);
+    if (ytMatch && ytMatch[1]) {
+        return {
+            type: 'iframe',
+            src: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?rel=0`,
+            platform: 'YouTube',
+            rawUrl
+        };
+    }
+
+    // Vimeo
+    const vimeoMatch = rawUrl.match(/(?:vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/[^\/]*\/videos\/|album\/\d+\/video\/|video\/|)(\d+))/i);
+    if (vimeoMatch && vimeoMatch[1]) {
+        return {
+            type: 'iframe',
+            src: `https://player.vimeo.com/video/${vimeoMatch[1]}`,
+            platform: 'Vimeo',
+            rawUrl
+        };
+    }
+
+    // Direct video formats (mp4, webm, ogg)
+    if (/\.(mp4|webm|ogg)($|\?)/i.test(rawUrl)) {
+        return {
+            type: 'video',
+            src: rawUrl,
+            platform: 'Direct Video',
+            rawUrl
+        };
+    }
+
+    // Generic HTTP/HTTPS URL
+    if (/^https?:\/\//i.test(rawUrl)) {
+        return {
+            type: 'generic',
+            src: rawUrl,
+            platform: 'External Video',
+            rawUrl
+        };
+    }
+
+    return null;
+}
+
+function handleTopicVideoPreview(prefix) {
+    const inputId = prefix === 'add' ? 'addTopicVideo' : 'editTopicVideo';
+    const containerId = prefix === 'add' ? 'addTopicVideoPreviewContainer' : 'editTopicVideoPreviewContainer';
+    const wrapperId = prefix === 'add' ? 'addTopicVideoFrameWrapper' : 'editTopicVideoFrameWrapper';
+    const clearBtnId = prefix === 'add' ? 'addTopicVideoClearBtn' : 'editTopicVideoClearBtn';
+    const badgeId = prefix === 'add' ? 'addTopicVideoBadge' : 'editTopicVideoBadge';
+
+    const input = document.getElementById(inputId);
+    const container = document.getElementById(containerId);
+    const wrapper = document.getElementById(wrapperId);
+    const clearBtn = document.getElementById(clearBtnId);
+    const badge = document.getElementById(badgeId);
+
+    if (!input || !container || !wrapper) return;
+
+    const val = input.value.trim();
+    if (clearBtn) {
+        if (val) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+    }
+
+    if (!val) {
+        container.classList.add('hidden');
+        wrapper.innerHTML = '';
+        return;
+    }
+
+    const info = parseVideoEmbedInfo(val);
+    if (!info) {
+        container.classList.remove('hidden');
+        if (badge) {
+            badge.className = 'text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 font-semibold flex items-center gap-1';
+            badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Invalid URL';
+        }
+        wrapper.innerHTML = `
+            <div class="text-center p-4 text-slate-400">
+                <i class="fas fa-video-slash text-2xl text-slate-300 mb-1 block"></i>
+                <p class="text-xs font-semibold text-slate-500">Unrecognized video URL</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">Please provide a valid YouTube, Vimeo, or direct video (.mp4) link.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.classList.remove('hidden');
+    if (badge) {
+        badge.className = 'text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1';
+        badge.innerHTML = `<i class="fas fa-check-circle"></i> ${info.platform} Ready`;
+    }
+
+    if (info.type === 'iframe') {
+        wrapper.innerHTML = `
+            <iframe src="${info.src}" class="w-full h-full border-0 rounded-lg" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        `;
+    } else if (info.type === 'video') {
+        wrapper.innerHTML = `
+            <video src="${info.src}" controls class="w-full h-full object-contain rounded-lg bg-black">
+                Your browser does not support the video tag.
+            </video>
+        `;
+    } else {
+        wrapper.innerHTML = `
+            <iframe src="${info.src}" class="w-full h-full border-0 rounded-lg" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+        `;
+    }
+}
+
+function clearTopicVideoPreview(prefix) {
+    const inputId = prefix === 'add' ? 'addTopicVideo' : 'editTopicVideo';
+    const input = document.getElementById(inputId);
+    if (input) input.value = '';
+    handleTopicVideoPreview(prefix);
+}
+
 function openAddTopic(quarterId) {
     document.getElementById('addTopicQuarterId').value = quarterId;
+    const form = document.getElementById('addTopicForm');
+    if (form) form.reset();
+    clearTopicVideoPreview('add');
     openModal('modalAddTopic');
 }
 async function submitAddTopic(e) {
     e.preventDefault();
     const qId  = document.getElementById('addTopicQuarterId').value;
     const fd   = new FormData(document.getElementById('addTopicForm'));
-    const data = await apiPost(`/admin/am/quarters/${qId}/topics`, { topic_name: fd.get('topic_name'), theme_id: fd.get('theme_id') || 'default_lab' });
+    const data = await apiPost(`/admin/am/quarters/${qId}/topics`, { topic_name: fd.get('topic_name'), topic_description: fd.get('topic_description'), topic_objectives: fd.get('topic_objectives'), video_url: fd.get('video_url') });
     if (data.success) { showToast('Topic added!', 'success'); closeModal('modalAddTopic'); loadQuarters(); }
     else showToast(data.message || 'Failed.', 'error');
 }
@@ -1513,14 +2290,17 @@ function openEditTopicModal(t) {
     if (typeof t === 'string') t = JSON.parse(t);
     document.getElementById('editTopicId').value    = t.topic_id;
     document.getElementById('editTopicName').value  = t.topic_name || '';
-    document.getElementById('editTopicTheme').value = t.theme_id || '';
+    document.getElementById('editTopicDesc').value = t.topic_description || '';
+    document.getElementById('editTopicObj').value = t.topic_objectives || '';
+    document.getElementById('editTopicVideo').value = t.video_url || '';
+    handleTopicVideoPreview('edit');
     openModal('modalEditTopic');
 }
 async function submitEditTopic(e) {
     e.preventDefault();
     const id   = document.getElementById('editTopicId').value;
     const fd   = new FormData(document.getElementById('editTopicForm'));
-    const data = await apiPost(`/admin/am/topics/${id}`, { topic_name: fd.get('topic_name'), theme_id: fd.get('theme_id') || 'default_lab' });
+    const data = await apiPost(`/admin/am/topics/${id}`, { topic_name: fd.get('topic_name'), topic_description: fd.get('topic_description'), topic_objectives: fd.get('topic_objectives'), video_url: fd.get('video_url') });
     if (data.success) { showToast('Topic updated!', 'success'); closeModal('modalEditTopic'); loadQuarters(); }
     else showToast(data.message || 'Failed.', 'error');
 }
@@ -1592,8 +2372,9 @@ async function loadClasses() {
                             <p class="font-bold text-slate-800 text-sm">${c.class_name}</p>
                             <p class="text-[11px] text-slate-400">${c.teacher_name || 'No teacher assigned'} · ${c.sy_range || '—'}</p>
                         </div>
-                        <span class="badge badge-active text-xs">${c.student_count || 0} students</span>
+                        <span class="badge badge-active text-xs" id="class-count-badge-${c.class_id}">${c.student_count || 0} students</span>
                         <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                            <button class="btn-icon" style="color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; width: 32px; height: 32px; border-radius: 8px; font-size: 12px; transition: all 0.2s;" title="Enrollment Config" onmouseover="this.style.color='#4f46e5'; this.style.backgroundColor='#e0e7ff'" onmouseout="this.style.color='#64748b'; this.style.backgroundColor='#f8fafc'" onclick="openClassConfigModal(${c.class_id}, '${c.class_name.replace(/'/g,"\\'")}')"><i class="fas fa-cog"></i></button>
                             <button class="btn-icon btn-edit" title="Edit" onclick="editClassModal(${JSON.stringify(c).replace(/"/g,'&quot;')})"><i class="fas fa-pen"></i></button>
                             <button class="btn-icon btn-delete" title="Delete" onclick="confirmDeleteClass(${c.class_id},'${c.class_name.replace(/'/g,"\\'")}',${c.student_count||0})"><i class="fas fa-trash"></i></button>
                         </div>
@@ -1611,29 +2392,48 @@ async function loadClasses() {
 }
 
 function openAddClass() {
+    document.getElementById('addClassForm').reset();
+    delete document.getElementById('addClassForm').dataset.editId;
     document.getElementById('addClassSubjectId').value = activeDrillSubjectId;
+    document.getElementById('modalAddClassTitle').textContent = 'Add Class';
+    document.querySelector('#addClassForm button[type="submit"]').innerHTML = '<i class="fas fa-plus mr-1"></i> Create Class';
     openModal('modalAddClass');
 }
+
 async function submitAddClass(e) {
     e.preventDefault();
-    const fd   = new FormData(document.getElementById('addClassForm'));
-    const data = await apiPost('/admin/am/classes', {
+    const form = document.getElementById('addClassForm');
+    const fd   = new FormData(form);
+    const editId = form.dataset.editId;
+    
+    const payload = {
         class_name: fd.get('class_name'),
         teacher_id: fd.get('teacher_id'),
         sy_id:      fd.get('sy_id'),
         subject_id: activeDrillSubjectId
-    });
-    if (data.success) { showToast('Class created!', 'success'); closeModal('modalAddClass'); loadClasses(); }
-    else showToast(data.message || 'Failed.', 'error');
+    };
+
+    const url = editId ? `/admin/am/classes/${editId}` : '/admin/am/classes';
+    const data = await apiPost(url, payload);
+    
+    if (data.success) { 
+        showToast(editId ? 'Class updated!' : 'Class created!', 'success'); 
+        closeModal('modalAddClass'); 
+        loadClasses(); 
+    } else {
+        showToast(data.message || 'Failed.', 'error');
+    }
 }
 
 function editClassModal(c) {
-    // Reuse addClassForm for edit by changing action
+    document.getElementById('addClassForm').reset();
     document.getElementById('addClassSubjectId').value = activeDrillSubjectId;
     document.querySelector('#addClassForm [name="class_name"]').value  = c.class_name;
     document.querySelector('#addClassForm [name="teacher_id"]').value  = c.teacher_id || '';
     document.querySelector('#addClassForm [name="sy_id"]').value       = c.sy_id || '';
     document.getElementById('addClassForm').dataset.editId = c.class_id;
+    document.getElementById('modalAddClassTitle').textContent = 'Edit Class';
+    document.querySelector('#addClassForm button[type="submit"]').innerHTML = '<i class="fas fa-save mr-1"></i> Update Class';
     openModal('modalAddClass');
 }
 
@@ -1652,54 +2452,786 @@ function confirmDeleteClass(classId, name, count) {
     });
 }
 
+// ─── Enrollment Config Modals & Logic ──────────────────────────────────────────
+async function openClassConfigModal(classId, className) {
+    document.getElementById('config_class_id').value = classId;
+    document.getElementById('modalClassConfigTitle').textContent = className + ' Settings';
+    document.getElementById('modalClassConfigSubtitle').textContent = 'Loading...';
+    document.getElementById('whitelistTableAdmin').innerHTML = '<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-spinner fa-spin mr-2"></i>Loading whitelist...</td></tr>';
+    openModal('modalClassConfig');
+
+    try {
+        const res = await fetch(`/admin/am/classes/${classId}/config`);
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('modalClassConfigSubtitle').textContent = 'Loaded securely';
+            
+            // Populate Settings
+            const set = data.settings;
+            document.getElementById('config_start').value = set.enrollment_start ? new Date(set.enrollment_start).toISOString().slice(0, 16) : '';
+            document.getElementById('config_end').value   = set.enrollment_end ? new Date(set.enrollment_end).toISOString().slice(0, 16) : '';
+            document.getElementById('config_cap').value   = set.max_capacity !== null ? set.max_capacity : '';
+            document.getElementById('config_cap').min     = set.enrolled_count || 0;
+            document.getElementById('config_enrolled_txt').textContent = `Current enrolled: ${set.enrolled_count || 0}`;
+
+            // Populate Whitelist
+            const wl = data.whitelists || [];
+            let wlHtml = '';
+            if (wl.length === 0) {
+                wlHtml = '<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium">No whitelisted students yet.</td></tr>';
+            } else {
+                wlHtml = wl.map(w => `
+                    <tr class="hover:bg-slate-50/50">
+                        <td class="p-3 font-bold text-slate-700">${w.email}</td>
+                        <td class="p-3 text-slate-500">${w.student_name || '—'}</td>
+                        <td class="p-3 text-center">
+                            ${w.status === 'ENROLLED' ? '<span class="px-2 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-[10px] font-bold">Enrolled</span>' : '<span class="px-2 py-1 bg-amber-100 text-amber-700 border border-amber-200 rounded-md text-[10px] font-bold">Pending</span>'}
+                        </td>
+                        <td class="p-3 text-center">
+                            <button onclick="removeWhitelistAdmin(${classId}, '${w.email}')" class="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition" title="Remove"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            document.getElementById('whitelistTableAdmin').innerHTML = wlHtml;
+        } else {
+            document.getElementById('modalClassConfigSubtitle').textContent = 'Failed to load';
+            showToast(data.message, 'error');
+        }
+    } catch (e) {
+        document.getElementById('modalClassConfigSubtitle').textContent = 'Error';
+        showToast('Error loading configs', 'error');
+    }
+}
+
+async function saveEnrollSettingsAdmin() {
+    const classId = document.getElementById('config_class_id').value;
+    const start = document.getElementById('config_start').value;
+    const end = document.getElementById('config_end').value;
+    const cap = document.getElementById('config_cap').value;
+
+    const res = await apiPost(`/admin/am/classes/${classId}/settings`, {
+        enrollment_start: start,
+        enrollment_end: end,
+        max_capacity: cap
+    });
+    
+    if (res.success) {
+        showToast('Settings saved!', 'success');
+        openClassConfigModal(classId, document.getElementById('modalClassConfigTitle').textContent.replace(' Settings', ''));
+    } else {
+        showToast(res.message, 'error');
+    }
+}
+
+async function uploadWhitelistAdmin() {
+    const classId = document.getElementById('config_class_id').value;
+    const fileInput = document.getElementById('whitelistFileAdmin');
+    const expireInput = document.getElementById('wl_expire_csv_admin').value;
+    
+    if (!fileInput.files.length) return showToast('Please select a file first.', 'error');
+    if (!expireInput) return showToast('Please select an expiration date.', 'error');
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('expirationDate', expireInput);
+
+    try {
+        const res = await fetch(`/admin/am/classes/${classId}/whitelist/upload`, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+            if (data.invalidEmails && data.invalidEmails.length > 0) {
+                alert("WARNING: The following emails were skipped because they are not registered users:\n\n" + data.invalidEmails.join("\n"));
+            }
+            fileInput.value = '';
+            document.getElementById('wl_expire_csv_admin').value = '';
+            openClassConfigModal(classId, document.getElementById('modalClassConfigTitle').textContent.replace(' Settings', ''));
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch(e) {
+        showToast('Upload failed', 'error');
+    }
+}
+
+async function addWhitelistAdmin() {
+    const classId = document.getElementById('config_class_id').value;
+    const email = document.getElementById('wl_email_admin').value;
+    const name = document.getElementById('wl_name_admin').value;
+    const expirationDate = document.getElementById('wl_expire_manual_admin').value;
+    
+    if (!email) return showToast('Email is required.', 'error');
+    if (!expirationDate) return showToast('Expiration date is required.', 'error');
+
+    const res = await apiPost(`/admin/am/classes/${classId}/whitelist/add`, { email, student_name: name, expirationDate });
+    if (res.success) {
+        showToast(res.message, 'success');
+        document.getElementById('wl_email_admin').value = '';
+        document.getElementById('wl_name_admin').value = '';
+        document.getElementById('wl_expire_manual_admin').value = '';
+        openClassConfigModal(classId, document.getElementById('modalClassConfigTitle').textContent.replace(' Settings', ''));
+    } else {
+        showToast(res.message, 'error');
+    }
+}
+
+async function removeWhitelistAdmin(classId, email) {
+    showConfirm({
+        icon: 'fa-trash', iconBg: 'bg-rose-100', iconColor: 'text-rose-600',
+        title: 'Remove Student?',
+        desc: `Are you sure you want to remove ${email} from the whitelist?`,
+        btnLabel: 'Yes, remove', btnColor: 'bg-rose-500',
+        onConfirm: async () => {
+            // we will use fetch for DELETE since apiDelete sends JSON body in a way that might not work with some setups, but apiDelete is standard. Let's use apiDelete with a JSON body
+            const res = await fetch(`/admin/am/classes/${classId}/whitelist/remove`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email})
+            });
+            const data = await res.json();
+            closeModal('modalConfirm');
+            if (data.success) {
+                showToast(data.message, 'success');
+                openClassConfigModal(classId, document.getElementById('modalClassConfigTitle').textContent.replace(' Settings', ''));
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+    });
+}
+
+// ─── Class Students Roster & Actions Cache ─────────────────────────────────────
+const _classStudentsCache = {};
+const _classInfoCache     = {};
+const _selectedStudents   = {};
+
+let _migrateSourceClassId = null;
+let _migrateStudentIds    = [];
+let _migrateSubjects      = [];
+let _migrateClasses       = [];
+
 // ─── Toggle Class Students Dropdown ──────────────────────────────────────────
-async function toggleClassStudents(classId, headerEl) {
+async function toggleClassStudents(classId, headerEl, forceReload = false) {
     const container = document.getElementById(`students-class-${classId}`);
     const chevron   = document.getElementById(`chevron-class-${classId}`);
-    const loading   = document.getElementById(`students-loading-${classId}`);
 
     const isOpen = !container.classList.contains('hidden');
-    if (isOpen) {
+    if (isOpen && !forceReload) {
         container.classList.add('hidden');
-        chevron.style.transform = 'rotate(0deg)';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
         return;
     }
 
     container.classList.remove('hidden');
-    chevron.style.transform = 'rotate(180deg)';
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
 
-    // Only fetch if not already loaded
-    if (container.dataset.loaded === 'true') return;
+    if (container.dataset.loaded === 'true' && !forceReload) return;
+
+    container.innerHTML = `
+        <div class="p-4 text-center text-slate-400 text-xs">
+            <i class="fas fa-spinner fa-spin mr-1.5 text-indigo-500"></i> Loading enrolled students &amp; timeframe status...
+        </div>`;
 
     try {
         const res  = await fetch(`/admin/am/classes/${classId}/students`);
         const data = await res.json();
         container.dataset.loaded = 'true';
 
-        if (!data.success || data.students.length === 0) {
-            container.innerHTML = `<p class="text-center text-slate-400 text-xs py-4">No students enrolled in this class yet.</p>`;
+        if (!data.success) {
+            container.innerHTML = `<p class="text-center text-rose-500 text-xs py-4">${data.message || 'Failed to load students.'}</p>`;
+            return;
+        }
+
+        const students = data.students || [];
+        const clsInfo  = data.classInfo || {};
+        _classStudentsCache[classId] = students;
+        _classInfoCache[classId]     = { ...clsInfo, isEnrollmentOpen: data.isEnrollmentOpen, timeframeStatus: data.timeframeStatus, timeframeMessage: data.timeframeMessage };
+        _selectedStudents[classId]   = new Set();
+
+        // Update badge count in card header
+        const countBadge = document.getElementById(`class-count-badge-${classId}`);
+        if (countBadge) countBadge.textContent = `${students.length} students`;
+
+        // Timeframe Pill Badge
+        let timeframeBadge = '';
+        if (data.timeframeStatus === 'open') {
+            timeframeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs"><i class="fas fa-circle-check text-emerald-500"></i> ${data.timeframeMessage}</span>`;
+        } else if (data.timeframeStatus === 'closed') {
+            timeframeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200 shadow-xs" title="Un-enrolling outside active timeframe requires confirmation"><i class="fas fa-triangle-exclamation text-rose-500"></i> ${data.timeframeMessage}</span>`;
+        } else if (data.timeframeStatus === 'not_started') {
+            timeframeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-xs"><i class="fas fa-clock text-amber-500"></i> ${data.timeframeMessage}</span>`;
+        }
+
+        if (students.length === 0) {
+            container.innerHTML = `
+                <div class="p-6 text-center">
+                    <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                        <span class="text-[11px] font-black uppercase tracking-wider text-slate-400">0 Enrolled Students</span>
+                        ${timeframeBadge}
+                    </div>
+                    <div class="py-4 text-slate-400">
+                        <i class="fas fa-user-slash text-2xl mb-2 block opacity-30"></i>
+                        <p class="text-xs font-bold">No students currently enrolled in this section.</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Use the Bulk Enroll tab or invite students to populate this class.</p>
+                    </div>
+                </div>`;
             return;
         }
 
         container.innerHTML = `
-            <div class="p-3">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">${data.students.length} Enrolled Student(s)</p>
-                <div class="space-y-1.5">
-                ${data.students.map((s, i) => `
-                    <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition">
-                        <span class="text-[10px] font-black text-slate-300 w-5 text-right">${i + 1}</span>
-                        <img src="/profile_uploads/${s.profile_pic || 'default_avatar.png'}"
-                             class="w-7 h-7 rounded-lg object-cover border border-indigo-100 flex-shrink-0">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs font-bold text-indigo-900">${s.last_name}, ${s.first_name}</p>
-                            <p class="text-[10px] text-slate-400 truncate">${s.lrn_number || s.email}</p>
+            <div class="p-3.5 space-y-3">
+                <!-- Roster Toolbar -->
+                <div class="flex flex-wrap items-center justify-between gap-2.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80">
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 select-none">
+                            <input type="checkbox" id="select-all-${classId}" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                   onchange="onStudentSelectAllChange(${classId}, this)">
+                            <span>Select All</span>
+                        </label>
+                        <span class="text-slate-300">|</span>
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">${students.length} Enrolled</span>
+                        ${timeframeBadge}
+                    </div>
+
+                    <!-- Batch Action Buttons -->
+                    <div class="flex items-center gap-2 ml-auto">
+                        <span id="sel-count-${classId}" class="hidden text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-200">
+                            0 selected
+                        </span>
+                        <button id="btn-bulk-unenroll-${classId}" onclick="handleBulkUnenroll(${classId})"
+                                class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-xs transition">
+                            <i class="fas fa-user-minus"></i> Un-enroll Selected
+                        </button>
+                        <button id="btn-bulk-migrate-${classId}" onclick="handleBulkMigrate(${classId})"
+                                class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-xs transition">
+                            <i class="fas fa-right-left"></i> Migrate Selected
+                        </button>
+                        <button onclick="handleMigrateEntireClass(${classId})"
+                                class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white shadow-sm transition">
+                            <i class="fas fa-arrow-right-arrow-left"></i> Migrate Entire Class
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Students Roster List -->
+                <div class="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+                    ${students.map((s, i) => `
+                        <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/20 transition group">
+                            <input type="checkbox" class="student-cb-${classId} rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                   value="${s.user_id}" onchange="onStudentSelectChange(${classId})">
+                            <span class="text-[10px] font-black text-slate-300 w-5 text-right font-mono">${i + 1}</span>
+                            <img src="/profile_uploads/${s.profile_pic || 'default_avatar.png'}"
+                                 class="w-8 h-8 rounded-xl object-cover border border-slate-200 flex-shrink-0 shadow-xs">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <p class="text-xs font-bold text-slate-800 truncate">${s.last_name}, ${s.first_name}</p>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-violet-50 text-violet-700 border border-violet-200 shadow-xs flex-shrink-0">
+                                        Lv.${s.current_level}
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-400 truncate font-mono">${s.lrn_number ? 'LRN: ' + s.lrn_number : s.email}</p>
+                            </div>
+                            
+                            <!-- Individual Action Buttons -->
+                            <div class="flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition">
+                                <button onclick="handleSingleMigrate(${classId}, ${s.user_id})"
+                                        class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-600 bg-indigo-50/60 hover:bg-indigo-100 hover:text-indigo-800 border border-indigo-200/60 transition flex items-center gap-1"
+                                        title="Migrate this student">
+                                    <i class="fas fa-right-left text-[10px]"></i> Migrate
+                                </button>
+                                <button onclick="handleSingleUnenroll(${classId}, ${s.user_id})"
+                                        class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-rose-600 bg-rose-50/60 hover:bg-rose-100 hover:text-rose-800 border border-rose-200/60 transition flex items-center gap-1"
+                                        title="Un-enroll this student">
+                                    <i class="fas fa-user-minus text-[10px]"></i> Un-enroll
+                                </button>
+                            </div>
                         </div>
-                        <span class="text-[10px] font-bold text-violet-600">Lv.${s.current_level}</span>
-                    </div>`).join('')}
+                    `).join('')}
                 </div>
             </div>`;
-    } catch {
-        container.innerHTML = `<p class="text-center text-rose-400 text-xs py-4">Failed to load students.</p>`;
+
+    } catch (err) {
+        console.error('[AM Class Students Error]', err);
+        container.innerHTML = `<p class="text-center text-rose-500 text-xs py-4">Failed to load students: ${err.message}</p>`;
+    }
+}
+
+// ─── Student Checkbox Selection Handlers ─────────────────────────────────────
+function onStudentSelectAllChange(classId, masterCb) {
+    const cbs = document.querySelectorAll(`.student-cb-${classId}`);
+    const sel = _selectedStudents[classId] || new Set();
+    sel.clear();
+    cbs.forEach(cb => {
+        cb.checked = masterCb.checked;
+        if (masterCb.checked) sel.add(parseInt(cb.value, 10));
+    });
+    _selectedStudents[classId] = sel;
+    updateBatchToolbar(classId);
+}
+
+function onStudentSelectChange(classId) {
+    const cbs = document.querySelectorAll(`.student-cb-${classId}`);
+    const masterCb = document.getElementById(`select-all-${classId}`);
+    const sel = new Set();
+    let checkedCount = 0;
+    cbs.forEach(cb => {
+        if (cb.checked) {
+            checkedCount++;
+            sel.add(parseInt(cb.value, 10));
+        }
+    });
+    _selectedStudents[classId] = sel;
+    if (masterCb) {
+        masterCb.checked = (checkedCount === cbs.length && cbs.length > 0);
+        masterCb.indeterminate = (checkedCount > 0 && checkedCount < cbs.length);
+    }
+    updateBatchToolbar(classId);
+}
+
+function updateBatchToolbar(classId) {
+    const sel = _selectedStudents[classId] || new Set();
+    const count = sel.size;
+    const badge = document.getElementById(`sel-count-${classId}`);
+    const btnUnenroll = document.getElementById(`btn-bulk-unenroll-${classId}`);
+    const btnMigrate  = document.getElementById(`btn-bulk-migrate-${classId}`);
+
+    if (count > 0) {
+        if (badge) {
+            badge.textContent = `${count} selected`;
+            badge.classList.remove('hidden');
+        }
+        if (btnUnenroll) {
+            btnUnenroll.classList.remove('hidden');
+            btnUnenroll.classList.add('inline-flex');
+            btnUnenroll.innerHTML = `<i class="fas fa-user-minus"></i> Un-enroll Selected (${count})`;
+        }
+        if (btnMigrate) {
+            btnMigrate.classList.remove('hidden');
+            btnMigrate.classList.add('inline-flex');
+            btnMigrate.innerHTML = `<i class="fas fa-right-left"></i> Migrate Selected (${count})`;
+        }
+    } else {
+        if (badge) badge.classList.add('hidden');
+        if (btnUnenroll) {
+            btnUnenroll.classList.add('hidden');
+            btnUnenroll.classList.remove('inline-flex');
+        }
+        if (btnMigrate) {
+            btnMigrate.classList.add('hidden');
+            btnMigrate.classList.remove('inline-flex');
+        }
+    }
+}
+
+// ─── UN-ENROLL LOGIC (TIMEFRAME VERIFICATION & PROMPTS) ──────────────────────
+async function handleSingleUnenroll(classId, studentId) {
+    promptUnenroll(classId, [studentId]);
+}
+
+async function handleBulkUnenroll(classId) {
+    const sel = _selectedStudents[classId] || new Set();
+    if (sel.size === 0) {
+        showToast('Please select at least one student to un-enroll.', 'warning');
+        return;
+    }
+    promptUnenroll(classId, Array.from(sel));
+}
+
+async function promptUnenroll(classId, studentIds) {
+    const clsInfo = _classInfoCache[classId] || {};
+    const students = _classStudentsCache[classId] || [];
+
+    const selectedStudentNames = studentIds.map(id => {
+        const s = students.find(st => st.user_id === id);
+        return s ? `${s.first_name} ${s.last_name}` : `Student #${id}`;
+    });
+
+    const isOutsideTimeframe = (clsInfo.isEnrollmentOpen === false) || (clsInfo.timeframeStatus === 'closed' || clsInfo.timeframeStatus === 'not_started');
+
+    // Case 1: Outside Timeframe Warning
+    if (isOutsideTimeframe) {
+        const warnHtml = `
+            <div class="text-left text-xs text-slate-600 space-y-2.5">
+                <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900">
+                    <p class="font-bold flex items-center gap-1.5"><i class="fas fa-triangle-exclamation text-amber-600 text-sm"></i> Inactive Enrollment Timeframe Detected</p>
+                    <p class="text-[11px] mt-1 text-amber-800 leading-snug">${clsInfo.timeframeMessage || 'The designated enrollment timeframe for this section has closed or not started yet.'}</p>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <p class="font-bold text-slate-800">Target Section: <span class="text-indigo-600">${clsInfo.class_name}</span> (${clsInfo.subject_name || 'Subject'})</p>
+                    <p class="font-bold text-slate-800 mt-1">Students to Un-enroll (${studentIds.length}):</p>
+                    <p class="text-[11px] text-slate-600 font-medium max-h-20 overflow-y-auto mt-0.5">${selectedStudentNames.join(', ')}</p>
+                </div>
+                <p class="text-rose-700 font-bold text-[11px]">
+                    <i class="fas fa-circle-exclamation mr-1"></i> Warning: Un-enrolling outside designated timeframe may disrupt learning records, grades, and arcade assessments.
+                </p>
+                <p class="text-slate-700 font-bold pt-1">
+                    Are you sure you want to proceed and override this timeframe restriction?
+                </p>
+            </div>`;
+
+        if (window.Swal) {
+            const res = await Swal.fire({
+                title: 'Confirm Un-enrollment Outside Timeframe',
+                html: warnHtml,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="fas fa-exclamation-triangle mr-1"></i> Proceed &amp; Un-enroll Anyway',
+                cancelButtonText: 'Cancel &amp; Abort',
+                reverseButtons: true
+            });
+            if (!res.isConfirmed) return;
+            await executeUnenroll(classId, studentIds, true);
+        } else {
+            const proceed = confirm(`WARNING: Section "${clsInfo.class_name}" enrollment window is inactive (${clsInfo.timeframeMessage}). Un-enroll ${studentIds.length} student(s) anyway?`);
+            if (!proceed) return;
+            await executeUnenroll(classId, studentIds, true);
+        }
+        return;
+    }
+
+    // Case 2: Standard Inside Timeframe Confirmation
+    const studentListSnippet = selectedStudentNames.length > 5 
+        ? selectedStudentNames.slice(0, 5).join(', ') + ` + ${selectedStudentNames.length - 5} more`
+        : selectedStudentNames.join(', ');
+
+    if (window.Swal) {
+        const res = await Swal.fire({
+            title: 'Confirm Student Un-enrollment',
+            html: `
+                <div class="text-left text-xs text-slate-600 space-y-2">
+                    <p class="text-slate-700">Are you sure you want to un-enroll the following student(s) from <b>${clsInfo.class_name}</b>?</p>
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-[11px] max-h-24 overflow-y-auto">
+                        ${studentListSnippet}
+                    </div>
+                    <p class="text-slate-500 text-[11px]">This will revoke their access to this section. Their historical arcade achievements will remain in the database.</p>
+                </div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, Un-enroll',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        });
+        if (!res.isConfirmed) return;
+        await executeUnenroll(classId, studentIds, false);
+    } else {
+        const proceed = confirm(`Are you sure you want to un-enroll ${studentIds.length} student(s) from "${clsInfo.class_name}"?`);
+        if (!proceed) return;
+        await executeUnenroll(classId, studentIds, false);
+    }
+}
+
+async function executeUnenroll(classId, studentIds, force) {
+    try {
+        const res = await fetch(`/admin/am/classes/${classId}/unenroll`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_ids: studentIds, force })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Refresh class roster
+            await toggleClassStudents(classId, null, true);
+        } else {
+            showToast(data.message || 'Failed to un-enroll student(s).', 'error');
+        }
+    } catch (err) {
+        showToast('Error during un-enrollment: ' + err.message, 'error');
+    }
+}
+
+// ─── MIGRATE / TRANSITION STUDENTS LOGIC ──────────────────────────────────────
+function handleSingleMigrate(classId, studentId) {
+    openMigrateModal(classId, [studentId], false);
+}
+
+function handleBulkMigrate(classId) {
+    const sel = _selectedStudents[classId] || new Set();
+    if (sel.size === 0) {
+        showToast('Please select at least one student to migrate.', 'warning');
+        return;
+    }
+    openMigrateModal(classId, Array.from(sel), false);
+}
+
+function handleMigrateEntireClass(classId) {
+    const students = _classStudentsCache[classId] || [];
+    if (students.length === 0) {
+        showToast('No students available in this class to migrate.', 'warning');
+        return;
+    }
+    const allIds = students.map(s => s.user_id);
+    openMigrateModal(classId, allIds, true);
+}
+
+async function openMigrateModal(sourceClassId, studentIds, isEntireClass) {
+    _migrateSourceClassId = sourceClassId;
+    _migrateStudentIds    = studentIds;
+
+    const sourceCls = _classInfoCache[sourceClassId] || {};
+    const students  = _classStudentsCache[sourceClassId] || [];
+
+    // Header & subtitle
+    document.getElementById('migrateSourceClassDisplay').textContent = `${sourceCls.subject_name || 'Subject'} — Section ${sourceCls.class_name || 'Class'}` + (sourceCls.teacher_name ? ` (Teacher: ${sourceCls.teacher_name})` : '');
+    document.getElementById('migrateStudentCountBadge').textContent = isEntireClass
+        ? `Entire Class (${studentIds.length} Students)`
+        : `${studentIds.length} Student${studentIds.length > 1 ? 's' : ''} Selected`;
+
+    // Render Preview Chips
+    const previewContainer = document.getElementById('migrateSelectedStudentsPreview');
+    const selectedList = students.filter(s => studentIds.includes(s.user_id));
+    previewContainer.innerHTML = selectedList.map(s => `
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-800 shadow-2xs">
+            <img src="/profile_uploads/${s.profile_pic || 'default_avatar.png'}" class="w-4 h-4 rounded-full object-cover">
+            ${s.first_name} ${s.last_name}
+        </span>
+    `).join('');
+
+    // Fetch Targets
+    const subSelect = document.getElementById('migrateTargetSubject');
+    const clsSelect = document.getElementById('migrateTargetClass');
+    const btnExecute = document.getElementById('btnExecuteMigrate');
+    const verifBox = document.getElementById('migrateVerificationBox');
+
+    subSelect.innerHTML = '<option value="">Loading subjects...</option>';
+    clsSelect.innerHTML = '<option value="">— Select Subject First —</option>';
+    clsSelect.disabled = true;
+    btnExecute.disabled = true;
+    verifBox.classList.add('hidden');
+
+    openModal('modalMigrateStudents');
+
+    try {
+        const res = await fetch(`/admin/am/migrate/targets?source_class_id=${sourceClassId}`);
+        const data = await res.json();
+        if (!data.success) {
+            subSelect.innerHTML = '<option value="">Failed to load subjects</option>';
+            return;
+        }
+
+        _migrateSubjects = data.subjects || [];
+        _migrateClasses  = data.classes || [];
+
+        subSelect.innerHTML = '<option value="">— Select Target Subject —</option>' +
+            _migrateSubjects.map(s => `<option value="${s.subject_id}">${s.subject_name} (${s.subject_code || 'No code'})</option>`).join('');
+
+    } catch (err) {
+        subSelect.innerHTML = '<option value="">Network error loading subjects</option>';
+    }
+}
+
+function onMigrateSubjectChange() {
+    const subSelect = document.getElementById('migrateTargetSubject');
+    const clsSelect = document.getElementById('migrateTargetClass');
+    const btnExecute = document.getElementById('btnExecuteMigrate');
+    const verifBox   = document.getElementById('migrateVerificationBox');
+
+    const subjectId = parseInt(subSelect.value, 10);
+    clsSelect.innerHTML = '<option value="">— Select Target Section —</option>';
+    btnExecute.disabled = true;
+    verifBox.classList.add('hidden');
+
+    if (isNaN(subjectId)) {
+        clsSelect.disabled = true;
+        return;
+    }
+
+    const filteredClasses = _migrateClasses.filter(c => c.subject_id === subjectId);
+    if (filteredClasses.length === 0) {
+        clsSelect.innerHTML = '<option value="">No classes found for this subject</option>';
+        clsSelect.disabled = true;
+        return;
+    }
+
+    clsSelect.disabled = false;
+    filteredClasses.forEach(c => {
+        const capText = c.max_capacity ? `${c.current_enrolled}/${c.max_capacity} enrolled` : `${c.current_enrolled} enrolled`;
+        const teacherText = c.teacher_name ? ` · ${c.teacher_name}` : '';
+        const opt = document.createElement('option');
+        opt.value = c.class_id;
+        opt.textContent = `${c.class_name} (${capText}${teacherText})`;
+        clsSelect.appendChild(opt);
+    });
+}
+
+async function onMigrateTargetClassChange() {
+    const clsSelect = document.getElementById('migrateTargetClass');
+    const targetClassId = parseInt(clsSelect.value, 10);
+    const verifBox = document.getElementById('migrateVerificationBox');
+    const btnExecute = document.getElementById('btnExecuteMigrate');
+
+    if (isNaN(targetClassId)) {
+        verifBox.classList.add('hidden');
+        btnExecute.disabled = true;
+        return;
+    }
+
+    verifBox.classList.remove('hidden');
+    verifBox.className = 'p-4 rounded-2xl border border-indigo-200 bg-indigo-50/30 text-xs shadow-sm space-y-2';
+    verifBox.innerHTML = '<p class="text-indigo-700 font-bold flex items-center gap-1.5"><i class="fas fa-spinner fa-spin"></i> Verifying capacity, enrollment timeframe, and duplicate enrollments...</p>';
+
+    try {
+        const res = await fetch(`/admin/am/classes/${_migrateSourceClassId}/migrate/preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target_class_id: targetClassId, student_ids: _migrateStudentIds })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            verifBox.className = 'p-4 rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 text-xs shadow-sm';
+            verifBox.innerHTML = `<p class="font-bold"><i class="fas fa-circle-xmark mr-1"></i> ${data.message}</p>`;
+            btnExecute.disabled = true;
+            return;
+        }
+
+        const tc = data.targetClass;
+        let checksHtml = '';
+
+        // Timeframe Check
+        if (data.isOutsideTimeframe) {
+            checksHtml += `
+                <div class="flex items-start gap-2 text-rose-800 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                    <i class="fas fa-triangle-exclamation text-rose-600 mt-0.5"></i>
+                    <div>
+                        <span class="font-black">Enrollment Timeframe Notice:</span>
+                        <span class="block text-[11px]">${data.timeframeMessage}. Migrating will require confirmation.</span>
+                    </div>
+                </div>`;
+        } else {
+            checksHtml += `
+                <div class="flex items-center gap-2 text-emerald-800 bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+                    <i class="fas fa-circle-check text-emerald-600"></i>
+                    <span class="font-bold">Enrollment Timeframe Active (${data.timeframeMessage})</span>
+                </div>`;
+        }
+
+        // Capacity Check
+        if (data.willExceedCapacity) {
+            checksHtml += `
+                <div class="flex items-start gap-2 text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                    <i class="fas fa-users-slash text-amber-600 mt-0.5"></i>
+                    <div>
+                        <span class="font-black">Capacity Cap Notice:</span>
+                        <span class="block text-[11px]">Target capacity is ${data.maxCapacity}. Adding ${data.newEnrollmentCount} new student(s) to current ${data.currentEnrolled} results in ${data.projectedEnrolled}/${data.maxCapacity} (Exceeds capacity cap).</span>
+                    </div>
+                </div>`;
+        } else if (data.maxCapacity) {
+            checksHtml += `
+                <div class="flex items-center gap-2 text-indigo-900 bg-indigo-50/70 p-2 rounded-xl border border-indigo-200">
+                    <i class="fas fa-users text-indigo-600"></i>
+                    <span class="font-bold">Projected Capacity: ${data.projectedEnrolled} / ${data.maxCapacity} enrolled (Within limit)</span>
+                </div>`;
+        }
+
+        // Duplicates check
+        if (data.alreadyEnrolledCount > 0) {
+            checksHtml += `
+                <div class="flex items-start gap-2 text-sky-900 bg-sky-50 p-2.5 rounded-xl border border-sky-200">
+                    <i class="fas fa-circle-info text-sky-600 mt-0.5"></i>
+                    <div>
+                        <span class="font-black">${data.alreadyEnrolledCount} Student(s) Already Enrolled:</span>
+                        <span class="block text-[11px]">These students are already members of this target section and will be retained without duplicate rows.</span>
+                    </div>
+                </div>`;
+        }
+
+        verifBox.className = 'p-4 rounded-2xl border border-slate-200 bg-white text-xs shadow-sm space-y-2.5';
+        verifBox.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span class="font-black uppercase tracking-wider text-slate-400 text-[10px]">Pre-Flight System Verification</span>
+                <span class="font-bold text-slate-600 text-[11px]">Target: ${tc.subject_name} — ${tc.class_name} (${tc.teacher_name || 'No Teacher'})</span>
+            </div>
+            ${checksHtml}
+        `;
+
+        btnExecute.disabled = false;
+
+    } catch (err) {
+        verifBox.className = 'p-4 rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 text-xs shadow-sm';
+        verifBox.innerHTML = `<p class="font-bold"><i class="fas fa-triangle-exclamation mr-1"></i> Preview error: ${err.message}</p>`;
+        btnExecute.disabled = true;
+    }
+}
+
+async function confirmAndExecuteMigration() {
+    const targetClassId = parseInt(document.getElementById('migrateTargetClass').value, 10);
+    if (isNaN(targetClassId)) {
+        showToast('Please select a target class first.', 'warning');
+        return;
+    }
+
+    const actionModeEl = document.querySelector('input[name="migrateActionMode"]:checked');
+    const removeFromSource = actionModeEl ? (actionModeEl.value === 'transfer') : false;
+
+    const sourceDisplay = document.getElementById('migrateSourceClassDisplay').textContent;
+    const targetClassSelect = document.getElementById('migrateTargetClass');
+    const targetDisplay = targetClassSelect.options[targetClassSelect.selectedIndex].textContent;
+
+    const modeText = removeFromSource
+        ? '<b class="text-rose-600">Transfer &amp; Move</b> (Students will be removed from current section)'
+        : '<b class="text-indigo-600">Advance Course</b> (Students will keep completed prerequisite history)';
+
+    const confirmHtml = `
+        <div class="text-left text-xs text-slate-600 space-y-2.5">
+            <p class="font-bold text-slate-800 text-sm">Review Migration Details:</p>
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                <p><b>Total Students:</b> <span class="text-indigo-700 font-bold">${_migrateStudentIds.length} student(s)</span></p>
+                <p><b>From:</b> ${sourceDisplay}</p>
+                <p><b>To:</b> ${targetDisplay}</p>
+                <p><b>Mode:</b> ${modeText}</p>
+            </div>
+            <p class="text-[11px] text-slate-500">All target section enrollments, syllabus access, and learning progress tracking will be automatically updated.</p>
+        </div>`;
+
+    if (window.Swal) {
+        const res = await Swal.fire({
+            title: 'Execute Student Migration?',
+            html: confirmHtml,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: '<i class="fas fa-right-left mr-1"></i> Confirm &amp; Execute Migration',
+            cancelButtonText: 'Cancel &amp; Review',
+            reverseButtons: true
+        });
+        if (!res.isConfirmed) return;
+    } else {
+        const proceed = confirm(`Migrate ${_migrateStudentIds.length} student(s) to ${targetDisplay}?`);
+        if (!proceed) return;
+    }
+
+    try {
+        const res = await fetch(`/admin/am/classes/${_migrateSourceClassId}/migrate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                target_class_id: targetClassId,
+                student_ids: _migrateStudentIds,
+                remove_from_source: removeFromSource,
+                force: true
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            closeModal('modalMigrateStudents');
+            showToast(data.message, 'success');
+            // Refresh source class roster
+            await toggleClassStudents(_migrateSourceClassId, null, true);
+            // Also refresh overall classes list to update counts
+            await loadClasses();
+        } else {
+            showToast(data.message || 'Migration failed.', 'error');
+        }
+    } catch (err) {
+        showToast('Error during migration: ' + err.message, 'error');
     }
 }
 
@@ -1744,17 +3276,31 @@ async function loadAnnouncements() {
             return;
         }
         container.innerHTML = `<div class="space-y-3">` + data.announcements.map(a => `
-            <div class="p-4 rounded-xl border ${a.is_priority ? 'border-rose-200 bg-rose-50' : 'border-slate-100 bg-white'}">
+            <div class="p-4 rounded-xl border ${a.is_critical ? 'border-rose-300 bg-rose-50/70' : (a.is_priority ? 'border-amber-200 bg-amber-50/50' : 'border-slate-100 bg-white')}">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex-1">
-                        ${a.is_priority ? `<span class="badge badge-locked text-[9px] mb-1">Priority</span>` : ''}
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            ${a.is_critical ? `<span class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[9px] font-black uppercase tracking-wider"><i class="fas fa-triangle-exclamation"></i> Emergency Alert</span>` : ''}
+                            ${a.is_priority && !a.is_critical ? `<span class="badge badge-locked text-[9px]">Priority</span>` : ''}
+                            ${a.due_date ? `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[9px] font-bold"><i class="fas fa-clock mr-1"></i>Due ${new Date(a.due_date).toLocaleDateString('en-US', {month:'short', day:'numeric'})}</span>` : ''}
+                        </div>
                         <p class="font-black text-slate-800 text-sm">${a.title}</p>
-                        <p class="text-xs text-slate-500 mt-1 line-clamp-2">${a.content}</p>
-                        <p class="text-[10px] text-slate-400 mt-1">${new Date(a.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</p>
+                        <p class="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">${a.content}</p>
+                        
+                        <div class="flex items-center gap-4 mt-2 text-[10px] text-slate-400 font-bold flex-wrap">
+                            <span><i class="fas fa-calendar-alt mr-1"></i>${new Date(a.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</span>
+                            <span><i class="fas fa-bullhorn text-indigo-500 mr-1"></i>${a.scope === 'global' ? 'Campus-Wide Broadcast' : (a.class_name ? a.class_name : 'Subject-Wide')}</span>
+                            ${a.attachment_url ? `<span class="text-cyan-600"><i class="fas fa-paperclip mr-1"></i>Attached Proof</span>` : ''}
+                        </div>
                     </div>
-                    <button class="btn-icon btn-delete flex-shrink-0" onclick="confirmDeleteAnnouncement(${a.announcement_id},'${a.title.replace(/'/g,"\\'")}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <button class="btn-icon text-cyan-600 hover:bg-cyan-50" title="Preview Announcement & Proof" onclick='openAnnouncementPreview(${JSON.stringify(a)})'>
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-icon btn-delete flex-shrink-0" onclick="confirmDeleteAnnouncement(${a.announcement_id},'${a.title.replace(/'/g,"\\'")}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>`).join('') + `</div>`;
     } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load announcements.</p>`; }
@@ -1766,17 +3312,34 @@ function openAddAnnouncement() {
 }
 async function submitAddAnnouncement(e) {
     e.preventDefault();
-    const fd   = new FormData(document.getElementById('addAnnouncementForm'));
-    const data = await apiPost('/admin/am/announcements', {
-        title:      fd.get('title'),
-        content:    fd.get('content'),
-        class_id:   fd.get('class_id') || null,
-        subject_id: activeDrillSubjectId,
-        is_priority: fd.get('is_priority') ? 1 : 0,
-        teacher_id: <%- JSON.stringify(user.user_id) %>
-    });
-    if (data.success) { showToast('Announcement posted!', 'success'); closeModal('modalAddAnnouncement'); loadAnnouncements(); }
-    else showToast(data.message || 'Failed.', 'error');
+    const fd = new FormData(document.getElementById('addAnnouncementForm'));
+    const classVal = fd.get('class_id');
+    const isGlobal = classVal === '__GLOBAL__';
+
+    const endpoint = isGlobal ? '/admin/api/broadcast/global' : '/admin/am/announcements';
+    fd.set('teacher_id', '<%- JSON.stringify(user.user_id) %>');
+    if (!isGlobal) {
+        fd.set('subject_id', activeDrillSubjectId);
+    }
+    if (!fd.has('is_priority')) fd.set('is_priority', '0');
+    if (!fd.has('is_critical')) fd.set('is_critical', '0');
+    if (!fd.has('allow_replies')) fd.set('allow_replies', '0');
+    if (!fd.has('forward_webhook')) fd.set('forward_webhook', '0');
+
+    try {
+        const res = await fetch(endpoint, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+            showToast(isGlobal ? 'Global Broadcast published!' : 'Announcement posted!', 'success');
+            closeModal('modalAddAnnouncement');
+            document.getElementById('addAnnouncementForm').reset();
+            loadAnnouncements();
+        } else {
+            showToast(data.message || 'Failed.', 'error');
+        }
+    } catch (err) {
+        showToast('Failed to post announcement: ' + err.message, 'error');
+    }
 }
 
 function confirmDeleteAnnouncement(annId, title) {
@@ -1794,171 +3357,7 @@ function confirmDeleteAnnouncement(annId, title) {
     });
 }
 
-// ─── Arcade Data ──────────────────────────────────────────────────────────────
-async function loadArcadeData() {
-    loadLeaderboard();
-    loadMatches();
-    loadMappings();
-}
 
-async function loadLeaderboard() {
-    if (!activeDrillSubjectId) return;
-    const container = document.getElementById('leaderboardContainer');
-    container.innerHTML = `<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-yellow-300 text-xl"></i></div>`;
-    try {
-        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/leaderboard`);
-        const data = await res.json();
-        if (!data.success || !data.history.length) {
-            container.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">No leaderboard snapshots yet.</p>`;
-            return;
-        }
-        container.innerHTML = `
-            <div class="table-wrap rounded-xl border border-slate-100">
-                <table class="data-table w-full text-sm">
-                    <thead><tr class="border-b border-slate-100">
-                        <th class="p-3 text-left">Rank</th><th class="p-3 text-left">Student</th>
-                        <th class="p-3 text-left">EXP Snapshot</th><th class="p-3 text-left hidden md:table-cell">Date</th>
-                        <th class="p-3 text-center">Actions</th>
-                    </tr></thead>
-                    <tbody>
-                    ${data.history.map(h => `
-                        <tr class="border-b border-slate-50">
-                            <td class="p-3 font-black text-indigo-700">#${h.rank_achieved}</td>
-                            <td class="p-3 font-bold text-slate-800">${h.student_name}</td>
-                            <td class="p-3 font-mono text-sm text-slate-600">${h.total_exp_snapshot.toLocaleString()}</td>
-                            <td class="p-3 hidden md:table-cell text-xs text-slate-400">${new Date(h.awarded_date).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</td>
-                            <td class="p-3 text-center">
-                                <button class="btn-icon btn-delete" onclick="confirmDeleteLB(${h.history_id})"><i class="fas fa-trash"></i></button>
-                            </td>
-                        </tr>`).join('')}
-                    </tbody>
-                </table>
-            </div>`;
-    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load leaderboard.</p>`; }
-}
-
-function confirmDeleteLB(histId) {
-    showConfirm({
-        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
-        title:'Delete Leaderboard Entry?',
-        desc:'This snapshot record will be permanently deleted.',
-        btnLabel:'Delete', btnColor:'bg-rose-500',
-        onConfirm: async () => {
-            const data = await apiDelete(`/admin/am/leaderboard/${histId}`);
-            closeModal('modalConfirm');
-            if (data.success) { showToast('Entry deleted.', 'success'); loadLeaderboard(); }
-            else showToast(data.message || 'Failed.', 'error');
-        }
-    });
-}
-
-async function loadMatches() {
-    if (!activeDrillSubjectId) return;
-    const container = document.getElementById('matchesContainer');
-    container.innerHTML = `<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-rose-300 text-xl"></i></div>`;
-    try {
-        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/matches`);
-        const data = await res.json();
-        if (!data.success || !data.matches.length) {
-            container.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">No competitive matches recorded yet.</p>`;
-            return;
-        }
-        container.innerHTML = `
-            <div class="table-wrap rounded-xl border border-slate-100">
-                <table class="data-table w-full text-sm">
-                    <thead><tr class="border-b border-slate-100">
-                        <th class="p-3 text-left">Player 1</th><th class="p-3 text-left">Player 2</th>
-                        <th class="p-3 text-left hidden md:table-cell">Score</th><th class="p-3 text-left">Winner</th>
-                        <th class="p-3 text-left hidden md:table-cell">Date</th><th class="p-3 text-center">Actions</th>
-                    </tr></thead>
-                    <tbody>
-                    ${data.matches.map(m => `
-                        <tr class="border-b border-slate-50">
-                            <td class="p-3 font-bold text-slate-700">${m.p1_name}</td>
-                            <td class="p-3 font-bold text-slate-700">${m.p2_name}</td>
-                            <td class="p-3 hidden md:table-cell text-xs font-mono text-slate-500">${m.p1_score} – ${m.p2_score}</td>
-                            <td class="p-3"><span class="badge badge-active">${m.winner_name || '—'}</span></td>
-                            <td class="p-3 hidden md:table-cell text-xs text-slate-400">${new Date(m.match_date).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</td>
-                            <td class="p-3 text-center">
-                                <button class="btn-icon btn-delete" onclick="confirmDeleteMatch(${m.match_id})"><i class="fas fa-trash"></i></button>
-                            </td>
-                        </tr>`).join('')}
-                    </tbody>
-                </table>
-            </div>`;
-    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load matches.</p>`; }
-}
-
-function confirmDeleteMatch(matchId) {
-    showConfirm({
-        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
-        title:'Delete this match record?',
-        desc:'This competitive match record will be permanently removed.',
-        btnLabel:'Delete', btnColor:'bg-rose-500',
-        onConfirm: async () => {
-            const data = await apiDelete(`/admin/am/matches/${matchId}`);
-            closeModal('modalConfirm');
-            if (data.success) { showToast('Match deleted.', 'success'); loadMatches(); }
-            else showToast(data.message || 'Failed.', 'error');
-        }
-    });
-}
-
-async function loadMappings() {
-    const container = document.getElementById('mappingContainer');
-    container.innerHTML = `<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-indigo-300 text-xl"></i></div>`;
-    try {
-        const res  = await fetch('/admin/am/button-mappings');
-        const data = await res.json();
-        if (!data.success || !data.mappings.length) {
-            container.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">No hardware mappings configured.</p>`;
-            return;
-        }
-        container.innerHTML = `
-            <div class="table-wrap rounded-xl border border-slate-100">
-                <table class="data-table w-full text-sm">
-                    <thead><tr class="border-b border-slate-100">
-                        <th class="p-3 text-left">Pin</th><th class="p-3 text-left">Element</th>
-                        <th class="p-3 text-left">Player Side</th><th class="p-3 text-center">Actions</th>
-                    </tr></thead>
-                    <tbody>
-                    ${data.mappings.map(m => `
-                        <tr class="border-b border-slate-50">
-                            <td class="p-3 font-mono font-bold text-indigo-700">${m.button_pin}</td>
-                            <td class="p-3 font-mono font-bold text-slate-800">${m.element_symbol}</td>
-                            <td class="p-3"><span class="badge badge-active">P${m.player_side}</span></td>
-                            <td class="p-3 text-center">
-                                <button class="btn-icon btn-delete" onclick="confirmDeleteMapping(${m.mapping_id})"><i class="fas fa-trash"></i></button>
-                            </td>
-                        </tr>`).join('')}
-                    </tbody>
-                </table>
-            </div>`;
-    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load mappings.</p>`; }
-}
-
-async function submitAddMapping(e) {
-    e.preventDefault();
-    const fd   = new FormData(document.getElementById('addMappingForm'));
-    const data = await apiPost('/admin/am/button-mappings', { button_pin: fd.get('button_pin'), element_symbol: fd.get('element_symbol'), player_side: fd.get('player_side') });
-    if (data.success) { showToast('Mapping saved!', 'success'); closeModal('modalAddMapping'); loadMappings(); }
-    else showToast(data.message || 'Failed.', 'error');
-}
-
-function confirmDeleteMapping(mappingId) {
-    showConfirm({
-        icon:'fa-trash', iconBg:'bg-rose-100', iconColor:'text-rose-600',
-        title:'Delete this mapping?',
-        desc:'The hardware button mapping will be permanently removed.',
-        btnLabel:'Delete', btnColor:'bg-rose-500',
-        onConfirm: async () => {
-            const data = await apiDelete(`/admin/am/button-mappings/${mappingId}`);
-            closeModal('modalConfirm');
-            if (data.success) { showToast('Deleted.', 'success'); loadMappings(); }
-            else showToast(data.message || 'Failed.', 'error');
-        }
-    });
-}
 
 // ─── Bulk Import ──────────────────────────────────────────────────────────────
 function handleBulkDrop(e, type) {
@@ -2331,6 +3730,13 @@ function downloadAcademicTemplate(type) {
     });
 })();
 </script>
+
+<!-- Announcement Preview & Document Reader Modal Partial -->
+<%- include('../partials/announcement-preview-modal') %>
+
+<!-- Elementa Session Security Modals & Client Guardian Controller -->
+<%- include('../partials/session-modals') %>
+<script src="/js/session-guard.js"></script>
 
 </body>
 </html>

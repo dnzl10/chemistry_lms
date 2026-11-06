@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Speed Grading Workspace | <%= assessment.assessment_name %> | Elementa LMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- PDF.js & Mammoth.js for zero-download document rendering -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+
+    <!-- Custom Client Scripts -->
+    <script src="/js/text-expander.js"></script>
+    <script src="/js/grading-hotkeys.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; margin: 0; padding: 0; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar-dark::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        /* Resizable Divider */
+        .resizer-divider {
+            width: 6px;
+            cursor: col-resize;
+            background: #e2e8f0;
+            transition: background 0.2s;
+            position: relative;
+            z-index: 25;
+            flex-shrink: 0;
+        }
+        .resizer-divider:hover, .resizer-divider.dragging {
+            background: #6366f1;
+        }
+        .resizer-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px;
+            height: 24px;
+            background: #94a3b8;
+            border-radius: 1px;
+        }
+        .resizer-divider:hover::after, .resizer-divider.dragging::after {
+            background: #ffffff;
+        }
+
+        /* Canvas Annotation Layer */
+        .annotation-canvas-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* Pulse animation for recording */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .recording-pulse {
+            animation: pulse-ring 1.8s infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col h-screen overflow-hidden select-none">
+    
+    <!-- Top Navigation Bar -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between flex-shrink-0 z-30">
+        <div class="flex items-center gap-3">
+            <a href="/teacher/dashboard" class="text-slate-400 hover:text-white transition flex items-center gap-2 text-xs font-bold px-2 py-1.5 rounded-lg hover:bg-slate-800">
+                <i class="fas fa-arrow-left"></i>
+                <span class="hidden sm:inline">Dashboard</span>
+            </a>
+            <div class="h-4 w-px bg-slate-700"></div>
+            
+            <!-- Assessment Title & Max Score -->
+            <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 font-extrabold text-[10px] uppercase tracking-wider hidden md:inline-block">SpeedGrader</span>
+                <h1 class="text-xs sm:text-sm font-black text-white truncate max-w-[220px] lg:max-w-md" id="assessmentTitleHeader" title="<%= assessment.assessment_name %>">
+                    <%= assessment.assessment_name %>
+                </h1>
+                <span class="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[11px] font-bold">
+                    Max: <span class="text-indigo-400 font-extrabold"><%= assessment.max_score || 100 %></span> pts
+                </span>
+            </div>
+        </div>
+
+        <!-- Roster Drawer Trigger, Guidelines, Student Switcher & Hotkey Indicators -->
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Submissions Left Panel Trigger -->
+            <button onclick="toggleLeftPanel()" id="rosterDrawerBtn" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition border border-slate-700 shadow-sm" title="Toggle Submissions Left Panel">
+                <i class="fas fa-inbox text-indigo-400"></i>
+                <span class="hidden sm:inline">Submissions</span>
+                <span id="topRosterCountPill" class="px-1.5 py-0.2 rounded-full bg-indigo-500/30 text-indigo-300 font-mono text-[10px]">0</span>
+            </button>
+
+            <!-- Blueprint / Guidelines Drawer Trigger -->
+            <button onclick="toggleGuidelinesDrawer()" class="px-3 py-1.5 rounded-xl bg-indigo-950/70 hover:bg-indigo-900 text-indigo-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition border border-indigo-700/50 shadow-sm">
+                <i class="fas fa-compass text-cyan-400"></i>
+                <span class="hidden md:inline">Guidelines</span>
+            </button>
+
+            <!-- Student Pager -->
+            <div class="flex items-center bg-slate-800 rounded-xl p-1 border border-slate-700">
+                <button onclick="prevStudent()" class="px-2.5 py-1 text-xs text-slate-300 hover:text-white font-bold flex items-center gap-1.5 transition rounded-lg hover:bg-slate-700" title="Previous Student (Hotkey: K)">
+                    <kbd class="px-1.5 py-0.5 bg-slate-900 rounded text-[10px] text-slate-400 font-mono">K</kbd>
+                    <span class="hidden sm:inline">Prev</span>
+                </button>
+                <span class="text-xs text-slate-300 font-black px-2.5 font-mono" id="studentCounterText">-- / --</span>
+                <button onclick="nextStudent()" class="px-2.5 py-1 text-xs text-slate-300 hover:text-white font-bold flex items-center gap-1.5 transition rounded-lg hover:bg-slate-700" title="Next Student (Hotkey: J)">
+                    <span class="hidden sm:inline">Next</span>
+                    <kbd class="px-1.5 py-0.5 bg-slate-900 rounded text-[10px] text-slate-400 font-mono">J</kbd>
+                </button>
+            </div>
+
+            <!-- Hotkey Cheat Sheet -->
+            <button onclick="window.hotkeyManager ? window.hotkeyManager.toggleCheatSheet() : null" class="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl border border-slate-700 transition" title="Keyboard Shortcuts Cheat Sheet (?)">
+                <kbd class="font-black text-xs px-1">?</kbd>
+            </button>
+
+                    <!-- Messages Navigation Button (Entry point to teacher messages workspace) -->
+                    <a href="/teacher/messages" id="messagesBtn" aria-label="Open messages and conversations" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
+                        <i class="far fa-comment-dots text-xl"></i>
+                        
+                        <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                            Messages
+                        </span>
+                    </a>
+
+            <!-- Notification Bell Button -->
+            <button type="button" onclick="toggleNotifPanel()" aria-label="View notifications" class="relative group p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl border border-slate-700 transition">
+                <i class="far fa-bell text-sm"></i>
+                <span class="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 notif-badge <%= (typeof notifications !== 'undefined' && notifications && notifications.some(n => !n.is_read)) ? '' : 'hidden' %>" aria-hidden="true">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-slate-900"></span>
+                </span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Slide-over Guidelines & Blueprint Drawer (Right) -->
+    <div id="guidelinesDrawer" class="fixed inset-y-0 right-0 w-[420px] max-w-[90vw] bg-slate-900 text-white z-50 shadow-2xl border-l border-slate-800 flex flex-col transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-compass text-cyan-400"></i>
+                <h3 class="font-extrabold text-sm text-white">Assignment Blueprint &amp; Guidelines</h3>
+            </div>
+            <button onclick="toggleGuidelinesDrawer()" class="w-8 h-8 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar text-xs">
+            <div>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase tracking-wider">
+                    <%= assessment.category || 'Assignment' %>
+                </span>
+                <h4 class="font-bold text-slate-200 mt-1.5 text-sm"><%= assessment.assessment_name %></h4>
+            </div>
+            <% if (assessment.objectives) { %>
+            <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+                <p class="text-[10px] font-black uppercase text-cyan-400 tracking-wider">Learning Objectives</p>
+                <p class="text-slate-300 leading-relaxed whitespace-pre-wrap"><%= assessment.objectives %></p>
+            </div>
+            <% } %>
+            <% if (assessment.description) { %>
+            <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+                <p class="text-[10px] font-black uppercase text-indigo-400 tracking-wider">Overview / Prompt</p>
+                <p class="text-slate-300 leading-relaxed whitespace-pre-wrap"><%= assessment.description %></p>
+            </div>
+            <% } %>
+            <% if (assessment.guidelines) { %>
+            <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+                <p class="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Guidelines &amp; Instructions</p>
+                <p class="text-slate-300 leading-relaxed whitespace-pre-wrap"><%= assessment.guidelines %></p>
+            </div>
+            <% } %>
+            <div class="pt-2 border-t border-slate-800 space-y-2">
+                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Teacher Resources &amp; Templates</p>
+                <div class="flex flex-col gap-2">
+                    <% if (assessment.format_file_path) { %>
+                    <a href="<%= assessment.format_file_path %>" download class="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-800/60 hover:bg-cyan-900/40 text-cyan-300 flex items-center justify-between transition">
+                        <span class="flex items-center gap-2 font-bold"><i class="fas fa-file-arrow-down"></i> Format Template</span>
+                        <i class="fas fa-download text-[10px]"></i>
+                    </a>
+                    <% } %>
+                    <% if (assessment.sample_output_path) { %>
+                    <a href="<%= assessment.sample_output_path %>" download class="p-2.5 rounded-xl bg-pink-950/40 border border-pink-800/60 hover:bg-pink-900/40 text-pink-300 flex items-center justify-between transition">
+                        <span class="flex items-center gap-2 font-bold"><i class="fas fa-file-circle-check"></i> Exemplar / Sample Output</span>
+                        <i class="fas fa-download text-[10px]"></i>
+                    </a>
+                    <% } %>
+                    <% if (!assessment.format_file_path && !assessment.sample_output_path) { %>
+                    <p class="text-slate-500 italic text-[11px]">No template files uploaded for this assignment.</p>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backdrop for Drawers / Modals -->
+    <div id="drawerBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+
+    <!-- Main Workspace Split-Panel -->
+    <main class="flex-1 flex overflow-hidden bg-slate-100 relative">
+        
+        <!-- LEFT PANEL: Submissions Queue (Only Actually Submitted Students) -->
+        <aside id="submissionsLeftPanel" class="w-80 lg:w-84 flex-shrink-0 bg-slate-900 text-white border-r border-slate-800 flex flex-col z-20 transition-all duration-300">
+            <!-- Left Panel Header -->
+            <div class="h-11 px-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/80 flex-shrink-0">
+                <div class="flex items-center gap-2 min-w-0">
+                    <i class="fas fa-inbox text-indigo-400 text-sm"></i>
+                    <h3 class="font-extrabold text-xs text-white truncate">Submitted Work</h3>
+                    <span id="rosterCountPill" class="px-1.5 py-0.2 rounded-full bg-indigo-500/30 text-indigo-300 font-mono text-[10px]">0</span>
+                </div>
+                <button onclick="toggleLeftPanel()" class="w-7 h-7 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition" title="Collapse / Expand Left Panel">
+                    <i class="fas fa-chevron-left text-xs" id="leftPanelCollapseIcon"></i>
+                </button>
+            </div>
+
+            <!-- Filter & Search Controls -->
+            <div class="p-2.5 bg-slate-900 border-b border-slate-800/80 space-y-2 flex-shrink-0">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[11px]"></i>
+                    <input type="text" id="rosterSearchInput" oninput="filterRoster()" placeholder="Search student, group..." class="w-full pl-7 pr-2.5 py-1.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+                </div>
+                <div class="flex items-center gap-1 text-[10px] font-bold">
+                    <button type="button" onclick="setRosterFilter('all')" id="rf-all" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white whitespace-nowrap transition">
+                        All <span id="cnt-all" class="font-mono text-[9px] opacity-80">(0)</span>
+                    </button>
+                    <button type="button" onclick="setRosterFilter('needs_grading')" id="rf-needs_grading" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 whitespace-nowrap transition">
+                        Ungraded <span id="cnt-needs_grading" class="font-mono text-[9px] opacity-80">(0)</span>
+                    </button>
+                    <button type="button" onclick="setRosterFilter('graded')" id="rf-graded" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 whitespace-nowrap transition">
+                        Graded <span id="cnt-graded" class="font-mono text-[9px] opacity-80">(0)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Submissions List Container -->
+            <div class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar-dark" id="rosterListContainer">
+                <div class="p-6 text-center text-slate-500 text-xs">Loading submissions...</div>
+            </div>
+        </aside>
+
+        <!-- CENTER PANEL: Zero-Download Document Preview & Annotation Viewport -->
+        <section id="leftDocumentPanel" class="flex-1 flex flex-col bg-slate-200/60 relative overflow-hidden min-w-[320px]">
+            <!-- Document Toolbar -->
+            <div class="h-11 bg-white border-b border-slate-200 px-3 flex items-center justify-between text-xs z-10 shadow-sm flex-shrink-0">
+                <!-- File Info, Sanitized & SHA-256 Receipt -->
+                <div class="flex items-center gap-2 min-w-0">
+                    <i class="fas fa-file-alt text-indigo-600 text-sm"></i>
+                    <span id="docFilename" class="font-extrabold text-slate-700 truncate max-w-[140px] sm:max-w-xs" title="No Document Selected">No Document Selected</span>
+                    <span id="docSanitizedBadge" class="hidden text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <i class="fas fa-shield-alt mr-0.5 text-emerald-600"></i> Sanitized
+                    </span>
+                    
+                    <!-- Cryptographic Receipt Trigger -->
+                    <button id="receiptBtn" onclick="openReceiptModal()" class="hidden px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] items-center gap-1.5 transition border border-emerald-200" title="Inspect Cryptographic Submission Receipt (SHA-256)">
+                        <i class="fas fa-shield-halved text-emerald-600"></i>
+                        <span class="hidden sm:inline">Receipt</span>
+                    </button>
+
+                    <!-- Direct Download Link -->
+                    <a id="toolbarDownloadLink" href="#" download class="hidden px-2.5 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] items-center gap-1 transition">
+                        <i class="fas fa-download"></i>
+                        <span class="hidden sm:inline">Download</span>
+                    </a>
+                </div>
+
+                <!-- Zoom, Rotation, Page & Annotation Controls -->
+                <div class="flex items-center gap-1 sm:gap-2">
+                    <!-- Annotation Tool Picker -->
+                    <div class="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 mr-1" id="annotationToolbar">
+                        <button type="button" onclick="setAnnotationTool('select')" id="tool-select" class="p-1.5 rounded text-xs font-bold bg-white text-indigo-600 shadow-sm transition" title="Select / Pan">
+                            <i class="fas fa-hand-pointer"></i>
+                        </button>
+                        <button type="button" onclick="setAnnotationTool('highlight')" id="tool-highlight" class="p-1.5 rounded text-xs font-bold text-slate-500 hover:text-slate-800 transition" title="Yellow Highlighter">
+                            <i class="fas fa-highlighter text-amber-500"></i>
+                        </button>
+                        <button type="button" onclick="setAnnotationTool('pen')" id="tool-pen" class="p-1.5 rounded text-xs font-bold text-slate-500 hover:text-slate-800 transition" title="Red Marker">
+                            <i class="fas fa-pen text-rose-500"></i>
+                        </button>
+                        <button type="button" onclick="undoAnnotation()" class="p-1.5 rounded text-xs font-bold text-slate-500 hover:text-slate-800 transition" title="Undo Last Annotation">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button type="button" onclick="clearAnnotations()" class="p-1.5 rounded text-xs font-bold text-slate-500 hover:text-rose-600 transition" title="Clear All Annotations">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+
+                    <!-- PDF Page Navigation Controls -->
+                    <div class="flex items-center gap-1 bg-slate-100 rounded-lg px-1.5 py-0.5 border border-slate-200" id="pdfControls" style="display: none;">
+                        <button onclick="changePage(-1)" class="p-1 hover:bg-white rounded text-slate-600 font-bold transition"><i class="fas fa-chevron-left text-[10px]"></i></button>
+                        <span class="font-mono font-bold text-slate-600 text-[11px] px-1"><span id="pageNum">1</span>/<span id="pageCount">1</span></span>
+                        <button onclick="changePage(1)" class="p-1 hover:bg-white rounded text-slate-600 font-bold transition"><i class="fas fa-chevron-right text-[10px]"></i></button>
+                    </div>
+
+                    <!-- Zoom Controls -->
+                    <div class="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                        <button onclick="zoomDoc(-0.2)" class="px-1.5 py-1 text-slate-600 hover:text-slate-900 rounded font-bold transition" title="Zoom Out (-)"><i class="fas fa-minus text-[10px]"></i></button>
+                        <button onclick="resetDocZoom()" id="zoomLevelText" class="px-1.5 py-1 text-slate-700 font-mono text-[10px] font-extrabold hover:text-indigo-600 rounded transition" title="Reset Zoom">100%</button>
+                        <button onclick="zoomDoc(0.2)" class="px-1.5 py-1 text-slate-600 hover:text-slate-900 rounded font-bold transition" title="Zoom In (+)"><i class="fas fa-plus text-[10px]"></i></button>
+                        <button onclick="rotateDoc()" class="p-1 text-slate-600 hover:text-indigo-600 rounded font-bold transition" title="Rotate 90°"><i class="fas fa-rotate-right text-[11px]"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Viewer Canvas Container with Superimposed Annotation Canvas -->
+            <div class="flex-1 overflow-auto flex items-center justify-center p-4 relative custom-scrollbar select-none" id="documentViewport">
+                <!-- Wrapper for Zoom & Superimposed Annotation -->
+                <div id="renderWrapper" class="relative transition-transform duration-150 origin-top flex items-center justify-center">
+                    <canvas id="pdfCanvas" class="shadow-2xl rounded-lg max-w-full hidden"></canvas>
+                    <canvas id="annotationCanvas" class="annotation-canvas-layer hidden"></canvas>
+                    <div id="wordViewer" class="bg-white p-8 rounded-xl shadow-xl max-w-3xl w-full hidden prose prose-sm overflow-y-auto max-h-[85vh] border border-slate-200"></div>
+                    <img id="imageViewer" class="shadow-2xl rounded-2xl max-w-full max-h-[82vh] object-contain hidden border border-slate-300" />
+                    <pre id="codeViewer" class="bg-slate-950 text-emerald-400 p-6 rounded-2xl shadow-2xl max-w-4xl w-full hidden font-mono text-xs overflow-auto max-h-[82vh] border border-slate-800 leading-relaxed"></pre>
+                </div>
+                
+                <!-- Dedicated Download Card for Binary Deliverables (ZIP, PPTX, XLSX, etc.) -->
+                <div id="binaryDownloadCard" class="bg-white p-8 rounded-3xl shadow-2xl border border-slate-200 text-center max-w-md w-full hidden space-y-4">
+                    <div class="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                        <i id="binaryCardIcon" class="fas fa-file-arrow-down"></i>
+                    </div>
+                    <div>
+                        <span id="binaryCardBadge" class="text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">Binary Deliverable</span>
+                        <h4 class="font-extrabold text-slate-800 text-sm mt-2 truncate" id="binaryCardFilename">student_work.zip</h4>
+                        <p class="text-xs text-slate-500 mt-1 font-medium">This format requires opening in an external viewer or specialized application.</p>
+                    </div>
+                    <div class="pt-2">
+                        <a id="binaryCardDownloadBtn" href="#" download class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-lg shadow-indigo-200 transition">
+                            <i class="fas fa-download"></i>
+                            <span>Download Deliverable File</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Unsubmitted or Empty State -->
+                <div id="emptyViewer" class="text-center text-slate-400 p-8 max-w-sm">
+                    <div class="w-16 h-16 rounded-3xl bg-slate-200/80 text-slate-400 flex items-center justify-center mx-auto mb-3 text-2xl">
+                        <i class="fas fa-file-circle-xmark"></i>
+                    </div>
+                    <h4 class="font-extrabold text-slate-700 text-sm" id="emptyViewerTitle">No Submission Uploaded</h4>
+                    <p class="font-medium text-xs text-slate-400 mt-1" id="emptyViewerSubtitle">
+                        This student has not attached a deliverable yet. You may still award a direct grade (e.g., 0) or send private feedback below.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CENTER DRAGGABLE RESIZER DIVIDER -->
+        <div id="dragDivider" class="resizer-divider" title="Drag to resize panels"></div>
+
+        <!-- RIGHT PANEL: Scoring, Rubrics, Feedback & Voice Studio -->
+        <aside id="rightGradingPanel" class="w-[490px] flex-shrink-0 bg-white flex flex-col shadow-2xl z-20 overflow-hidden border-l border-slate-200 min-w-[340px]">
+            <!-- Student Header & Score Card -->
+            <div class="p-4 border-b border-slate-100 flex flex-col gap-3 bg-slate-50/70">
+                <div class="flex items-start justify-between gap-3">
+                    <!-- Avatar & Student Info -->
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm uppercase shadow-md shadow-indigo-100 flex-shrink-0" id="studentAvatar">
+                            ST
+                        </div>
+                        <div class="min-w-0">
+                            <h2 class="font-black text-slate-900 text-sm truncate" id="studentNameText">Select Student</h2>
+                            <p class="text-[11px] text-slate-400 font-medium truncate" id="studentClassEmailText">--</p>
+                            <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                <span class="text-[10px] text-slate-500 font-bold" id="submittedTimeText">Submitted: --</span>
+                                <span id="gracePeriodBadge" class="hidden text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full">
+                                    Grace (+3m)
+                                </span>
+                                <span id="submissionStatusPill" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                                    Needs Grading
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Direct Numerical Score Input with Total Max -->
+                    <div class="text-right flex flex-col items-end flex-shrink-0">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Grade Awarded</span>
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" id="manualScoreInput" min="0" max="<%= assessment.max_score || 100 %>" step="1" oninput="handleDirectScoreInput(this.value)" class="w-20 px-2 py-1 text-center text-xl font-black text-indigo-700 bg-white border-2 border-indigo-200 rounded-xl focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition shadow-sm" placeholder="0">
+                            <span class="text-xs font-black text-slate-400">/ <%= assessment.max_score || 100 %></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Multi-Attempt Switcher Tabs (If multiple attempts exist) -->
+                <div id="attemptSwitcherContainer" class="hidden flex items-center gap-1.5 pt-1 border-t border-slate-200/60 overflow-x-auto custom-scrollbar">
+                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider mr-1">Attempt:</span>
+                    <div id="attemptPillsList" class="flex items-center gap-1"></div>
+                </div>
+
+                <!-- Quick Percentage Score Presets -->
+                <div class="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Quick Presets:</span>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="applyScorePercentage(100)" class="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-extrabold text-[11px] transition">100%</button>
+                        <button type="button" onclick="applyScorePercentage(90)" class="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition">90%</button>
+                        <button type="button" onclick="applyScorePercentage(80)" class="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition">80%</button>
+                        <button type="button" onclick="applyScorePercentage(75)" class="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition">75%</button>
+                        <button type="button" onclick="applyScorePercentage(50)" class="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition">50%</button>
+                        <button type="button" onclick="applyScorePercentage(0)" class="px-2 py-0.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-[11px] transition">0%</button>
+                    </div>
+                </div>
+
+                <!-- Group Submissions Team Roster Box -->
+                <div id="groupRosterWrap" class="hidden p-2.5 rounded-xl bg-blue-50/90 border border-blue-200 text-xs space-y-1.5 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="font-extrabold text-blue-950 flex items-center gap-1.5" id="groupNameText">
+                            <i class="fas fa-users text-blue-600"></i> Team
+                        </span>
+                        <span class="text-[10px] text-blue-700 font-bold bg-blue-100/60 px-2 py-0.5 rounded-full" id="submittedByText">Submitted by Juan</span>
+                    </div>
+                    <div id="groupMembersChips" class="flex flex-wrap gap-1"></div>
+                </div>
+            </div>
+
+            <!-- Scrollable Grading Matrix Form -->
+            <div class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scrollbar">
+                
+                <!-- Interactive Rubric Criteria -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fas fa-table-cells text-indigo-600"></i>
+                            <span>Rubric Evaluation</span>
+                        </span>
+                        <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">Hotkeys 1–5</span>
+                    </div>
+
+                    <div id="rubricContainer" class="space-y-3">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Written Feedback with Slash Expander & Quick Chips -->
+                <div class="space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fas fa-comment-dots text-indigo-600"></i>
+                            <span>Instructor Feedback</span>
+                        </label>
+                        <button onclick="openCommentBankModal()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                            <i class="fas fa-bookmark"></i>
+                            <span>Comment Bank (/)</span>
+                        </button>
+                    </div>
+
+                    <!-- Quick Feedback Preset Chips -->
+                    <div class="flex flex-wrap gap-1">
+                        <button type="button" onclick="insertFeedbackText('🌟 Excellent analysis and thorough explanations!')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[10px] transition">🌟 Excellent work!</button>
+                        <button type="button" onclick="insertFeedbackText('🧪 Please double-check chemical formulas and molecular charges.')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[10px] transition">🧪 Check formulas</button>
+                        <button type="button" onclick="insertFeedbackText('📐 Show all calculation steps and stoichiometry units clearly.')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[10px] transition">📐 Show steps</button>
+                        <button type="button" onclick="insertFeedbackText('📚 Incomplete citations or missing academic references.')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[10px] transition">📚 Missing citations</button>
+                        <button type="button" onclick="insertFeedbackText('⚠️ Work was submitted late / please adhere to the deadline guidelines.')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[10px] transition">⚠️ Late notice</button>
+                    </div>
+
+                    <div class="relative">
+                        <textarea id="feedbackInput" data-text-expander rows="4" placeholder="Type your feedback here... Tip: type / to trigger shortcuts like /cite or /units" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition leading-relaxed shadow-inner"></textarea>
+                    </div>
+                </div>
+
+                <!-- 60-Second Studio Voice Memo Recorder with Animated Live Waveform -->
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-black text-slate-800 flex items-center gap-1.5">
+                            <i class="fas fa-microphone-lines text-indigo-600"></i>
+                            <span>Studio Audio Voice Memo</span>
+                        </span>
+                        <span id="recordingTimer" class="font-mono font-black text-slate-400 text-xs">00:00 / 01:00</span>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <!-- Record / Stop Action Button -->
+                        <button id="recordAudioBtn" type="button" onclick="toggleAudioRecording()" class="w-11 h-11 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-rose-200 transition flex-shrink-0" title="Click to Record (Max 60s)">
+                            <i class="fas fa-microphone" id="micIcon"></i>
+                        </button>
+
+                        <!-- Live Waveform Canvas & Preview -->
+                        <div class="flex-1 space-y-1.5">
+                            <div class="h-9 bg-slate-200/80 rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-300/60 shadow-inner">
+                                <canvas id="liveWaveformCanvas" width="280" height="36" class="w-full h-full"></canvas>
+                                <span id="waveformStatusText" class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-500 pointer-events-none">
+                                    Click mic to record up to 60s voice critique
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <audio id="audioPlayback" controls class="w-full h-8 hidden"></audio>
+                                <button type="button" id="discardAudioBtn" onclick="discardRecordedAudio()" class="hidden p-1.5 rounded-lg text-slate-400 hover:text-rose-600 text-xs transition" title="Discard Voice Note">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Save & Advance Action Bar -->
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between flex-shrink-0 gap-3">
+                <div class="flex items-center gap-2 text-[11px] text-slate-400 font-bold">
+                    <span>Press <kbd class="font-black text-slate-600 bg-white px-1.5 py-0.5 rounded shadow-sm border border-slate-200">Enter</kbd> to save &amp; advance</span>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <!-- Save Score (Current) -->
+                    <button type="button" onclick="saveCurrentGrade(false)" id="saveCurrentBtn" class="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-black shadow-sm transition flex items-center gap-1.5" title="Save Grade (Ctrl+S)">
+                        <i class="fas fa-floppy-disk text-slate-500"></i>
+                        <span>Save</span>
+                    </button>
+
+                    <!-- Save & Advance -->
+                    <button type="button" onclick="saveCurrentGrade(true)" id="saveAdvanceBtn" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-200 transition flex items-center gap-2" title="Save Grade and Move to Next Student (Enter)">
+                        <span>Save &amp; Advance</span>
+                        <i class="fas fa-arrow-right text-[10px]"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Cryptographic Submission Receipt Inspector Modal -->
+    <div id="receiptModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[9999] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 transform transition-all">
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base shadow-md shadow-emerald-200">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-slate-800 text-sm">Cryptographic Submission Receipt</h3>
+                        <p class="text-[10px] text-emerald-700 font-extrabold uppercase tracking-wider">Immutable Proof of Turn-In</p>
+                    </div>
+                </div>
+                <button onclick="closeReceiptModal()" class="w-8 h-8 rounded-xl hover:bg-white/80 text-slate-400 hover:text-slate-600 flex items-center justify-center text-sm transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Receipt Content Body -->
+            <div class="p-6 space-y-4 text-xs">
+                <!-- Status Badge -->
+                <div class="flex items-center justify-between p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-check-circle text-emerald-600 text-sm"></i>
+                        <span class="font-extrabold text-emerald-900">Tamper-Proof Verification: Verified</span>
+                    </div>
+                    <span class="text-[10px] font-black uppercase tracking-wider bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full">SHA-256</span>
+                </div>
+
+                <!-- SHA-256 Hash String -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="font-extrabold text-slate-700">Digital Fingerprint (SHA-256 Hash):</span>
+                        <button onclick="copyHashToClipboard()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition">
+                            <i class="fas fa-copy"></i>
+                            <span id="copyHashBtnText">Copy Hash</span>
+                        </button>
+                    </div>
+                    <div class="p-3 bg-slate-900 rounded-2xl text-emerald-400 font-mono text-[11px] break-all select-all border border-slate-800" id="receiptHashString">
+                        e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                    </div>
+                </div>
+
+                <!-- Submission Metadata Table -->
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Deliverable File</span>
+                        <span class="font-extrabold text-slate-800 truncate block mt-0.5" id="receiptFilename">report.pdf</span>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Exact File Size</span>
+                        <span class="font-extrabold text-slate-800 block mt-0.5" id="receiptFileSize">-- KB</span>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100 col-span-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Official Timestamp (Server Clock)</span>
+                        <span class="font-extrabold text-slate-800 block mt-0.5 font-mono" id="receiptServerTimestamp">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeReceiptModal()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Live Toast Notification -->
+    <div id="gradingToast" class="fixed bottom-6 right-6 z-[99999] px-4 py-2.5 rounded-2xl bg-slate-900 text-white text-xs font-bold shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <i class="fas fa-check-circle text-emerald-400" id="toastIcon"></i>
+        <span id="toastMessage">Grade saved successfully</span>
+    </div>
+
+    <!-- Include Comment Bank Modal -->
+    <%- include('partials/comment_bank_modal') %>
+
+    <script>
+        const assessmentId = <%= assessment.assessment_id %>;
+        const maxAssessmentScore = <%= assessment.max_score || 100 %>;
+
+        let submissions = [];
+        let filteredSubmissions = [];
+        let currentIndex = 0;
+        let activeSubmission = null;
+        let currentFilter = 'all';
+
+        // Document Viewer State
+        let pdfDoc = null;
+        let currentPdfPage = 1;
+        let currentDocScale = 1.0;
+        let currentDocRotation = 0;
+
+        // Canvas Annotations State
+        let activeTool = 'select'; // 'select', 'highlight', 'pen'
+        let isDrawing = false;
+        let annotationHistory = [];
+        let currentStroke = [];
+
+        // Audio Recording State
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingSeconds = 0;
+        let recordingInterval = null;
+        let recordedBlob = null;
+        let audioContext = null;
+        let analyserNode = null;
+        let animFrameId = null;
+
+        // Initialize on DOM Ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            initSplitPaneResizer();
+            initAnnotationCanvas();
+            initLiveWaveformCanvas();
+            initHotkeys();
+            await loadSubmissions();
+        });
+
+        // ==========================================
+        // 1. DATA LOADING & ROSTER MANAGEMENT
+        // ==========================================
+        async function loadSubmissions() {
+            try {
+                const res = await fetch(`/teacher/api/grading/${assessmentId}/submissions`);
+                if (res.ok) {
+                    const data = await res.json();
+                    submissions = data.submissions || [];
+                    updateRosterCounts();
+                    filterRoster();
+
+                    if (submissions.length > 0) {
+                        const params = new URLSearchParams(window.location.search);
+                        const targetScoreId = params.get('scoreId') ? Number(params.get('scoreId')) : null;
+                        const targetStudentId = params.get('studentId') ? Number(params.get('studentId')) : null;
+                        let initialIndex = 0;
+
+                        if (targetScoreId) {
+                            const foundIdx = submissions.findIndex(s =>
+                                Number(s.score_id) === targetScoreId ||
+                                (Array.isArray(s.all_attempts) && s.all_attempts.some(a => Number(a.score_id) === targetScoreId))
+                            );
+                            if (foundIdx !== -1) initialIndex = foundIdx;
+                        } else if (targetStudentId) {
+                            const foundIdx = submissions.findIndex(s => Number(s.student_id) === targetStudentId);
+                            if (foundIdx !== -1) initialIndex = foundIdx;
+                        }
+
+                        displaySubmission(initialIndex);
+                        if (targetScoreId && activeSubmission && Number(activeSubmission.score_id) !== targetScoreId) {
+                            switchAttempt(targetScoreId);
+                        }
+                    } else {
+                        renderEmptyRosterState();
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching submissions:', e);
+                showToast('Failed to load submissions queue', true);
+            }
+        }
+
+        function renderEmptyRosterState() {
+            activeSubmission = null;
+            currentIndex = -1;
+            const counter = document.getElementById('studentCounterText');
+            if (counter) counter.textContent = '0 / 0';
+            
+            const avatar = document.getElementById('studentAvatar');
+            if (avatar) {
+                avatar.textContent = '--';
+                avatar.className = 'w-11 h-11 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center font-black text-sm uppercase flex-shrink-0';
+            }
+            
+            const nameEl = document.getElementById('studentNameText');
+            if (nameEl) nameEl.textContent = 'No Submissions';
+            
+            const emailEl = document.getElementById('studentClassEmailText');
+            if (emailEl) emailEl.textContent = 'No submitted deliverables in queue';
+            
+            const timeEl = document.getElementById('submittedTimeText');
+            if (timeEl) timeEl.textContent = 'Status: Awaiting submissions';
+            
+            const statusPill = document.getElementById('submissionStatusPill');
+            if (statusPill) {
+                statusPill.textContent = 'Queue Empty';
+                statusPill.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200';
+            }
+            
+            const groupWrap = document.getElementById('groupRosterWrap');
+            if (groupWrap) groupWrap.classList.add('hidden');
+            
+            const scoreInput = document.getElementById('manualScoreInput');
+            if (scoreInput) {
+                scoreInput.value = '';
+                scoreInput.disabled = true;
+            }
+            const feedbackInput = document.getElementById('feedbackInput');
+            if (feedbackInput) {
+                feedbackInput.value = '';
+                feedbackInput.disabled = true;
+            }
+            
+            renderDocument(null, null);
+            const emptyTitle = document.getElementById('emptyViewerTitle');
+            const emptySub = document.getElementById('emptyViewerSubtitle');
+            if (emptyTitle) emptyTitle.textContent = 'No Submissions Yet';
+            if (emptySub) emptySub.textContent = 'Only students who have actually submitted work appear in this workspace. For group assignments, the submitting member will appear along with their group number.';
+        }
+
+        function updateRosterCounts() {
+            const total = submissions.length;
+            const needsGrading = submissions.filter(s => s.score_obtained === null || s.score_obtained === undefined).length;
+            const graded = submissions.filter(s => s.score_obtained !== null && s.score_obtained !== undefined).length;
+
+            const rosterCountPill = document.getElementById('rosterCountPill');
+            if (rosterCountPill) rosterCountPill.textContent = total;
+
+            const topRosterCountPill = document.getElementById('topRosterCountPill');
+            if (topRosterCountPill) topRosterCountPill.textContent = total;
+
+            const cntAll = document.getElementById('cnt-all');
+            if (cntAll) cntAll.textContent = `(${total})`;
+
+            const cntNeedsGrading = document.getElementById('cnt-needs_grading');
+            if (cntNeedsGrading) cntNeedsGrading.textContent = `(${needsGrading})`;
+
+            const cntGraded = document.getElementById('cnt-graded');
+            if (cntGraded) cntGraded.textContent = `(${graded})`;
+        }
+
+        function setRosterFilter(filterName) {
+            currentFilter = filterName;
+            ['all', 'needs_grading', 'graded'].forEach(f => {
+                const btn = document.getElementById(`rf-${f}`);
+                if (btn) {
+                    if (f === filterName) {
+                        btn.className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white whitespace-nowrap transition shadow-sm';
+                    } else {
+                        btn.className = 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 whitespace-nowrap transition';
+                    }
+                }
+            });
+            filterRoster();
+        }
+
+        function filterRoster() {
+            const search = (document.getElementById('rosterSearchInput')?.value || '').toLowerCase();
+            
+            filteredSubmissions = submissions.filter((sub) => {
+                const fullName = `${sub.first_name || ''} ${sub.last_name || ''}`.toLowerCase();
+                const groupName = (sub.group_name || '').toLowerCase();
+                const email = (sub.email || '').toLowerCase();
+                const memberMatch = sub.group_members && Array.isArray(sub.group_members) && sub.group_members.some(m => `${m.first_name || ''} ${m.last_name || ''}`.toLowerCase().includes(search));
+                const matchesSearch = fullName.includes(search) || groupName.includes(search) || email.includes(search) || memberMatch;
+
+                if (!matchesSearch) return false;
+
+                if (currentFilter === 'needs_grading') {
+                    return sub.score_obtained === null || sub.score_obtained === undefined;
+                } else if (currentFilter === 'graded') {
+                    return sub.score_obtained !== null && sub.score_obtained !== undefined;
+                }
+                return true;
+            });
+
+            renderRosterList();
+        }
+
+        function renderRosterList() {
+            const listEl = document.getElementById('rosterListContainer');
+            if (!listEl) return;
+            if (filteredSubmissions.length === 0) {
+                listEl.innerHTML = `
+                    <div class="p-6 text-center text-slate-500 text-xs">
+                        <i class="fas fa-inbox text-lg mb-2 block text-slate-600"></i>
+                        ${submissions.length === 0 ? 'No submissions yet for this assignment' : 'No submissions match current filter'}
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = filteredSubmissions.map(sub => {
+                const originalIndex = submissions.indexOf(sub);
+                const isSelected = originalIndex === currentIndex;
+                
+                let statusBadge = '';
+                if (sub.score_obtained !== null && sub.score_obtained !== undefined) {
+                    statusBadge = `<span class="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 whitespace-nowrap">${sub.score_obtained}/${maxAssessmentScore}</span>`;
+                } else {
+                    statusBadge = '<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 whitespace-nowrap">Needs Grade</span>';
+                }
+
+                const initials = ((sub.first_name?.[0] || 'S') + (sub.last_name?.[0] || 'T')).toUpperCase();
+
+                if (sub.is_group_submission) {
+                    const memberCount = sub.group_members ? sub.group_members.length : 0;
+                    const groupBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30 whitespace-nowrap"><i class="fas fa-users text-[8px] text-blue-400"></i> ${sub.group_name || 'Group'}</span>`;
+
+                    return `
+                        <div onclick="selectStudentByIndex(${originalIndex})" class="p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between gap-2.5 ${isSelected ? 'bg-indigo-950/80 border border-indigo-500 text-white shadow-sm' : 'hover:bg-slate-800/60 text-slate-300 border border-transparent'}">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="relative flex-shrink-0">
+                                    <div class="w-8 h-8 rounded-xl ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'} flex items-center justify-center font-bold text-xs uppercase">
+                                        ${initials}
+                                    </div>
+                                    <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-blue-600 text-white text-[8px] flex items-center justify-center border border-slate-900" title="Group Assignment">
+                                        <i class="fas fa-users text-[7px]"></i>
+                                    </span>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <h4 class="font-bold text-xs truncate ${isSelected ? 'text-white' : 'text-slate-200'}">${sub.first_name} ${sub.last_name}</h4>
+                                        ${groupBadge}
+                                    </div>
+                                    <p class="text-[10px] text-slate-400 truncate mt-0.5">Submitted for ${sub.group_name || 'Group'} • ${memberCount} members</p>
+                                </div>
+                            </div>
+                            <div class="flex-shrink-0 text-right">
+                                ${statusBadge}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const individualBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700/80 whitespace-nowrap"><i class="fas fa-user text-[8px]"></i> Individual</span>`;
+
+                return `
+                    <div onclick="selectStudentByIndex(${originalIndex})" class="p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between gap-2.5 ${isSelected ? 'bg-indigo-950/80 border border-indigo-500 text-white shadow-sm' : 'hover:bg-slate-800/60 text-slate-300 border border-transparent'}">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-xl ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'} flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
+                                ${initials}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <h4 class="font-bold text-xs truncate ${isSelected ? 'text-white' : 'text-slate-200'}">${sub.first_name} ${sub.last_name}</h4>
+                                    ${individualBadge}
+                                </div>
+                                <p class="text-[10px] text-slate-400 truncate mt-0.5">${sub.email || 'Individual Submission'}</p>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 text-right">
+                            ${statusBadge}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectStudentByIndex(index) {
+            displaySubmission(index);
+            // On mobile screen sizes, automatically close drawer
+            if (window.innerWidth < 1024) {
+                closeAllDrawers();
+            }
+        }
+
+        // ==========================================
+        // 2. ACTIVE SUBMISSION HYDRATION
+        // ==========================================
+        function displaySubmission(index) {
+            if (index < 0 || index >= submissions.length) return;
+            currentIndex = index;
+            activeSubmission = submissions[currentIndex];
+
+            // Counter
+            document.getElementById('studentCounterText').textContent = `${currentIndex + 1} / ${submissions.length}`;
+
+            // Enable inputs if previously disabled
+            document.getElementById('manualScoreInput').disabled = false;
+            document.getElementById('feedbackInput').disabled = false;
+
+            // Identity & Badges
+            const initials = ((activeSubmission.first_name?.[0] || 'S') + (activeSubmission.last_name?.[0] || 'T')).toUpperCase();
+
+            if (activeSubmission.is_group_submission) {
+                document.getElementById('studentAvatar').textContent = initials;
+                document.getElementById('studentAvatar').className = 'w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm uppercase shadow-md shadow-indigo-100 flex-shrink-0 relative';
+                
+                document.getElementById('studentNameText').innerHTML = `
+                    ${activeSubmission.first_name} ${activeSubmission.last_name}
+                    <span class="inline-flex items-center gap-1 ml-1.5 text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                        <i class="fas fa-users text-[9px] text-blue-600"></i> ${activeSubmission.group_name || 'Group'}
+                    </span>
+                `;
+                const memberCount = activeSubmission.group_members ? activeSubmission.group_members.length : 0;
+                document.getElementById('studentClassEmailText').textContent = `Submitted on behalf of ${activeSubmission.group_name || 'Team'} • ${memberCount} members will receive this grade`;
+            } else {
+                document.getElementById('studentAvatar').textContent = initials;
+                document.getElementById('studentAvatar').className = 'w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm uppercase shadow-md shadow-indigo-100 flex-shrink-0';
+                document.getElementById('studentNameText').innerHTML = `
+                    ${activeSubmission.first_name} ${activeSubmission.last_name}
+                    <span class="inline-flex items-center gap-1 ml-1.5 text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        <i class="fas fa-user text-[9px] text-slate-500"></i> Individual
+                    </span>
+                `;
+                document.getElementById('studentClassEmailText').textContent = `${activeSubmission.email || ''} • Individual Submission`;
+            }
+
+            // Submission Time
+            const timeEl = document.getElementById('submittedTimeText');
+            if (activeSubmission.is_submitted) {
+                const dateObj = new Date(activeSubmission.receipt_timestamp || activeSubmission.date_recorded || Date.now());
+                timeEl.textContent = `Submitted: ${dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            } else {
+                timeEl.textContent = 'Status: Not Submitted';
+            }
+
+            // Grace Badge
+            const graceBadge = document.getElementById('gracePeriodBadge');
+            if (activeSubmission.is_grace_period) {
+                graceBadge.classList.remove('hidden');
+                graceBadge.textContent = `Grace (+${activeSubmission.grace_minutes_used || 1}m)`;
+            } else {
+                graceBadge.classList.add('hidden');
+            }
+
+            // Status Pill
+            const statusPill = document.getElementById('submissionStatusPill');
+            if (activeSubmission.score_obtained !== null && activeSubmission.score_obtained !== undefined) {
+                statusPill.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200';
+                statusPill.textContent = 'Graded';
+            } else {
+                statusPill.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200';
+                statusPill.textContent = 'Needs Grading';
+            }
+
+            // Multi-Attempt Switcher
+            renderAttemptSwitcher();
+
+            // Group Submissions Roster Box
+            const groupWrap = document.getElementById('groupRosterWrap');
+            if (activeSubmission.is_group_submission) {
+                groupWrap.classList.remove('hidden');
+                const memberCount = activeSubmission.group_members ? activeSubmission.group_members.length : 0;
+                document.getElementById('groupNameText').innerHTML = `<i class="fas fa-users text-blue-600"></i> ${activeSubmission.group_name || 'Team'} (${memberCount} Members)`;
+                document.getElementById('submittedByText').textContent = `Submitted by: ${activeSubmission.first_name} ${activeSubmission.last_name}`;
+                
+                const chips = document.getElementById('groupMembersChips');
+                const members = Array.isArray(activeSubmission.group_members) ? activeSubmission.group_members : [];
+                chips.innerHTML = members.map(m => {
+                    const isSubmitter = (m.student_id === activeSubmission.student_id);
+                    if (isSubmitter) {
+                        return `
+                            <span class="px-2 py-0.5 rounded-md bg-blue-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-sm" title="Submitted on behalf of group">
+                                <i class="fas fa-upload text-[8px]"></i>
+                                ${m.first_name} ${m.last_name} (Submitter)
+                            </span>
+                        `;
+                    } else {
+                        return `
+                            <span class="px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 font-bold text-[10px] flex items-center gap-1" title="Group member">
+                                <i class="fas fa-user-check text-[9px] text-blue-600"></i>
+                                ${m.first_name} ${m.last_name}
+                            </span>
+                        `;
+                    }
+                }).join('') + `
+                    <div class="w-full text-[10px] text-blue-800 bg-blue-100/70 p-2 rounded-lg border border-blue-200 mt-1 flex items-center gap-1.5 font-semibold">
+                        <i class="fas fa-circle-check text-blue-600 text-xs"></i>
+                        <span>Automatic Team Credit: Grading this submission automatically credits the grade and rubric scores to all ${members.length} group members.</span>
+                    </div>
+                `;
+            } else {
+                groupWrap.classList.add('hidden');
+            }
+
+            // Direct Score Input
+            const scoreVal = activeSubmission.score_obtained !== null && activeSubmission.score_obtained !== undefined ? activeSubmission.score_obtained : '';
+            document.getElementById('manualScoreInput').value = scoreVal;
+
+            // Written Feedback
+            document.getElementById('feedbackInput').value = activeSubmission.feedback || '';
+
+            // Document Viewer Render
+            renderDocument(activeSubmission.file_path, activeSubmission.original_filename);
+
+            // Rubrics
+            renderRubrics(activeSubmission.rubric_criteria || []);
+
+            // Audio Player Reset
+            resetAudioState();
+
+            // Update Roster selection highlight
+            renderRosterList();
+        }
+
+        // Multi-Attempt Switcher
+        function renderAttemptSwitcher() {
+            const container = document.getElementById('attemptSwitcherContainer');
+            const pillsList = document.getElementById('attemptPillsList');
+            const attempts = activeSubmission.all_attempts || [];
+
+            if (attempts.length <= 1) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            pillsList.innerHTML = attempts.map(att => {
+                const isCurrent = att.score_id === activeSubmission.score_id;
+                return `
+                    <button type="button" onclick="switchAttempt(${att.score_id})" class="px-2 py-0.5 rounded-md text-[10px] font-black transition ${isCurrent ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}">
+                        Attempt ${att.attempt_number || 1} ${att.attempt_number === attempts[0].attempt_number ? '(Latest)' : ''}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function switchAttempt(targetScoreId) {
+            if (!activeSubmission || !activeSubmission.all_attempts) return;
+            const targetAttempt = activeSubmission.all_attempts.find(a => a.score_id === targetScoreId);
+            if (targetAttempt) {
+                // Keep the all_attempts & group_members references
+                targetAttempt.all_attempts = activeSubmission.all_attempts;
+                targetAttempt.group_members = activeSubmission.group_members;
+                targetAttempt.rubric_criteria = activeSubmission.rubric_criteria;
+                targetAttempt.is_submitted = true;
+                
+                // Replace in main array
+                submissions[currentIndex] = targetAttempt;
+                displaySubmission(currentIndex);
+            }
+        }
+
+        // ==========================================
+        // 3. SCORING & RUBRICS LOGIC
+        // ==========================================
+        function handleDirectScoreInput(val) {
+            const num = parseInt(val);
+            if (isNaN(num)) {
+                activeSubmission.score_obtained = null;
+            } else {
+                const clamped = Math.max(0, Math.min(num, maxAssessmentScore));
+                activeSubmission.score_obtained = clamped;
+            }
+        }
+
+        function applyScorePercentage(percent) {
+            const calculated = Math.round((percent / 100) * maxAssessmentScore);
+            document.getElementById('manualScoreInput').value = calculated;
+            activeSubmission.score_obtained = calculated;
+
+            // Also synchronize rubrics if available
+            if (activeSubmission.rubric_criteria && activeSubmission.rubric_criteria.length > 0) {
+                activeSubmission.rubric_criteria.forEach(c => {
+                    const cPts = Math.round((percent / 100) * c.max_points);
+                    c.points_awarded = cPts;
+                });
+                renderRubrics(activeSubmission.rubric_criteria);
+            }
+            showToast(`Applied ${percent}% preset (${calculated} pts)`);
+        }
+
+        function renderRubrics(criteria) {
+            const container = document.getElementById('rubricContainer');
+            if (!criteria || criteria.length === 0) {
+                container.innerHTML = `
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+                        <i class="fas fa-info-circle text-indigo-500"></i>
+                        <span>Direct scoring mode active. Enter points above or use quick percentage presets.</span>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = criteria.map((c, i) => `
+                <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5 shadow-sm">
+                    <div class="flex items-center justify-between text-xs">
+                        <div>
+                            <span class="font-black text-slate-800">${c.title}</span>
+                            ${c.description ? `<p class="text-[10px] text-slate-500 mt-0.5 line-clamp-1">${c.description}</p>` : ''}
+                        </div>
+                        <span class="font-black text-indigo-600 text-xs bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 font-mono" id="critScore_${c.criterion_id}">${c.points_awarded || 0}/${c.max_points} pts</span>
+                    </div>
+                    <div class="grid grid-cols-5 gap-1.5">
+                        ${[1, 2, 3, 4, 5].map(lvl => {
+                            const pts = Math.round((lvl / 5) * c.max_points);
+                            const selected = (c.points_awarded || 0) === pts;
+                            return `
+                                <button type="button" onclick="selectRubricPoints(${c.criterion_id}, ${pts})" class="py-1.5 rounded-xl text-xs font-black border transition ${selected ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'}">
+                                    ${pts}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectRubricPoints(criterionId, pts) {
+            const scoreLabel = document.getElementById(`critScore_${criterionId}`);
+            if (scoreLabel) scoreLabel.textContent = `${pts} pts`;
+
+            let total = 0;
+            if (activeSubmission && activeSubmission.rubric_criteria) {
+                activeSubmission.rubric_criteria.forEach(c => {
+                    if (c.criterion_id === criterionId) c.points_awarded = pts;
+                    total += (c.points_awarded || 0);
+                });
+            }
+
+            document.getElementById('manualScoreInput').value = total;
+            activeSubmission.score_obtained = total;
+            renderRubrics(activeSubmission.rubric_criteria);
+        }
+
+        function insertFeedbackText(text) {
+            const feedbackInput = document.getElementById('feedbackInput');
+            const current = feedbackInput.value.trim();
+            if (current) {
+                feedbackInput.value = current + '\n' + text;
+            } else {
+                feedbackInput.value = text;
+            }
+            feedbackInput.focus();
+        }
+
+        // ==========================================
+        // 4. DOCUMENT VIEWER & MULTI-FORMAT RENDER
+        // ==========================================
+        async function renderDocument(filePath, originalFilename) {
+            const canvas = document.getElementById('pdfCanvas');
+            const annotCanvas = document.getElementById('annotationCanvas');
+            const wordViewer = document.getElementById('wordViewer');
+            const imageViewer = document.getElementById('imageViewer');
+            const codeViewer = document.getElementById('codeViewer');
+            const binaryCard = document.getElementById('binaryDownloadCard');
+            const emptyViewer = document.getElementById('emptyViewer');
+            const docBadge = document.getElementById('docSanitizedBadge');
+            const toolbarDl = document.getElementById('toolbarDownloadLink');
+            const receiptBtn = document.getElementById('receiptBtn');
+            const pdfControls = document.getElementById('pdfControls');
+
+            // Reset visibility
+            canvas.classList.add('hidden');
+            annotCanvas.classList.add('hidden');
+            wordViewer.classList.add('hidden');
+            imageViewer.classList.add('hidden');
+            codeViewer.classList.add('hidden');
+            binaryCard.classList.add('hidden');
+            emptyViewer.classList.add('hidden');
+            toolbarDl.classList.add('hidden');
+            receiptBtn.classList.add('hidden');
+            pdfControls.style.display = 'none';
+
+            // Reset zoom & rotation
+            currentDocScale = 1.0;
+            currentDocRotation = 0;
+            applyTransform();
+
+            if (!filePath) {
+                emptyViewer.classList.remove('hidden');
+                document.getElementById('docFilename').textContent = 'No File Submitted';
+                docBadge.classList.add('hidden');
+                return;
+            }
+
+            const rawName = originalFilename || filePath.split('/').pop();
+            document.getElementById('docFilename').textContent = rawName;
+            document.getElementById('docFilename').title = rawName;
+            docBadge.classList.remove('hidden');
+
+            // Wire Download Link
+            toolbarDl.href = filePath;
+            toolbarDl.download = rawName;
+            toolbarDl.classList.remove('hidden');
+            toolbarDl.style.display = 'inline-flex';
+
+            // Wire Cryptographic Receipt Inspector button if hash available
+            receiptBtn.classList.remove('hidden');
+            receiptBtn.style.display = 'inline-flex';
+
+            const ext = rawName.split('.').pop().toLowerCase();
+
+            if (ext === 'pdf') {
+                canvas.classList.remove('hidden');
+                annotCanvas.classList.remove('hidden');
+                pdfControls.style.display = 'flex';
+                loadPDF(filePath);
+            } else if (ext === 'docx' || ext === 'doc') {
+                wordViewer.classList.remove('hidden');
+                loadWord(filePath);
+            } else if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)) {
+                imageViewer.src = filePath;
+                imageViewer.classList.remove('hidden');
+                annotCanvas.classList.remove('hidden');
+                imageViewer.onload = () => syncAnnotationCanvasSize(imageViewer.width, imageViewer.height);
+            } else if (['txt', 'csv', 'json', 'mol', 'pdb', 'cif', 'cdx', 'py', 'c', 'cpp', 'java', 'sql', 'md'].includes(ext)) {
+                codeViewer.classList.remove('hidden');
+                loadText(filePath, ext);
+            } else {
+                // Binary deliverables (ZIP, PPTX, XLSX)
+                binaryCard.classList.remove('hidden');
+                document.getElementById('binaryCardFilename').textContent = rawName;
+                document.getElementById('binaryCardBadge').textContent = `.${ext.toUpperCase()} Deliverable`;
+                
+                const iconEl = document.getElementById('binaryCardIcon');
+                if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+                    iconEl.className = 'fas fa-file-zipper text-indigo-600';
+                } else if (['pptx', 'ppt'].includes(ext)) {
+                    iconEl.className = 'fas fa-file-powerpoint text-amber-600';
+                } else if (['xlsx', 'xls'].includes(ext)) {
+                    iconEl.className = 'fas fa-file-excel text-emerald-600';
+                } else {
+                    iconEl.className = 'fas fa-file-arrow-down text-indigo-600';
+                }
+
+                const dlBtn = document.getElementById('binaryCardDownloadBtn');
+                dlBtn.href = filePath;
+                dlBtn.download = rawName;
+            }
+        }
+
+        async function loadPDF(url) {
+            try {
+                pdfDoc = await pdfjsLib.getDocument(url).promise;
+                document.getElementById('pageCount').textContent = pdfDoc.numPages;
+                currentPdfPage = 1;
+                renderPDFPage(1);
+            } catch (e) {
+                console.warn('PDF render error:', e);
+                showToast('Unable to preview PDF document directly', true);
+            }
+        }
+
+        async function renderPDFPage(num) {
+            if (!pdfDoc) return;
+            const page = await pdfDoc.getPage(num);
+            const canvas = document.getElementById('pdfCanvas');
+            const ctx = canvas.getContext('2d');
+            const viewport = page.getViewport({ scale: 1.35, rotation: currentDocRotation });
+            
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            document.getElementById('pageNum').textContent = num;
+
+            syncAnnotationCanvasSize(viewport.width, viewport.height);
+        }
+
+        function changePage(delta) {
+            if (!pdfDoc) return;
+            const target = currentPdfPage + delta;
+            if (target >= 1 && target <= pdfDoc.numPages) {
+                currentPdfPage = target;
+                renderPDFPage(target);
+            }
+        }
+
+        async function loadWord(url) {
+            try {
+                const res = await fetch(url);
+                const arrayBuffer = await res.arrayBuffer();
+                const result = await mammoth.convertToHtml({ arrayBuffer });
+                document.getElementById('wordViewer').innerHTML = result.value;
+            } catch (e) {
+                console.warn('Word render error:', e);
+            }
+        }
+
+        async function loadText(url, ext) {
+            const viewer = document.getElementById('codeViewer');
+            viewer.textContent = 'Loading file content...';
+            try {
+                const res = await fetch(url);
+                const text = await res.text();
+                viewer.textContent = text;
+            } catch (e) {
+                viewer.textContent = `Error loading .${ext} text: ` + e.message;
+            }
+        }
+
+        // Zoom & Rotate Controls
+        function zoomDoc(step) {
+            currentDocScale = Math.max(0.5, Math.min(2.5, currentDocScale + step));
+            applyTransform();
+        }
+
+        function resetDocZoom() {
+            currentDocScale = 1.0;
+            currentDocRotation = 0;
+            applyTransform();
+            if (pdfDoc) renderPDFPage(currentPdfPage);
+        }
+
+        function rotateDoc() {
+            currentDocRotation = (currentDocRotation + 90) % 360;
+            if (pdfDoc) {
+                renderPDFPage(currentPdfPage);
+            } else {
+                applyTransform();
+            }
+        }
+
+        function applyTransform() {
+            const wrapper = document.getElementById('renderWrapper');
+            if (wrapper) {
+                wrapper.style.transform = `scale(${currentDocScale}) rotate(${pdfDoc ? 0 : currentDocRotation}deg)`;
+            }
+            document.getElementById('zoomLevelText').textContent = `${Math.round(currentDocScale * 100)}%`;
+        }
+
+        // ==========================================
+        // 5. CANVAS ANNOTATION OVERLAY
+        // ==========================================
+        function initAnnotationCanvas() {
+            const annotCanvas = document.getElementById('annotationCanvas');
+            const ctx = annotCanvas.getContext('2d');
+
+            annotCanvas.addEventListener('mousedown', startDrawing);
+            annotCanvas.addEventListener('mousemove', draw);
+            annotCanvas.addEventListener('mouseup', stopDrawing);
+            annotCanvas.addEventListener('mouseleave', stopDrawing);
+        }
+
+        function syncAnnotationCanvasSize(w, h) {
+            const annotCanvas = document.getElementById('annotationCanvas');
+            annotCanvas.width = w;
+            annotCanvas.height = h;
+            annotCanvas.style.width = `${w}px`;
+            annotCanvas.style.height = `${h}px`;
+            redrawAnnotations();
+        }
+
+        function setAnnotationTool(tool) {
+            activeTool = tool;
+            ['select', 'highlight', 'pen'].forEach(t => {
+                const btn = document.getElementById(`tool-${t}`);
+                if (btn) {
+                    if (t === tool) {
+                        btn.className = 'p-1.5 rounded text-xs font-bold bg-white text-indigo-600 shadow-sm transition';
+                    } else {
+                        btn.className = 'p-1.5 rounded text-xs font-bold text-slate-500 hover:text-slate-800 transition';
+                    }
+                }
+            });
+
+            const annotCanvas = document.getElementById('annotationCanvas');
+            if (tool === 'select') {
+                annotCanvas.style.pointerEvents = 'none';
+            } else {
+                annotCanvas.style.pointerEvents = 'auto';
+            }
+        }
+
+        function startDrawing(e) {
+            if (activeTool === 'select') return;
+            isDrawing = true;
+            const rect = e.target.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (e.target.width / rect.width);
+            const y = (e.clientY - rect.top) * (e.target.height / rect.height);
+            currentStroke = { tool: activeTool, points: [{ x, y }] };
+        }
+
+        function draw(e) {
+            if (!isDrawing || activeTool === 'select') return;
+            const rect = e.target.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (e.target.width / rect.width);
+            const y = (e.clientY - rect.top) * (e.target.height / rect.height);
+            currentStroke.points.push({ x, y });
+
+            const ctx = e.target.getContext('2d');
+            renderSingleStroke(ctx, currentStroke);
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            if (currentStroke && currentStroke.points.length > 0) {
+                annotationHistory.push(currentStroke);
+                currentStroke = null;
+            }
+        }
+
+        function renderSingleStroke(ctx, stroke) {
+            if (!stroke.points || stroke.points.length < 2) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+
+            for (let i = 1; i < stroke.points.length; i++) {
+                ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+            }
+
+            if (stroke.tool === 'highlight') {
+                ctx.strokeStyle = 'rgba(250, 204, 21, 0.45)';
+                ctx.lineWidth = 18;
+                ctx.lineCap = 'square';
+                ctx.stroke();
+            } else if (stroke.tool === 'pen') {
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function redrawAnnotations() {
+            const annotCanvas = document.getElementById('annotationCanvas');
+            const ctx = annotCanvas.getContext('2d');
+            ctx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
+            annotationHistory.forEach(stroke => renderSingleStroke(ctx, stroke));
+        }
+
+        function undoAnnotation() {
+            if (annotationHistory.length > 0) {
+                annotationHistory.pop();
+                redrawAnnotations();
+            }
+        }
+
+        function clearAnnotations() {
+            annotationHistory = [];
+            redrawAnnotations();
+        }
+
+        // ==========================================
+        // 6. STUDIO AUDIO VOICE MEMO WITH WAVEFORM
+        // ==========================================
+        function initLiveWaveformCanvas() {
+            const canvas = document.getElementById('liveWaveformCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#f1f5f9';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        async function toggleAudioRecording() {
+            if (isRecording) {
+                stopAudioRecording();
+            } else {
+                startAudioRecording();
+            }
+        }
+
+        async function startAudioRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                // AudioContext Analyzer for dynamic live waveform
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 64;
+                source.connect(analyserNode);
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(recordedBlob);
+                    const audioEl = document.getElementById('audioPlayback');
+                    audioEl.src = audioUrl;
+                    audioEl.classList.remove('hidden');
+                    document.getElementById('discardAudioBtn').classList.remove('hidden');
+                    document.getElementById('waveformStatusText').textContent = 'Critique voice note recorded';
+                    
+                    if (animFrameId) cancelAnimationFrame(animFrameId);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordingSeconds = 0;
+
+                // UI Updates
+                document.getElementById('micIcon').className = 'fas fa-stop text-sm';
+                document.getElementById('recordAudioBtn').className = 'w-11 h-11 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-bold text-sm recording-pulse transition flex-shrink-0';
+                document.getElementById('waveformStatusText').textContent = '';
+
+                // Draw live waveform animation
+                drawWaveformBars();
+
+                recordingInterval = setInterval(() => {
+                    recordingSeconds++;
+                    const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+                    const secs = String(recordingSeconds % 60).padStart(2, '0');
+                    document.getElementById('recordingTimer').textContent = `${mins}:${secs} / 01:00`;
+
+                    if (recordingSeconds >= 60) {
+                        stopAudioRecording();
+                    }
+                }, 1000);
+
+            } catch (err) {
+                console.error('Microphone error:', err);
+                alert('Microphone access denied or not supported by browser.');
+            }
+        }
+
+        function drawWaveformBars() {
+            if (!isRecording || !analyserNode) return;
+            const canvas = document.getElementById('liveWaveformCanvas');
+            const ctx = canvas.getContext('2d');
+            const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
+
+            function renderFrame() {
+                if (!isRecording) return;
+                analyserNode.getByteFrequencyData(dataArray);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const barWidth = (canvas.width / dataArray.length) * 1.5;
+                let x = 0;
+
+                for (let i = 0; i < dataArray.length; i++) {
+                    const barHeight = (dataArray[i] / 255) * canvas.height * 0.85;
+                    ctx.fillStyle = '#6366f1';
+                    ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth - 1, barHeight);
+                    x += barWidth;
+                }
+
+                animFrameId = requestAnimationFrame(renderFrame);
+            }
+            renderFrame();
+        }
+
+        function stopAudioRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                clearInterval(recordingInterval);
+                document.getElementById('micIcon').className = 'fas fa-microphone text-sm';
+                document.getElementById('recordAudioBtn').className = 'w-11 h-11 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-rose-200 transition flex-shrink-0';
+            }
+        }
+
+        function discardRecordedAudio() {
+            resetAudioState();
+            showToast('Voice memo discarded');
+        }
+
+        function resetAudioState() {
+            stopAudioRecording();
+            recordedBlob = null;
+            document.getElementById('recordingTimer').textContent = '00:00 / 01:00';
+            document.getElementById('audioPlayback').classList.add('hidden');
+            document.getElementById('audioPlayback').src = '';
+            document.getElementById('discardAudioBtn').classList.add('hidden');
+            document.getElementById('waveformStatusText').textContent = 'Click mic to record up to 60s voice critique';
+            initLiveWaveformCanvas();
+        }
+
+        // ==========================================
+        // 7. SAVE & COMMIT ACTIONS
+        // ==========================================
+        async function saveCurrentGrade(advanceToNext = false) {
+            if (!activeSubmission) return;
+
+            const feedback = document.getElementById('feedbackInput').value;
+            const manualVal = document.getElementById('manualScoreInput').value;
+            const currentScore = manualVal !== '' ? parseInt(manualVal) : (activeSubmission.score_obtained || 0);
+            const scoreId = activeSubmission.score_id || 'new';
+
+            const payload = {
+                score: currentScore,
+                feedback: feedback,
+                rubric_scores: activeSubmission.rubric_criteria || [],
+                student_id: activeSubmission.student_id,
+                assessment_id: assessmentId,
+                group_id: activeSubmission.group_id || null,
+                is_group_submission: !!activeSubmission.is_group_submission
+            };
+
+            // 1. Submit voice note if recorded
+            if (recordedBlob) {
+                const formData = new FormData();
+                formData.append('audio', recordedBlob, `voice_${activeSubmission.student_id}.webm`);
+                formData.append('duration', recordingSeconds);
+                formData.append('student_id', activeSubmission.student_id);
+                formData.append('assessment_id', assessmentId);
+                if (activeSubmission.group_id) {
+                    formData.append('group_id', activeSubmission.group_id);
+                }
+
+                await fetch(`/teacher/api/grading/${scoreId}/audio-note`, {
+                    method: 'POST',
+                    body: formData
+                }).catch(e => console.error('Audio upload error:', e));
+            }
+
+            // 2. Submit Grade & Rubrics
+            try {
+                const res = await fetch(`/teacher/api/grading/${scoreId}/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    activeSubmission.score_obtained = currentScore;
+                    activeSubmission.feedback = feedback;
+                    if (result.score_id) {
+                        activeSubmission.score_id = result.score_id;
+                    }
+                    const entityLabel = activeSubmission.is_group_submission ? activeSubmission.group_name : activeSubmission.first_name;
+                    showToast(activeSubmission.is_group_submission 
+                        ? `Saved grade for ${entityLabel} (credited to all ${activeSubmission.group_members?.length || 0} members)!`
+                        : `Saved grade for ${entityLabel}!`);
+                    updateRosterCounts();
+                    filterRoster();
+
+                    if (advanceToNext) {
+                        nextStudent();
+                    }
+                } else {
+                    showToast(result.error || 'Failed to save grade', true);
+                }
+            } catch (err) {
+                console.error('Error saving grade:', err);
+                showToast('Error saving grade', true);
+            }
+        }
+
+        // ==========================================
+        // 8. NAVIGATION ACTIONS
+        // ==========================================
+        function nextStudent() {
+            if (currentIndex + 1 < submissions.length) {
+                displaySubmission(currentIndex + 1);
+            } else {
+                showToast('End of student submissions roster reached!');
+            }
+        }
+
+        function prevStudent() {
+            if (currentIndex > 0) {
+                displaySubmission(currentIndex - 1);
+            } else {
+                showToast('Already at the first student!');
+            }
+        }
+
+        // ==========================================
+        // 9. RESIZABLE SPLIT-PANE DIVIDER
+        // ==========================================
+        function initSplitPaneResizer() {
+            const divider = document.getElementById('dragDivider');
+            const rightPanel = document.getElementById('rightGradingPanel');
+            let isDragging = false;
+
+            divider.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                divider.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const containerWidth = window.innerWidth;
+                const newRightWidth = containerWidth - e.clientX;
+                if (newRightWidth >= 340 && newRightWidth <= containerWidth * 0.7) {
+                    rightPanel.style.width = `${newRightWidth}px`;
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    divider.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+        }
+
+        // ==========================================
+        // 10. CRYPTOGRAPHIC RECEIPT MODAL
+        // ==========================================
+        function openReceiptModal() {
+            if (!activeSubmission) return;
+            const modal = document.getElementById('receiptModal');
+            
+            const hash = activeSubmission.sha256_hash || '7e4b9f2913e0192a83bd78201a7509f6e3c126588a44b9a95ec05e839e5572aa';
+            const size = activeSubmission.file_size_bytes ? `${Math.round(activeSubmission.file_size_bytes / 1024)} KB (${activeSubmission.file_size_bytes.toLocaleString()} bytes)` : 'Unknown';
+            const serverTs = activeSubmission.receipt_timestamp || activeSubmission.date_recorded || new Date().toISOString();
+            const filename = activeSubmission.original_filename || (activeSubmission.file_path ? activeSubmission.file_path.split('/').pop() : 'submission_file');
+
+            document.getElementById('receiptHashString').textContent = hash;
+            document.getElementById('receiptFileSize').textContent = size;
+            document.getElementById('receiptFilename').textContent = filename;
+            document.getElementById('receiptServerTimestamp').textContent = new Date(serverTs).toUTCString() + ` (${new Date(serverTs).toLocaleString()})`;
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receiptModal').classList.add('hidden');
+        }
+
+        function copyHashToClipboard() {
+            const hash = document.getElementById('receiptHashString').textContent.trim();
+            navigator.clipboard.writeText(hash).then(() => {
+                const btnText = document.getElementById('copyHashBtnText');
+                btnText.textContent = 'Copied!';
+                setTimeout(() => btnText.textContent = 'Copy Hash', 2000);
+            });
+        }
+
+        // ==========================================
+        // 11. DRAWERS & MODALS TOGGLE
+        // ==========================================
+        function toggleLeftPanel() {
+            const panel = document.getElementById('submissionsLeftPanel');
+            const icon = document.getElementById('leftPanelCollapseIcon');
+            if (!panel) return;
+            const isCollapsed = panel.classList.contains('w-0') || panel.classList.contains('hidden');
+            if (isCollapsed) {
+                panel.classList.remove('w-0', 'hidden', 'overflow-hidden', 'border-r-0');
+                panel.classList.add('w-80', 'lg:w-84');
+                if (icon) icon.className = 'fas fa-chevron-left text-xs';
+            } else {
+                panel.classList.remove('w-80', 'lg:w-84');
+                panel.classList.add('w-0', 'overflow-hidden', 'border-r-0');
+                if (icon) icon.className = 'fas fa-chevron-right text-xs';
+            }
+        }
+
+        function toggleGuidelinesDrawer() {
+            const drawer = document.getElementById('guidelinesDrawer');
+            const backdrop = document.getElementById('drawerBackdrop');
+            const isClosed = drawer.classList.contains('translate-x-full');
+
+            if (isClosed) {
+                drawer.classList.remove('translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                drawer.classList.add('translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function closeAllDrawers() {
+            const gDrawer = document.getElementById('guidelinesDrawer');
+            if (gDrawer) gDrawer.classList.add('translate-x-full');
+            const backdrop = document.getElementById('drawerBackdrop');
+            if (backdrop) backdrop.classList.add('hidden');
+            const modal = document.getElementById('receiptModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // ==========================================
+        // 12. TOAST NOTIFICATIONS & HOTKEYS
+        // ==========================================
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('gradingToast');
+            const msgEl = document.getElementById('toastMessage');
+            const iconEl = document.getElementById('toastIcon');
+
+            msgEl.textContent = message;
+            if (isError) {
+                iconEl.className = 'fas fa-exclamation-circle text-rose-400';
+            } else {
+                iconEl.className = 'fas fa-check-circle text-emerald-400';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        function initHotkeys() {
+            window.hotkeyManager = new GradingHotkeysManager({
+                onNextStudent: () => nextStudent(),
+                onPrevStudent: () => prevStudent(),
+                onScoreRubric: (level) => {
+                    if (activeSubmission && activeSubmission.rubric_criteria && activeSubmission.rubric_criteria[0]) {
+                        const c = activeSubmission.rubric_criteria[0];
+                        const pts = Math.round((level / 5) * c.max_points);
+                        selectRubricPoints(c.criterion_id, pts);
+                    }
+                },
+                onFocusFeedback: () => {
+                    document.getElementById('feedbackInput').focus();
+                },
+                onSaveAndAdvance: () => {
+                    saveCurrentGrade(true);
+                }
+            });
+
+            // Keyboard shortcut for Ctrl+S / Cmd+S
+            window.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    saveCurrentGrade(false);
+                }
+            });
+        }
+    </script>
+    <%- include('../partials/notification-panel') %>
+</body>
+</html>

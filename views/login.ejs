@@ -218,6 +218,68 @@
 
             <div class="divider">Or</div>
 
+
+            <% if (typeof showResetPrompt !== 'undefined' && showResetPrompt) { %>
+                <div class="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-left">
+                    <div class="flex items-center gap-2 text-amber-600 font-bold text-sm mb-1">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                        Active Session on Another Device
+                    </div>
+                    <p class="text-xs text-slate-600 mb-3 leading-relaxed">
+                        An authorization prompt was sent to your active device. If approved there, this screen will proceed automatically. You can also force a login here.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form id="forceLoginForm" action="/login" method="POST" class="inline m-0 p-0">
+                            <input type="hidden" name="email" value="<%= typeof prefillEmail !== 'undefined' ? prefillEmail : '' %>">
+                            <input type="hidden" name="password" value="<%= typeof prefillPassword !== 'undefined' ? prefillPassword : '' %>">
+                            <input type="hidden" name="force_login" value="yes">
+                            <button type="submit" class="px-4 py-2 bg-amber-600 text-white font-bold text-xs rounded-xl hover:bg-amber-700 cursor-pointer shadow-sm transition-all">Force Login (Take Over)</button>
+                        </form>
+                        <a href="/login" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl inline-block text-center border border-gray-200 transition-colors" style="text-decoration:none;">Cancel</a>
+                    </div>
+                    <% if (typeof pendingRequestId !== 'undefined' && pendingRequestId) { %>
+                        <script>
+                            (function() {
+                                const reqId = '<%= pendingRequestId %>';
+                                const checkInterval = setInterval(async () => {
+                                    try {
+                                        const res = await fetch('/api/session/check-request/' + reqId);
+                                        const data = await res.json();
+                                        if (data.status === 'granted') {
+                                            clearInterval(checkInterval);
+                                            document.getElementById('forceLoginForm').submit();
+                                        } else if (data.status === 'denied') {
+                                            clearInterval(checkInterval);
+                                            window.location.href = '/login?error=' + encodeURIComponent('Login request was denied by your active device.');
+                                        }
+                                    } catch (_) {}
+                                }, 2500);
+                            })();
+                        </script>
+                    <% } %>
+                </div>
+                <!-- Legacy prompt hidden -->
+                <div style="display:none">
+                    <h3 class="text-sm font-bold text-yellow-800 mb-2">You are currently logged in on another device.</h3>
+                    <p class="text-xs text-yellow-700 mb-4">Do you want to reset your account login session and log in here?</p>
+                    <div class="flex gap-2">
+                        <form action="/login" method="POST" class="inline m-0 p-0">
+                            <input type="hidden" name="email" value="<%= prefillEmail %>">
+                            <input type="hidden" name="password" value="<%= prefillPassword %>">
+                            <input type="hidden" name="force_login" value="yes">
+                            <button type="submit" class="px-4 py-2 bg-yellow-600 text-white text-xs font-bold rounded-lg hover:bg-yellow-700 cursor-pointer">Yes, Reset & Login</button>
+                        </form>
+                        <a href="/login" class="px-4 py-2 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-300 inline-block text-center cursor-pointer" style="text-decoration:none;">No, Cancel</a>
+                    </div>
+                </div>
+            <% } %>
+
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl">
+                    <%= error %>
+                </div>
+            <% } %>
+
             <form action="/login" method="POST" class="flex flex-col gap-4">
                 <div>
                     <label class="field-label">Gmail Address</label>

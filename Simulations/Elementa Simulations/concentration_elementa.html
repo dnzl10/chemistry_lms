@@ -1,0 +1,2534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Concentration | Elementa LMS Edition</title>
+  <style>
+    :root {
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --topbar-height: 58px;
+      --tabs-height: 48px;
+      --bg-space: #070b14;
+      --bg-surface: #0f172a;
+      --bg-panel: rgba(15, 23, 42, 0.85);
+      --bg-panel-solid: #1e293b;
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.4);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --secondary: #818cf8;
+      --accent: #22d3ee;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --topbar-height: 54px;
+      --tabs-height: 44px;
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "Fira Code", Menlo, Monaco, Consolas, "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TOPBAR: EXACT REPLICA OF acid-base-solutions_elementa.html */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      background: linear-gradient(135deg, #e0f2fe 0%, #38bdf8 60%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Mode Selector Pills */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+
+    .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* Top Action Buttons */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    .action-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* SECONDARY SCREENS NAV */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .screen-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .screen-tab-btn.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #7dd3fc;
+    }
+
+    .screen-tab-number {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: var(--text-main);
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .equation-banner-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-card);
+      padding: 4px 14px;
+      border-radius: 20px;
+      color: var(--text-muted);
+    }
+
+    /* MAIN APP WORKSPACE */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* SECTIONS: SIM / MISSIONS / QUIZ / THEORY */
+    .app-view-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .app-view-container.active {
+      display: flex;
+    }
+
+    /* SIMULATION WORKSPACE LAYOUT */
+    .sim-layout {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: row;
+      background: radial-gradient(circle at 45% 45%, #0c1426 0%, #070b14 100%);
+      position: relative;
+    }
+
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #concCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* RIGHT SIDEBAR CONTROL PANEL */
+    aside.simulation-sidebar {
+      width: 360px;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.94);
+      border-left: 1px solid var(--border-card);
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(14px);
+      z-index: 20;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Solute Selector Dropdown & Form Toggle */
+    .custom-select {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      color: #f8fafc;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      outline: none;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+    }
+
+    .custom-select:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+    }
+
+    .form-toggle-group {
+      display: flex;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+
+    .form-toggle-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .form-toggle-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    /* Metric Display Cards */
+    .metric-card {
+      background: rgba(10, 15, 28, 0.7);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .metric-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .metric-card-title {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-card-value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+    }
+
+    .metric-card-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .status-pill.unsaturated {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .status-pill.saturated {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    /* Interactive Sliders (Evaporation) */
+    .slider-control-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+      transition: transform 0.1s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Beaker Overlay Tools / Shaker & Dropper Floating Controls */
+    .floating-tool-pill {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 8px 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 15;
+    }
+
+    /* Solute Shaker Floating Controller */
+    .shaker-control-pill {
+      top: 24px;
+      left: 360px;
+    }
+
+    /* Solute Solution Dropper Floating Controller */
+    .dropper-control-pill {
+      top: 24px;
+      left: 360px;
+    }
+
+    .tool-trigger-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
+      transition: all 0.15s ease;
+    }
+
+    .tool-trigger-btn:hover {
+      filter: brightness(1.15);
+      transform: translateY(-1px);
+    }
+
+    .tool-trigger-btn:active {
+      transform: translateY(1px);
+    }
+
+    /* DOCUMENT SCROLLER FOR MISSIONS, QUIZ, THEORY */
+    .document-page-scroll {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 30px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .doc-hero {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .doc-hero-text h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .doc-hero-text p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    /* MISSIONS GRID */
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .mission-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .mission-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mission-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mission-status-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+    }
+
+    .mission-card.completed .mission-status-pill {
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+    }
+
+    .mission-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .mission-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .mission-jump-btn {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .mission-jump-btn:hover {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    /* QUIZ QUESTION CARDS */
+    .quiz-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quiz-q-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-opt-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-opt-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .quiz-opt-btn.correct {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #34d399;
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .quiz-opt-btn.wrong {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    .quiz-opt-marker {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-explanation {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 3px solid #38bdf8;
+      color: #cbd5e1;
+      display: none;
+    }
+
+    .quiz-explanation.visible {
+      display: block;
+    }
+
+    .quiz-score-banner {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* THEORY ARTICLE CARDS */
+    .theory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-content {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .theory-formula-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #7dd3fc;
+      margin-top: 6px;
+    }
+
+    /* CERTIFICATE MODAL */
+    .cert-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 250;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cert-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+      border: 2px solid rgba(234, 179, 8, 0.5);
+      border-radius: 20px;
+      padding: 36px 44px;
+      max-width: 600px;
+      width: 90vw;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(234, 179, 8, 0.25);
+      position: relative;
+    }
+
+    .cert-seal {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+      color: #fff;
+    }
+
+    .cert-h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .cert-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .cert-name-slot {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #38bdf8;
+      border-bottom: 1px dashed rgba(56, 189, 248, 0.4);
+      padding-bottom: 6px;
+      margin: 0 auto 20px;
+      max-width: 380px;
+    }
+
+    .cert-details {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .cert-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+    }
+  
+    /* Standard Sleek Elementa Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  
+    /* ==========================================================================
+       ELEMENTA STANDARD MODALS (acid-base-solutions baseline)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+    .modal-backdrop .document-page-scroll {
+      height: auto !important;
+      overflow-y: visible !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+    .modal-backdrop .doc-hero {
+      margin-bottom: 16px !important;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- LMS TOPBAR: EXACTLY MATCHING acid-base-solutions_elementa.html -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 2v7.31"></path>
+            <path d="M14 9.3V1.99"></path>
+            <path d="M8.5 2h7"></path>
+            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+            <path d="M5.52 16h12.96"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Solutions & Solubility</span>
+        <span>›</span>
+        <span class="current">Concentration</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- SECONDARY SCREENS NAVIGATION -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenConc" onclick="switchSimScreen('conc')">
+        <span class="screen-tab-number">1</span>
+        Concentration Lab
+      </button>
+    </div>
+
+    <!-- Live Solution Status Banner -->
+    <div class="equation-banner-strip" id="equationBanner">
+      <span style="color:#7dd3fc; font-weight:700;">Solution:</span>
+      <span id="screenStatusSolution">Cobalt(II) nitrate — [Co(NO₃)₂] = 0.50 M (Unsaturated)</span>
+    </div>
+  </nav>
+
+  <!-- WORKSPACE BODY -->
+  <main class="simulation-workspace">
+
+    <!-- VIEW 1: SIMULATION LAB -->
+    <div class="app-view-container active" id="viewSim">
+      <div class="sim-layout">
+        <!-- Interactive Canvas Viewport -->
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="concCanvas"></canvas>
+
+          <!-- Floating Shaker / Dropper Trigger Pill -->
+          <div class="floating-tool-pill shaker-control-pill" id="soluteControlPill">
+            <span style="font-size:0.8rem; font-weight:700; color:#e2e8f0;" id="pillDispenserLabel">Solid Shaker:</span>
+            <button class="tool-trigger-btn" id="btnDispenseSolute" onmousedown="startDispensing()" onmouseup="stopDispensing()" onmouseleave="stopDispensing()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              Hold to Shake / Dispense
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Diagnostic Sidebar -->
+        <aside class="simulation-sidebar">
+          <!-- Solute Selection & Phase -->
+          <div class="sidebar-section">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v14a4 4 0 0 0 8 0V2"></path><path d="M14 6H6"></path></svg>
+              Solute & Dispenser Form
+            </div>
+
+            <select class="custom-select" id="soluteSelect" onchange="onSoluteChange(this.value)">
+              <option value="DRINK_MIX">Drink mix</option>
+              <option value="COBALT_II_NITRATE" selected>Cobalt(II) nitrate [Co(NO₃)₂]</option>
+              <option value="COBALT_CHLORIDE">Cobalt(II) chloride [CoCl₂]</option>
+              <option value="POTASSIUM_DICHROMATE">Potassium dichromate [K₂Cr₂O₇]</option>
+              <option value="POTASSIUM_CHROMATE">Potassium chromate [K₂CrO₄]</option>
+              <option value="NICKEL_II_CHLORIDE">Nickel(II) chloride [NiCl₂]</option>
+              <option value="COPPER_SULFATE">Copper(II) sulfate [CuSO₄]</option>
+              <option value="POTASSIUM_PERMANGANATE">Potassium permanganate [KMnO₄]</option>
+              <option value="SODIUM_CHLORIDE">Sodium chloride [NaCl]</option>
+            </select>
+
+            <div class="form-toggle-group">
+              <button class="form-toggle-btn active" id="btnFormSolid" onclick="setSoluteForm('solid')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                Solid Shaker
+              </button>
+              <button class="form-toggle-btn" id="btnFormSolution" onclick="setSoluteForm('solution')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                Liquid Dropper
+              </button>
+            </div>
+          </div>
+
+          <!-- Molarity & Quantitative Solution Metrics -->
+          <div class="sidebar-section">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              Solution Diagnostics
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-card-header">
+                <span class="metric-card-title">Molarity (Concentration)</span>
+                <span class="status-pill unsaturated" id="pillSaturation">Unsaturated</span>
+              </div>
+              <div class="metric-card-value" id="valMolarity">0.500 M</div>
+              <div class="metric-card-sub">
+                <span>Concentration Probe:</span>
+                <span id="valProbeReading" style="font-family:var(--font-mono); font-weight:700; color:#38bdf8;">0.500 M</span>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-card-header">
+                <span class="metric-card-title">Volume & Dissolved Solute</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:4px;">
+                <div>
+                  <div style="font-size:0.7rem; color:var(--text-dim);">Volume:</div>
+                  <div style="font-size:1.05rem; font-weight:800; color:#f8fafc;" id="valVolume">0.500 L</div>
+                </div>
+                <div>
+                  <div style="font-size:0.7rem; color:var(--text-dim);">Solute Amount:</div>
+                  <div style="font-size:1.05rem; font-weight:800; color:#f8fafc;" id="valMoles">0.250 mol</div>
+                </div>
+                <div>
+                  <div style="font-size:0.7rem; color:var(--text-dim);">Precipitate:</div>
+                  <div style="font-size:1.05rem; font-weight:800; color:#f87171;" id="valPrecipitate">0.000 mol</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Environmental Controls: Evaporation Slider -->
+          <div class="sidebar-section">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line></svg>
+              Evaporation & Solvent Loss
+            </div>
+
+            <div class="slider-control-row">
+              <div class="slider-label-row">
+                <span>Evaporation Rate:</span>
+                <span id="lblEvapRate" style="font-family:var(--font-mono); font-weight:700; color:#38bdf8;">0.00 L/s</span>
+              </div>
+              <input type="range" id="sliderEvaporation" min="0" max="0.1" step="0.005" value="0" oninput="setEvaporationRate(this.value)">
+              <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:var(--text-dim);">
+                <span>None (0)</span>
+                <span>Fast (0.1 L/s)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Tools -->
+          <div class="sidebar-section" style="margin-top:auto;">
+            <div style="display:flex; gap:8px;">
+              <button class="action-btn" style="flex:1;" onclick="fillBeakerTo(0.5)">
+                Fill to 0.5 L
+              </button>
+              <button class="action-btn" style="flex:1;" onclick="fillBeakerTo(1.0)">
+                Fill to 1.0 L
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- VIEW 2: GUIDED MISSIONS -->
+    <div class="app-view-container" id="viewMissions">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Solution Chemistry Guided Missions</h1>
+            <p>Master molarity calculations, dilution relationships, dynamic saturation limits, and crystallization dynamics.</p>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 1.8rem; font-weight: 800; color: #38bdf8;" id="missionProgressRatio">0 / 5</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Missions Cleared</div>
+          </div>
+        </div>
+
+        <div class="mission-grid" id="missionGridContainer">
+          <!-- Dynamic Mission Cards -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- VIEW 3: ASSESSMENT QUIZ -->
+    <div class="app-view-container" id="viewQuiz">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Solution Concentration & Molarity Assessment</h1>
+            <p>Validate your understanding of concentration definitions, molar mass conversion, solvent dilution, and saturation equilibrium.</p>
+          </div>
+          <div>
+            <button class="cert-btn" id="btnCertificateTrigger" style="display:none;" onclick="openCertificate()">
+              🏆 View Certificate
+            </button>
+          </div>
+        </div>
+
+        <div class="quiz-score-banner">
+          <div>
+            <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted);">Current Evaluation</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #f8fafc;" id="quizStatusText">0 of 5 Questions Answered</div>
+          </div>
+          <button class="action-btn" onclick="resetQuiz()">Reset Quiz</button>
+        </div>
+
+        <div id="quizContainer" style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Dynamic Quiz Questions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- VIEW 4: THEORY & FORMULAS -->
+    <div class="app-view-container" id="viewTheory">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Aqueous Solutions & Concentration Theory</h1>
+            <p>Fundamental physical principles of dissolution, molarity, dilution equations, and dynamic solubility equilibrium.</p>
+          </div>
+        </div>
+
+        <div class="theory-grid">
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              Molarity (M) Definition
+            </div>
+            <div class="theory-content">
+              Molarity ($M$), or molar concentration, is defined as the number of moles of dissolved solute per liter of total solution.
+              It is the primary concentration metric used across quantitative chemical stoichiometry.
+            </div>
+            <div class="theory-formula-box">
+              M = n / V &nbsp;(mol / L)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+              The Dilution Equation
+            </div>
+            <div class="theory-content">
+              When solvent is added to an existing solution, the amount of solute remains strictly constant while total volume increases,
+              causing concentration to decrease proportionally.
+            </div>
+            <div class="theory-formula-box">
+              M₁ × V₁ = M₂ × V₂
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              Solubility & Saturation Limit
+            </div>
+            <div class="theory-content">
+              A solution is <strong>saturated</strong> when it contains the maximum concentration of dissolved solute in dynamic thermodynamic
+              equilibrium with solid precipitate. Adding further solute causes immediate crystallization at the bottom of the beaker.
+            </div>
+            <div class="theory-formula-box">
+              [Solute] = S_limit &nbsp;|&nbsp; Excess forms solid precipitate
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line></svg>
+              Evaporation Dynamics
+            </div>
+            <div class="theory-content">
+              Evaporation removes solvent water while leaving solute behind in the beaker. This increases concentration until the saturation limit
+              is reached, after which solid precipitate crystallizes out as volume continues to drop.
+            </div>
+            <div class="theory-formula-box">
+              V(t) = V₀ − r_evap × t
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- CERTIFICATE MODAL -->
+  <div class="cert-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div class="cert-seal">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h1 class="cert-h1">Certificate of Solution Chemistry Mastery</h1>
+      <p class="cert-sub">Elementa Interactive Quantitative Concentration Lab</p>
+      <div class="cert-name-slot">Scholar of Aqueous Chemistry</div>
+      <p class="cert-details">
+        Has successfully demonstrated consummate competence in molarity calculations, solvent dilution stoichiometry, 
+        saturation limits, and dynamic precipitate equilibrium.
+      </p>
+      <button class="cert-btn" onclick="closeCertificate()">Return to Laboratory</button>
+    </div>
+  </div>
+
+  <!-- EMBEDDED JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    /* =========================================================================
+       AUDIO SYNTHESIZER (Web Audio API)
+       ========================================================================= */
+    class ConcAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+      }
+
+      playShaker() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(750, now + 0.05);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      }
+
+      playWaterFlow() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(280, now + 0.08);
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      playSuccess() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const now = this.ctx.currentTime + idx * 0.08;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        });
+      }
+    }
+
+    const concAudio = new ConcAudioEngine();
+
+    function toggleAudio() {
+      concAudio.enabled = !concAudio.enabled;
+      const btn = document.getElementById('btnSoundToggle');
+      if (concAudio.enabled) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+
+    /* =========================================================================
+       SOLUTE CHEMISTRY DATABASE (9 Full PhET Solutes)
+       ========================================================================= */
+    const SOLUTES = {
+      DRINK_MIX: {
+        id: 'DRINK_MIX',
+        name: 'Drink mix',
+        formula: 'Drink mix',
+        molarMass: 342.3,
+        solubilityLimit: 5.96, // M
+        stockConcentration: 5.5, // M for dropper
+        colorMin: [255, 235, 235],
+        colorMax: [239, 68, 68],
+        precipitateColor: '#dc2626'
+      },
+      COBALT_II_NITRATE: {
+        id: 'COBALT_II_NITRATE',
+        name: 'Cobalt(II) nitrate',
+        formula: 'Co(NO₃)₂',
+        molarMass: 182.94,
+        solubilityLimit: 5.64,
+        stockConcentration: 5.0,
+        colorMin: [255, 230, 230],
+        colorMax: [220, 38, 38],
+        precipitateColor: '#b91c1c'
+      },
+      COBALT_CHLORIDE: {
+        id: 'COBALT_CHLORIDE',
+        name: 'Cobalt(II) chloride',
+        formula: 'CoCl₂',
+        molarMass: 129.84,
+        solubilityLimit: 4.33,
+        stockConcentration: 4.0,
+        colorMin: [255, 240, 245],
+        colorMax: [244, 114, 182],
+        precipitateColor: '#ec4899'
+      },
+      POTASSIUM_DICHROMATE: {
+        id: 'POTASSIUM_DICHROMATE',
+        name: 'Potassium dichromate',
+        formula: 'K₂Cr₂O₇',
+        molarMass: 294.19,
+        solubilityLimit: 0.51,
+        stockConcentration: 0.5,
+        colorMin: [255, 240, 225],
+        colorMax: [249, 115, 22],
+        precipitateColor: '#ea580c'
+      },
+      POTASSIUM_CHROMATE: {
+        id: 'POTASSIUM_CHROMATE',
+        name: 'Potassium chromate',
+        formula: 'K₂CrO₄',
+        molarMass: 194.19,
+        solubilityLimit: 3.35,
+        stockConcentration: 3.0,
+        colorMin: [255, 255, 220],
+        colorMax: [250, 204, 21],
+        precipitateColor: '#eab308'
+      },
+      NICKEL_II_CHLORIDE: {
+        id: 'NICKEL_II_CHLORIDE',
+        name: 'Nickel(II) chloride',
+        formula: 'NiCl₂',
+        molarMass: 129.60,
+        solubilityLimit: 5.21,
+        stockConcentration: 5.0,
+        colorMin: [235, 250, 235],
+        colorMax: [22, 163, 74],
+        precipitateColor: '#15803d'
+      },
+      COPPER_SULFATE: {
+        id: 'COPPER_SULFATE',
+        name: 'Copper(II) sulfate',
+        formula: 'CuSO₄',
+        molarMass: 159.61,
+        solubilityLimit: 1.38,
+        stockConcentration: 1.0,
+        colorMin: [230, 245, 255],
+        colorMax: [37, 99, 235],
+        precipitateColor: '#1d4ed8'
+      },
+      POTASSIUM_PERMANGANATE: {
+        id: 'POTASSIUM_PERMANGANATE',
+        name: 'Potassium permanganate',
+        formula: 'KMnO₄',
+        molarMass: 158.03,
+        solubilityLimit: 0.48,
+        stockConcentration: 0.4,
+        colorMin: [255, 240, 255],
+        colorMax: [147, 51, 234],
+        precipitateColor: '#581c87'
+      },
+      SODIUM_CHLORIDE: {
+        id: 'SODIUM_CHLORIDE',
+        name: 'Sodium chloride',
+        formula: 'NaCl',
+        molarMass: 58.44,
+        solubilityLimit: 6.15,
+        stockConcentration: 5.5,
+        colorMin: [245, 248, 252],
+        colorMax: [240, 244, 250],
+        precipitateColor: '#f8fafc'
+      }
+    };
+
+    /* =========================================================================
+       LAB SIMULATION STATE
+       ========================================================================= */
+    const state = {
+      soluteId: 'COBALT_II_NITRATE',
+      form: 'solid', // 'solid' or 'solution'
+      volume: 0.500, // Liters (0 to 1.0)
+      totalSoluteMoles: 0.250, // Moles
+      evaporationRate: 0, // L/s
+      isDispensing: false,
+      isFaucetFlowing: false,
+      isDrainFlowing: false,
+      faucetFlowRate: 0.2, // L/s
+      drainFlowRate: 0.2, // L/s
+      probePos: { x: 440, y: 340 },
+      isDraggingProbe: false,
+      dragProbeOffset: { x: 0, y: 0 },
+      fallingParticles: [],
+      precipitateParticles: [],
+      lastTime: performance.now()
+    };
+
+    /* =========================================================================
+       CANVAS 2D SIMULATION ENGINE & PHYSICS LOOP
+       ========================================================================= */
+    const canvas = document.getElementById('concCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = container.clientWidth * dpr;
+      canvas.height = container.clientHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // Beaker Geometry on Canvas
+    function getBeakerGeometry() {
+      const container = document.getElementById('canvasContainer');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+
+      const bw = 240;
+      const bh = 340;
+      const bx = (w - bw) / 2 - 20;
+      const by = h - bh - 60;
+
+      return { x: bx, y: by, w: bw, h: bh };
+    }
+
+    // Top Faucet & Bottom Drain Geometry
+    function getFaucetGeometry() {
+      const b = getBeakerGeometry();
+      return {
+        x: b.x + 30,
+        y: b.y - 70,
+        btnX: b.x + 10,
+        btnY: b.y - 100
+      };
+    }
+
+    function getDrainGeometry() {
+      const b = getBeakerGeometry();
+      return {
+        x: b.x - 30,
+        y: b.y + b.h - 15,
+        btnX: b.x - 70,
+        btnY: b.y + b.h - 35
+      };
+    }
+
+    // User interaction handling
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      // Check Probe Grab
+      const distProbe = Math.hypot(mx - state.probePos.x, my - state.probePos.y);
+      if (distProbe < 35) {
+        state.isDraggingProbe = true;
+        state.dragProbeOffset = { x: state.probePos.x - mx, y: state.probePos.y - my };
+        return;
+      }
+
+      // Check Top Faucet Handle Grab
+      const f = getFaucetGeometry();
+      if (mx >= f.btnX && mx <= f.btnX + 50 && my >= f.btnY && my <= f.btnY + 40) {
+        state.isFaucetFlowing = true;
+        return;
+      }
+
+      // Check Bottom Drain Valve Grab
+      const d = getDrainGeometry();
+      if (mx >= d.btnX && mx <= d.btnX + 50 && my >= d.btnY && my <= d.btnY + 40) {
+        state.isDrainFlowing = true;
+        return;
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      if (state.isDraggingProbe) {
+        state.probePos.x = mx + state.dragProbeOffset.x;
+        state.probePos.y = my + state.dragProbeOffset.y;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      state.isDraggingProbe = false;
+      state.isFaucetFlowing = false;
+      state.isDrainFlowing = false;
+    });
+
+    function setSoluteForm(form) {
+      state.form = form;
+      document.getElementById('btnFormSolid').classList.toggle('active', form === 'solid');
+      document.getElementById('btnFormSolution').classList.toggle('active', form === 'solution');
+      document.getElementById('pillDispenserLabel').textContent = form === 'solid' ? 'Solid Shaker:' : 'Liquid Dropper:';
+    }
+
+    function onSoluteChange(soluteId) {
+      state.soluteId = soluteId;
+      updateUI();
+      checkMissionsEvaluation();
+    }
+
+    function startDispensing() {
+      state.isDispensing = true;
+    }
+
+    function stopDispensing() {
+      state.isDispensing = false;
+    }
+
+    function setEvaporationRate(val) {
+      state.evaporationRate = parseFloat(val) || 0;
+      document.getElementById('lblEvapRate').textContent = state.evaporationRate.toFixed(2) + ' L/s';
+    }
+
+    function fillBeakerTo(vol) {
+      state.volume = Math.max(0, Math.min(1.0, vol));
+      updateUI();
+    }
+
+    // Main continuous physics step
+    function updatePhysics(dt) {
+      const solute = SOLUTES[state.soluteId];
+
+      // 1. Water Faucet Flow (Adding Solvent)
+      if (state.isFaucetFlowing && state.volume < 1.0) {
+        state.volume = Math.min(1.0, state.volume + state.faucetFlowRate * dt);
+        concAudio.playWaterFlow();
+      }
+
+      // 2. Drain Flow (Removing Solution: volume and dissolved solute in tandem)
+      if (state.isDrainFlowing && state.volume > 0) {
+        const dV = Math.min(state.volume, state.drainFlowRate * dt);
+        if (state.volume > 0.001) {
+          const conc = Math.min(solute.solubilityLimit, state.totalSoluteMoles / state.volume);
+          state.totalSoluteMoles = Math.max(0, state.totalSoluteMoles - conc * dV);
+        }
+        state.volume = Math.max(0, state.volume - dV);
+        concAudio.playWaterFlow();
+      }
+
+      // 3. Evaporation (Removing ONLY water, increasing concentration)
+      if (state.evaporationRate > 0 && state.volume > 0) {
+        const dV = Math.min(state.volume, state.evaporationRate * dt);
+        state.volume = Math.max(0, state.volume - dV);
+      }
+
+      // 4. Dispensing Solute (Solid shaker or Liquid dropper)
+      if (state.isDispensing) {
+        const b = getBeakerGeometry();
+        if (state.form === 'solid') {
+          // Add solid solute particles
+          const addedMoles = 0.3 * dt;
+          state.totalSoluteMoles += addedMoles;
+          concAudio.playShaker();
+
+          // Spawn falling particle
+          state.fallingParticles.push({
+            x: b.x + b.w * 0.45 + (Math.random() - 0.5) * 40,
+            y: b.y - 10,
+            vy: 200 + Math.random() * 80,
+            color: solute.precipitateColor
+          });
+        } else {
+          // Add liquid dropper solution (adds both volume and moles)
+          if (state.volume < 1.0) {
+            const addedV = 0.12 * dt;
+            state.volume = Math.min(1.0, state.volume + addedV);
+            state.totalSoluteMoles += solute.stockConcentration * addedV;
+            concAudio.playWaterFlow();
+          }
+        }
+      }
+
+      // 5. Update Falling Solid Particles
+      const b = getBeakerGeometry();
+      const liquidLevelY = b.y + b.h - (state.volume / 1.0) * (b.h - 30);
+
+      for (let i = state.fallingParticles.length - 1; i >= 0; i--) {
+        const p = state.fallingParticles[i];
+        p.y += p.vy * dt;
+        if (p.y >= liquidLevelY) {
+          state.fallingParticles.splice(i, 1);
+        }
+      }
+
+      // 6. Manage Bottom Precipitate Solid Particles
+      const satLimit = solute.solubilityLimit;
+      const maxDissolvedMoles = state.volume * satLimit;
+      const precipitateMoles = Math.max(0, state.totalSoluteMoles - maxDissolvedMoles);
+      const targetPrecipitateCount = Math.min(120, Math.round(precipitateMoles * 40));
+
+      while (state.precipitateParticles.length < targetPrecipitateCount) {
+        state.precipitateParticles.push({
+          x: b.x + 15 + Math.random() * (b.w - 30),
+          y: b.y + b.h - 10 - Math.random() * 14,
+          r: 2.5 + Math.random() * 2,
+          color: solute.precipitateColor
+        });
+      }
+      while (state.precipitateParticles.length > targetPrecipitateCount) {
+        state.precipitateParticles.pop();
+      }
+    }
+
+    // Canvas Render Function
+    function renderCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const b = getBeakerGeometry();
+      const solute = SOLUTES[state.soluteId];
+
+      // Draw Beaker Background Grid Lines & Volume Graduations
+      const liquidHeight = (state.volume / 1.0) * (b.h - 30);
+      const liquidTopY = b.y + b.h - liquidHeight;
+
+      // Beaker Back Wall Glass
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+
+      // Render Aqueous Solution Body
+      if (state.volume > 0.005) {
+        const conc = Math.min(solute.solubilityLimit, state.totalSoluteMoles / state.volume);
+        const norm = Math.min(1, conc / solute.solubilityLimit);
+
+        // Interpolate solution RGB color
+        const c1 = solute.colorMin;
+        const c2 = solute.colorMax;
+        const r = Math.round(c1[0] + (c2[0] - c1[0]) * norm);
+        const g = Math.round(c1[1] + (c2[1] - c1[1]) * norm);
+        const bl = Math.round(c1[2] + (c2[2] - c1[2]) * norm);
+        const alpha = 0.25 + norm * 0.65;
+
+        ctx.fillStyle = `rgba(${r}, ${g}, ${bl}, ${alpha})`;
+        ctx.fillRect(b.x + 2, liquidTopY, b.w - 4, liquidHeight);
+
+        // Solution surface meniscus line
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${bl}, 0.9)`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(b.x + 2, liquidTopY);
+        ctx.lineTo(b.x + b.w - 2, liquidTopY);
+        ctx.stroke();
+      }
+
+      // Render Falling Solute Particles
+      for (const p of state.fallingParticles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      }
+
+      // Render Precipitate Particles at Beaker Bottom
+      for (const p of state.precipitateParticles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      }
+
+      // Draw Beaker Glass Walls & Lip
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      // Left Wall
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x, b.y + b.h);
+      // Bottom
+      ctx.lineTo(b.x + b.w, b.y + b.h);
+      // Right Wall
+      ctx.lineTo(b.x + b.w, b.y);
+      ctx.stroke();
+
+      // Volume Graduations Marks (0.1 L to 1.0 L)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'right';
+
+      for (let v = 0.1; v <= 1.0; v += 0.1) {
+        const markY = b.y + b.h - (v / 1.0) * (b.h - 30);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = (Math.round(v * 10) % 5 === 0) ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(b.x, markY);
+        ctx.lineTo(b.x + ((Math.round(v * 10) % 5 === 0) ? 22 : 12), markY);
+        ctx.stroke();
+
+        if (Math.round(v * 10) % 5 === 0) {
+          ctx.fillText(`${v.toFixed(1)} L`, b.x - 6, markY + 3);
+        }
+      }
+
+      // Draw Top Water Faucet
+      const f = getFaucetGeometry();
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(f.x - 30, f.y - 16, 40, 24);
+      ctx.fillRect(f.x - 14, f.y + 8, 20, 22);
+
+      // Faucet Water Stream
+      if (state.isFaucetFlowing) {
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.75)';
+        ctx.fillRect(f.x - 8, f.y + 30, 10, liquidTopY - (f.y + 30));
+      }
+
+      // Faucet Flow Knob
+      ctx.fillStyle = state.isFaucetFlowing ? '#38bdf8' : '#334155';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(f.btnX, f.btnY, 44, 28, [6]);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('WATER', f.btnX + 22, f.btnY + 17);
+
+      // Draw Bottom Drain Valve
+      const d = getDrainGeometry();
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(d.x, d.y, 30, 16);
+
+      // Drain Water Stream
+      if (state.isDrainFlowing && state.volume > 0) {
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.65)';
+        ctx.fillRect(d.x - 10, d.y + 8, 12, 60);
+      }
+
+      // Drain Knob
+      ctx.fillStyle = state.isDrainFlowing ? '#38bdf8' : '#334155';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(d.btnX, d.btnY, 44, 28, [6]);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('DRAIN', d.btnX + 22, d.btnY + 17);
+
+      // Draw Concentration Meter Probe & Cord
+      const px = state.probePos.x;
+      const py = state.probePos.y;
+
+      // Cord attached to top right
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w - 40, 20);
+      ctx.quadraticCurveTo(w - 120, py - 40, px, py - 30);
+      ctx.stroke();
+
+      // Meter Body (Floating Digital Readout Box)
+      const meterBoxX = px - 55;
+      const meterBoxY = py - 70;
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(meterBoxX, meterBoxY, 110, 40, [8]);
+      ctx.fill();
+      ctx.stroke();
+
+      // Check if Probe Tip is submersed in liquid
+      const isSubmersed = (px >= b.x && px <= b.x + b.w && py >= liquidTopY && py <= b.y + b.h && state.volume > 0.005);
+      const measuredConc = isSubmersed ? Math.min(solute.solubilityLimit, state.totalSoluteMoles / state.volume) : 0;
+
+      // Digital Screen inside Meter
+      ctx.fillStyle = '#0284c7';
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(isSubmersed ? `${measuredConc.toFixed(3)} M` : '0.000 M', meterBoxX + 55, meterBoxY + 25);
+
+      // Probe Stem & Sensitive Tip
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(px - 4, py - 30, 8, 30);
+      ctx.fillStyle = isSubmersed ? '#34d399' : '#ef4444';
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function mainAnimationLoop(now) {
+      const dt = Math.min(0.1, (now - state.lastTime) / 1000);
+      state.lastTime = now;
+
+      updatePhysics(dt);
+      renderCanvas();
+      updateUI();
+      checkMissionsEvaluation();
+
+      requestAnimationFrame(mainAnimationLoop);
+    }
+
+    /* =========================================================================
+       UI UPDATES & CALCULATIONS
+       ========================================================================= */
+    function updateUI() {
+      const solute = SOLUTES[state.soluteId];
+      const satLimit = solute.solubilityLimit;
+      const maxDissolvedMoles = state.volume * satLimit;
+      const currentConc = state.volume > 0.001 ? Math.min(satLimit, state.totalSoluteMoles / state.volume) : 0;
+      const isSaturated = state.volume > 0.001 && state.totalSoluteMoles >= maxDissolvedMoles;
+      const precipitateMoles = Math.max(0, state.totalSoluteMoles - maxDissolvedMoles);
+
+      // Molarity Readout
+      document.getElementById('valMolarity').textContent = currentConc.toFixed(3) + ' M';
+      document.getElementById('valVolume').textContent = state.volume.toFixed(3) + ' L';
+      document.getElementById('valMoles').textContent = Math.min(state.totalSoluteMoles, maxDissolvedMoles).toFixed(3) + ' mol';
+      document.getElementById('valPrecipitate').textContent = precipitateMoles.toFixed(3) + ' mol';
+
+      // Probe Reading Sync
+      const b = getBeakerGeometry();
+      const liquidHeight = (state.volume / 1.0) * (b.h - 30);
+      const liquidTopY = b.y + b.h - liquidHeight;
+      const isSubmersed = (state.probePos.x >= b.x && state.probePos.x <= b.x + b.w && state.probePos.y >= liquidTopY && state.probePos.y <= b.y + b.h && state.volume > 0.005);
+      document.getElementById('valProbeReading').textContent = isSubmersed ? currentConc.toFixed(3) + ' M' : '0.000 M';
+
+      // Saturation Pill
+      const pillSat = document.getElementById('pillSaturation');
+      if (isSaturated) {
+        pillSat.textContent = 'Saturated';
+        pillSat.className = 'status-pill saturated';
+      } else {
+        pillSat.textContent = 'Unsaturated';
+        pillSat.className = 'status-pill unsaturated';
+      }
+
+      // Top Status Banner
+      document.getElementById('screenStatusSolution').innerHTML = `<strong style="color:#38bdf8;">${solute.name}</strong> — [${solute.formula}] = ${currentConc.toFixed(3)} M (${isSaturated ? 'Saturated' : 'Unsaturated'})`;
+    }
+
+    /* =========================================================================
+       GUIDED MISSIONS SYSTEM
+       ========================================================================= */
+    const MISSIONS = [
+      {
+        id: 'mission1',
+        title: 'Mission 1: Standard Reference Solution',
+        desc: 'Prepare a 0.500 M solution of Cobalt(II) nitrate in exactly 0.500 L of water.',
+        check: () => state.soluteId === 'COBALT_II_NITRATE' && Math.abs(state.volume - 0.5) < 0.04 && Math.abs((state.totalSoluteMoles / state.volume) - 0.5) < 0.05,
+        isComplete: false
+      },
+      {
+        id: 'mission2',
+        title: 'Mission 2: Reaching the Saturation Threshold',
+        desc: 'Add solid Potassium dichromate (K₂Cr₂O₇) until solid precipitate begins crystallizing at the bottom (Concentration reaches ~0.51 M).',
+        check: () => state.soluteId === 'POTASSIUM_DICHROMATE' && state.totalSoluteMoles > (state.volume * 0.51),
+        isComplete: false
+      },
+      {
+        id: 'mission3',
+        title: 'Mission 3: Solvent Dilution (M₁V₁ = M₂V₂)',
+        desc: 'Start with 0.5 L of solution and use the top water faucet to dilute the solution to exactly 1.000 L, halving its initial concentration.',
+        check: () => state.volume >= 0.98,
+        isComplete: false
+      },
+      {
+        id: 'mission4',
+        title: 'Mission 4: Concentration through Evaporation',
+        desc: 'Engage the evaporation slider to evaporate solvent water until the volume decreases below 0.300 L.',
+        check: () => state.volume > 0.05 && state.volume <= 0.30,
+        isComplete: false
+      },
+      {
+        id: 'mission5',
+        title: 'Mission 5: High Molar Concentration (Nickel Chloride)',
+        desc: 'Select Nickel(II) chloride and dissolve sufficient solute to achieve a concentration of at least 4.00 M.',
+        check: () => state.soluteId === 'NICKEL_II_CHLORIDE' && state.volume > 0.1 && (state.totalSoluteMoles / state.volume) >= 3.95,
+        isComplete: false
+      }
+    ];
+
+    function checkMissionsEvaluation() {
+      let newlyCompleted = false;
+      MISSIONS.forEach(m => {
+        if (!m.isComplete && m.check()) {
+          m.isComplete = true;
+          newlyCompleted = true;
+        }
+      });
+
+      if (newlyCompleted) {
+        concAudio.playSuccess();
+        renderMissions();
+      }
+    }
+
+    function renderMissions() {
+      const container = document.getElementById('missionGridContainer');
+      container.innerHTML = '';
+      let completedCount = 0;
+
+      MISSIONS.forEach(m => {
+        if (m.isComplete) completedCount++;
+
+        const card = document.createElement('div');
+        card.className = 'mission-card' + (m.isComplete ? ' completed' : '');
+
+        card.innerHTML = `
+          <div class="mission-card-header">
+            <div class="mission-title">
+              <span>${m.title}</span>
+            </div>
+            <span class="mission-status-pill">${m.isComplete ? '✓ Cleared' : 'In Progress'}</span>
+          </div>
+          <div class="mission-desc">${m.desc}</div>
+          <div class="mission-action-row">
+            <span style="font-size:0.75rem; font-family:var(--font-mono); color:#38bdf8;">Goal Evaluation</span>
+            <button class="mission-jump-btn" onclick="setAppMode('sim')">
+              Execute in Lab ➔
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      document.getElementById('missionBadgeCount').textContent = `${completedCount}/5`;
+      document.getElementById('missionProgressRatio').textContent = `${completedCount} / 5`;
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ SYSTEM & CERTIFICATE OF MASTERY
+       ========================================================================= */
+    const QUIZ_QUESTIONS = [
+      {
+        question: 'What is the molar concentration (M) of a solution containing 0.50 moles of solute dissolved in 2.0 liters of solution?',
+        options: [
+          '0.25 M',
+          '1.00 M',
+          '0.50 M',
+          '4.00 M'
+        ],
+        correct: 0,
+        explanation: 'Molarity M = moles ÷ volume = 0.50 mol ÷ 2.0 L = 0.25 M.'
+      },
+      {
+        question: 'If 0.500 L of a 2.00 M Copper(II) sulfate solution is diluted with pure water to a final volume of 1.000 L, what is the new concentration?',
+        options: [
+          '4.00 M',
+          '2.00 M',
+          '1.00 M',
+          '0.50 M'
+        ],
+        correct: 2,
+        explanation: 'Using M₁V₁ = M₂V₂: (2.00 M)(0.500 L) = M₂(1.000 L) ➔ M₂ = 1.00 M.'
+      },
+      {
+        question: 'What happens to the concentration of an unsaturated aqueous solution as solvent water evaporates?',
+        options: [
+          'Concentration decreases because solute is lost to the air',
+          'Concentration increases because the solute moles remain constant while volume decreases',
+          'Concentration remains strictly constant',
+          'The solution becomes less dense and volume expands'
+        ],
+        correct: 1,
+        explanation: 'Evaporation removes pure water vapor while non-volatile solute remains behind, reducing volume V and increasing M = n/V.'
+      },
+      {
+        question: 'When a solution reaches its saturation limit, what occurs if additional solid solute is added?',
+        options: [
+          'The concentration continues to rise indefinitely',
+          'The temperature spikes instantly',
+          'The extra solute cannot dissolve and settles at the bottom as precipitate',
+          'The existing solution turns into gas'
+        ],
+        correct: 2,
+        explanation: 'At saturation, dynamic equilibrium exists between dissolved ions and solid crystals; excess solute cannot dissolve and accumulates as precipitate.'
+      },
+      {
+        question: 'How many total moles of solute are present in 250 mL of a 0.40 M Potassium permanganate (KMnO₄) solution?',
+        options: [
+          '0.10 mol',
+          '0.16 mol',
+          '1.00 mol',
+          '100 mol'
+        ],
+        correct: 0,
+        explanation: 'Convert volume to liters: 250 mL = 0.250 L. Moles n = M × V = 0.40 mol/L × 0.250 L = 0.10 mol.'
+      }
+    ];
+
+    let userAnswers = new Array(QUIZ_QUESTIONS.length).fill(null);
+
+    function renderQuiz() {
+      const container = document.getElementById('quizContainer');
+      container.innerHTML = '';
+
+      QUIZ_QUESTIONS.forEach((q, qIdx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-card';
+
+        let optsHtml = '';
+        q.options.forEach((opt, oIdx) => {
+          const isSelected = userAnswers[qIdx] === oIdx;
+          const isAnswered = userAnswers[qIdx] !== null;
+          let extraClass = '';
+          if (isAnswered) {
+            if (oIdx === q.correct) extraClass = 'correct';
+            else if (isSelected && oIdx !== q.correct) extraClass = 'wrong';
+          }
+
+          optsHtml += `
+            <button class="quiz-opt-btn ${extraClass}" ${isAnswered ? 'disabled' : ''} onclick="submitQuizAnswer(${qIdx}, ${oIdx})">
+              <span class="quiz-opt-marker">${String.fromCharCode(65 + oIdx)}</span>
+              <span>${opt}</span>
+            </button>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="quiz-q-num">Question ${qIdx + 1} of ${QUIZ_QUESTIONS.length}</div>
+          <div class="quiz-q-text">${q.question}</div>
+          <div class="quiz-options-list">${optsHtml}</div>
+          <div class="quiz-explanation ${userAnswers[qIdx] !== null ? 'visible' : ''}">
+            <strong>Explanation:</strong> ${q.explanation}
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      updateQuizSummary();
+    }
+
+    function submitQuizAnswer(qIdx, optIdx) {
+      if (userAnswers[qIdx] !== null) return;
+      userAnswers[qIdx] = optIdx;
+      concAudio.playSuccess();
+      renderQuiz();
+    }
+
+    function updateQuizSummary() {
+      const answeredCount = userAnswers.filter(a => a !== null).length;
+      let correctCount = 0;
+      userAnswers.forEach((ans, idx) => {
+        if (ans === QUIZ_QUESTIONS[idx].correct) correctCount++;
+      });
+
+      const status = document.getElementById('quizStatusText');
+      status.textContent = `${answeredCount} of ${QUIZ_QUESTIONS.length} Answered (Score: ${correctCount}/${QUIZ_QUESTIONS.length})`;
+
+      const certBtn = document.getElementById('btnCertificateTrigger');
+      if (answeredCount === QUIZ_QUESTIONS.length && correctCount >= 4) {
+        certBtn.style.display = 'inline-block';
+      } else {
+        certBtn.style.display = 'none';
+      }
+
+      // LMS Integration postMessage
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'ELEMENTA_QUIZ_UPDATE',
+          simulation: 'concentration',
+          answered: answeredCount,
+          correct: correctCount,
+          total: QUIZ_QUESTIONS.length
+        }, '*');
+      }
+    }
+
+    function resetQuiz() {
+      userAnswers = new Array(QUIZ_QUESTIONS.length).fill(null);
+      renderQuiz();
+    }
+
+    function openCertificate() {
+      document.getElementById('certOverlay').classList.add('active');
+    }
+
+    function closeCertificate() {
+      document.getElementById('certOverlay').classList.remove('active');
+    }
+
+    /* =========================================================================
+       NAVIGATION, SCREENS & MODES
+       ========================================================================= */
+    function setAppMode(modeKey) {
+      if (typeof currentAppMode !== 'undefined') currentAppMode = modeKey;
+      if (typeof appMode !== 'undefined') appMode = modeKey;
+      if (typeof state !== 'undefined' && state && state.mode !== undefined) state.mode = modeKey;
+      if (typeof state !== 'undefined' && state && state.appMode !== undefined) state.appMode = modeKey;
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+        if (typeof resizeCanvases === 'function') setTimeout(resizeCanvases, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    
+    function switchSimScreen(screenName) {
+      document.getElementById('tabScreenConc').classList.add('active');
+    }
+
+    function resetSimulation() {
+      state.volume = 0.500;
+      state.totalSoluteMoles = 0.250;
+      state.evaporationRate = 0;
+      state.isDispensing = false;
+      state.isFaucetFlowing = false;
+      state.isDrainFlowing = false;
+      state.fallingParticles = [];
+      state.precipitateParticles = [];
+      document.getElementById('sliderEvaporation').value = 0;
+      document.getElementById('lblEvapRate').textContent = '0.00 L/s';
+      updateUI();
+    }
+
+    function captureScreenshot() {
+      try {
+        const link = document.createElement('a');
+        link.download = `elementa_concentration_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (err) {
+        console.error('Screenshot error:', err);
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn('Fullscreen request failed:', err);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    /* =========================================================================
+       INITIALIZATION
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      updateUI();
+      renderMissions();
+      renderQuiz();
+      requestAnimationFrame(mainAnimationLoop);
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 <!-- =============================================
      REUSABLE NOTIFICATION PANEL PARTIAL
-     Include with: <%- include('../partials/notification-panel') %>
+     Include with: include('../partials/notification-panel')
      Requires: `notifications` and `user` in res.locals
 ============================================= -->
 
@@ -16,57 +16,67 @@
             <h3 class="text-white font-black text-base tracking-tight uppercase italic flex items-center gap-2">
                 <i class="fas fa-bell text-cyan-400 text-sm"></i> Notifications
             </h3>
-            <p class="text-indigo-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
-                <%= typeof notifications !== 'undefined' ? notifications.length : 0 %> updates
+            <% const _unreadCount = (typeof notifications !== 'undefined' && Array.isArray(notifications)) ? notifications.filter(n => !n.is_read).length : 0; %>
+            <p id="notifSubtitle" class="text-indigo-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
+                <%= _unreadCount > 0 ? (_unreadCount + ' unread update' + (_unreadCount !== 1 ? 's' : '')) : 'All caught up' %>
             </p>
         </div>
-        <button onclick="toggleNotifPanel()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-rose-500/20 text-indigo-300 hover:text-rose-400 transition">
-            <i class="fas fa-times text-sm"></i>
-        </button>
+        <div class="flex items-center gap-2">
+            <button onclick="if(window.NotificationHub) NotificationHub.markAllRead('notifPanelList', true)" title="Mark all as read" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-cyan-500/20 text-cyan-300 transition text-xs">
+                <i class="fas fa-check-double"></i>
+            </button>
+            <button onclick="toggleNotifPanel()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-rose-500/20 text-indigo-300 hover:text-rose-400 transition">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-2">
+    <div id="notifPanelList" class="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-2">
         <% if (typeof notifications !== 'undefined' && notifications.length > 0) { %>
             <% notifications.forEach(notif => { %>
                 <%
-                    let href = '#';
-                    let iconClass = 'fas fa-bell text-cyan-400';
-                    let badgeClass = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-                    let badgeLabel = 'Update';
+                    let href = notif.target_url || '#';
+                    let iconClass = 'fas fa-book-open text-cyan-400';
+                    let badgeClass = 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+                    let badgeLabel = 'Academic';
+                    const cat = notif.category || '';
+                    const evType = notif.event_type || notif.notif_type || '';
 
-                    if (notif.notif_type === 'forum_reply') {
-                        href = '/teacher/forums#forum-' + notif.link_id;
-                        iconClass = 'fas fa-comments text-amber-400';
-                        badgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-                        badgeLabel = 'Forum Reply';
-                    } else if (notif.notif_type === 'private_message') {
-                        href = '/teacher/messages/' + notif.link_id;
-                        iconClass = 'fas fa-envelope text-indigo-400';
-                        badgeClass = 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
-                        badgeLabel = 'Message';
-                    } else if (notif.notif_type === 'struggling_student') {
-                        href = '/teacher/class/' + notif.link_id + '#students';
-                        iconClass = 'fas fa-triangle-exclamation text-rose-400';
+                    if (cat === 'assessment' || evType.includes('submission') || evType.includes('deadline') || evType.includes('assessment') || evType.includes('duel')) {
+                        iconClass = 'fas fa-file-lines text-rose-400';
                         badgeClass = 'bg-rose-500/20 text-rose-300 border-rose-500/30';
-                        badgeLabel = 'Needs Help';
-                    } else if (notif.notif_type === 'pending_question') {
-                        href = '/teacher/question-bank?q=' + notif.link_id;
-                        iconClass = 'fas fa-database text-fuchsia-400';
-                        badgeClass = 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30';
-                        badgeLabel = 'Review Question';
-                    } else if (notif.notif_type === 'upcoming_deadline') {
-                        href = '/teacher/class/' + notif.link_id;
-                        iconClass = 'fas fa-hourglass-half text-emerald-400';
+                        badgeLabel = 'Assessment';
+                    } else if (cat === 'forum' || evType.includes('forum')) {
+                        iconClass = 'fas fa-comments text-emerald-400';
                         badgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-                        badgeLabel = 'Deadline Soon';
+                        badgeLabel = 'Discussion';
+                    } else if (cat === 'integrity' || evType.includes('flag') || evType.includes('report')) {
+                        iconClass = 'fas fa-triangle-exclamation text-amber-400';
+                        badgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+                        badgeLabel = 'Integrity Alert';
+                    } else if (cat === 'system' || evType.includes('registration') || evType.includes('enrolled') || evType.includes('class')) {
+                        iconClass = 'fas fa-gear text-purple-400';
+                        badgeClass = 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+                        badgeLabel = 'System';
+                    } else if (cat === 'social' || evType.includes('message') || evType.includes('mention')) {
+                        iconClass = 'fas fa-envelope text-cyan-400';
+                        badgeClass = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+                        badgeLabel = 'Message';
                     }
+
+                    const isUnread = !notif.is_read;
+                    const clickUrl = notif.notification_id ? ('/api/notifications/' + notif.notification_id + '/navigate') : href;
+                    const timeVal = notif.created_at || notif.notif_time;
                 %>
-                <a href="<%= href %>"
-                   class="flex items-start gap-3 p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-cyan-500/30 transition group cursor-pointer">
+                <a href="<%= clickUrl %>"
+                   class="flex items-start gap-3 p-3.5 rounded-2xl transition group relative cursor-pointer border <%= isUnread ? 'bg-white/10 border-cyan-500/40 shadow-lg shadow-cyan-950/20' : 'bg-white/5 hover:bg-white/10 border-white/5' %>">
+                    <% if (isUnread) { %>
+                        <span class="absolute top-3 right-3 w-2 h-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400/80"></span>
+                    <% } %>
 
                     <div class="flex-shrink-0 mt-0.5">
-                        <% if (notif.actor_pic && notif.notif_type !== 'upcoming_deadline') { %>
-                            <img src="/profile_uploads/<%= notif.actor_pic %>" class="w-9 h-9 rounded-xl object-cover ring-1 ring-white/10 group-hover:ring-cyan-400/40 transition">
+                        <% if (notif.actor_pic) { %>
+                            <img src="/profile_uploads/<%= notif.actor_pic %>" class="w-9 h-9 rounded-xl object-cover ring-1 ring-white/10 group-hover:ring-cyan-400/40 transition" onerror="this.src='/profile_uploads/default_avatar.png'">
                         <% } else { %>
                             <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
                                 <i class="<%= iconClass %> text-sm"></i>
@@ -74,26 +84,33 @@
                         <% } %>
                     </div>
 
-                    <div class="flex-1 min-w-0">
+                    <div class="flex-1 min-w-0 pr-4">
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border <%= badgeClass %>"><%= badgeLabel %></span>
+                            <% if (timeVal) { %>
+                                <span class="text-[9px] font-semibold text-indigo-400">
+                                    <%= new Date(timeVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>
+                                </span>
+                            <% } %>
                         </div>
-                        <p class="text-white text-[11px] font-bold leading-snug group-hover:text-cyan-300 transition line-clamp-2">
-                            <% if (notif.notif_type !== 'upcoming_deadline') { %>
-                                <span class="text-cyan-400"><%= notif.actor_name %></span>
-                            <% } %>
-                            <%= notif.message %>
-                        </p>
-                        <p class="text-indigo-500 text-[9px] font-bold mt-1 uppercase tracking-widest">
-                            <% if (notif.notif_time) { %>
-                                <%= new Date(notif.notif_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
-                            <% } else { %>
-                                —
-                            <% } %>
-                        </p>
+                        <% if (notif.title) { %>
+                            <p class="text-xs font-bold text-white group-hover:text-cyan-300 transition leading-snug line-clamp-2">
+                                <%= notif.title %>
+                            </p>
+                            <p class="text-[11px] text-slate-300/80 mt-0.5 line-clamp-2 leading-tight">
+                                <%= notif.message %>
+                            </p>
+                        <% } else { %>
+                            <p class="text-white text-[11px] font-bold leading-snug group-hover:text-cyan-300 transition line-clamp-2">
+                                <% if (notif.actor_name) { %>
+                                    <span class="text-cyan-400"><%= notif.actor_name %></span>
+                                <% } %>
+                                <%= notif.message %>
+                            </p>
+                        <% } %>
                     </div>
 
-                    <div class="flex-shrink-0 self-center text-indigo-600 group-hover:text-cyan-400 transition">
+                    <div class="flex-shrink-0 self-center text-indigo-500 group-hover:text-cyan-400 transition ml-auto">
                         <i class="fas fa-chevron-right text-[10px]"></i>
                     </div>
                 </a>
@@ -109,21 +126,42 @@
         <% } %>
     </div>
 
+    <div class="px-6 py-3 border-t border-white/10 flex items-center justify-between text-xs text-indigo-300 flex-shrink-0">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-volume-up text-cyan-400 text-xs"></i>
+            <select onchange="if(window.SoundManager) window.SoundManager.setSoundPack(this.value)" 
+                    class="bg-white/10 text-white rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-cyan-400">
+                <option value="soft" class="bg-slate-900 text-white">Soft Chime</option>
+                <option value="modern" class="bg-slate-900 text-white">Modern Pop</option>
+                <option value="pop" class="bg-slate-900 text-white">Subtle Tone</option>
+                <option value="mute" class="bg-slate-900 text-white">Mute Audio</option>
+            </select>
+        </div>
+        <button type="button" onclick="if(window.SoundManager) window.SoundManager.playSound()" class="hover:text-cyan-300 text-[11px] font-bold flex items-center gap-1" title="Test audio cue">
+            <i class="fas fa-play text-[9px]"></i> Test Sound
+        </button>
+    </div>
+
+    <% if (locals.user && locals.user.role === 'Teacher') { %>
     <div class="px-6 py-4 border-t border-white/10 flex-shrink-0">
         <a href="/teacher/reports" class="block w-full py-3 text-center bg-gradient-to-r from-cyan-500 to-indigo-600 text-white text-xs font-black rounded-2xl hover:opacity-90 transition uppercase tracking-wider shadow-lg shadow-cyan-900/30">
             View Full Reports
         </a>
     </div>
+    <% } %>
 </div>
 
 <!-- Backdrop -->
 <div id="notifBackdrop" class="fixed inset-0 bg-indigo-950/50 backdrop-blur-sm z-[199] hidden" onclick="toggleNotifPanel()"></div>
 
-<!-- Toggle Script -->
+<!-- Audio Manager, Notification Hub & Toggle Script -->
+<script src="/js/soundManager.js"></script>
+<script src="/js/notificationHub.js"></script>
 <script>
     function toggleNotifPanel() {
         const panel = document.getElementById('notifPanel');
         const backdrop = document.getElementById('notifBackdrop');
+        if (!panel || !backdrop) return;
         const isOpen = !panel.classList.contains('translate-x-full');
         if (isOpen) {
             panel.classList.add('translate-x-full');
@@ -131,6 +169,9 @@
         } else {
             panel.classList.remove('translate-x-full');
             backdrop.classList.remove('hidden');
+            if (window.NotificationHub) {
+                window.NotificationHub.loadNotifications('notifPanelList', true);
+            }
         }
     }
 </script>

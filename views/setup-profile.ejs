@@ -1,66 +1,394 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title><%= mode === 'reset' ? 'Reset Password' : 'Setup Your Profile' %></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= mode === 'reset' ? 'Reset Password' : 'Setup Your Profile' %> - Chemistry Arcade LMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Sora', sans-serif; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 32px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background Layers */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            opacity: 0.50;
+            background-image: url('/assets/lab_bg_1.jpg');
+            background-size: cover;
+            background-position: center;
+            z-index: -2;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg,
+                rgba(10, 15, 40, 0.72) 0%,
+                rgba(20, 10, 50, 0.60) 50%,
+                rgba(10, 20, 50, 0.72) 100%);
+            backdrop-filter: blur(2px);
+            z-index: -1;
+        }
+
+        /* Card */
+        .login-card {
+            display: flex;
+            width: 100%;
+            max-width: 1020px;
+            min-height: 620px;
+            background: #fff;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 32px 100px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08);
+            animation: cardIn 0.65s cubic-bezier(.22,1,.36,1) both;
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(32px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Left Panel */
+        .left-panel {
+            flex: 0 0 460px;
+            padding: 48px 46px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            animation: fadeLeft 0.7s 0.1s cubic-bezier(.22,1,.36,1) both;
+        }
+
+        @keyframes fadeLeft {
+            from { opacity: 0; transform: translateX(-18px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .welcome-heading { font-size: 24px; font-weight: 800; color: #1a1d2e; margin-bottom: 8px; }
+        .welcome-sub { font-size: 14px; color: #8a94a6; margin-bottom: 24px; line-height: 1.5; }
+
+        .field-label { display: block; font-size: 12px; font-weight: 600; color: #4a5168; margin-bottom: 7px; }
+        .field-input {
+            width: 100%; padding: 13px 16px; border: 1.5px solid #e4e7f0; border-radius: 12px;
+            font-size: 14px; color: #1a1d2e; outline: none; transition: all 0.18s;
+        }
+        .field-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3.5px rgba(99,102,241,0.12); }
+        .field-input:disabled { background-color: #f8fafc; color: #64748b; cursor: not-allowed; }
+
+        .pw-wrap { position: relative; }
+        .pw-toggle {
+            position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+            color: #bcc3d4; border: none; background: none; cursor: pointer;
+            padding: 4px; display: flex; align-items: center; justify-content: center;
+            transition: color 0.18s;
+        }
+        .pw-toggle:hover { color: #6366f1; }
+
+        .btn-submit {
+            width: 100%; padding: 14px; background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%);
+            color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 6px 22px rgba(99,102,241,0.38); transition: all 0.15s;
+        }
+        .btn-submit:hover { transform: translateY(-1px); filter: brightness(1.06); }
+        .btn-submit:active { transform: translateY(0); filter: brightness(0.98); }
+
+        /* Right Panel & Dynamic Content */
+        .right-panel {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #0a0f28;
+            border-radius: 0 28px 28px 0;
+        }
+
+        .slide-container {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .slide-container.active {
+            opacity: 1;
+            z-index: 2;
+        }
+
+        .right-photo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .right-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(10,15,40,0.1) 0%, rgba(10,15,40,0.85) 100%);
+            z-index: 1;
+        }
+
+        .testimonial-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(255,255,255,0.13);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.26);
+            border-radius: 20px;
+            padding: 22px 24px;
+            margin: 0 24px 28px;
+            width: calc(100% - 48px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+        }
+
+        .testimonial-text { font-size: 12px; color: #fff; line-height: 1.65; font-weight: 500; margin-bottom: 14px; }
+        .reviewer { display: flex; align-items: center; gap: 10px; }
+        .reviewer-avatar-placeholder {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #06b6d4, #6366f1);
+            border: 1.5px solid rgba(255,255,255,0.3);
+            flex-shrink: 0;
+        }
+        .reviewer-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+        .reviewer-name { font-size: 14px; font-weight: 700; color: #fff; }
+        .reviewer-role { font-size: 11px; color: rgba(255,255,255,0.65); }
+        .star { color: #fbbf24; font-size: 12px; }
+
+        @media (max-width: 760px) {
+            .right-panel { display: none; }
+            .left-panel { flex: 1; padding: 36px 24px; }
+            .login-card { max-width: 480px; min-height: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <!-- LEFT PANEL -->
+        <div class="left-panel">
+            <div class="logo-wrap flex items-center gap-2 mb-6">
+                <img src="/assets/logo.png" alt="Logo" class="w-14 h-16 object-contain">
+                <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+                    Elem<span class="text-indigo-950">enta</span>
+                </h1>
+            </div>
+
+            <% if (mode === 'reset') { %>
+                <h1 class="welcome-heading">Reset Password 🔑</h1>
+                <p class="welcome-sub">Enter your new password below to regain access to your account.</p>
+            <% } else { %>
+                <h1 class="welcome-heading">Final Step! 🚀</h1>
+                <p class="welcome-sub">Set up your account password to finalize your registration.</p>
+            <% } %>
+
+            <!-- Server-Side Error Alert (if present) -->
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-xl flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <span><%= error %></span>
+                </div>
+            <% } %>
+
+            <!-- Client-Side Validation Alert -->
+            <div id="error-message" class="hidden mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-xl flex items-center gap-2">
+                <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <span id="error-text">Passwords do not match! Please try again.</span>
+            </div>
+
+            <form action="<%= mode === 'reset' ? '/reset-password' : '/setup-profile' %>" method="POST" onsubmit="return validateForm(event)" class="flex flex-col gap-4">
+                <input type="hidden" name="email" value="<%= email %>">
+                <input type="hidden" name="token" value="<%= token %>">
+                <input type="hidden" name="mode"  value="<%= mode %>">
+
+                <div>
+                    <label class="field-label">Gmail Address</label>
+                    <div class="relative">
+                        <input type="email" value="<%= email %>" disabled class="field-input font-medium bg-slate-50 text-slate-500 pr-20">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 bg-slate-200/70 px-2 py-0.5 rounded-md">Verified</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="field-label"><%= mode === 'reset' ? 'New Password' : 'Create Password' %></label>
+                    <div class="pw-wrap">
+                        <input type="password" id="password" name="password" required minlength="8" placeholder="Minimum 8 characters" class="field-input pr-11">
+                        <button type="button" class="pw-toggle" onclick="togglePw('password', 'eye-icon-1')" aria-label="Toggle password visibility">
+                            <svg id="eye-icon-1" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="field-label">Confirm Password</label>
+                    <div class="pw-wrap">
+                        <input type="password" id="confirm_password" name="confirm_password" required minlength="8" placeholder="Repeat your password" class="field-input pr-11">
+                        <button type="button" class="pw-toggle" onclick="togglePw('confirm_password', 'eye-icon-2')" aria-label="Toggle password visibility">
+                            <svg id="eye-icon-2" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit mt-2">
+                    <%= mode === 'reset' ? 'Reset Password' : 'Save and Finalize Account' %>
+                </button>
+            </form>
+
+            <div class="mt-5 text-center text-xs text-slate-500 font-medium">
+                Already finished? <a href="/login" class="font-bold text-indigo-600 hover:text-indigo-700 transition">Back to Login</a>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="right-panel" id="slides-wrapper">
+            <!-- JavaScript will inject slides here -->
+        </div>
+    </div>
+
     <script>
+        // Anti-back navigation logic
         window.history.pushState(null, null, window.location.href);
         window.onpopstate = function () { window.history.go(1); };
 
+        // Password Toggle Logic
+        function togglePw(fieldId, iconId) {
+            const field = document.getElementById(fieldId);
+            const icon = document.getElementById(iconId);
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+            } else {
+                field.type = 'password';
+                icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+            }
+        }
+
+        // Client-side Validation Logic
         function validateForm(event) {
-            const pass    = document.getElementById('password').value;
+            const pass = document.getElementById('password').value;
             const confirm = document.getElementById('confirm_password').value;
-            const errorMsg = document.getElementById('error-message');
-            if (pass !== confirm) {
+            const errorBox = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+
+            if (pass.length < 8) {
                 event.preventDefault();
-                errorMsg.classList.remove('hidden');
+                errorText.textContent = "Password must be at least 8 characters long.";
+                errorBox.classList.remove('hidden');
                 return false;
             }
+
+            if (pass !== confirm) {
+                event.preventDefault();
+                errorText.textContent = "Passwords do not match! Please try again.";
+                errorBox.classList.remove('hidden');
+                return false;
+            }
+
+            errorBox.classList.add('hidden');
             return true;
         }
+
+        // Dynamic Right Panel Logic
+        const slidesData = [
+            {
+                img: '/assets/lab_bg_2.jpg',
+                text: "The elements, if arranged according to their atomic weights, exhibit an apparent periodicity of properties.",
+                name: "Dmitri Mendeleev",
+                role: "Father of the Periodic Table",
+                initial: "/assets/profile_1_login.jpg"
+            },
+            {
+                img: '/assets/lab_bg_3.jpg',
+                text: "Nothing in life is to be feared, it is only to be understood. Now is the time to understand more.",
+                name: "Marie Curie",
+                role: "Nobel Laureate in Physics & Chemistry",
+                initial: "/assets/profile_2_login.jpg"
+            },
+            {
+                img: '/assets/lab_bg_4.jpg',
+                text: "Every aspect of the world today, even politics and international relations, is affected by chemistry.",
+                name: "Linus Pauling",
+                role: "Quantum Chemist & Activist",
+                initial: "/assets/profile_3_login.jpg"
+            }
+        ];
+
+        let currentSlide = 0;
+        const wrapper = document.getElementById('slides-wrapper');
+
+        function initSlides() {
+            slidesData.forEach((data, index) => {
+                const slideDiv = document.createElement('div');
+                slideDiv.className = `slide-container ${index === 0 ? 'active' : ''}`;
+                slideDiv.innerHTML = `
+                    <img src="${data.img}" alt="" class="right-photo">
+                    <div class="right-overlay"></div>
+                    <div class="testimonial-card">
+                        <p class="testimonial-text">"${data.text}"</p>
+                        <div class="reviewer">
+                            <div class="reviewer-avatar-placeholder">
+                                <img src="${data.initial}" alt="Profile Picture" class="reviewer-avatar">
+                            </div>
+                            <div>
+                                <div class="reviewer-name">${data.name}</div>
+                                <div class="reviewer-role">${data.role}</div>
+                            </div>
+                            <div class="stars ml-auto flex gap-1">
+                                <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                wrapper.appendChild(slideDiv);
+            });
+        }
+
+        function rotateSlides() {
+            const slides = document.querySelectorAll('.slide-container');
+            if (slides.length === 0) return;
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % slides.length;
+            slides[currentSlide].classList.add('active');
+        }
+
+        initSlides();
+        setInterval(rotateSlides, 5000);
     </script>
-</head>
-<body class="bg-blue-50 flex items-center justify-center min-h-screen">
-    <div class="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl border-t-4 border-blue-600">
-
-        <% if (mode === 'reset') { %>
-            <h2 class="text-2xl font-bold text-slate-800 mb-2">Reset Password 🔑</h2>
-            <p class="text-gray-600 mb-6">Hello <b><%= email %></b>, enter your new password below.</p>
-        <% } else { %>
-            <h2 class="text-2xl font-bold text-slate-800 mb-2">Final Step! 🚀</h2>
-            <p class="text-gray-600 mb-6">Hello <b><%= email %></b>, set your account password to finalize your registration.</p>
-        <% } %>
-
-        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4 text-sm">
-            Passwords do not match! Please try again.
-        </div>
-
-        <form action="<%= mode === 'reset' ? '/reset-password' : '/setup-profile' %>" method="POST" onsubmit="return validateForm(event)" class="space-y-4">
-            <input type="hidden" name="email" value="<%= email %>">
-            <input type="hidden" name="token" value="<%= token %>">
-            <input type="hidden" name="mode"  value="<%= mode %>">
-
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Gmail Address</label>
-                <input type="text" value="<%= email %>" disabled class="w-full border p-3 rounded-xl bg-gray-50 text-gray-500 italic">
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">New Password</label>
-                <input type="password" name="password" id="password" required minlength="8" placeholder="Minimum 8 characters"
-                       class="w-full border p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
-                <input type="password" name="confirm_password" id="confirm_password" required minlength="8" placeholder="Repeat your password"
-                       class="w-full border p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
-            </div>
-
-            <button type="submit" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition transform active:scale-95">
-                <%= mode === 'reset' ? 'Reset Password' : 'Save and Finalize Account' %>
-            </button>
-        </form>
-    </div>
 </body>
 </html>

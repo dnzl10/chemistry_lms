@@ -1,0 +1,32 @@
+🔴 Critical bugs (not just UX, actually broken)
+"Teacher Portal" label on the STUDENT dashboard (line 59) — <p>Teacher Portal</p> sits right under the logo in a file called dashboard-student.ejs. This looks like copy-paste residue from the teacher template. It's a major red flag if you demo/defend this — students would literally see "Teacher Portal" branding on their own portal.
+bg-cyan is not a valid Tailwind class. You used it in 3 sections (Upcoming Assessments, Recent Update, Enrolled Subjects — lines 311, 388, 526). Tailwind requires a shade number (bg-cyan-500, etc.). There's no default cyan in their palette, so this class silently does nothing — meaning those 3 major cards likely have no actual background applied, or are inheriting the parent's background by accident. Check this in the browser to confirm what's actually rendering.
+Desktop sidebar collapse is non-functional. toggleSidebar() toggles the .sidebar-collapsed class, but the transform: translateX(-100%) rule for it is scoped only to @media (max-width: 768px). On desktop, clicking the toggle does nothing — it's a dead feature wired to a button that appears to work.
+task.assessment_type.toLowerCase() has no null-check. If a single row has NULL for assessment_type, the entire EJS render crashes (500 error) — the whole dashboard goes down because of one bad row.
+alert('Web assessments are currently under construction.') — a native browser alert dropped in the middle of an otherwise fully custom glassmorphic UI. It's a jarring context break with zero matching visual language, no cancel affordance, and it breaks the brand experience entirely.
+🟠 Accessibility (WCAG) — important for an HCI-graded project
+7px–10px font sizes used for actual content (badges, subject codes, timestamps, labels). This is well below any usable minimum — not readable, especially on mobile or for users with lower vision. WCAG doesn't hard-mandate a specific px size, but "readable text" is a core success criterion, and 7–10px fails it in practice.
+text-slate-400 on white backgrounds appears repeatedly — contrast ratio is roughly ~2.8:1, but WCAG AA requires 4.5:1 for normal text. This shows up in many places (timestamps, empty-state captions).
+Icon-only buttons with no aria-label — the bell icon, hamburger menu, chevron, and close (×) buttons. A screen reader user has no idea what these do.
+Custom checkbox toggle (peer-focus:outline-none) removes the focus ring with no replacement — keyboard users completely lose visible focus indication on the Focus Mode toggle. This violates WCAG 2.4.7.
+No <h1> anywhere on the page. Headings jump straight to <h2>/<h3>/<h4>, with multiple competing h2's ("Welcome, X!", "Upcoming Assessments", "Recent Update", "Enrolled Subjects" are all h2). There's no logical outline — this makes it hard to navigate via a screen reader's heading list.
+The progress bar has no role="progressbar" / aria-valuenow — it's purely visual, so assistive tech gets nothing from it.
+The notification tooltip only appears on group-hover — there's no focus-visible variant, so keyboard-only users tabbing through the page never see it.
+The nav-active gradient goes cyan-500 → pure white — white text sits directly on the white end of that gradient, so half of the active nav pill has near-zero text contrast.
+🟡 Visual hierarchy & information architecture
+Everything is emphasized, so nothing is emphasized. Almost every card has: hover-scale + gradient glow blur + drop shadow + rotating icon. Per Gestalt/hierarchy principles, when everything is equally loud, there's no clear "look here first."
+No clear primary task above the fold. For a student LMS dashboard, it should be immediately obvious what to do next (e.g., continue a lesson, next assessment due). Instead, the biggest hero space is a marketing-style announcement carousel — carrying the same visual weight as homework deadlines.
+Arbitrary rainbow color-coding on the sidebar nav icons (cyan/red/orange/violet/emerald/yellow) with no consistent meaning behind it — colors should map to a category or status, not be assigned randomly per item. On top of that, the "Dashboard" nav icon is red (line 78), which semantically reads as "warning/error," not "current active page."
+Border-radius values aren't standardized — rounded-[2.5rem], [2.2rem], [1.8rem], [1.5rem] are used interchangeably as magic arbitrary values across cards that should otherwise match. There's no design-token scale, which makes this hard to maintain and visually inconsistent up close.
+7 parallel info modules are shown simultaneously (announcements, assessments, updates, forums, subjects, calendar, recently viewed) — this is cognitively heavy on first load. Consider progressive disclosure or a clearer priority order/tabs.
+🟢 What's actually good
+Empty states everywhere, with playful copy ("The floor is quiet," "All Caught Up!") — this is genuinely strong UX; it avoids the "blank confused screen" problem (Nielsen's heuristic: help users understand system status).
+Color-coded urgency chips on due dates (pulsing red for <24h, cyan for safe) — good use of pre-attentive color coding, and it's paired with a text label rather than relying on color alone, so it's mostly accessible.
+Micro-comprehension buttons (Understood / Need Help with live counts) — a clever formative-assessment pattern that adds social proof and a real-time feedback loop. Genuinely creative HCI thinking here.
+One-click "Add to Google Calendar" on announcements — reduces user effort nicely (Krug's "don't make me think").
+Consistent icon+label+color theme system per content type (forum=amber, material=sky, assessment=violet) in Recent Updates — good use of dual-coding so users can quickly identify item type.
+Sidebar overlay pattern for mobile — standard, expected convention, and the implementation logic is correct.
+⚙️ Performance/technical concerns
+Tailwind loaded via CDN <script> (in-browser JIT) — Tailwind's own docs discourage this in production; there's no purging, first paint is slower, and it can cause a flash of unstyled content (FOUC).
+Hardcoded Unsplash placeholder images still in the carousel background (with a comment noting "replace these URLs with your real image paths") — this reads as leftover placeholder content that needs to be removed before deployment or a defense.
+Heavy blur/gradient/shadow stacking on nearly every card — this is GPU-intensive and could struggle on lower-end devices (e.g., school-issued Chromebooks/tablets that SHS students would likely be using).

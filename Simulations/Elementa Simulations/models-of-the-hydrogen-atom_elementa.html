@@ -1,0 +1,3703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Models of the Hydrogen Atom | Elementa LMS Edition</title>
+  <meta name="description" content="Explore historical and quantum mechanical models of the hydrogen atom: Dalton, Thomson, Rutherford, Bohr, de Broglie, and Schrödinger. High-precision spectroscopy, energy levels, and transitions.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(14, 23, 42, 0.78);
+      --bg-card-hover: rgba(22, 34, 60, 0.88);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.35);
+
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --secondary: #818cf8;
+      --accent: #22d3ee;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+
+      /* Spectral colors */
+      --uv-color: #a855f7;
+      --ir-color: #f43f5e;
+      --h-alpha: #ef4444;    /* 656.3 nm Red */
+      --h-beta: #06b6d4;     /* 486.1 nm Cyan */
+      --h-gamma: #3b82f6;    /* 434.0 nm Blue */
+      --h-delta: #8b5cf6;    /* 410.2 nm Violet */
+
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --topbar-height: 58px;
+      --tabs-height: 48px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* Top Navigation Bar: Exact replica of acid-base-solutions_elementa.html */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Mode Selector Pills */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.85) 0%, rgba(99, 102, 241, 0.85) 100%);
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+    }
+
+    .mode-pill-btn .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    /* Right Action Bar */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    /* Screen Selector Header Bar */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-heading);
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.18s ease;
+    }
+
+    .screen-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .screen-tab-btn.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+    }
+
+    .screen-tab-number {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-family: var(--font-body);
+      font-weight: 700;
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .equation-banner-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border-card);
+    }
+
+    /* Simulation Workspace */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .app-view-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+    }
+
+    .app-view-container.active {
+      display: flex;
+    }
+
+    /* SIMULATION VIEW LAYOUT */
+    .sim-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .canvas-viewport-container {
+      position: relative;
+      background: radial-gradient(circle at 45% 45%, #0d152a 0%, #060913 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas#atomCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Time & Simulation Overlay Floating Bar */
+    .sim-floating-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 20px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      border-radius: 10px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 20;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .floating-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      border-radius: 6px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .floating-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+    }
+
+    .floating-btn.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+
+    .speed-pills {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px;
+      border-radius: 6px;
+      gap: 2px;
+    }
+
+    .speed-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .speed-btn.active {
+      background: rgba(56, 189, 248, 0.25);
+      color: #38bdf8;
+    }
+
+    /* Right Control Sidebar */
+    aside.simulation-sidebar {
+      background: rgba(13, 19, 35, 0.95);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 16px;
+      gap: 14px;
+    }
+
+    .sidebar-section {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #7dd3fc;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    /* Segmented Mode Control */
+    .segmented-control {
+      display: flex;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-card);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+
+    .segment-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .segment-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+    }
+
+    /* Radio Model Cards Group */
+    .model-cards-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .model-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .model-card:hover {
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .model-card.active {
+      background: rgba(56, 189, 248, 0.14);
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+    }
+
+    .model-card-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .radio-circle {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .model-card.active .radio-circle {
+      border-color: #38bdf8;
+    }
+
+    .model-card.active .radio-circle::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #38bdf8;
+    }
+
+    .model-card-year {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+    }
+
+    /* Light Source Control Panel */
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+    }
+
+    .slider-val-tag {
+      font-family: var(--font-mono);
+      color: #38bdf8;
+      font-weight: 700;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.8);
+    }
+
+    /* Preset Wavelength Buttons */
+    .wavelength-presets-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    .wl-preset-btn {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 4px 2px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .wl-preset-btn:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: #ffffff;
+    }
+
+    .wl-preset-btn.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+
+    /* Action buttons in sidebar */
+    .action-btn-block {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .action-btn-block:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .action-btn-block.primary {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+
+    /* DOCUMENT SCROLLER FOR MISSIONS, QUIZ, THEORY (EXACT REPLICA OF ISOTOPES) */
+    .document-page-scroll {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 30px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .doc-hero {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .doc-hero-text h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .doc-hero-text p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    /* MISSIONS GRID */
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .mission-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .mission-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mission-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mission-status-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+    }
+
+    .mission-card.completed .mission-status-pill {
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+    }
+
+    .mission-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .mission-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .mission-jump-btn {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .mission-jump-btn:hover {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    /* QUIZ QUESTION CARDS */
+    .quiz-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quiz-q-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-opt-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-opt-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .quiz-opt-btn.correct {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #34d399;
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .quiz-opt-btn.wrong {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    .quiz-opt-marker {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-explanation {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 3px solid #38bdf8;
+      color: #cbd5e1;
+      display: none;
+    }
+
+    .quiz-explanation.visible {
+      display: block;
+    }
+
+    .quiz-score-banner {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* THEORY ARTICLE CARDS */
+    .theory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-content {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .theory-formula-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #7dd3fc;
+      margin-top: 6px;
+    }
+
+    /* CERTIFICATE MODAL (EXACT REPLICA OF ISOTOPES) */
+    .cert-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 550;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cert-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+      border: 2px solid rgba(234, 179, 8, 0.5);
+      border-radius: 20px;
+      padding: 36px 44px;
+      max-width: 600px;
+      width: 90vw;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(234, 179, 8, 0.25);
+      position: relative;
+    }
+
+    .cert-seal {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+      color: #fff;
+    }
+
+    .cert-h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .cert-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .cert-name-slot {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #38bdf8;
+      border-bottom: 1px dashed rgba(56, 189, 248, 0.4);
+      padding-bottom: 6px;
+      margin: 0 auto 20px;
+      max-width: 380px;
+    }
+
+    .cert-details {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .cert-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+    }
+
+    /* ======================================================== */
+    /* STANDARDIZED ELEMENTA MODAL SUITE                        */
+    /* ======================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open,
+    .modal-backdrop.active {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      display: flex !important;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .modal-backdrop.open .modal-dialog,
+    .modal-backdrop.active .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    /* Override hidden/absolute inner simulation screen views inside modals */
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+
+    .modal-backdrop .document-page-scroll,
+    .modal-backdrop .scrollable-page-layout {
+      height: auto !important;
+      overflow-y: visible !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+
+    .modal-backdrop .doc-hero,
+    .modal-backdrop .section-hero {
+      margin-bottom: 16px !important;
+    }
+
+    /* Transitions Table */
+    table.transitions-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 0.8rem;
+    }
+
+    table.transitions-table th, table.transitions-table td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    table.transitions-table th {
+      background: rgba(30, 41, 59, 0.6);
+      color: #7dd3fc;
+      font-weight: 700;
+    }
+
+    table.transitions-table tr:hover td {
+      background: rgba(56, 189, 248, 0.08);
+      cursor: pointer;
+    }
+
+    /* Certificate Box */
+    .certificate-view {
+      border: 2px dashed rgba(56, 189, 248, 0.5);
+      background: radial-gradient(circle at 50% 50%, rgba(14, 23, 42, 0.9) 0%, rgba(8, 12, 22, 0.95) 100%);
+      padding: 28px;
+      border-radius: 12px;
+      text-align: center;
+      margin-top: 14px;
+    }
+
+    .cert-heading {
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      color: #7dd3fc;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .cert-sub {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .cert-student-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #ffffff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+      display: inline-block;
+      padding: 0 24px 6px 24px;
+      margin-bottom: 12px;
+    }
+
+    /* Toast notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 600;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast-msg {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.82rem;
+      color: #ffffff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastSlide 0.3s ease forwards;
+    }
+
+    @keyframes toastSlide {
+      from { transform: translateX(50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+</head>
+<body>
+
+  <!-- ELEMENTA LMS TOPBAR (EXACT REPLICA) -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(30 12 12)"></ellipse>
+            <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-30 12 12)"></ellipse>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Physics / Chemistry</span>
+        <span>›</span>
+        <span>Atomic Structure</span>
+        <span>›</span>
+        <span class="current">Models of the Hydrogen Atom</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/6</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Screens Navigation Tabs (Spectra vs Energy Levels) -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenSpectra" onclick="switchSimScreen('spectra')">
+        <span class="screen-tab-number">1</span>
+        Spectra & Historical Models
+      </button>
+      <button class="screen-tab-btn" id="tabScreenEnergy" onclick="switchSimScreen('energy')">
+        <span class="screen-tab-number">2</span>
+        Energy Levels & Orbitals
+      </button>
+    </div>
+
+    <!-- Live Telemetry / Rydberg Formula Banner -->
+    <div class="equation-banner-strip" id="equationBanner">
+      <span style="color:#7dd3fc; font-weight:700;">Rydberg Relation:</span>
+      <span id="equationText">1/λ = R_H (1/n₁² − 1/n₂²) • R_H = 1.097×10⁷ m⁻¹</span>
+    </div>
+  </nav>
+
+  <!-- Main Simulation Workspace -->
+  <main class="simulation-workspace">
+
+    <!-- VIEW 1: SIMULATION LAB -->
+    <div class="app-view-container active" id="viewSim">
+      <div class="sim-layout">
+
+        <!-- Left Canvas Viewport -->
+        <div class="canvas-viewport-container" id="canvasContainer">
+          <canvas id="atomCanvas"></canvas>
+
+          <!-- Floating Simulation Speed & Playback Bar -->
+          <div class="sim-floating-bar">
+            <button class="floating-btn" id="btnPlayPause" onclick="togglePlayPause()" title="Play / Pause">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" id="playPauseIcon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+            <button class="floating-btn" id="btnStep" onclick="stepSimulation()" title="Step 1 Frame">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+            </button>
+
+            <div class="speed-pills">
+              <button class="speed-btn" onclick="setSpeed(0.25)" id="spd_slow">Slow</button>
+              <button class="speed-btn active" onclick="setSpeed(1.0)" id="spd_normal">Normal</button>
+              <button class="speed-btn" onclick="setSpeed(2.5)" id="spd_fast">Fast</button>
+            </div>
+
+            <button class="action-btn" style="height:28px; padding:0 8px; font-size:0.75rem;" onclick="resetAtomState()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+              Reset Atom
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Control Sidebar -->
+        <aside class="simulation-sidebar">
+
+          <!-- 1. Mode Selector: Experiment vs Prediction -->
+          <div class="sidebar-section">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg>
+              Exploration Mode
+            </div>
+            <div class="segmented-control">
+              <button class="segment-btn active" id="btnModeExp" onclick="setExplorationMode('experiment')">Experiment</button>
+              <button class="segment-btn" id="btnModePred" onclick="setExplorationMode('prediction')">Prediction / Models</button>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;" id="modeHelpText">
+              In <strong>Experiment</strong> mode, the atomic interior is obscured as a physical black box. Deduce its structure from emitted spectral lines.
+            </p>
+          </div>
+
+          <!-- 2. Atomic Model Selector (Active in Prediction mode) -->
+          <div class="sidebar-section" id="sectionModelSelector" style="display:none;">
+            <div class="section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+              Atomic Model
+            </div>
+            <div class="model-cards-grid">
+              <div class="model-card" id="card_dalton" onclick="selectModel('dalton')">
+                <div class="model-card-left">
+                  <div class="radio-circle"></div>
+                  <span>Billiard Ball (Dalton)</span>
+                </div>
+                <span class="model-card-year">1803</span>
+              </div>
+              <div class="model-card" id="card_thomson" onclick="selectModel('thomson')">
+                <div class="model-card-left">
+                  <div class="radio-circle"></div>
+                  <span>Plum Pudding (Thomson)</span>
+                </div>
+                <span class="model-card-year">1904</span>
+              </div>
+              <div class="model-card" id="card_rutherford" onclick="selectModel('rutherford')">
+                <div class="model-card-left">
+                  <div class="radio-circle"></div>
+                  <span>Classical Solar System (Rutherford)</span>
+                </div>
+                <span class="model-card-year">1911</span>
+              </div>
+              <div class="model-card active" id="card_bohr" onclick="selectModel('bohr')">
+                <div class="model-card-left">
+                  <div class="radio-circle"></div>
+                  <span>Bohr Model</span>
+                </div>
+                <span class="model-card-year">1913</span>
+              </div>
+              <div class="model-card" id="card_debroglie" onclick="selectModel('debroglie')">
+                <div class="model-card-left">
+                  <div class="radio-circle"></div>
+                  <span>de Broglie (Matter Wave)</span>
+                </div>
+                <span class="model-card-year">1924</span>
+              </div>
+              <div class="model-card" id="card_schrodinger" onclick="selectModel('schrodinger')">
+                <div class="model-card-left">
+                  <div class="radio-circle"></div>
+                  <span>Schrödinger (Quantum Wave)</span>
+                </div>
+                <span class="model-card-year">1926</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Light Source Controls -->
+          <div class="sidebar-section">
+            <div class="section-header">
+              <div class="section-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                Light Source
+              </div>
+              <!-- Power Switch -->
+              <button class="action-btn active" id="btnLampPower" style="height:26px; padding:0 8px; font-size:0.75rem;" onclick="toggleLamp()">
+                ON
+              </button>
+            </div>
+
+            <!-- Light Mode: White vs Monochromatic -->
+            <div class="segmented-control">
+              <button class="segment-btn active" id="btnLightWhite" onclick="setLightMode('white')">White Light</button>
+              <button class="segment-btn" id="btnLightMono" onclick="setLightMode('mono')">Monochromatic</button>
+            </div>
+
+            <!-- Monochromatic Slider Controls (Visible when Monochromatic is active) -->
+            <div id="monoControlsContainer" style="display:none;" class="slider-row">
+              <div class="slider-header">
+                <span>Wavelength λ</span>
+                <span class="slider-val-tag" id="valWavelength">121.6 nm (UV)</span>
+              </div>
+              <input type="range" id="sliderWavelength" min="80" max="750" step="0.5" value="121.6" oninput="onWavelengthSlider(this.value)">
+
+              <!-- Key Spectral Line Presets -->
+              <div style="font-size:0.72rem; color:var(--text-dim); margin-top:4px;">Hydrogen Resonance Presets:</div>
+              <div class="wavelength-presets-grid">
+                <button class="wl-preset-btn active" onclick="setWavelength(121.6)" title="Lyman Alpha (n=1 to 2)">121.6 Ly-α</button>
+                <button class="wl-preset-btn" onclick="setWavelength(102.6)" title="Lyman Beta (n=1 to 3)">102.6 Ly-β</button>
+                <button class="wl-preset-btn" onclick="setWavelength(97.3)" title="Lyman Gamma (n=1 to 4)">97.3 Ly-γ</button>
+                <button class="wl-preset-btn" onclick="setWavelength(95.0)" title="Lyman Delta (n=1 to 5)">95.0 Ly-δ</button>
+                <button class="wl-preset-btn" onclick="setWavelength(656.3)" title="Balmer Alpha (H-alpha, Red)">656.3 H-α</button>
+                <button class="wl-preset-btn" onclick="setWavelength(486.1)" title="Balmer Beta (H-beta, Cyan)">486.1 H-β</button>
+                <button class="wl-preset-btn" onclick="setWavelength(434.0)" title="Balmer Gamma (H-gamma, Blue)">434.0 H-γ</button>
+                <button class="wl-preset-btn" onclick="setWavelength(410.2)" title="Balmer Delta (H-delta, Violet)">410.2 H-δ</button>
+              </div>
+            </div>
+
+            <!-- Photon Beam Intensity / Rate -->
+            <div class="slider-row">
+              <div class="slider-header">
+                <span>Photon Rate</span>
+                <span class="slider-val-tag" id="valPhotonRate">Moderate</span>
+              </div>
+              <input type="range" id="sliderPhotonRate" min="1" max="5" step="1" value="3" oninput="onPhotonRateChange(this.value)">
+            </div>
+          </div>
+
+          <!-- 4. Spectrometer & Snapshots Controls -->
+          <div class="sidebar-section">
+            <div class="section-header">
+              <div class="section-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                Spectrometer Telemetry
+              </div>
+              <span style="font-size:0.75rem; font-family:var(--font-mono); color:#38bdf8;" id="totalPhotonsCount">0 photons</span>
+            </div>
+
+            <div style="display:flex; gap:6px;">
+              <button class="action-btn-block" style="flex:1;" onclick="takeSpectrometerSnapshot()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                Snapshot
+              </button>
+              <button class="action-btn-block" style="flex:1;" onclick="clearSpectrometerData()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Clear Data
+              </button>
+            </div>
+
+            <!-- Snapshots drawer -->
+            <div id="snapshotsList" style="display:flex; flex-direction:column; gap:6px;"></div>
+          </div>
+
+          <!-- 5. Transitions & Energy Tools (Quick access) -->
+          <div class="sidebar-section">
+            <button class="action-btn-block primary" onclick="openTransitionsModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              View Transition Lines Table
+            </button>
+          </div>
+
+        </aside>
+      </div>
+    </div>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- VIEW 2: GUIDED MISSIONS -->
+    <div class="app-view-container" id="viewMissions">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Guided Missions</h1>
+            <p>Step through the history of quantum physics. Test Dalton's solid sphere, witness Rutherford's classical catastrophe, jump Bohr's quantum energy levels, and verify Schrödinger wavefunctions!</p>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:2rem; font-weight:800; color:#38bdf8;" id="missionsHeroScore">0 / 6</div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">Missions Completed</div>
+          </div>
+        </div>
+
+        <div class="mission-grid" id="missionsGridContainer">
+          <!-- Dynamically populated missions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- VIEW 3: ASSESSMENT QUIZ -->
+    <div class="app-view-container" id="viewQuiz">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Assessment Quiz</h1>
+            <p>Evaluate your mastery of historical atomic models, photon quantization, Rydberg relations, matter waves, and Schrödinger quantum orbitals.</p>
+          </div>
+          <div class="quiz-score-banner" id="quizScoreBanner">
+            <div>
+              <div style="font-size:0.75rem; text-transform:uppercase; color:#7dd3fc; font-weight:700;">Score Progress</div>
+              <div style="font-size:1.5rem; font-weight:800; color:#fff;" id="quizScoreDisplay">0 / 6 (0%)</div>
+            </div>
+            <button class="mission-jump-btn" id="btnClaimCert" style="display:none;" onclick="openCertModal()">Claim Certificate</button>
+          </div>
+        </div>
+
+        <div id="quizQuestionsContainer" style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Dynamically populated quiz questions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- VIEW 4: THEORY & FORMULAS -->
+    <div class="app-view-container" id="viewTheory">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Theory & Formulas</h1>
+            <p>Fundamental quantum mechanics, spectroscopy, and atomic structure principles governing the hydrogen atom.</p>
+          </div>
+        </div>
+
+        <div class="theory-grid">
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              Dalton & Thomson Models (1803–1904)
+            </div>
+            <div class="theory-content">
+              Dalton modeled atoms as solid indivisible spheres explaining stoichiometry, but with zero internal charge or spectral lines. Thomson discovered the electron and proposed the "Plum Pudding" model of uniform positive charge embedded with electrons, predicting a single oscillation frequency.
+            </div>
+            <div class="theory-formula-box">
+              Dalton: Indivisible Sphere • Thomson: ω₀ = √(e² / 4πε₀ m R³)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"></path></svg>
+              Rutherford Catastrophe (1911)
+            </div>
+            <div class="theory-content">
+              Gold-foil alpha scattering revealed a compact central positive nucleus orbited by electrons. However, classical Maxwell-Larmor electrodynamics dictates that accelerating charges radiate continuous electromagnetic power, causing the electron to spiral into the nucleus in ~10⁻¹¹ s.
+            </div>
+            <div class="theory-formula-box">
+              P = (e² a²) / (6πε₀ c³) ⇒ τ_collapse ≈ 10⁻¹¹ s (Classical Catastrophe)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="3" r="1"></circle><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="8"></circle></svg>
+              Bohr Quantization Postulates (1913)
+            </div>
+            <div class="theory-content">
+              Niels Bohr resolved atomic instability by postulating discrete stationary orbits where orbital angular momentum is quantized in integer multiples of ℏ = h / 2π. Radiation is emitted or absorbed only when electrons jump between discrete stationary states.
+            </div>
+            <div class="theory-formula-box">
+              L = m v r_n = n ℏ,   r_n = n² a₀   (a₀ = 0.529 Å)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              Rydberg Formula & Spectral Series
+            </div>
+            <div class="theory-content">
+              The wavelengths of all emitted spectral lines of atomic hydrogen are given precisely by the empirical Rydberg-Ritz formula, where R_H = 1.097373 × 10⁷ m⁻¹. Transitions ending on n₁=1 form the UV Lyman series; n₁=2 form the visible Balmer series.
+            </div>
+            <div class="theory-formula-box">
+              1/λ = R_H (1/n₁² − 1/n₂²),   ΔE = hν = hc/λ
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M7 8l5 8 5-8"></path></svg>
+              de Broglie Matter Waves (1924)
+            </div>
+            <div class="theory-content">
+              Louis de Broglie proposed that particles possess wave characteristics with de Broglie wavelength λ = h/p. Bohr's quantum orbits represent constructive interference of standing electron waves wrapped around the circumference, requiring integer wavelengths 2π r = nλ.
+            </div>
+            <div class="theory-formula-box">
+              λ_dB = h / p = h / (m v),   2π r_n = n λ_dB
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle></svg>
+              Schrödinger Wave Mechanics (1926)
+            </div>
+            <div class="theory-content">
+              Erwin Schrödinger replaced deterministic planetary orbits with continuous 3D wavefunctions ψ(r, θ, φ) derived from the time-independent wave equation. The electron position is described by a probability density distribution P(r) = |ψ|².
+            </div>
+            <div class="theory-formula-box">
+              Ĥψ = Eψ,   P(r) = |ψ_nlm(r)|²,   E_n = −13.60 eV / n²
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- MODAL: TRANSITIONS MATRIX TABLE -->
+  <div class="modal-backdrop" id="modalTransitions">
+    <div class="modal-dialog">
+      <button class="modal-close-btn" onclick="closeTransitionsModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <h3 style="font-family:var(--font-heading); font-size:1.2rem; color:#7dd3fc; margin-bottom:6px;">
+        Hydrogen Electron State Transitions
+      </h3>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+        Click any transition to automatically configure the monochromatic light source to that wavelength.
+      </p>
+
+      <table class="transitions-table">
+        <thead>
+          <tr>
+            <th>Transition (n₂ → n₁)</th>
+            <th>Series</th>
+            <th>Spectral Band</th>
+            <th>Wavelength (λ)</th>
+            <th>Photon Energy</th>
+          </tr>
+        </thead>
+        <tbody id="transitionsTableBody">
+          <!-- Dynamically populated rows -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CERTIFICATE OF MASTERY MODAL (EXACT REPLICA OF ISOTOPES) -->
+  <div class="cert-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div class="cert-seal">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h2 class="cert-h1">Certificate of Mastery</h2>
+      <div class="cert-sub">Elementa LMS Simulation: Models of the Hydrogen Atom</div>
+      <div class="cert-name-slot">ELEMENTA SCHOLAR</div>
+      <div class="cert-details">
+        Has successfully demonstrated mastery in spectral line analysis, quantum energy levels, historical atomic models (Dalton, Thomson, Rutherford, Bohr, de Broglie, Schrödinger), and orbital wavefunctions.
+      </div>
+      <button class="cert-btn" onclick="closeCertModal()">Return to Lab</button>
+    </div>
+  </div>
+
+  <!-- Toast Message Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- JAVASCRIPT SIMULATION LOGIC -->
+  <script>
+    /* =========================================================================
+       ELEMENTA SIMULATION CORE ENGINE: MODELS OF THE HYDROGEN ATOM
+       ========================================================================= */
+
+    // App Navigation & Modes
+    let appMode = 'sim';                  // 'sim', 'missions', 'quiz', 'theory'
+    let currentScreen = 'spectra';        // 'spectra', 'energy'
+    let explorationMode = 'experiment';    // 'experiment', 'prediction'
+    let activeModel = 'bohr';             // 'dalton', 'thomson', 'rutherford', 'bohr', 'debroglie', 'schrodinger'
+    let lightMode = 'white';              // 'white', 'mono'
+    let lampPower = true;
+    let monoWavelength = 121.6;           // in nanometers
+    let photonRate = 3;                   // 1 to 5
+    let simSpeed = 1.0;
+    let isPaused = false;
+    let audioEnabled = true;
+
+    // Canvas & Graphics Context
+    const canvas = document.getElementById('atomCanvas');
+    const ctx = canvas.getContext('2d');
+    let canvasW = 800;
+    let canvasH = 600;
+
+    // Audio Context
+    let audioCtx = null;
+
+    // Simulation Physical State
+    let photons = [];                     // Array of in-flight photon packets
+    let emittedPhotons = [];              // Photons emitted from atom heading to detector
+    let atomState = {
+      n: 1,                               // Current principal quantum level
+      l: 0,                               // Angular quantum number
+      m: 0,                               // Magnetic quantum number
+      isExcited: false,
+      excitationTimer: 0,
+      rutherfordRadius: 120,              // Decreases rapidly in Rutherford catastrophe
+      rutherfordAngle: 0,
+      isCollapsed: false,
+      thomsonOsc: 0,                      // Plum pudding electron displacement
+      thomsonAmp: 0,
+      bohrAngle: 0,
+      deBrogliePhase: 0,
+      schrodingerCloud: []                // Monte Carlo electron dots
+    };
+
+    // Spectrometer Detection Bins (80nm to 1500nm, step = 5nm)
+    const SPECTRO_MIN = 80;
+    const SPECTRO_MAX = 750;
+    let spectrometerBins = {};
+    let totalDetectedPhotons = 0;
+    let snapshots = [];
+
+    // Hydrogen Transitions Data Table
+    const TRANSITIONS = [
+      { n2: 2, n1: 1, series: 'Lyman', band: 'UV', wl: 121.6, energy: '10.20 eV', color: '#a855f7' },
+      { n2: 3, n1: 1, series: 'Lyman', band: 'UV', wl: 102.6, energy: '12.09 eV', color: '#9333ea' },
+      { n2: 4, n1: 1, series: 'Lyman', band: 'UV', wl: 97.3,  energy: '12.75 eV', color: '#7e22ce' },
+      { n2: 5, n1: 1, series: 'Lyman', band: 'UV', wl: 95.0,  energy: '13.06 eV', color: '#6b21a8' },
+      { n2: 6, n1: 1, series: 'Lyman', band: 'UV', wl: 93.8,  energy: '13.22 eV', color: '#581c87' },
+      { n2: 3, n1: 2, series: 'Balmer', band: 'Visible (Red)', wl: 656.3, energy: '1.89 eV', color: '#ef4444' },
+      { n2: 4, n1: 2, series: 'Balmer', band: 'Visible (Cyan)', wl: 486.1, energy: '2.55 eV', color: '#06b6d4' },
+      { n2: 5, n1: 2, series: 'Balmer', band: 'Visible (Blue)', wl: 434.0, energy: '2.86 eV', color: '#3b82f6' },
+      { n2: 6, n1: 2, series: 'Balmer', band: 'Visible (Violet)', wl: 410.2, energy: '3.02 eV', color: '#8b5cf6' },
+      { n2: 4, n1: 3, series: 'Paschen', band: 'Infrared', wl: 1875.1, energy: '0.66 eV', color: '#f43f5e' },
+      { n2: 5, n1: 3, series: 'Paschen', band: 'Infrared', wl: 1281.8, energy: '0.97 eV', color: '#e11d48' },
+      { n2: 6, n1: 3, series: 'Paschen', band: 'Infrared', wl: 1093.8, energy: '1.13 eV', color: '#be123c' }
+    ];
+
+    // Guided Missions Data
+    const MISSIONS = [
+      {
+        id: 1,
+        title: "Dalton's Solid Sphere Check",
+        desc: "Switch to Prediction mode, select the Billiard Ball model, and observe why hard solid atoms produce zero discrete spectral lines.",
+        done: false,
+        check: () => explorationMode === 'prediction' && activeModel === 'dalton' && lampPower
+      },
+      {
+        id: 2,
+        title: "Rutherford's Classical Catastrophe",
+        desc: "Select the Classical Solar System model and observe the radiating electron spiral inwards until atomic collapse.",
+        done: false,
+        check: () => explorationMode === 'prediction' && activeModel === 'rutherford' && atomState.isCollapsed
+      },
+      {
+        id: 3,
+        title: "Bohr's First Lyman Transition",
+        desc: "In Bohr model, set monochromatic light to 121.6 nm (Lyman-α) and excite the electron from n = 1 to n = 2.",
+        done: false,
+        check: () => explorationMode === 'prediction' && activeModel === 'bohr' && atomState.n === 2
+      },
+      {
+        id: 4,
+        title: "Balmer Red Emission (H-α)",
+        desc: "Excite an electron to n = 3 and detect an emitted Balmer red photon (656 nm) in the spectrometer.",
+        done: false,
+        check: () => (spectrometerBins[655] || spectrometerBins[656] || spectrometerBins[657] || 0) > 0
+      },
+      {
+        id: 5,
+        title: "de Broglie Matter Resonance",
+        desc: "Select de Broglie model, observe the standing wave circumference condition (2πr = nλ), and verify orbital stability.",
+        done: false,
+        check: () => explorationMode === 'prediction' && activeModel === 'debroglie' && lampPower
+      },
+      {
+        id: 6,
+        title: "Black Box Spectroscopic Identification",
+        desc: "Switch to Experiment mode, illuminate with white light, and detect at least 15 emitted photons in the spectrometer.",
+        done: false,
+        check: () => explorationMode === 'experiment' && totalDetectedPhotons >= 15
+      }
+    ];
+
+    // Assessment Quiz Questions
+    const QUIZ_QUESTIONS = [
+      {
+        q: "Why did classical electromagnetic theory predict that Rutherford's planetary atom was unstable?",
+        opts: [
+          "Electrons and protons possess equal masses, causing orbital collisions.",
+          "An accelerating orbital electron must continuously radiate electromagnetic energy and spiral into the nucleus.",
+          "Electrostatic repulsion between neutrons destabilizes the atomic nucleus.",
+          "Gravitational forces overwhelm the Coulomb attraction at atomic scales."
+        ],
+        ans: 1,
+        exp: "According to the classical Larmor formula, accelerating charges radiate power proportional to the square of their acceleration. A classical orbiting electron would radiate all its energy away in approximately 10⁻¹¹ seconds!"
+      },
+      {
+        q: "What fundamental postulate did Niels Bohr introduce to solve the stability crisis?",
+        opts: [
+          "Electrons have zero rest mass.",
+          "Electrons can only exist in discrete stationary orbits where their angular momentum is quantized as L = nℏ.",
+          "The proton rotates in the opposite direction to cancel the magnetic dipole.",
+          "Photons continuously push electrons outward via radiation pressure."
+        ],
+        ans: 1,
+        exp: "Bohr postulated that electrons do not radiate when occupying stationary orbits with quantized angular momentum L = n(h / 2π). Emission or absorption occurs only during transitions between states."
+      },
+      {
+        q: "Which series of spectral lines in hydrogen corresponds to electron transitions down to the n = 1 ground state?",
+        opts: [
+          "Balmer Series (Visible light)",
+          "Paschen Series (Infrared)",
+          "Lyman Series (Ultraviolet)",
+          "Brackett Series (Far-infrared)"
+        ],
+        ans: 2,
+        exp: "The Lyman series represents transitions ending on n₁ = 1, spanning ultraviolet wavelengths from 121.6 nm (Lyman-α) down to the Lyman limit at 91.2 nm."
+      },
+      {
+        q: "How did Louis de Broglie explain Bohr's quantization condition in terms of matter waves?",
+        opts: [
+          "The orbit circumference must contain an integer number of standing matter wavelengths: 2πr = nλ.",
+          "Electrons travel as longitudinal sound waves through the nuclear ether.",
+          "The wavelength of an electron is infinitely long inside the Coulomb potential.",
+          "Electrons emit standing photons that lock them into position."
+        ],
+        ans: 0,
+        exp: "De Broglie showed that an orbit is stable because the matter wave completes a full cycle with constructive interference: 2πr = nλ_dB = n(h / p), which is mathematically equivalent to Bohr's L = nℏ!"
+      },
+      {
+        q: "What wavelength of light is emitted during the famous Balmer H-α transition (n = 3 → 2)?",
+        opts: [
+          "121.6 nm (Ultraviolet)",
+          "656.3 nm (Visible Red)",
+          "486.1 nm (Visible Cyan)",
+          "1875 nm (Infrared)"
+        ],
+        ans: 1,
+        exp: "The Balmer H-α line at 656.3 nm produces the vivid red emission characteristic of glowing hydrogen gas in interstellar nebulae."
+      },
+      {
+        q: "In the modern Schrödinger model, what does the quantity |ψ(r, θ, φ)|² physically represent?",
+        opts: [
+          "The exact velocity vector of the electron as a localized particle.",
+          "The probability density of locating the electron per unit volume in space.",
+          "The electrical charge density of the atomic nucleus.",
+          "The classical orbital radius squared."
+        ],
+        ans: 1,
+        exp: "According to Max Born's probability interpretation of the Schrödinger wave equation, |ψ|²dV gives the probability of finding the electron within volume dV, replacing classical orbits with 3D probability clouds (orbitals)."
+      }
+    ];
+
+    let quizAnswers = new Array(QUIZ_QUESTIONS.length).fill(null);
+
+    /* =========================================================================
+       AUDIO SYNTHESIS SYSTEM (Web Audio API)
+       ========================================================================= */
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.12, vol = 0.1) {
+      if (!audioEnabled) return;
+      try {
+        initAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      document.getElementById('btnSoundToggle').classList.toggle('active', audioEnabled);
+      showToast(audioEnabled ? 'Audio synthesis enabled' : 'Audio muted');
+    }
+
+    function playEmissionSound(wl) {
+      // Shorter wavelength = higher photon energy = higher pitch!
+      const freq = Math.max(220, Math.min(1800, (600 / wl) * 880));
+      playTone(freq, 'triangle', 0.18, 0.12);
+    }
+
+    function playSuccessFanfare() {
+      playTone(523.25, 'sine', 0.1, 0.12);
+      setTimeout(() => playTone(659.25, 'sine', 0.1, 0.12), 100);
+      setTimeout(() => playTone(783.99, 'sine', 0.2, 0.15), 200);
+    }
+
+    /* =========================================================================
+       CANVAS RESIZING & HIGH DPI HANDLING
+       ========================================================================= */
+    function resizeCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvasW = rect.width;
+      canvasH = rect.height;
+      canvas.width = canvasW * dpr;
+      canvas.height = canvasH * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+    });
+
+    /* =========================================================================
+       PHYSICS SIMULATION CYCLE
+       ========================================================================= */
+
+    // Convert nanometers to approximate RGB hex
+    function wavelengthToColor(wl) {
+      if (wl < 380) return '#a855f7';  // UV purple/violet
+      if (wl < 440) return '#6366f1';  // Violet/Indigo
+      if (wl < 490) return '#06b6d4';  // Blue/Cyan
+      if (wl < 510) return '#10b981';  // Green
+      if (wl < 580) return '#84cc16';  // Yellow-green
+      if (wl < 645) return '#f59e0b';  // Orange
+      if (wl <= 750) return '#ef4444'; // Red
+      return '#be123c';                // IR dark crimson
+    }
+
+    // Generate Schrödinger orbital point cloud
+    function generateSchrodingerCloud(n, l, m) {
+      const dots = [];
+      const numDots = 280;
+      const baseScale = 22 * n;
+
+      for (let i = 0; i < numDots; i++) {
+        // Monte Carlo radial sample for hydrogenic orbitals
+        const u = Math.random();
+        const r = -baseScale * Math.log(1 - u * 0.95) * (0.6 + Math.random() * 0.8);
+        const theta = Math.random() * Math.PI * 2;
+
+        let weight = 1.0;
+        if (l === 1) {
+          // p-orbital dumbbell weight: cos^2(theta)
+          weight = Math.abs(Math.cos(theta));
+        } else if (l === 2) {
+          // d-orbital cloverleaf weight
+          weight = Math.abs(Math.sin(2 * theta));
+        }
+
+        if (Math.random() < weight) {
+          dots.push({
+            x: Math.cos(theta) * r,
+            y: Math.sin(theta) * r * (l === 1 ? 0.7 : 1),
+            alpha: 0.15 + Math.random() * 0.65
+          });
+        }
+      }
+      return dots;
+    }
+
+    // Reset Atom
+    function resetAtomState() {
+      atomState.n = 1;
+      atomState.l = 0;
+      atomState.m = 0;
+      atomState.isExcited = false;
+      atomState.excitationTimer = 0;
+      atomState.rutherfordRadius = 120;
+      atomState.isCollapsed = false;
+      atomState.thomsonAmp = 0;
+      atomState.schrodingerCloud = generateSchrodingerCloud(1, 0, 0);
+      showToast('Atom reset to ground state (n = 1)');
+    }
+
+    // Emit photon from atom to detector
+    function emitPhotonFromAtom(fromN, toN, atomX, atomY) {
+      let targetTrans = TRANSITIONS.find(t => t.n2 === fromN && t.n1 === toN);
+      let wl = 121.6;
+      let col = '#a855f7';
+      if (targetTrans) {
+        wl = targetTrans.wl;
+        col = targetTrans.color;
+      } else {
+        const invWl = 1.097e7 * (1 / (toN * toN) - 1 / (fromN * fromN));
+        wl = Math.round(1e9 / invWl);
+        col = wavelengthToColor(wl);
+      }
+
+      // Random emission angle (isotropic in space)
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 4.5;
+
+      emittedPhotons.push({
+        x: atomX,
+        y: atomY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        wl: wl,
+        color: col,
+        age: 0
+      });
+
+      playEmissionSound(wl);
+    }
+
+    // Detect photon in spectrometer
+    function recordSpectrometerPhoton(wl) {
+      const roundedWl = Math.round(wl);
+      spectrometerBins[roundedWl] = (spectrometerBins[roundedWl] || 0) + 1;
+      totalDetectedPhotons++;
+      document.getElementById('totalPhotonsCount').textContent = totalDetectedPhotons + ' photons';
+      checkMissions();
+    }
+
+    // Spawn photons from light source
+    let spawnCounter = 0;
+    function spawnPhotons(sourceX, sourceY) {
+      if (!lampPower) return;
+
+      const interval = Math.max(4, 28 - photonRate * 5);
+      spawnCounter++;
+      if (spawnCounter % interval !== 0) return;
+
+      let wl = monoWavelength;
+      let col = wavelengthToColor(monoWavelength);
+
+      if (lightMode === 'white') {
+        const r = Math.random();
+        if (r < 0.45) {
+          const uvLines = [93.8, 95.0, 97.3, 102.6, 121.6];
+          wl = uvLines[Math.floor(Math.random() * uvLines.length)];
+        } else if (r < 0.85) {
+          wl = 380 + Math.random() * 370;
+        } else {
+          wl = 90 + Math.random() * 650;
+        }
+        col = wavelengthToColor(wl);
+      }
+
+      const spread = (Math.random() - 0.5) * 16;
+      photons.push({
+        x: sourceX,
+        y: sourceY + spread,
+        vx: 3.8 * simSpeed,
+        vy: (Math.random() - 0.5) * 0.4,
+        wl: wl,
+        color: col,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+
+    // Check if photon resonates with hydrogen transition from state n
+    function checkResonance(photonWl, currentN) {
+      // Lyman transitions from n=1
+      if (currentN === 1) {
+        if (Math.abs(photonWl - 121.6) < 2.5) return 2;
+        if (Math.abs(photonWl - 102.6) < 2.0) return 3;
+        if (Math.abs(photonWl - 97.3) < 1.8)  return 4;
+        if (Math.abs(photonWl - 95.0) < 1.5)  return 5;
+        if (Math.abs(photonWl - 93.8) < 1.5)  return 6;
+      }
+      // Balmer transitions from n=2
+      if (currentN === 2) {
+        if (Math.abs(photonWl - 656.3) < 4.0) return 3;
+        if (Math.abs(photonWl - 486.1) < 3.5) return 4;
+        if (Math.abs(photonWl - 434.0) < 3.0) return 5;
+        if (Math.abs(photonWl - 410.2) < 2.5) return 6;
+      }
+      return null;
+    }
+
+    /* =========================================================================
+       CANVAS RENDERING PIPELINE
+       ========================================================================= */
+
+        function drawSimulation(time) {
+      ctx.clearRect(0, 0, canvasW, canvasH);
+
+      let lampX, lampY, atomX, atomY;
+
+      if (currentScreen === 'spectra') {
+        // SCREEN 1: Spectra & Historical Models
+        const spectroX = canvasW * 0.16;
+        const spectroY = 24;
+        const spectroW = canvasW * 0.70;
+        const spectroH = 82;
+        drawSpectrometer(spectroX, spectroY, spectroW, spectroH);
+
+        atomX = canvasW * 0.48;
+        atomY = canvasH * 0.54;
+        lampX = 65;
+        lampY = atomY;
+      } else {
+        // SCREEN 2: Energy Levels & Orbitals
+        // Dedicated, spacious Electron Energy Levels laboratory console on the right
+        const ew = Math.max(310, Math.min(380, canvasW * 0.35));
+        const eh = canvasH - 64;
+        const ex = canvasW - ew - 24;
+        const ey = 32;
+
+        drawEnergyLevelsHUD(ex, ey, ew, eh, time);
+
+        // Center observation chamber in the available space to the left of the energy levels console
+        atomX = Math.round(ex * 0.52);
+        atomY = canvasH * 0.52;
+        lampX = 65;
+        lampY = atomY;
+      }
+
+      // 2. Draw High-Vacuum Observation Chamber Glass Enclosure
+      drawObservationChamber(atomX - 180, atomY - 170, 360, 340);
+
+      // 3. Draw Light Source Device
+      drawLightSource(lampX, lampY);
+
+      // 4. Update and Render Photons
+      if (!isPaused) {
+        spawnPhotons(lampX + 38, lampY);
+      }
+
+      // Update incoming photons
+      for (let i = photons.length - 1; i >= 0; i--) {
+        const p = photons[i];
+        if (!isPaused) {
+          p.x += p.vx * simSpeed;
+          p.y += p.vy * simSpeed;
+          p.phase += 0.3 * simSpeed;
+        }
+
+        drawWavePacket(p.x, p.y, p.wl, p.color, p.phase);
+
+        // Interaction with atom at atomX, atomY
+        const dist = Math.hypot(p.x - atomX, p.y - atomY);
+        const captureRadius = 28;
+
+        if (dist < captureRadius) {
+          if (explorationMode === 'experiment') {
+            const targetN = checkResonance(p.wl, atomState.n);
+            if (targetN) {
+              atomState.n = targetN;
+              atomState.isExcited = true;
+              atomState.excitationTimer = 75;
+              playTone(880, 'sine', 0.08, 0.1);
+              photons.splice(i, 1);
+              continue;
+            }
+          } else {
+            if (activeModel === 'dalton') {
+              p.vx = -p.vx * 0.9;
+              p.vy = (Math.random() - 0.5) * 2;
+              playTone(240, 'triangle', 0.05, 0.08);
+            } else if (activeModel === 'thomson') {
+              atomState.thomsonAmp = Math.min(24, atomState.thomsonAmp + 8);
+              photons.splice(i, 1);
+              continue;
+            } else if (activeModel === 'rutherford') {
+              // Pass or perturb, unstable system
+            } else if (activeModel === 'bohr' || activeModel === 'debroglie' || activeModel === 'schrodinger') {
+              const targetN = checkResonance(p.wl, atomState.n);
+              if (targetN) {
+                atomState.n = targetN;
+                atomState.isExcited = true;
+                atomState.excitationTimer = 75;
+                if (activeModel === 'schrodinger') {
+                  atomState.l = Math.min(targetN - 1, atomState.l);
+                  atomState.schrodingerCloud = generateSchrodingerCloud(atomState.n, atomState.l, atomState.m);
+                }
+                playTone(880, 'sine', 0.08, 0.1);
+                photons.splice(i, 1);
+                checkMissions();
+                continue;
+              }
+            }
+          }
+        }
+
+        if (p.x > canvasW + 40 || p.x < -40 || p.y < -40 || p.y > canvasH + 40) {
+          photons.splice(i, 1);
+        }
+      }
+
+      // Update Atom State & Spontaneous Emission Decay
+      if (!isPaused) {
+        if (atomState.isExcited) {
+          atomState.excitationTimer -= 1 * simSpeed;
+          if (atomState.excitationTimer <= 0) {
+            const oldN = atomState.n;
+            let newN = 1;
+            if (oldN > 2 && Math.random() < 0.6) {
+              newN = 2; // Balmer jump!
+            }
+            atomState.n = newN;
+            atomState.isExcited = newN > 1;
+            if (atomState.isExcited) atomState.excitationTimer = 60;
+            if (activeModel === 'schrodinger') {
+              atomState.l = 0;
+              atomState.schrodingerCloud = generateSchrodingerCloud(atomState.n, atomState.l, atomState.m);
+            }
+            emitPhotonFromAtom(oldN, newN, atomX, atomY);
+            checkMissions();
+          }
+        }
+
+        if (activeModel === 'rutherford' && explorationMode === 'prediction' && !atomState.isCollapsed) {
+          atomState.rutherfordAngle += 0.12 * simSpeed;
+          atomState.rutherfordRadius -= 0.15 * simSpeed;
+          if (atomState.rutherfordRadius <= 12) {
+            atomState.isCollapsed = true;
+            playTone(110, 'sawtooth', 0.4, 0.2);
+            showToast('Rutherford Catastrophe: Electron collapsed into the nucleus!');
+            checkMissions();
+          }
+        }
+
+        if (atomState.thomsonAmp > 0) {
+          atomState.thomsonAmp *= 0.985;
+          atomState.thomsonOsc = Math.sin(time * 0.03) * atomState.thomsonAmp;
+        }
+
+        atomState.bohrAngle += 0.04 * simSpeed;
+        atomState.deBrogliePhase += 0.06 * simSpeed;
+      }
+
+      // Update emitted photons flying towards spectrometer detector
+      for (let j = emittedPhotons.length - 1; j >= 0; j--) {
+        const ep = emittedPhotons[j];
+        if (!isPaused) {
+          ep.x += ep.vx * simSpeed;
+          ep.y += ep.vy * simSpeed;
+          ep.age += 1;
+        }
+
+        drawWavePacket(ep.x, ep.y, ep.wl, ep.color, ep.age * 0.3);
+
+        if (currentScreen === 'spectra' && ep.y <= 24 + 82 + 15 && ep.x >= canvasW * 0.16 && ep.x <= canvasW * 0.16 + canvasW * 0.70) {
+          recordSpectrometerPhoton(ep.wl);
+          emittedPhotons.splice(j, 1);
+          continue;
+        }
+
+        if (ep.x < -40 || ep.x > canvasW + 40 || ep.y < -40 || ep.y > canvasH + 40) {
+          emittedPhotons.splice(j, 1);
+        }
+      }
+
+      // 5. Render Active Atom in Chamber
+      if (explorationMode === 'experiment') {
+        drawExperimentAtom(atomX, atomY, time);
+      } else {
+        if (activeModel === 'dalton') {
+          drawDaltonModel(atomX, atomY);
+        } else if (activeModel === 'thomson') {
+          drawThomsonModel(atomX, atomY, time);
+        } else if (activeModel === 'rutherford') {
+          drawRutherfordModel(atomX, atomY, time);
+        } else if (activeModel === 'bohr') {
+          drawBohrModel(atomX, atomY, time);
+        } else if (activeModel === 'debroglie') {
+          drawDeBroglieModel(atomX, atomY, time);
+        } else if (activeModel === 'schrodinger') {
+          drawSchrodingerModel(atomX, atomY, time);
+        }
+      }
+    }
+
+/* Helper: Draw sinusoidal wave-packet */
+    function drawWavePacket(x, y, wl, color, phase = 0) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 6;
+
+      ctx.beginPath();
+      const numPoints = 16;
+      const packetLen = 28;
+      for (let k = 0; k <= numPoints; k++) {
+        const px = x - packetLen / 2 + (k / numPoints) * packetLen;
+        const envelope = Math.sin((k / numPoints) * Math.PI);
+        const py = y + Math.sin(phase + k * 1.2) * 5.5 * envelope;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* 1. Observation Vacuum Chamber Enclosure */
+    function drawObservationChamber(cx, cy, cw, ch) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(cx + cw/2, cy + ch + 10, cw * 0.52, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const frameGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy + ch);
+      frameGrad.addColorStop(0, '#64748b');
+      frameGrad.addColorStop(0.5, '#334155');
+      frameGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = frameGrad;
+      ctx.beginPath();
+      ctx.roundRect(cx, cy, cw, ch, 14);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      const qx = cx + 16, qy = cy + 26, qw = cw - 32, qh = ch - 42;
+      const qGrad = ctx.createRadialGradient(qx + qw/2, qy + qh/2, 10, qx + qw/2, qy + qh/2, Math.max(qw, qh)*0.6);
+      qGrad.addColorStop(0, '#0a1329');
+      qGrad.addColorStop(0.7, '#040814');
+      qGrad.addColorStop(1, '#020409');
+      ctx.fillStyle = qGrad;
+      ctx.beginPath();
+      ctx.roundRect(qx, qy, qw, qh, 8);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.05)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = qx + 24; x < qx + qw; x += 24) {
+        ctx.moveTo(x, qy); ctx.lineTo(x, qy + qh);
+      }
+      for (let y = qy + 24; y < qy + qh; y += 24) {
+        ctx.moveTo(qx, y); ctx.lineTo(qx + qw, y);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(cx + cw/2 - 90, cy + 6, 180, 16, 4);
+      ctx.fill();
+      ctx.font = '700 8.5px -apple-system, sans-serif';
+      ctx.fillStyle = '#7dd3fc';
+      ctx.textAlign = 'center';
+      const labelStr = explorationMode === 'experiment' ? 'HYDROGEN TEST CELL (EXPERIMENT)' : ('HYDROGEN CELL [' + activeModel.toUpperCase() + ']');
+      ctx.fillText(labelStr, cx + cw/2, cy + 18);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.beginPath();
+      ctx.moveTo(qx, qy);
+      ctx.lineTo(qx + qw * 0.35, qy);
+      ctx.lineTo(qx + qw * 0.15, qy + qh);
+      ctx.lineTo(qx, qy + qh);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    /* 2. Light Source (Lamp / Gun) */
+    function drawLightSource(lx, ly) {
+      ctx.save();
+      const bodyW = 54;
+      const bodyH = 44;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(lx, ly + bodyH/2 + 8, bodyW * 0.45, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const lampGrad = ctx.createLinearGradient(lx - bodyW/2, ly - bodyH/2, lx + bodyW/2, ly + bodyH/2);
+      lampGrad.addColorStop(0, '#94a3b8');
+      lampGrad.addColorStop(0.5, '#475569');
+      lampGrad.addColorStop(1, '#1e293b');
+      ctx.fillStyle = lampGrad;
+      ctx.beginPath();
+      ctx.roundRect(lx - bodyW/2, ly - bodyH/2, bodyW, bodyH, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const nozW = 16;
+      const nozH = 22;
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.roundRect(lx + bodyW/2, ly - nozH/2, nozW, nozH, [0, 4, 4, 0]);
+      ctx.fill();
+
+      if (lampPower) {
+        const glowCol = lightMode === 'white' ? '#ffffff' : wavelengthToColor(monoWavelength);
+        ctx.fillStyle = glowCol;
+        ctx.shadowColor = glowCol;
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(lx + bodyW/2 + nozW, ly, 7, -Math.PI/2, Math.PI/2);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+      }
+
+      ctx.font = '700 7px -apple-system, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      const lampLabel = lightMode === 'white' ? 'WHITE' : (Math.round(monoWavelength) + ' nm');
+      ctx.fillText(lampLabel, lx, ly + 2);
+
+      ctx.restore();
+    }
+
+    /* 3. High-Resolution Multi-Channel Spectrometer */
+    function drawSpectrometer(sx, sy, sw, sh) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(sx, sy, sw, sh, 10);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      ctx.font = '800 8.5px -apple-system, sans-serif';
+      ctx.fillStyle = '#7dd3fc';
+      ctx.textAlign = 'left';
+      ctx.fillText('HIGH-RESOLUTION OPTICAL SPECTROMETER (EMISSION HISTOGRAM)', sx + 14, sy + 15);
+
+      const spX = sx + 14;
+      const spY = sy + 24;
+      const spW = sw - 28;
+      const spH = 34;
+
+      ctx.fillStyle = '#050914';
+      ctx.fillRect(spX, spY, spW, spH);
+
+      const rainbowGrad = ctx.createLinearGradient(spX + spW * 0.28, spY, spX + spW * 0.88, spY);
+      rainbowGrad.addColorStop(0, 'rgba(139, 92, 246, 0.25)');
+      rainbowGrad.addColorStop(0.2, 'rgba(59, 130, 246, 0.25)');
+      rainbowGrad.addColorStop(0.4, 'rgba(6, 182, 212, 0.25)');
+      rainbowGrad.addColorStop(0.6, 'rgba(16, 185, 129, 0.25)');
+      rainbowGrad.addColorStop(0.8, 'rgba(245, 158, 11, 0.25)');
+      rainbowGrad.addColorStop(1, 'rgba(239, 68, 68, 0.25)');
+      ctx.fillStyle = rainbowGrad;
+      ctx.fillRect(spX + spW * 0.28, spY, spW * 0.6, spH);
+
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.15)';
+      ctx.fillRect(spX, spY, spW * 0.28, spH);
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.15)';
+      ctx.fillRect(spX + spW * 0.88, spY, spW * 0.12, spH);
+
+      Object.keys(spectrometerBins).forEach(wlStr => {
+        const wl = parseFloat(wlStr);
+        const count = spectrometerBins[wlStr];
+        if (count > 0 && wl >= SPECTRO_MIN && wl <= SPECTRO_MAX) {
+          const frac = (wl - SPECTRO_MIN) / (SPECTRO_MAX - SPECTRO_MIN);
+          const barX = spX + frac * spW;
+          const barH = Math.min(spH - 4, count * 3);
+          const col = wavelengthToColor(wl);
+
+          ctx.fillStyle = col;
+          ctx.shadowColor = col;
+          ctx.shadowBlur = 6;
+          ctx.fillRect(barX - 1.5, spY + spH - barH, 3, barH);
+          ctx.shadowColor = 'transparent';
+        }
+      });
+
+      ctx.font = '600 7.5px -apple-system, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'center';
+
+      const majorTicks = [
+        { wl: 90, label: 'UV (Lyman)' },
+        { wl: 121.6, label: '121.6' },
+        { wl: 380, label: '380' },
+        { wl: 486.1, label: '486.1' },
+        { wl: 656.3, label: '656.3' },
+        { wl: 750, label: 'IR (Paschen)' }
+      ];
+
+      majorTicks.forEach(t => {
+        const frac = (t.wl - SPECTRO_MIN) / (SPECTRO_MAX - SPECTRO_MIN);
+        const tx = spX + frac * spW;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(tx, spY + spH);
+        ctx.lineTo(tx, spY + spH + 4);
+        ctx.stroke();
+        ctx.fillText(t.label, tx, spY + spH + 13);
+      });
+
+      ctx.restore();
+    }
+
+    /* 4. Atomic Models Visualizers */
+
+    function drawDaltonModel(ax, ay) {
+      ctx.save();
+      const r = 44;
+      const grad = ctx.createRadialGradient(ax - r*0.35, ay - r*0.35, 3, ax, ay, r);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, '#94a3b8');
+      grad.addColorStop(0.8, '#334155');
+      grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(ax, ay, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.font = '700 9px -apple-system, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('SOLID SPHERE', ax, ay + 3);
+      ctx.restore();
+    }
+
+    function drawThomsonModel(ax, ay, time) {
+      ctx.save();
+      const r = 65;
+      const soupGrad = ctx.createRadialGradient(ax, ay, 5, ax, ay, r);
+      soupGrad.addColorStop(0, 'rgba(239, 68, 68, 0.45)');
+      soupGrad.addColorStop(0.7, 'rgba(239, 68, 68, 0.25)');
+      soupGrad.addColorStop(1, 'rgba(239, 68, 68, 0.05)');
+      ctx.fillStyle = soupGrad;
+      ctx.beginPath();
+      ctx.arc(ax, ay, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.font = '700 10px sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.textAlign = 'center';
+      ctx.fillText('+', ax - 25, ay - 20);
+      ctx.fillText('+', ax + 25, ay - 20);
+      ctx.fillText('+', ax, ay + 35);
+
+      const elX = ax + atomState.thomsonOsc;
+      const elY = ay;
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(elX, elY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      ctx.font = '700 8px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('e⁻', elX, elY + 2.5);
+      ctx.restore();
+    }
+
+    function drawRutherfordModel(ax, ay, time) {
+      ctx.save();
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(ax, ay, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.font = '700 8px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('+', ax, ay + 2.5);
+
+      if (atomState.isCollapsed) {
+        ctx.fillStyle = '#f87171';
+        ctx.font = '700 11px -apple-system, sans-serif';
+        ctx.fillText('ATOMIC COLLAPSE!', ax, ay - 35);
+        ctx.font = '600 8.5px -apple-system, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('Click Reset Atom below', ax, ay - 20);
+      } else {
+        const rad = atomState.rutherfordRadius;
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(ax, ay, rad, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const ex = ax + Math.cos(atomState.rutherfordAngle) * rad;
+        const ey = ay + Math.sin(atomState.rutherfordAngle) * rad;
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(ex, ey, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(ex, ey, 10 + (time * 0.05) % 15, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawBohrModel(ax, ay, time) {
+      ctx.save();
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(ax, ay, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.font = '700 9px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('p⁺', ax, ay + 3);
+
+      const baseR = 24;
+      for (let n = 1; n <= 6; n++) {
+        const rn = baseR * Math.sqrt(n) * 1.5;
+        const isCurrent = (n === atomState.n);
+
+        ctx.strokeStyle = isCurrent ? '#38bdf8' : 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = isCurrent ? 1.8 : 0.8;
+        if (isCurrent) {
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 6;
+        }
+        ctx.beginPath();
+        ctx.arc(ax, ay, rn, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowColor = 'transparent';
+
+        ctx.font = '600 7px "Fira Code", monospace';
+        ctx.fillStyle = isCurrent ? '#7dd3fc' : '#64748b';
+        ctx.fillText('n=' + n, ax + rn + 10, ay);
+      }
+
+      const curR = baseR * Math.sqrt(atomState.n) * 1.5;
+      const elX = ax + Math.cos(atomState.bohrAngle) * curR;
+      const elY = ay + Math.sin(atomState.bohrAngle) * curR;
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(elX, elY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      ctx.font = '700 8px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('e⁻', elX, elY + 2.5);
+
+      ctx.restore();
+    }
+
+    function drawDeBroglieModel(ax, ay, time) {
+      ctx.save();
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(ax, ay, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      const n = atomState.n;
+      const baseR = 24 * Math.sqrt(n) * 1.5;
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+
+      const steps = 180;
+      for (let s = 0; s <= steps; s++) {
+        const theta = (s / steps) * Math.PI * 2;
+        const waveAmp = 7 * Math.sin(n * theta) * Math.cos(atomState.deBrogliePhase);
+        const r = baseR + waveAmp;
+        const wx = ax + Math.cos(theta) * r;
+        const wy = ay + Math.sin(theta) * r;
+        if (s === 0) ctx.moveTo(wx, wy);
+        else ctx.lineTo(wx, wy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.shadowColor = 'transparent';
+
+      ctx.font = '700 8.5px -apple-system, sans-serif';
+      ctx.fillStyle = '#7dd3fc';
+      ctx.textAlign = 'center';
+      ctx.fillText('CIRCUMFERENCE = ' + n + ' × λ_dB (n = ' + n + ')', ax, ay + baseR + 24);
+
+      ctx.restore();
+    }
+
+    function drawSchrodingerModel(ax, ay, time) {
+      ctx.save();
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(ax, ay, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#38bdf8';
+      atomState.schrodingerCloud.forEach(dot => {
+        ctx.globalAlpha = dot.alpha;
+        ctx.beginPath();
+        ctx.arc(ax + dot.x, ay + dot.y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1.0;
+
+      ctx.font = '700 9px "Fira Code", monospace';
+      ctx.fillStyle = '#7dd3fc';
+      ctx.textAlign = 'center';
+      const orbitalNames = ['s', 'p', 'd', 'f'];
+      const orbStr = atomState.n + (orbitalNames[atomState.l] || 's');
+      ctx.fillText('ORBITAL: ' + orbStr + ' | (n, l, m) = (' + atomState.n + ', ' + atomState.l + ', ' + atomState.m + ')', ax, ay + 120);
+
+      ctx.restore();
+    }
+
+    function drawExperimentAtom(ax, ay, time) {
+      ctx.save();
+      const r = 50;
+
+      const cloudGrad = ctx.createRadialGradient(ax, ay, 5, ax, ay, r);
+      cloudGrad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+      cloudGrad.addColorStop(0.6, 'rgba(99, 102, 241, 0.25)');
+      cloudGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = cloudGrad;
+      ctx.beginPath();
+      ctx.arc(ax, ay, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = '800 36px "Outfit", sans-serif';
+      ctx.fillStyle = '#7dd3fc';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 14;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', ax, ay);
+      ctx.shadowColor = 'transparent';
+
+      ctx.font = '700 8.5px -apple-system, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('HYDROGEN ATOM (OBSCURED)', ax, ay + 42);
+
+      ctx.restore();
+    }
+
+        /* 5. Screen 2: Interactive Electron Energy Levels Console */
+    let lastEnergyRungClickBoxes = [];
+
+    function drawEnergyLevelsHUD(ex, ey, ew, eh, time) {
+      ctx.save();
+
+      // 0. Ambient Drop Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.beginPath();
+      ctx.roundRect(ex - 4, ey - 4, ew + 8, eh + 8, 16);
+      ctx.fill();
+
+      // 1. Solid Aerospace Console Chassis
+      const chassisGrad = ctx.createLinearGradient(ex, ey, ex + ew, ey + eh);
+      chassisGrad.addColorStop(0, '#0f172a');
+      chassisGrad.addColorStop(0.5, '#0b1329');
+      chassisGrad.addColorStop(1, '#050914');
+      ctx.fillStyle = chassisGrad;
+      ctx.beginPath();
+      ctx.roundRect(ex, ey, ew, eh, 14);
+      ctx.fill();
+
+      // Metallic Cyan Bezel Rim
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Corner Allen Hex Screws
+      const screwOffset = 12;
+      const screwR = 3.5;
+      [
+        [ex + screwOffset, ey + screwOffset],
+        [ex + ew - screwOffset, ey + screwOffset],
+        [ex + screwOffset, ey + eh - screwOffset],
+        [ex + ew - screwOffset, ey + eh - screwOffset]
+      ].forEach(([sx, sy]) => {
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.arc(sx, sy, screwR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(sx, sy, screwR * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 2. Console Title Header
+      ctx.font = '800 11.5px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('ELECTRON ENERGY LEVELS', ex + 22, ey + 22);
+
+      ctx.font = '600 8.5px "Fira Code", monospace';
+      ctx.fillStyle = '#7dd3fc';
+      ctx.fillText('BOHR-RYDBERG LADDER  •  E_n = −13.60 eV / n²', ex + 22, ey + 36);
+
+      // Quantized State LED Badge on Top Right
+      const isGround = (atomState.n === 1);
+      const badgeCol = isGround ? '#38bdf8' : '#34d399';
+      ctx.fillStyle = badgeCol;
+      ctx.shadowColor = badgeCol;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(ex + ew - 64, ey + 22, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      ctx.font = '700 8px -apple-system, sans-serif';
+      ctx.fillStyle = badgeCol;
+      ctx.textAlign = 'left';
+      ctx.fillText(isGround ? 'GROUND' : 'EXCITED', ex + ew - 56, ey + 22);
+
+      // 3. Vertical Energy Axis E (eV)
+      const axisX = ex + 48;
+      const ladderTop = ey + 72;
+      const ladderBottom = ey + eh - 68;
+      const ladderH = ladderBottom - ladderTop;
+
+      // Axis stem line
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(axisX, ladderBottom + 10);
+      ctx.lineTo(axisX, ladderTop - 14);
+      ctx.stroke();
+
+      // Axis arrow at top
+      ctx.fillStyle = '#475569';
+      ctx.beginPath();
+      ctx.moveTo(axisX, ladderTop - 18);
+      ctx.lineTo(axisX - 4, ladderTop - 10);
+      ctx.lineTo(axisX + 4, ladderTop - 10);
+      ctx.closePath();
+      ctx.fill();
+
+      // Vertical axis title
+      ctx.font = '700 8px -apple-system, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'center';
+      ctx.fillText('E (eV)', axisX, ladderTop - 24);
+
+      // 4. Ionization Continuum Band (E >= 0 eV)
+      const contY = ladderTop;
+      // Glowing continuum zone above 0 eV
+      const contGrad = ctx.createLinearGradient(axisX, contY - 18, axisX, contY);
+      contGrad.addColorStop(0, 'rgba(239, 68, 68, 0.25)');
+      contGrad.addColorStop(1, 'rgba(239, 68, 68, 0.02)');
+      ctx.fillStyle = contGrad;
+      ctx.fillRect(axisX + 4, contY - 18, ew - 68, 18);
+
+      // Red dashed continuum line at 0 eV
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(axisX + 4, contY);
+      ctx.lineTo(ex + ew - 20, contY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = '700 8px "Fira Code", monospace';
+      ctx.fillStyle = '#f87171';
+      ctx.textAlign = 'left';
+      ctx.fillText('0.00 eV  CONTINUUM (IONIZED)', axisX + 10, contY - 6);
+
+      // 5. Spacious, Non-Overlapping Energy Levels (n = 1 to 6)
+      const levels = [
+        { n: 1, energy: -13.60, frac: 0.00, shell: 'K' },
+        { n: 2, energy: -3.40,  frac: 0.48, shell: 'L' },
+        { n: 3, energy: -1.51,  frac: 0.68, shell: 'M' },
+        { n: 4, energy: -0.85,  frac: 0.80, shell: 'N' },
+        { n: 5, energy: -0.54,  frac: 0.89, shell: 'O' },
+        { n: 6, energy: -0.38,  frac: 0.95, shell: 'P' }
+      ];
+
+      lastEnergyRungClickBoxes = [];
+
+      levels.forEach(lvl => {
+        const rungY = Math.round(ladderBottom - lvl.frac * ladderH);
+        const isCurrent = (lvl.n === atomState.n);
+        const rungStartX = axisX + 8;
+        const rungEndX = ex + ew - 22;
+
+        // Save clickable hit box
+        lastEnergyRungClickBoxes.push({
+          n: lvl.n,
+          x1: ex + 12,
+          y1: rungY - 14,
+          x2: ex + ew - 12,
+          y2: rungY + 14
+        });
+
+        // Horizontal Rung Bar
+        if (isCurrent) {
+          // Brilliant active glowing bar
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = '#34d399';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(rungStartX, rungY);
+          ctx.lineTo(rungEndX, rungY);
+          ctx.stroke();
+          ctx.shadowColor = 'transparent';
+
+          // Light glow strip behind active rung
+          ctx.fillStyle = 'rgba(52, 211, 153, 0.12)';
+          ctx.fillRect(rungStartX, rungY - 10, rungEndX - rungStartX, 20);
+        } else {
+          // Inactive clean metallic rung bar
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(rungStartX, rungY);
+          ctx.lineTo(rungEndX, rungY);
+          ctx.stroke();
+        }
+
+        // Left Label: n = X (Shell)
+        ctx.font = isCurrent ? '800 11px -apple-system, sans-serif' : '700 10px -apple-system, sans-serif';
+        ctx.fillStyle = isCurrent ? '#34d399' : '#e2e8f0';
+        ctx.textAlign = 'left';
+        ctx.fillText('n = ' + lvl.n + ' (' + lvl.shell + ')', rungStartX + 4, rungY - 6);
+
+        // Right Label: Energy in eV
+        ctx.font = isCurrent ? '800 10.5px "Fira Code", monospace' : '700 9.5px "Fira Code", monospace';
+        ctx.fillStyle = isCurrent ? '#34d399' : '#7dd3fc';
+        ctx.textAlign = 'right';
+        ctx.fillText(lvl.energy.toFixed(2) + ' eV', rungEndX - 4, rungY - 6);
+
+        // Active Electron Bead on Center of Rung
+        if (isCurrent) {
+          const elX = rungStartX + (rungEndX - rungStartX) * 0.52;
+          const pulse = Math.sin(time * 0.006) * 2;
+
+          // Outer aura
+          ctx.fillStyle = 'rgba(52, 211, 153, 0.35)';
+          ctx.beginPath();
+          ctx.arc(elX, rungY, 9 + pulse, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 3D Sphere body
+          const elGrad = ctx.createRadialGradient(elX - 2, rungY - 2, 1, elX, rungY, 6);
+          elGrad.addColorStop(0, '#ffffff');
+          elGrad.addColorStop(0.4, '#34d399');
+          elGrad.addColorStop(1, '#064e3b');
+          ctx.fillStyle = elGrad;
+          ctx.beginPath();
+          ctx.arc(elX, rungY, 6, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.font = '800 7px sans-serif';
+          ctx.fillStyle = '#064e3b';
+          ctx.textAlign = 'center';
+          ctx.fillText('e⁻', elX, rungY + 2.5);
+        }
+      });
+
+      // 6. Transition Squiggle / Jump indicator when excited
+      if (atomState.isExcited && atomState.n > 1) {
+        const curLvl = levels[atomState.n - 1];
+        const gndLvl = levels[0];
+        const curY = Math.round(ladderBottom - curLvl.frac * ladderH);
+        const gndY = Math.round(ladderBottom - gndLvl.frac * ladderH);
+        const arrowX = axisX + 16;
+
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.8;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(arrowX, gndY - 4);
+        ctx.lineTo(arrowX, curY + 4);
+        ctx.stroke();
+
+        // Arrow head pointing to excited state
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.moveTo(arrowX, curY);
+        ctx.lineTo(arrowX - 4, curY + 8);
+        ctx.lineTo(arrowX + 4, curY + 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+
+        // Badge with transition wavelength
+        const transObj = TRANSITIONS.find(t => t.n2 === atomState.n && t.n1 === 1);
+        if (transObj) {
+          const midY = (gndY + curY) / 2;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          ctx.beginPath();
+          ctx.roundRect(arrowX + 8, midY - 9, 82, 18, 4);
+          ctx.fill();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.font = '700 7.5px "Fira Code", monospace';
+          ctx.fillStyle = '#38bdf8';
+          ctx.textAlign = 'center';
+          ctx.fillText('λ = ' + transObj.wl + ' nm', arrowX + 49, midY + 1);
+        }
+      }
+
+      // 7. Inset Digital Telemetry Footer Strip
+      const footX = ex + 14;
+      const footY = ey + eh - 48;
+      const footW = ew - 28;
+      const footH = 34;
+
+      ctx.fillStyle = 'rgba(10, 15, 28, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(footX, footY, footW, footH, 6);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const curData = levels[atomState.n - 1] || levels[0];
+      const radiusAngstrom = (atomState.n * atomState.n * 0.529).toFixed(2);
+
+      ctx.font = '700 8.5px "Fira Code", monospace';
+      ctx.fillStyle = '#f87171';
+      ctx.fillStyle = '#f8fafc';
+      ctx.textAlign = 'left';
+      ctx.fillText('CURRENT: n = ' + curData.n + ' (' + curData.shell + ') | E = ' + curData.energy.toFixed(2) + ' eV', footX + 8, footY + 14);
+
+      ctx.font = '600 7.5px -apple-system, sans-serif';
+      ctx.fillStyle = atomState.n === 1 ? '#38bdf8' : '#34d399';
+      ctx.fillText('STATE: ' + (atomState.n === 1 ? 'GROUND STATE' : 'EXCITED STATE') + ' • BOHR RADIUS: ' + radiusAngstrom + ' Å', footX + 8, footY + 26);
+
+      ctx.restore();
+    }
+function loop(time) {
+      drawSimulation(time);
+      requestAnimationFrame(loop);
+    }
+
+    /* =========================================================================
+       UI INTERACTION HANDLERS
+       ========================================================================= */
+
+    function switchSimScreen(screenName) {
+      currentScreen = screenName;
+      document.getElementById('tabScreenSpectra').classList.toggle('active', screenName === 'spectra');
+      document.getElementById('tabScreenEnergy').classList.toggle('active', screenName === 'energy');
+
+      const banner = document.getElementById('equationText');
+      if (screenName === 'spectra') {
+        banner.textContent = '1/λ = R_H (1/n₁² − 1/n₂²) • R_H = 1.097×10⁷ m⁻¹';
+      } else {
+        banner.textContent = 'Energy Levels: E_n = −13.60 eV / n² • ΔE = hν = hc/λ';
+      }
+    }
+
+    function setAppMode(modeKey) {
+      if (typeof currentAppMode !== 'undefined') currentAppMode = modeKey;
+      if (typeof appMode !== 'undefined') appMode = modeKey;
+      if (typeof state !== 'undefined' && state && state.mode !== undefined) state.mode = modeKey;
+      if (typeof state !== 'undefined' && state && state.appMode !== undefined) state.appMode = modeKey;
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+        if (typeof resizeCanvases === 'function') setTimeout(resizeCanvases, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('open');
+        el.classList.add('active');
+      }
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('open');
+        el.classList.remove('active');
+      }
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => {
+        m.classList.remove('open');
+        m.classList.remove('active');
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    
+    function setExplorationMode(mode) {
+      explorationMode = mode;
+      document.getElementById('btnModeExp').classList.toggle('active', mode === 'experiment');
+      document.getElementById('btnModePred').classList.toggle('active', mode === 'prediction');
+      document.getElementById('sectionModelSelector').style.display = mode === 'prediction' ? 'flex' : 'none';
+
+      const helpText = document.getElementById('modeHelpText');
+      if (mode === 'experiment') {
+        helpText.innerHTML = 'In <strong>Experiment</strong> mode, the atomic interior is obscured as a physical black box. Deduce its structure from emitted spectral lines.';
+      } else {
+        helpText.innerHTML = 'In <strong>Prediction</strong> mode, choose from historical models to explore how their hypotheses contrast with reality.';
+      }
+      checkMissions();
+    }
+
+    function selectModel(modelKey) {
+      activeModel = modelKey;
+      ['dalton', 'thomson', 'rutherford', 'bohr', 'debroglie', 'schrodinger'].forEach(m => {
+        const card = document.getElementById('card_' + m);
+        if (card) card.classList.toggle('active', m === modelKey);
+      });
+
+      resetAtomState();
+      checkMissions();
+      showToast('Selected model: ' + modelKey.toUpperCase());
+    }
+
+    function setLightMode(mode) {
+      lightMode = mode;
+      document.getElementById('btnLightWhite').classList.toggle('active', mode === 'white');
+      document.getElementById('btnLightMono').classList.toggle('active', mode === 'mono');
+      document.getElementById('monoControlsContainer').style.display = mode === 'mono' ? 'flex' : 'none';
+    }
+
+    function toggleLamp() {
+      lampPower = !lampPower;
+      const btn = document.getElementById('btnLampPower');
+      btn.textContent = lampPower ? 'ON' : 'OFF';
+      btn.classList.toggle('active', lampPower);
+      if (lampPower) playTone(440, 'sine', 0.08, 0.1);
+    }
+
+    function onWavelengthSlider(val) {
+      monoWavelength = parseFloat(val);
+      updateWavelengthDisplay();
+    }
+
+    function setWavelength(wl) {
+      setLightMode('mono');
+      monoWavelength = wl;
+      document.getElementById('sliderWavelength').value = wl;
+      updateWavelengthDisplay();
+
+      document.querySelectorAll('.wl-preset-btn').forEach(btn => {
+        const txt = btn.textContent;
+        btn.classList.toggle('active', txt.includes(wl.toFixed(1)) || txt.includes(Math.round(wl).toString()));
+      });
+    }
+
+    function updateWavelengthDisplay() {
+      let tag = 'UV';
+      if (monoWavelength >= 380 && monoWavelength <= 750) tag = 'Visible';
+      else if (monoWavelength > 750) tag = 'IR';
+      document.getElementById('valWavelength').textContent = monoWavelength.toFixed(1) + ' nm (' + tag + ')';
+    }
+
+    function onPhotonRateChange(val) {
+      photonRate = parseInt(val);
+      const labels = ['', 'Very Low', 'Low', 'Moderate', 'High', 'Maximum'];
+      document.getElementById('valPhotonRate').textContent = labels[photonRate] || 'Moderate';
+    }
+
+    function togglePlayPause() {
+      isPaused = !isPaused;
+      const icon = document.getElementById('playPauseIcon');
+      if (isPaused) {
+        icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+      } else {
+        icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+      }
+    }
+
+    function stepSimulation() {
+      if (!isPaused) isPaused = true;
+      drawSimulation(performance.now());
+    }
+
+    function setSpeed(spd) {
+      simSpeed = spd;
+      document.getElementById('spd_slow').classList.toggle('active', spd === 0.25);
+      document.getElementById('spd_normal').classList.toggle('active', spd === 1.0);
+      document.getElementById('spd_fast').classList.toggle('active', spd === 2.5);
+    }
+
+    /* Spectrometer Snapshot Tools */
+    function takeSpectrometerSnapshot() {
+      if (snapshots.length >= 4) {
+        showToast('Maximum 4 snapshots allowed. Clear to save more.');
+        return;
+      }
+
+      const snapData = {
+        id: Date.now(),
+        mode: explorationMode,
+        model: activeModel,
+        total: totalDetectedPhotons,
+        bins: Object.assign({}, spectrometerBins)
+      };
+
+      snapshots.push(snapData);
+      renderSnapshots();
+      playTone(660, 'sine', 0.1, 0.12);
+      showToast('Snapshot ' + snapshots.length + ' captured!');
+    }
+
+    function clearSpectrometerData() {
+      spectrometerBins = {};
+      totalDetectedPhotons = 0;
+      document.getElementById('totalPhotonsCount').textContent = '0 photons';
+      showToast('Spectrometer data cleared');
+    }
+
+    function renderSnapshots() {
+      const container = document.getElementById('snapshotsList');
+      container.innerHTML = '';
+      snapshots.forEach((snap, idx) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'background:rgba(15,23,42,0.8); border:1px solid var(--border-card); padding:6px 10px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;';
+        const modelName = snap.mode === 'experiment' ? 'Experiment' : snap.model.toUpperCase();
+        item.innerHTML = '<div><span style="font-weight:700; color:#38bdf8;">Snap #' + (idx + 1) + ':</span><span style="color:var(--text-muted); margin-left:4px;">' + modelName + ' (' + snap.total + ' ph)</span></div><button style="background:transparent; border:none; color:var(--text-dim); cursor:pointer;" onclick="deleteSnapshot(' + idx + ')">✕</button>';
+        container.appendChild(item);
+      });
+    }
+
+    function deleteSnapshot(idx) {
+      snapshots.splice(idx, 1);
+      renderSnapshots();
+    }
+
+    /* Transitions Modal Table */
+    function openTransitionsModal() {
+      const tbody = document.getElementById('transitionsTableBody');
+      tbody.innerHTML = '';
+      TRANSITIONS.forEach(tr => {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td style="font-weight:700; color:#ffffff;">n = ' + tr.n2 + ' → ' + tr.n1 + '</td>' +
+          '<td>' + tr.series + '</td>' +
+          '<td><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:' + tr.color + '; margin-right:6px; vertical-align:middle;"></span>' + tr.band + '</td>' +
+          '<td style="font-family:var(--font-mono); font-weight:700; color:#38bdf8;">' + tr.wl.toFixed(1) + ' nm</td>' +
+          '<td style="font-family:var(--font-mono);">' + tr.energy + '</td>';
+        row.onclick = () => {
+          setWavelength(tr.wl);
+          closeTransitionsModal();
+          showToast('Configured light source to ' + tr.wl.toFixed(1) + ' nm (' + tr.series + ')');
+        };
+        tbody.appendChild(row);
+      });
+      document.getElementById('modalTransitions').classList.add('active');
+    }
+
+    function closeTransitionsModal() {
+      document.getElementById('modalTransitions').classList.remove('active');
+    }
+
+    /* =========================================================================
+       GUIDED MISSIONS UI & LMS INTEGRATION (EXACT REPLICA OF ISOTOPES)
+       ========================================================================= */
+    function checkMissions() {
+      let doneCount = 0;
+      MISSIONS.forEach(m => {
+        if (!m.done && m.check && m.check()) {
+          m.done = true;
+          playSuccessFanfare();
+          showToast('Mission Accomplished: ' + m.title + '!');
+        }
+        if (m.done) doneCount++;
+      });
+
+      const badge = document.getElementById('missionBadgeCount');
+      if (badge) badge.textContent = doneCount + '/' + MISSIONS.length;
+      const heroScore = document.getElementById('missionsHeroScore');
+      if (heroScore) heroScore.textContent = doneCount + ' / ' + MISSIONS.length;
+      updateMissionsUI();
+    }
+
+    function updateMissionsUI() {
+      const container = document.getElementById('missionsGridContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      let doneCount = 0;
+
+      MISSIONS.forEach((m, idx) => {
+        const isDone = m.done;
+        if (isDone) doneCount++;
+
+        const card = document.createElement('div');
+        card.className = 'mission-card' + (isDone ? ' completed' : '');
+        card.innerHTML = 
+          '<div class="mission-card-header">' +
+            '<div class="mission-title">' +
+              '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + (isDone ? '#34d399' : '#38bdf8') + '" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>' +
+              'Mission ' + m.id + ': ' + m.title +
+            '</div>' +
+            '<span class="mission-status-pill">' + (isDone ? 'COMPLETED' : 'IN PROGRESS') + '</span>' +
+          '</div>' +
+          '<div class="mission-desc">' + m.desc + '</div>' +
+          '<div class="mission-action-row">' +
+            '<button class="mission-jump-btn" onclick="startMission(' + m.id + ')">' +
+              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
+              (isDone ? 'Review in Lab' : 'Start Mission') +
+            '</button>' +
+            '<span style="font-size:0.75rem; color:var(--text-dim);">+20 XP</span>' +
+          '</div>';
+        container.appendChild(card);
+      });
+
+      const badge = document.getElementById('missionBadgeCount');
+      if (badge) badge.textContent = doneCount + '/' + MISSIONS.length;
+      const heroScore = document.getElementById('missionsHeroScore');
+      if (heroScore) heroScore.textContent = doneCount + ' / ' + MISSIONS.length;
+    }
+
+    function startMission(mId) {
+      setAppMode('sim');
+      if (mId === 1) {
+        setExplorationMode('prediction');
+        selectModel('dalton');
+        setLightMode('white');
+        lampPower = true;
+      } else if (mId === 2) {
+        setExplorationMode('prediction');
+        selectModel('rutherford');
+        lampPower = true;
+      } else if (mId === 3) {
+        setExplorationMode('prediction');
+        selectModel('bohr');
+        setLightMode('monochromatic');
+        setWavelength(121.6);
+        lampPower = true;
+      } else if (mId === 4) {
+        setExplorationMode('prediction');
+        selectModel('bohr');
+        setLightMode('white');
+        lampPower = true;
+      } else if (mId === 5) {
+        setExplorationMode('prediction');
+        selectModel('debroglie');
+        lampPower = true;
+      } else if (mId === 6) {
+        setExplorationMode('experiment');
+        setLightMode('white');
+        lampPower = true;
+      }
+      playTone(523.25, 'sine', 0.12, 0.1);
+      showToast('Mission ' + mId + ' loaded in Simulation Lab');
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ & LMS INTEGRATION (EXACT REPLICA OF ISOTOPES)
+       ========================================================================= */
+    let quizAnswersState = [null, null, null, null, null, null];
+
+    function buildQuizUI() {
+      const container = document.getElementById('quizQuestionsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      QUIZ_QUESTIONS.forEach((q, qIdx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-card';
+
+        let optsHtml = '';
+        q.opts.forEach((opt, optIdx) => {
+          optsHtml += 
+            '<button class="quiz-opt-btn" id="opt_' + qIdx + '_' + optIdx + '" onclick="selectQuizOption(' + qIdx + ', ' + optIdx + ')">' +
+              '<span class="quiz-opt-marker">' + String.fromCharCode(65 + optIdx) + '</span>' +
+              '<span>' + opt + '</span>' +
+            '</button>';
+        });
+
+        card.innerHTML = 
+          '<div class="quiz-q-num">Question ' + (qIdx + 1) + ' of ' + QUIZ_QUESTIONS.length + '</div>' +
+          '<div class="quiz-q-text">' + q.q + '</div>' +
+          '<div class="quiz-options-list">' + optsHtml + '</div>' +
+          '<div class="quiz-explanation" id="exp_' + qIdx + '">' + q.exp + '</div>';
+        container.appendChild(card);
+      });
+
+      // Restore answered state if user previously answered
+      quizAnswersState.forEach((ans, qIdx) => {
+        if (ans !== null) {
+          const q = QUIZ_QUESTIONS[qIdx];
+          const isCorrect = (ans === q.ans);
+          const btn = document.getElementById('opt_' + qIdx + '_' + ans);
+          const exp = document.getElementById('exp_' + qIdx);
+          if (btn) btn.classList.add(isCorrect ? 'correct' : 'wrong');
+          if (!isCorrect) {
+            const correctBtn = document.getElementById('opt_' + qIdx + '_' + q.ans);
+            if (correctBtn) correctBtn.classList.add('correct');
+          }
+          if (exp) exp.classList.add('visible');
+        }
+      });
+      updateQuizScore();
+    }
+
+    function selectQuizOption(qIdx, optIdx) {
+      if (quizAnswersState[qIdx] !== null) return;
+      quizAnswersState[qIdx] = optIdx;
+
+      const q = QUIZ_QUESTIONS[qIdx];
+      const isCorrect = (optIdx === q.ans);
+      const btn = document.getElementById('opt_' + qIdx + '_' + optIdx);
+      const exp = document.getElementById('exp_' + qIdx);
+
+      if (isCorrect) {
+        if (btn) btn.classList.add('correct');
+        playTone(587.33, 'triangle', 0.15, 0.15);
+      } else {
+        if (btn) btn.classList.add('wrong');
+        const correctBtn = document.getElementById('opt_' + qIdx + '_' + q.ans);
+        if (correctBtn) correctBtn.classList.add('correct');
+        playTone(220, 'sawtooth', 0.2, 0.15);
+      }
+
+      if (exp) exp.classList.add('visible');
+      updateQuizScore();
+    }
+
+    function updateQuizScore() {
+      let score = 0;
+      let answeredCount = 0;
+      quizAnswersState.forEach((ans, idx) => {
+        if (ans !== null) {
+          answeredCount++;
+          if (ans === QUIZ_QUESTIONS[idx].ans) score++;
+        }
+      });
+
+      const total = QUIZ_QUESTIONS.length;
+      const pct = Math.round((score / total) * 100);
+      const display = document.getElementById('quizScoreDisplay');
+      if (display) display.textContent = score + ' / ' + total + ' (' + pct + '%)';
+
+      const certBtn = document.getElementById('btnClaimCert');
+      if (answeredCount === total) {
+        if (certBtn) certBtn.style.display = 'inline-flex';
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'ELEMENTA_SIM_SCORE',
+            sim: 'models-of-the-hydrogen-atom',
+            score: score,
+            total: total,
+            percentage: pct
+          }, '*');
+        }
+      }
+    }
+
+    /* Certificate Modal */
+    function openCertModal() {
+      const overlay = document.getElementById('certOverlay');
+      if (overlay) overlay.classList.add('active');
+      playSuccessFanfare();
+    }
+
+    function closeCertModal() {
+      const overlay = document.getElementById('certOverlay');
+      if (overlay) overlay.classList.remove('active');
+    }
+
+    /* Reset, Fullscreen & Screenshot utilities */
+    function resetSimulation() {
+      resetAtomState();
+      clearSpectrometerData();
+      photons = [];
+      emittedPhotons = [];
+      setLightMode('white');
+      setExplorationMode('experiment');
+      setSpeed(1.0);
+      isPaused = false;
+      showToast('Simulation reset to initial state');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function captureScreenshot() {
+      const link = document.createElement('a');
+      link.download = 'elementa_hydrogen_atom_' + Date.now() + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Laboratory screenshot saved');
+    }
+
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast-msg';
+      toast.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span>' + msg + '</span>';
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, 3200);
+    }
+
+    // Startup Initialization
+        // Interactive Energy Ladder Rung Clicking on Screen 2
+    canvas.addEventListener('click', (e) => {
+      if (currentScreen !== 'energy') return;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      lastEnergyRungClickBoxes.forEach(box => {
+        if (clickX >= box.x1 && clickX <= box.x2 && clickY >= box.y1 && clickY <= box.y2) {
+          atomState.n = box.n;
+          atomState.isExcited = (box.n > 1);
+          atomState.excitationTimer = box.n > 1 ? 90 : 0;
+          if (activeModel === 'schrodinger') {
+            atomState.l = Math.min(box.n - 1, atomState.l);
+            atomState.schrodingerCloud = generateSchrodingerCloud(atomState.n, atomState.l, atomState.m);
+          }
+          playTone(440 + box.n * 60, 'sine', 0.1, 0.12);
+          showToast('Electron transitioned to n = ' + box.n + ' (' + (box.n === 1 ? 'Ground State' : 'Excited State') + ')');
+          checkMissions();
+        }
+      });
+    });
+
+    // Cursor pointer on rungs
+    canvas.addEventListener('mousemove', (e) => {
+      if (currentScreen !== 'energy') {
+        canvas.style.cursor = 'default';
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const overRung = lastEnergyRungClickBoxes.some(box => mx >= box.x1 && mx <= box.x2 && my >= box.y1 && my <= box.y2);
+      canvas.style.cursor = overRung ? 'pointer' : 'default';
+    });
+
+window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      atomState.schrodingerCloud = generateSchrodingerCloud(1, 0, 0);
+      updateWavelengthDisplay();
+      requestAnimationFrame(loop);
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

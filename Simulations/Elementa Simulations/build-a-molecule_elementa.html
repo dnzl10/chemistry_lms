@@ -1,0 +1,3240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Build a Molecule | Elementa LMS Edition</title>
+  <style>
+    :root {
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --topbar-height: 58px;
+      --tabs-height: 48px;
+      --bg-space: #070b14;
+      --bg-surface: #0f172a;
+      --bg-panel: rgba(15, 23, 42, 0.75);
+      --bg-panel-solid: #1e293b;
+      --bg-bucket: rgba(15, 23, 42, 0.9);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.4);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --secondary: #818cf8;
+      --accent: #22d3ee;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --topbar-height: 54px;
+      --tabs-height: 44px;
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "Fira Code", Menlo, Monaco, Consolas, "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TOPBAR: EXACT REPLICA OF ACID-BASE-SOLUTIONS_ELEMENTA.HTML */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      background: linear-gradient(135deg, #e0f2fe 0%, #38bdf8 60%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Mode Selector Pills */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+    }
+
+    .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* Top Action Buttons */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    .action-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* SECONDARY SCREENS NAV */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .screen-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .screen-tab-btn.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #7dd3fc;
+    }
+
+    .screen-tab-number {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: var(--text-main);
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .equation-banner-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-card);
+      padding: 4px 14px;
+      border-radius: 20px;
+      color: var(--text-muted);
+    }
+
+    /* MAIN APP WORKSPACE */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* SECTIONS: SIM / MISSIONS / QUIZ / THEORY */
+    .app-view-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .app-view-container.active {
+      display: flex;
+    }
+
+    /* SIMULATION CANVAS AREA */
+    .sim-layout {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: row;
+      background: radial-gradient(circle at 50% 50%, #0d1527 0%, #070b14 100%);
+      position: relative;
+    }
+
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #chemCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* FLOATING TOP NOTIFICATION / CURRENT MOLECULE TAG */
+    .canvas-floating-hud {
+      position: absolute;
+      top: 14px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .active-molecule-pill {
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+    }
+
+    .active-molecule-pill.hidden {
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+    }
+
+    .active-mol-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .active-mol-formula {
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
+      color: #94a3b8;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .view-3d-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+
+    .view-3d-btn:hover {
+      filter: brightness(1.15);
+    }
+
+    /* COLLECTION GOALS SIDEBAR */
+    .collection-sidebar {
+      width: 320px;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.92);
+      border-left: 1px solid var(--border-card);
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(10px);
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .collection-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .collection-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .collection-counter {
+      font-size: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .collection-box-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .collection-box-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .collection-box-card.completed {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .box-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .box-target-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .box-target-formula {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #38bdf8;
+    }
+
+    .box-slots-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(10, 15, 28, 0.6);
+      border-radius: 8px;
+      padding: 8px;
+      min-height: 52px;
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+    }
+
+    .box-slot {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .box-slot.filled {
+      border-style: solid;
+      border-color: #34d399;
+      background: rgba(52, 211, 153, 0.15);
+    }
+
+    .box-slot-preview {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #34d399;
+    }
+
+    /* ATOM BUCKET & CONTROLS FOOTER */
+    .sim-footer-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 320px;
+      background: linear-gradient(0deg, rgba(10, 15, 28, 0.95) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border-top: 1px solid var(--border-card);
+      backdrop-filter: blur(14px);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 15;
+    }
+
+    .kit-carousel {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .kit-nav-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .kit-nav-btn:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+    }
+
+    .kit-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .kit-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .kit-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
+
+    .kit-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .atom-bucket-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 6px 14px;
+    }
+
+    .atom-dispenser {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: grab;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: background 0.15s ease;
+    }
+
+    .atom-dispenser:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .atom-disc {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .atom-count-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .sim-quick-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .tool-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+
+    .tool-btn.danger:hover {
+      background: rgba(248, 113, 113, 0.15);
+      border-color: rgba(248, 113, 113, 0.4);
+      color: #f87171;
+    }
+
+    /* ======================================================== */
+    /* STANDARDIZED ELEMENTA MODAL SUITE                        */
+    /* ======================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open,
+    .modal-backdrop.active {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      display: flex !important;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .modal-backdrop.open .modal-dialog,
+    .modal-backdrop.active .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .primary-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    /* Override hidden/absolute inner simulation screen views inside modals */
+    .modal-backdrop .app-view-container,
+    .modal-backdrop .app-screen,
+    .modal-backdrop .app-section,
+    .modal-backdrop .mode-view,
+    .modal-backdrop .screen-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      inset: auto !important;
+      overflow: visible !important;
+      transform: none !important;
+    }
+
+    .modal-backdrop .document-page-scroll,
+    .modal-backdrop .scrollable-page-layout {
+      height: auto !important;
+      overflow-y: visible !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+
+    .modal-backdrop .doc-hero,
+    .modal-backdrop .section-hero {
+      margin-bottom: 16px !important;
+    }
+
+    .modal-window {
+      background: #0f172a;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.2);
+      border-radius: 16px;
+      width: 720px;
+      max-width: 95vw;
+      height: 560px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.2rem;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .modal-body {
+      flex: 1;
+      display: flex;
+      position: relative;
+    }
+
+    .canvas-3d-wrap {
+      flex: 1;
+      height: 100%;
+      position: relative;
+    }
+
+    #canvas3D {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #canvas3D:active {
+      cursor: grabbing;
+    }
+
+    .modal-3d-info {
+      width: 250px;
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 1px solid var(--border-card);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .info-group-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+    }
+
+    .info-value-pill {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+
+    .render-style-toggle {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .render-style-btn {
+      flex: 1;
+      padding: 6px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .render-style-btn.active {
+      background: #0284c7;
+      color: #fff;
+      border-color: #38bdf8;
+    }
+
+    /* MISSIONS / QUIZ / THEORY VIEWS */
+    .document-page-scroll {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 30px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .doc-hero {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .doc-hero-text h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .doc-hero-text p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    .mission-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .mission-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .mission-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mission-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mission-status-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+    }
+
+    .mission-card.completed .mission-status-pill {
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+    }
+
+    .mission-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .mission-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .mission-jump-btn {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .mission-jump-btn:hover {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    /* QUIZ QUESTION CARDS */
+    .quiz-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quiz-q-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-opt-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-opt-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .quiz-opt-btn.correct {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #34d399;
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .quiz-opt-btn.wrong {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    .quiz-opt-marker {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .quiz-explanation {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 3px solid #38bdf8;
+      color: #cbd5e1;
+      display: none;
+    }
+
+    .quiz-explanation.visible {
+      display: block;
+    }
+
+    .quiz-score-banner {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* THEORY ARTICLE CARDS */
+    .theory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .theory-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theory-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theory-content {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .theory-formula-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #7dd3fc;
+      margin-top: 6px;
+    }
+
+    /* CERTIFICATE MODAL */
+    .cert-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 250;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cert-overlay.active {
+      display: flex;
+    }
+
+    .cert-card {
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+      border: 2px solid rgba(234, 179, 8, 0.5);
+      border-radius: 20px;
+      padding: 36px 44px;
+      max-width: 600px;
+      width: 90vw;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(234, 179, 8, 0.25);
+      position: relative;
+    }
+
+    .cert-seal {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+      color: #fff;
+    }
+
+    .cert-h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .cert-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .cert-name-slot {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #38bdf8;
+      border-bottom: 1px dashed rgba(56, 189, 248, 0.4);
+      padding-bottom: 6px;
+      margin: 0 auto 20px;
+      max-width: 380px;
+    }
+
+    .cert-details {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .cert-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+    }
+  
+    /* Standard Sleek Elementa Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  
+    /* Toast Notification Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-family: var(--font-body, 'Inter', sans-serif);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- LMS TOPBAR: EXACTLY MATCHING acid-base-solutions_elementa.html -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <circle cx="19" cy="6" r="2"></circle>
+            <circle cx="5" cy="18" r="2"></circle>
+            <path d="M14.5 9.5l3-2.5"></path>
+            <path d="M9.5 14.5l-3 2.5"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Molecular Structure & Bonding</span>
+        <span>›</span>
+        <span class="current">Build a Molecule</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- SECONDARY SCREENS NAVIGATION -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenSingle" onclick="switchSimScreen('single')">
+        <span class="screen-tab-number">1</span>
+        Single Molecule Builder
+      </button>
+      <button class="screen-tab-btn" id="tabScreenMultiple" onclick="switchSimScreen('multiple')">
+        <span class="screen-tab-number">2</span>
+        Multiple Molecules & Stoichiometry
+      </button>
+      <button class="screen-tab-btn" id="tabScreenPlayground" onclick="switchSimScreen('playground')">
+        <span class="screen-tab-number">3</span>
+        Playground & 3D Geometry
+      </button>
+    </div>
+
+    <!-- Live Reaction / Status Banner -->
+    <div class="equation-banner-strip" id="equationBanner">
+      <span style="color:#7dd3fc; font-weight:700;">Formula:</span>
+      <span id="screenStatusFormula">Drag atoms to assemble covalent bonds</span>
+    </div>
+  </nav>
+
+  <!-- WORKSPACE BODY -->
+  <main class="simulation-workspace">
+
+    <!-- VIEW 1: SIMULATION LAB -->
+    <div class="app-view-container active" id="viewSim">
+      <div class="sim-layout">
+        <!-- Main Canvas Area -->
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="chemCanvas"></canvas>
+
+          <!-- Floating HUD for Recognized Molecule -->
+          <div class="canvas-floating-hud">
+            <div class="active-molecule-pill hidden" id="activeMoleculePill">
+              <div>
+                <div class="active-mol-name" id="hudMolName">Water</div>
+                <div class="active-mol-formula" id="hudMolFormula">H₂O</div>
+              </div>
+              <button class="view-3d-btn" onclick="openActiveMolecule3D()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                3D View
+              </button>
+            </div>
+          </div>
+
+          <!-- Bottom Atom Bucket / Kit Controls -->
+          <div class="sim-footer-controls">
+            <!-- Kit Switcher -->
+            <div class="kit-carousel">
+              <button class="kit-nav-btn" id="btnPrevKit" onclick="prevKit()" title="Previous Atom Kit">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              <div class="kit-title-wrap">
+                <span class="kit-label">Atom Reagent Kit</span>
+                <span class="kit-name" id="kitDisplayName">Kit 1: Organic Basics</span>
+              </div>
+              <button class="kit-nav-btn" id="btnNextKit" onclick="nextKit()" title="Next Atom Kit">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+
+            <!-- Atom Dispensers in Kit -->
+            <div class="atom-bucket-strip" id="atomBucketStrip">
+              <!-- Dynamically populated per kit -->
+            </div>
+
+            <!-- Quick Action Tools -->
+            <div class="sim-quick-tools">
+              <button class="tool-btn" onclick="splitAllBonds()" title="Separate all atoms">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
+                Break Bonds
+              </button>
+              <button class="tool-btn danger" onclick="clearPlaygroundAtoms()" title="Clear atoms back to bucket">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Clear Bench
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar: Collection Goal Boxes -->
+        <aside class="simulation-sidebar collection-sidebar" id="collectionSidebar">
+          <div class="collection-header">
+            <div class="collection-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              <span>Collection Goals</span>
+            </div>
+            <span class="collection-counter" id="collectionScoreBadge">0 / 5 Filled</span>
+          </div>
+
+          <div class="collection-box-list" id="collectionBoxList">
+            <!-- Dynamically populated collection target goals -->
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- VIEW 2: GUIDED MISSIONS -->
+    <div class="app-view-container" id="viewMissions">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Guided Molecular Architecture Missions</h1>
+            <p>Master chemical valency, Lewis bonding rules, and geometric isomerism by synthesizing target molecules and satisfying atomic octets.</p>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 1.8rem; font-weight: 800; color: #38bdf8;" id="missionProgressRatio">0 / 5</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Missions Cleared</div>
+          </div>
+        </div>
+
+        <div class="mission-grid" id="missionGridContainer">
+          <!-- Dynamic Mission Cards -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+      <div class="modal-body" id="quizBody">
+        <!-- VIEW 3: ASSESSMENT QUIZ -->
+    <div class="app-view-container" id="viewQuiz">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Molecular Chemistry Assessment</h1>
+            <p>Validate your understanding of covalent bonds, valence electron sharing, molecular geometry, and stoichiometry.</p>
+          </div>
+          <div>
+            <button class="cert-btn" id="btnCertificateTrigger" style="display:none;" onclick="openCertificate()">
+              🏆 View Certificate
+            </button>
+          </div>
+        </div>
+
+        <div class="quiz-score-banner">
+          <div>
+            <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted);">Current Evaluation</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #f8fafc;" id="quizStatusText">0 of 5 Questions Answered</div>
+          </div>
+          <button class="tool-btn" onclick="resetQuiz()">Reset Quiz</button>
+        </div>
+
+        <div id="quizContainer" style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Dynamic Quiz Questions -->
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="closeModal('modalQuiz')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <!-- VIEW 4: THEORY & FORMULAS -->
+    <div class="app-view-container" id="viewTheory">
+      <div class="document-page-scroll">
+        <div class="doc-hero">
+          <div class="doc-hero-text">
+            <h1>Chemical Bonding & Molecular Architecture Theory</h1>
+            <p>Fundamental principles of covalent valence, electronegativity, VSEPR geometries, and Lewis electron sharing.</p>
+          </div>
+        </div>
+
+        <div class="theory-grid">
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Covalent Bonding & Octet Rule
+            </div>
+            <div class="theory-content">
+              Nonmetal atoms share electron pairs to attain stable valence electron configurations resembling noble gases. 
+              Hydrogen obeys the duet rule (max 1 bond), Carbon forms 4 bonds (tetravalent), Nitrogen forms 3 bonds (trivalent), 
+              Oxygen forms 2 bonds (divalent), and Halogens (F, Cl) form 1 single bond.
+            </div>
+            <div class="theory-formula-box">
+              Valence Bonds: H=1, C=4, N=3, O=2, F/Cl=1
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              VSEPR Theory & 3D Shapes
+            </div>
+            <div class="theory-content">
+              Valence Shell Electron Pair Repulsion (VSEPR) states that electron pairs around a central atom maximize distance 
+              to minimize electrostatic repulsion.
+              <br><br>
+              • <strong>Linear (180°):</strong> CO₂, C₂H₂, BeCl₂<br>
+              • <strong>Bent (~104.5°):</strong> H₂O, H₂S, SO₂<br>
+              • <strong>Trigonal Planar (120°):</strong> BF₃, CH₂O<br>
+              • <strong>Trigonal Pyramidal (~107°):</strong> NH₃, PH₃<br>
+              • <strong>Tetrahedral (109.5°):</strong> CH₄, SiH₄, CCl₄
+            </div>
+            <div class="theory-formula-box">
+              θ(Tetrahedral) = 109.47° | θ(H₂O) = 104.5°
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"></path></svg>
+              Bond Order & Saturation
+            </div>
+            <div class="theory-content">
+              Atoms can share 1, 2, or 3 electron pairs:
+              <br>
+              • <strong>Single Bond (σ):</strong> Longest, lowest bond energy (e.g., H-H, C-C).<br>
+              • <strong>Double Bond (σ + π):</strong> Intermediate length and strength (e.g., O=O, C=C in ethylene).<br>
+              • <strong>Triple Bond (σ + 2π):</strong> Shortest, highest bond energy (e.g., N≡N, H-C≡C-H in acetylene).
+            </div>
+            <div class="theory-formula-box">
+              Bond Energy: N≡N (945 kJ/mol) >> O=O (498 kJ/mol) >> H-H (436 kJ/mol)
+            </div>
+          </div>
+
+          <div class="theory-card">
+            <div class="theory-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+              Stoichiometry & Conservation of Mass
+            </div>
+            <div class="theory-content">
+              In chemical reactions, atoms are neither created nor destroyed, only rearranged into new molecular combinations.
+              Balancing stoichiometric equations requires equal counts of each atomic species on reactant and product sides.
+            </div>
+            <div class="theory-formula-box">
+              2 H₂ + O₂ ➔ 2 H₂O &nbsp;|&nbsp; CH₄ + 2 O₂ ➔ CO₂ + 2 H₂O
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- 3D MOLECULAR VIEWER MODAL -->
+  <div class="modal-backdrop" id="modal3D">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          <span id="modal3DTitle">Molecular 3D Structure</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal3D()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="canvas-3d-wrap">
+          <canvas id="canvas3D"></canvas>
+          <div style="position:absolute; bottom:12px; left:16px; font-size:0.75rem; color:var(--text-dim); pointer-events:none;">
+            Drag to Rotate • Scroll to Zoom
+          </div>
+        </div>
+
+        <div class="modal-3d-info">
+          <div>
+            <div class="info-group-title">Molecule Name</div>
+            <div class="info-value-pill" id="modal3DMolName">Water</div>
+          </div>
+
+          <div>
+            <div class="info-group-title">Chemical Formula</div>
+            <div class="info-value-pill" id="modal3DFormula">H₂O</div>
+          </div>
+
+          <div>
+            <div class="info-group-title">VSEPR Geometry</div>
+            <div class="info-value-pill" id="modal3DGeometry">Bent (104.5°)</div>
+          </div>
+
+          <div>
+            <div class="info-group-title">Representation Mode</div>
+            <div class="render-style-toggle">
+              <button class="render-style-btn active" id="btnRenderBallStick" onclick="setRenderMode('ballAndStick')">Ball & Stick</button>
+              <button class="render-style-btn" id="btnRenderSpaceFill" onclick="setRenderMode('spaceFilling')">Space Filling</button>
+            </div>
+          </div>
+
+          <div style="margin-top:auto;">
+            <button class="tool-btn" style="width:100%; justify-content:center;" onclick="reset3DCamera()">
+              Reset 3D Orientation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CERTIFICATE MODAL -->
+  <div class="cert-overlay" id="certOverlay">
+    <div class="cert-card">
+      <div class="cert-seal">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h1 class="cert-h1">Certificate of Chemistry Mastery</h1>
+      <p class="cert-sub">Elementa Interactive Molecular Architecture Lab</p>
+      <div class="cert-name-slot">Scholar of Molecular Structure</div>
+      <p class="cert-details">
+        Has successfully demonstrated consummate competence in covalent bond assembly, Lewis octet satisfaction, 
+        stoichiometric balancing, and 3D VSEPR spatial molecular geometry.
+      </p>
+      <button class="cert-btn" onclick="closeCertificate()">Return to Laboratory</button>
+    </div>
+  </div>
+
+  <!-- EMBEDDED COMPLETE SCRIPT -->
+  <script>
+    /* =========================================================================
+       AUDIO SYNTHESIZER (Web Audio API)
+       ========================================================================= */
+    class ChemAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+      }
+
+      playSnap() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      playBreak() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(160, now + 0.1);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      }
+
+      playCollectSuccess() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const now = this.ctx.currentTime + idx * 0.09;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.18);
+        });
+      }
+    }
+
+    const chemAudio = new ChemAudioEngine();
+
+    function toggleAudio() {
+      chemAudio.enabled = !chemAudio.enabled;
+      const btn = document.getElementById('btnSoundToggle');
+      if (chemAudio.enabled) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+
+    /* =========================================================================
+       MOLECULE DATABASE & ATOM SPECIES DEFINITIONS
+       ========================================================================= */
+    const ATOM_SPECIES = {
+      H:  { symbol: 'H',  name: 'Hydrogen',   color: '#f8fafc', textColor: '#0f172a', radius: 18, valence: 1, mass: 1 },
+      C:  { symbol: 'C',  name: 'Carbon',     color: '#334155', textColor: '#f8fafc', radius: 26, valence: 4, mass: 12 },
+      N:  { symbol: 'N',  name: 'Nitrogen',   color: '#2563eb', textColor: '#f8fafc', radius: 24, valence: 3, mass: 14 },
+      O:  { symbol: 'O',  name: 'Oxygen',     color: '#ef4444', textColor: '#f8fafc', radius: 23, valence: 2, mass: 16 },
+      F:  { symbol: 'F',  name: 'Fluorine',   color: '#34d399', textColor: '#0f172a', radius: 22, valence: 1, mass: 19 },
+      Cl: { symbol: 'Cl', name: 'Chlorine',   color: '#10b981', textColor: '#0f172a', radius: 27, valence: 1, mass: 35.5 },
+      Si: { symbol: 'Si', name: 'Silicon',    color: '#d97706', textColor: '#0f172a', radius: 29, valence: 4, mass: 28 },
+      P:  { symbol: 'P',  name: 'Phosphorus', color: '#f97316', textColor: '#0f172a', radius: 27, valence: 3, mass: 31 },
+      S:  { symbol: 'S',  name: 'Sulfur',     color: '#eab308', textColor: '#0f172a', radius: 27, valence: 2, mass: 32 },
+      B:  { symbol: 'B',  name: 'Boron',      color: '#ec4899', textColor: '#f8fafc', radius: 23, valence: 3, mass: 10.8 }
+    };
+
+    // Canonical Known Molecules Database
+    const MOLECULES_DB = [
+      {
+        id: 'H2O',
+        name: 'Water',
+        formula: 'H₂O',
+        atoms: { H: 2, O: 1 },
+        geometry: 'Bent (104.5°)',
+        desc: 'Universal solvent vital to all known biological life.',
+        structure3d: [
+          { symbol: 'O', x: 0, y: 0, z: 0 },
+          { symbol: 'H', x: 0.76, y: 0.59, z: 0 },
+          { symbol: 'H', x: -0.76, y: 0.59, z: 0 }
+        ],
+        bonds3d: [[0, 1], [0, 2]]
+      },
+      {
+        id: 'O2',
+        name: 'Molecular Oxygen',
+        formula: 'O₂',
+        atoms: { O: 2 },
+        geometry: 'Linear (180°)',
+        desc: 'Essential for cellular respiration and aerobic combustion.',
+        structure3d: [
+          { symbol: 'O', x: -0.6, y: 0, z: 0 },
+          { symbol: 'O', x: 0.6, y: 0, z: 0 }
+        ],
+        bonds3d: [[0, 1]]
+      },
+      {
+        id: 'H2',
+        name: 'Hydrogen Gas',
+        formula: 'H₂',
+        atoms: { H: 2 },
+        geometry: 'Linear (180°)',
+        desc: 'Lightest and most abundant chemical substance in the universe.',
+        structure3d: [
+          { symbol: 'H', x: -0.4, y: 0, z: 0 },
+          { symbol: 'H', x: 0.4, y: 0, z: 0 }
+        ],
+        bonds3d: [[0, 1]]
+      },
+      {
+        id: 'CO2',
+        name: 'Carbon Dioxide',
+        formula: 'CO₂',
+        atoms: { C: 1, O: 2 },
+        geometry: 'Linear (180°)',
+        desc: 'Key greenhouse gas and raw reactant in plant photosynthesis.',
+        structure3d: [
+          { symbol: 'C', x: 0, y: 0, z: 0 },
+          { symbol: 'O', x: -1.16, y: 0, z: 0 },
+          { symbol: 'O', x: 1.16, y: 0, z: 0 }
+        ],
+        bonds3d: [[0, 1], [0, 2]]
+      },
+      {
+        id: 'N2',
+        name: 'Molecular Nitrogen',
+        formula: 'N₂',
+        atoms: { N: 2 },
+        geometry: 'Linear (180°)',
+        desc: "Forms 78% of the atmosphere, bound by an inert triple bond.",
+        structure3d: [
+          { symbol: 'N', x: -0.55, y: 0, z: 0 },
+          { symbol: 'N', x: 0.55, y: 0, z: 0 }
+        ],
+        bonds3d: [[0, 1]]
+      },
+      {
+        id: 'NH3',
+        name: 'Ammonia',
+        formula: 'NH₃',
+        atoms: { N: 1, H: 3 },
+        geometry: 'Trigonal Pyramidal (107.8°)',
+        desc: 'Precursor to nitrogenous fertilizers and industrial cleaners.',
+        structure3d: [
+          { symbol: 'N', x: 0, y: -0.2, z: 0 },
+          { symbol: 'H', x: 0.94, y: 0.2, z: 0 },
+          { symbol: 'H', x: -0.47, y: 0.2, z: 0.81 },
+          { symbol: 'H', x: -0.47, y: 0.2, z: -0.81 }
+        ],
+        bonds3d: [[0, 1], [0, 2], [0, 3]]
+      },
+      {
+        id: 'CH4',
+        name: 'Methane',
+        formula: 'CH₄',
+        atoms: { C: 1, H: 4 },
+        geometry: 'Tetrahedral (109.5°)',
+        desc: 'Simplest alkane and primary component of natural gas.',
+        structure3d: [
+          { symbol: 'C', x: 0, y: 0, z: 0 },
+          { symbol: 'H', x: 0, y: 1.09, z: 0 },
+          { symbol: 'H', x: 1.03, y: -0.36, z: 0 },
+          { symbol: 'H', x: -0.51, y: -0.36, z: 0.89 },
+          { symbol: 'H', x: -0.51, y: -0.36, z: -0.89 }
+        ],
+        bonds3d: [[0, 1], [0, 2], [0, 3], [0, 4]]
+      },
+      {
+        id: 'CO',
+        name: 'Carbon Monoxide',
+        formula: 'CO',
+        atoms: { C: 1, O: 1 },
+        geometry: 'Linear (180°)',
+        desc: 'Colorless, odorless toxic gas formed by incomplete combustion.',
+        structure3d: [
+          { symbol: 'C', x: -0.56, y: 0, z: 0 },
+          { symbol: 'O', x: 0.56, y: 0, z: 0 }
+        ],
+        bonds3d: [[0, 1]]
+      },
+      {
+        id: 'Cl2',
+        name: 'Chlorine Gas',
+        formula: 'Cl₂',
+        atoms: { Cl: 2 },
+        geometry: 'Linear (180°)',
+        desc: 'Pale yellow-green diatomic halogen disinfectant.',
+        structure3d: [
+          { symbol: 'Cl', x: -0.99, y: 0, z: 0 },
+          { symbol: 'Cl', x: 0.99, y: 0, z: 0 }
+        ],
+        bonds3d: [[0, 1]]
+      },
+      {
+        id: 'H2O2',
+        name: 'Hydrogen Peroxide',
+        formula: 'H₂O₂',
+        atoms: { H: 2, O: 2 },
+        geometry: 'Non-planar skewed (~111.5°)',
+        desc: 'Oxidizing agent and disinfectant with an O-O peroxide bond.',
+        structure3d: [
+          { symbol: 'O', x: -0.73, y: 0, z: 0 },
+          { symbol: 'O', x: 0.73, y: 0, z: 0 },
+          { symbol: 'H', x: -1.1, y: 0.8, z: 0 },
+          { symbol: 'H', x: 1.1, y: -0.4, z: 0.7 }
+        ],
+        bonds3d: [[0, 1], [0, 2], [1, 3]]
+      },
+      {
+        id: 'C2H2',
+        name: 'Acetylene (Ethyne)',
+        formula: 'C₂H₂',
+        atoms: { C: 2, H: 2 },
+        geometry: 'Linear (180°)',
+        desc: 'High-energy hydrocarbon fuel used in oxy-acetylene welding.',
+        structure3d: [
+          { symbol: 'H', x: -1.66, y: 0, z: 0 },
+          { symbol: 'C', x: -0.6, y: 0, z: 0 },
+          { symbol: 'C', x: 0.6, y: 0, z: 0 },
+          { symbol: 'H', x: 1.66, y: 0, z: 0 }
+        ],
+        bonds3d: [[0, 1], [1, 2], [2, 3]]
+      },
+      {
+        id: 'C2H4',
+        name: 'Ethylene (Ethene)',
+        formula: 'C₂H₄',
+        atoms: { C: 2, H: 4 },
+        geometry: 'Trigonal Planar (120°)',
+        desc: 'Key petrochemical building block and plant ripening hormone.',
+        structure3d: [
+          { symbol: 'C', x: -0.67, y: 0, z: 0 },
+          { symbol: 'C', x: 0.67, y: 0, z: 0 },
+          { symbol: 'H', x: -1.24, y: 0.93, z: 0 },
+          { symbol: 'H', x: -1.24, y: -0.93, z: 0 },
+          { symbol: 'H', x: 1.24, y: 0.93, z: 0 },
+          { symbol: 'H', x: 1.24, y: -0.93, z: 0 }
+        ],
+        bonds3d: [[0, 1], [0, 2], [0, 3], [1, 4], [1, 5]]
+      },
+      {
+        id: 'CH2O',
+        name: 'Formaldehyde',
+        formula: 'CH₂O',
+        atoms: { C: 1, H: 2, O: 1 },
+        geometry: 'Trigonal Planar (120°)',
+        desc: 'Simplest aldehyde used in resins, plastics, and biological preservation.',
+        structure3d: [
+          { symbol: 'C', x: 0, y: 0, z: 0 },
+          { symbol: 'O', x: 0, y: 1.21, z: 0 },
+          { symbol: 'H', x: -0.94, y: -0.58, z: 0 },
+          { symbol: 'H', x: 0.94, y: -0.58, z: 0 }
+        ],
+        bonds3d: [[0, 1], [0, 2], [0, 3]]
+      }
+    ];
+
+    /* =========================================================================
+       REAGENT KITS PRESETS
+       ========================================================================= */
+    const KITS = [
+      {
+        name: 'Kit 1: Atmospheric & Hydride Basics',
+        inventory: [
+          { symbol: 'H', count: 6 },
+          { symbol: 'O', count: 4 },
+          { symbol: 'C', count: 2 },
+          { symbol: 'N', count: 2 }
+        ]
+      },
+      {
+        name: 'Kit 2: Halogens & Simple Organics',
+        inventory: [
+          { symbol: 'C', count: 3 },
+          { symbol: 'H', count: 8 },
+          { symbol: 'Cl', count: 2 },
+          { symbol: 'O', count: 2 }
+        ]
+      },
+      {
+        name: 'Kit 3: Multi-Element Playground',
+        inventory: [
+          { symbol: 'H', count: 10 },
+          { symbol: 'C', count: 4 },
+          { symbol: 'N', count: 3 },
+          { symbol: 'O', count: 4 },
+          { symbol: 'F', count: 3 },
+          { symbol: 'S', count: 2 }
+        ]
+      }
+    ];
+
+    /* =========================================================================
+       COLLECTION GOALS PER SCREEN
+       ========================================================================= */
+    const SCREEN_COLLECTIONS = {
+      single: [
+        { molId: 'H2O', target: 2, filled: 0 },
+        { molId: 'O2',  target: 1, filled: 0 },
+        { molId: 'H2',  target: 2, filled: 0 },
+        { molId: 'CO2', target: 1, filled: 0 },
+        { molId: 'N2',  target: 1, filled: 0 }
+      ],
+      multiple: [
+        { molId: 'NH3', target: 2, filled: 0 },
+        { molId: 'CH4', target: 2, filled: 0 },
+        { molId: 'CO',  target: 2, filled: 0 },
+        { molId: 'C2H2', target: 1, filled: 0 }
+      ],
+      playground: [
+        { molId: 'CH2O', target: 1, filled: 0 },
+        { molId: 'C2H4', target: 1, filled: 0 },
+        { molId: 'H2O2', target: 1, filled: 0 },
+        { molId: 'Cl2',  target: 1, filled: 0 }
+      ]
+    };
+
+    /* =========================================================================
+       SIMULATION ENGINE STATE
+       ========================================================================= */
+    const state = {
+      currentScreen: 'single',
+      currentKitIndex: 0,
+      atoms: [],
+      bonds: [],
+      nextAtomId: 1,
+      selectedAtom: null,
+      draggedAtom: null,
+      dragOffset: { x: 0, y: 0 },
+      mousePos: { x: 0, y: 0 },
+      isDragging: false,
+      activeIdentifiedMolecule: null,
+      view3DTargetMol: null,
+      render3DMode: 'ballAndStick',
+      camera3D: { rotX: 0.3, rotY: 0.5, zoom: 120 }
+    };
+
+    /* =========================================================================
+       GRAPH & MOLECULE IDENTIFICATION
+       ========================================================================= */
+    function getConnectedComponents() {
+      const visited = new Set();
+      const components = [];
+
+      for (const atom of state.atoms) {
+        if (!visited.has(atom.id)) {
+          const comp = [];
+          const queue = [atom];
+          visited.add(atom.id);
+
+          while (queue.length > 0) {
+            const curr = queue.shift();
+            comp.push(curr);
+
+            const neighbors = state.bonds
+              .filter(b => b.a === curr.id || b.b === curr.id)
+              .map(b => (b.a === curr.id ? b.b : b.a));
+
+            for (const nId of neighbors) {
+              if (!visited.has(nId)) {
+                visited.add(nId);
+                const neighborAtom = state.atoms.find(a => a.id === nId);
+                if (neighborAtom) queue.push(neighborAtom);
+              }
+            }
+          }
+          components.push(comp);
+        }
+      }
+      return components;
+    }
+
+    function identifyMolecule(atomCluster) {
+      if (!atomCluster || atomCluster.length < 2) return null;
+
+      // Count atomic species
+      const counts = {};
+      for (const atom of atomCluster) {
+        counts[atom.symbol] = (counts[atom.symbol] || 0) + 1;
+      }
+
+      // Check if matches known database molecules
+      for (const dbMol of MOLECULES_DB) {
+        const dbKeys = Object.keys(dbMol.atoms);
+        const clusterKeys = Object.keys(counts);
+
+        if (dbKeys.length === clusterKeys.length) {
+          const matches = dbKeys.every(k => dbMol.atoms[k] === counts[k]);
+          if (matches) {
+            return dbMol;
+          }
+        }
+      }
+      return null;
+    }
+
+    function checkActiveMoleculeHUD() {
+      const components = getConnectedComponents();
+      let recognized = null;
+
+      for (const comp of components) {
+        const mol = identifyMolecule(comp);
+        if (mol) {
+          recognized = mol;
+          break;
+        }
+      }
+
+      state.activeIdentifiedMolecule = recognized;
+      const hudPill = document.getElementById('activeMoleculePill');
+      const hudName = document.getElementById('hudMolName');
+      const hudFormula = document.getElementById('hudMolFormula');
+      const statusBanner = document.getElementById('screenStatusFormula');
+
+      if (recognized) {
+        hudName.textContent = recognized.name;
+        hudFormula.textContent = recognized.formula;
+        hudPill.classList.remove('hidden');
+        statusBanner.innerHTML = `<strong style="color:#38bdf8;">${recognized.name} (${recognized.formula})</strong> — ${recognized.geometry}`;
+      } else {
+        hudPill.classList.add('hidden');
+        statusBanner.textContent = 'Drag atoms together to assemble covalent bonds';
+      }
+
+      checkMissionsEvaluation();
+    }
+
+    /* =========================================================================
+       CANVAS 2D SIMULATION RENDERING & INTERACTION
+       ========================================================================= */
+    const canvas = document.getElementById('chemCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = container.clientWidth * dpr;
+      canvas.height = container.clientHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // Atom creation
+    function spawnAtom(symbol, x, y) {
+      const spec = ATOM_SPECIES[symbol];
+      if (!spec) return null;
+      const atom = {
+        id: state.nextAtomId++,
+        symbol: symbol,
+        x: x,
+        y: y,
+        vx: 0,
+        vy: 0,
+        radius: spec.radius,
+        color: spec.color,
+        textColor: spec.textColor,
+        valence: spec.valence,
+        bondsCount: 0
+      };
+      state.atoms.push(atom);
+      return atom;
+    }
+
+    function getAtomBondsCount(atomId) {
+      return state.bonds.filter(b => b.a === atomId || b.b === atomId).length;
+    }
+
+    function findAtomAt(x, y) {
+      for (let i = state.atoms.length - 1; i >= 0; i--) {
+        const a = state.atoms[i];
+        const dist = Math.hypot(a.x - x, a.y - y);
+        if (dist <= a.radius + 6) {
+          return a;
+        }
+      }
+      return null;
+    }
+
+    // Canvas Events
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const hit = findAtomAt(mx, my);
+      if (hit) {
+        state.draggedAtom = hit;
+        state.isDragging = true;
+        state.dragOffset = { x: hit.x - mx, y: hit.y - my };
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      state.mousePos = { x: mx, y: my };
+
+      if (state.isDragging && state.draggedAtom) {
+        state.draggedAtom.x = mx + state.dragOffset.x;
+        state.draggedAtom.y = my + state.dragOffset.y;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (state.isDragging && state.draggedAtom) {
+        const dropped = state.draggedAtom;
+        state.isDragging = false;
+        state.draggedAtom = null;
+
+        // Try bonding with nearby compatible atoms
+        tryBondAtom(dropped);
+        checkActiveMoleculeHUD();
+      }
+    });
+
+    // Double-click to break attached bonds
+    canvas.addEventListener('dblclick', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const hit = findAtomAt(mx, my);
+      if (hit) {
+        const initialCount = state.bonds.length;
+        state.bonds = state.bonds.filter(b => b.a !== hit.id && b.b !== hit.id);
+        if (state.bonds.length < initialCount) {
+          chemAudio.playBreak();
+          checkActiveMoleculeHUD();
+        }
+      }
+    });
+
+    function tryBondAtom(atom) {
+      const currentBonds = getAtomBondsCount(atom.id);
+      if (currentBonds >= atom.valence) return;
+
+      for (const other of state.atoms) {
+        if (other.id === atom.id) continue;
+        const otherBonds = getAtomBondsCount(other.id);
+        if (otherBonds >= other.valence) continue;
+
+        // Already bonded together?
+        const alreadyBonded = state.bonds.some(
+          b => (b.a === atom.id && b.b === other.id) || (b.a === other.id && b.b === atom.id)
+        );
+        if (alreadyBonded) continue;
+
+        const dist = Math.hypot(atom.x - other.x, atom.y - other.y);
+        const snapDist = atom.radius + other.radius + 32;
+
+        if (dist <= snapDist) {
+          // Snap position
+          const targetDist = atom.radius + other.radius + 6;
+          const angle = Math.atan2(atom.y - other.y, atom.x - other.x);
+          atom.x = other.x + Math.cos(angle) * targetDist;
+          atom.y = other.y + Math.sin(angle) * targetDist;
+
+          state.bonds.push({ a: atom.id, b: other.id });
+          chemAudio.playSnap();
+          break;
+        }
+      }
+    }
+
+    // Animation & Physics Loop
+    function simPhysics() {
+      // Gentle spring constraint on bonds
+      for (const bond of state.bonds) {
+        const a1 = state.atoms.find(a => a.id === bond.a);
+        const a2 = state.atoms.find(a => a.id === bond.b);
+        if (!a1 || !a2) continue;
+
+        const dx = a2.x - a1.x;
+        const dy = a2.y - a1.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const idealDist = a1.radius + a2.radius + 8;
+        const diff = dist - idealDist;
+
+        if (Math.abs(diff) > 0.5) {
+          const force = diff * 0.08;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+
+          if (a1 !== state.draggedAtom) {
+            a1.x += fx;
+            a1.y += fy;
+          }
+          if (a2 !== state.draggedAtom) {
+            a2.x -= fx;
+            a2.y -= fy;
+          }
+        }
+      }
+
+      // Constrain atoms within bounds
+      const container = document.getElementById('canvasContainer');
+      const w = container.clientWidth;
+      const h = container.clientHeight - 80; // above bottom footer
+
+      for (const a of state.atoms) {
+        a.x = Math.max(a.radius + 10, Math.min(w - a.radius - 10, a.x));
+        a.y = Math.max(a.radius + 10, Math.min(h - a.radius - 10, a.y));
+      }
+    }
+
+    function render2D() {
+      const container = document.getElementById('canvasContainer');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw subtle grid dots
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      const step = 32;
+      for (let x = 0; x < w; x += step) {
+        for (let y = 0; y < h; y += step) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Render Bonds
+      for (const bond of state.bonds) {
+        const a1 = state.atoms.find(a => a.id === bond.a);
+        const a2 = state.atoms.find(a => a.id === bond.b);
+        if (!a1 || !a2) continue;
+
+        // Glow
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.moveTo(a1.x, a1.y);
+        ctx.lineTo(a2.x, a2.y);
+        ctx.stroke();
+
+        // Inner solid bond line
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(a1.x, a1.y);
+        ctx.lineTo(a2.x, a2.y);
+        ctx.stroke();
+      }
+
+      // Render Atoms
+      for (const atom of state.atoms) {
+        const isHovered = Math.hypot(atom.x - state.mousePos.x, atom.y - state.mousePos.y) <= atom.radius;
+        const isDragged = state.draggedAtom === atom;
+
+        // Outer glow
+        if (isDragged || isHovered) {
+          ctx.beginPath();
+          ctx.arc(atom.x, atom.y, atom.radius + 6, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.fill();
+        }
+
+        // Atom sphere body with 3D gradient
+        const grad = ctx.createRadialGradient(
+          atom.x - atom.radius * 0.35,
+          atom.y - atom.radius * 0.35,
+          atom.radius * 0.1,
+          atom.x,
+          atom.y,
+          atom.radius
+        );
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.3, atom.color);
+        grad.addColorStop(1, '#000000');
+
+        ctx.beginPath();
+        ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.stroke();
+
+        // Atom Symbol text
+        ctx.fillStyle = atom.textColor;
+        ctx.font = `bold ${Math.round(atom.radius * 0.85)}px ${getComputedStyle(document.body).fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(atom.symbol, atom.x, atom.y);
+
+        // Valence indicators
+        const currentBonds = getAtomBondsCount(atom.id);
+        const freeSlots = atom.valence - currentBonds;
+        if (freeSlots > 0) {
+          ctx.fillStyle = '#38bdf8';
+          const dotRadius = 2.5;
+          const angleStep = (Math.PI * 2) / atom.valence;
+          for (let s = 0; s < freeSlots; s++) {
+            const a = s * angleStep - Math.PI / 2;
+            const dx = atom.x + Math.cos(a) * (atom.radius + 6);
+            const dy = atom.y + Math.sin(a) * (atom.radius + 6);
+            ctx.beginPath();
+            ctx.arc(dx, dy, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      requestAnimationFrame(mainLoop);
+    }
+
+    function mainLoop() {
+      simPhysics();
+      render2D();
+    }
+
+    /* =========================================================================
+       DISPENSER & KIT POPULATION
+       ========================================================================= */
+    function renderKitDispensers() {
+      const kit = KITS[state.currentKitIndex];
+      document.getElementById('kitDisplayName').textContent = kit.name;
+
+      const strip = document.getElementById('atomBucketStrip');
+      strip.innerHTML = '';
+
+      kit.inventory.forEach(item => {
+        const spec = ATOM_SPECIES[item.symbol];
+        if (!spec) return;
+
+        const dispenser = document.createElement('div');
+        dispenser.className = 'atom-dispenser';
+        dispenser.title = `Spawn ${spec.name} (${item.symbol})`;
+
+        dispenser.innerHTML = `
+          <div class="atom-disc" style="background:${spec.color}; color:${spec.textColor};">
+            ${spec.symbol}
+          </div>
+          <span class="atom-count-badge">×${item.count}</span>
+        `;
+
+        // Click to spawn onto bench
+        dispenser.addEventListener('click', () => {
+          const container = document.getElementById('canvasContainer');
+          const spawnX = container.clientWidth * 0.35 + (Math.random() - 0.5) * 80;
+          const spawnY = container.clientHeight * 0.45 + (Math.random() - 0.5) * 80;
+          const atom = spawnAtom(item.symbol, spawnX, spawnY);
+          tryBondAtom(atom);
+          checkActiveMoleculeHUD();
+        });
+
+        strip.appendChild(dispenser);
+      });
+    }
+
+    function prevKit() {
+      state.currentKitIndex = (state.currentKitIndex - 1 + KITS.length) % KITS.length;
+      renderKitDispensers();
+    }
+
+    function nextKit() {
+      state.currentKitIndex = (state.currentKitIndex + 1) % KITS.length;
+      renderKitDispensers();
+    }
+
+    function splitAllBonds() {
+      if (state.bonds.length > 0) {
+        state.bonds = [];
+        chemAudio.playBreak();
+        checkActiveMoleculeHUD();
+      }
+    }
+
+    function clearPlaygroundAtoms() {
+      state.atoms = [];
+      state.bonds = [];
+      checkActiveMoleculeHUD();
+    }
+
+    /* =========================================================================
+       COLLECTION GOALS SYSTEM & DRAGGING TO FILL BOXES
+       ========================================================================= */
+    function renderCollectionBoxes() {
+      const boxList = document.getElementById('collectionBoxList');
+      boxList.innerHTML = '';
+      const goals = SCREEN_COLLECTIONS[state.currentScreen] || [];
+
+      let totalFilled = 0;
+      let totalTargets = 0;
+
+      goals.forEach(goal => {
+        const molInfo = MOLECULES_DB.find(m => m.id === goal.molId);
+        if (!molInfo) return;
+
+        totalFilled += goal.filled;
+        totalTargets += goal.target;
+        const isComplete = goal.filled >= goal.target;
+
+        const card = document.createElement('div');
+        card.className = 'collection-box-card' + (isComplete ? ' completed' : '');
+
+        let slotsHtml = '';
+        for (let i = 0; i < goal.target; i++) {
+          const isSlotFilled = i < goal.filled;
+          slotsHtml += `
+            <div class="box-slot ${isSlotFilled ? 'filled' : ''}">
+              ${isSlotFilled ? `<span class="box-slot-preview">${molInfo.formula}</span>` : '<span style="font-size:0.65rem; color:var(--text-dim);">Empty</span>'}
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="box-card-top">
+            <div class="box-target-label">
+              <span>${molInfo.name}</span>
+              <span class="box-target-formula">(${molInfo.formula})</span>
+            </div>
+            <div style="font-size:0.75rem; font-weight:700; color:${isComplete ? '#34d399' : '#94a3b8'};">
+              ${goal.filled} / ${goal.target}
+            </div>
+          </div>
+          <div class="box-slots-row">
+            ${slotsHtml}
+          </div>
+          <div style="display:flex; justify-content:flex-end;">
+            <button class="tool-btn" style="padding:3px 8px; font-size:0.7rem;" onclick="attemptDepositMolecule('${goal.molId}')">
+              Deposit Built ${molInfo.formula}
+            </button>
+          </div>
+        `;
+
+        boxList.appendChild(card);
+      });
+
+      document.getElementById('collectionScoreBadge').textContent = `${totalFilled} / ${totalTargets} Filled`;
+    }
+
+    function attemptDepositMolecule(targetMolId) {
+      const components = getConnectedComponents();
+      let matchedComp = null;
+
+      for (const comp of components) {
+        const mol = identifyMolecule(comp);
+        if (mol && mol.id === targetMolId) {
+          matchedComp = comp;
+          break;
+        }
+      }
+
+      if (!matchedComp) {
+        alert(`Build and assemble a complete ${targetMolId} molecule on the bench first!`);
+        return;
+      }
+
+      const goals = SCREEN_COLLECTIONS[state.currentScreen];
+      const goal = goals.find(g => g.molId === targetMolId);
+      if (goal && goal.filled < goal.target) {
+        goal.filled++;
+        // Remove the atoms from bench
+        const atomIds = new Set(matchedComp.map(a => a.id));
+        state.atoms = state.atoms.filter(a => !atomIds.has(a.id));
+        state.bonds = state.bonds.filter(b => !atomIds.has(b.a) && !atomIds.has(b.b));
+
+        chemAudio.playCollectSuccess();
+        renderCollectionBoxes();
+        checkActiveMoleculeHUD();
+      }
+    }
+
+    /* =========================================================================
+       3D MOLECULAR GEOMETRY VIEWER (Raytraced Canvas Projection)
+       ========================================================================= */
+    const canvas3D = document.getElementById('canvas3D');
+    const ctx3D = canvas3D.getContext('2d');
+    let isDragging3D = false;
+    let lastMouse3D = { x: 0, y: 0 };
+
+    function openActiveMolecule3D() {
+      if (!state.activeIdentifiedMolecule) return;
+      openMolecule3D(state.activeIdentifiedMolecule);
+    }
+
+    function openMolecule3D(mol) {
+      state.view3DTargetMol = mol;
+      document.getElementById('modal3DMolName').textContent = mol.name;
+      document.getElementById('modal3DFormula').textContent = mol.formula;
+      document.getElementById('modal3DGeometry').textContent = mol.geometry;
+      document.getElementById('modal3DTitle').textContent = `3D Geometry: ${mol.name} (${mol.formula})`;
+
+      const modal = document.getElementById('modal3D');
+      modal.classList.add('active');
+
+      resizeCanvas3D();
+      render3D();
+    }
+
+    function closeModal3D() {
+      document.getElementById('modal3D').classList.remove('active');
+    }
+
+    function setRenderMode(mode) {
+      state.render3DMode = mode;
+      document.getElementById('btnRenderBallStick').classList.toggle('active', mode === 'ballAndStick');
+      document.getElementById('btnRenderSpaceFill').classList.toggle('active', mode === 'spaceFilling');
+      render3D();
+    }
+
+    function reset3DCamera() {
+      state.camera3D = { rotX: 0.3, rotY: 0.5, zoom: 120 };
+      render3D();
+    }
+
+    function resizeCanvas3D() {
+      const rect = canvas3D.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas3D.width = rect.width * dpr;
+      canvas3D.height = rect.height * dpr;
+      ctx3D.scale(dpr, dpr);
+    }
+
+    canvas3D.addEventListener('mousedown', (e) => {
+      isDragging3D = true;
+      lastMouse3D = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging3D) return;
+      const dx = e.clientX - lastMouse3D.x;
+      const dy = e.clientY - lastMouse3D.y;
+      state.camera3D.rotY += dx * 0.012;
+      state.camera3D.rotX += dy * 0.012;
+      lastMouse3D = { x: e.clientX, y: e.clientY };
+      render3D();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging3D = false;
+    });
+
+    canvas3D.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      state.camera3D.zoom += e.deltaY * -0.08;
+      state.camera3D.zoom = Math.max(60, Math.min(260, state.camera3D.zoom));
+      render3D();
+    });
+
+    function render3D() {
+      const mol = state.view3DTargetMol;
+      if (!mol || !mol.structure3d) return;
+
+      const rect = canvas3D.parentElement.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      ctx3D.clearRect(0, 0, w, h);
+
+      const cx = w / 2;
+      const cy = h / 2;
+      const zoom = state.camera3D.zoom;
+      const rx = state.camera3D.rotX;
+      const ry = state.camera3D.rotY;
+
+      const cosY = Math.cos(ry);
+      const sinY = Math.sin(ry);
+      const cosX = Math.cos(rx);
+      const sinX = Math.sin(rx);
+
+      // Transform Atoms
+      const transformedAtoms = mol.structure3d.map((atom, idx) => {
+        // Rotate around Y
+        let x1 = atom.x * cosY + atom.z * sinY;
+        let z1 = -atom.x * sinY + atom.z * cosY;
+        let y1 = atom.y;
+
+        // Rotate around X
+        let y2 = y1 * cosX - z1 * sinX;
+        let z2 = y1 * sinX + z1 * cosX;
+        let x2 = x1;
+
+        const spec = ATOM_SPECIES[atom.symbol] || ATOM_SPECIES.H;
+        const radiusScale = state.render3DMode === 'spaceFilling' ? 1.6 : 0.8;
+        const screenRadius = spec.radius * (zoom / 100) * radiusScale;
+
+        return {
+          idx: idx,
+          symbol: atom.symbol,
+          color: spec.color,
+          textColor: spec.textColor,
+          px: cx + x2 * zoom,
+          py: cy + y2 * zoom,
+          pz: z2,
+          radius: screenRadius
+        };
+      });
+
+      // Sort depth
+      transformedAtoms.sort((a, b) => a.pz - b.pz);
+
+      // Render Bonds if Ball & Stick
+      if (state.render3DMode === 'ballAndStick' && mol.bonds3d) {
+        for (const [i1, i2] of mol.bonds3d) {
+          const a1 = transformedAtoms.find(a => a.idx === i1);
+          const a2 = transformedAtoms.find(a => a.idx === i2);
+          if (!a1 || !a2) continue;
+
+          ctx3D.beginPath();
+          ctx3D.moveTo(a1.px, a1.py);
+          ctx3D.lineTo(a2.px, a2.py);
+          ctx3D.lineWidth = 10 * (zoom / 100);
+          ctx3D.strokeStyle = 'rgba(148, 163, 184, 0.7)';
+          ctx3D.lineCap = 'round';
+          ctx3D.stroke();
+        }
+      }
+
+      // Render Atoms
+      for (const a of transformedAtoms) {
+        const grad = ctx3D.createRadialGradient(
+          a.px - a.radius * 0.35,
+          a.py - a.radius * 0.35,
+          a.radius * 0.1,
+          a.px,
+          a.py,
+          a.radius
+        );
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.35, a.color);
+        grad.addColorStop(1, '#000000');
+
+        ctx3D.beginPath();
+        ctx3D.arc(a.px, a.py, a.radius, 0, Math.PI * 2);
+        ctx3D.fillStyle = grad;
+        ctx3D.fill();
+        ctx3D.lineWidth = 1.2;
+        ctx3D.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx3D.stroke();
+
+        // Atom symbol in Ball & Stick mode
+        if (state.render3DMode === 'ballAndStick' && a.radius > 12) {
+          ctx3D.fillStyle = a.textColor;
+          ctx3D.font = `bold ${Math.round(a.radius * 0.85)}px ${getComputedStyle(document.body).fontFamily}`;
+          ctx3D.textAlign = 'center';
+          ctx3D.textBaseline = 'middle';
+          ctx3D.fillText(a.symbol, a.px, a.py);
+        }
+      }
+    }
+
+    /* =========================================================================
+       GUIDED MISSIONS SYSTEM
+       ========================================================================= */
+    const MISSIONS = [
+      {
+        id: 'mission1',
+        title: 'Mission 1: The Essential Hydride (Water)',
+        desc: "Synthesize a water molecule (H₂O) by satisfying the two valence bond slots of Oxygen with two Hydrogen atoms.",
+        targetFormula: 'H₂O',
+        isComplete: false
+      },
+      {
+        id: 'mission2',
+        title: 'Mission 2: Greenhouse Linear (Carbon Dioxide)',
+        desc: 'Synthesize Carbon Dioxide (CO₂). Carbon shares 4 valence electrons with two Oxygen atoms.',
+        targetFormula: 'CO₂',
+        isComplete: false
+      },
+      {
+        id: 'mission3',
+        title: 'Mission 3: Atmospheric Inertness (Nitrogen Gas)',
+        desc: 'Synthesize diatomic Nitrogen (N₂). Two trivalent Nitrogen atoms share 3 electron pairs in a triple bond.',
+        targetFormula: 'N₂',
+        isComplete: false
+      },
+      {
+        id: 'mission4',
+        title: 'Mission 4: Hydrocarbon Tetrahedron (Methane)',
+        desc: 'Synthesize Methane (CH₄). Tetravalent Carbon achieves octet by binding four peripheral Hydrogen atoms.',
+        targetFormula: 'CH₄',
+        isComplete: false
+      },
+      {
+        id: 'mission5',
+        title: 'Mission 5: Carbon-Carbon Multiple Bond (Acetylene)',
+        desc: 'Synthesize Acetylene (C₂H₂). Bond two Carbon atoms together and cap each end with a Hydrogen atom.',
+        targetFormula: 'C₂H₂',
+        isComplete: false
+      }
+    ];
+
+    function checkMissionsEvaluation() {
+      const components = getConnectedComponents();
+      const synthesizedFormulas = new Set();
+
+      for (const comp of components) {
+        const mol = identifyMolecule(comp);
+        if (mol) synthesizedFormulas.add(mol.id);
+      }
+
+      let newlyCompleted = false;
+      MISSIONS.forEach(m => {
+        if (!m.isComplete && synthesizedFormulas.has(m.targetFormula.replace('₂','2').replace('₄','4'))) {
+          m.isComplete = true;
+          newlyCompleted = true;
+        }
+      });
+
+      if (newlyCompleted) {
+        renderMissions();
+      }
+    }
+
+    function renderMissions() {
+      const container = document.getElementById('missionGridContainer');
+      container.innerHTML = '';
+      let completedCount = 0;
+
+      MISSIONS.forEach((m, idx) => {
+        if (m.isComplete) completedCount++;
+
+        const card = document.createElement('div');
+        card.className = 'mission-card' + (m.isComplete ? ' completed' : '');
+
+        card.innerHTML = `
+          <div class="mission-card-header">
+            <div class="mission-title">
+              <span>${m.title}</span>
+            </div>
+            <span class="mission-status-pill">${m.isComplete ? '✓ Cleared' : 'In Progress'}</span>
+          </div>
+          <div class="mission-desc">${m.desc}</div>
+          <div class="mission-action-row">
+            <span style="font-size:0.75rem; font-family:var(--font-mono); color:#38bdf8;">Goal: ${m.targetFormula}</span>
+            <button class="mission-jump-btn" onclick="jumpToMission('${m.targetFormula}')">
+              Assemble in Lab ➔
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      document.getElementById('missionBadgeCount').textContent = `${completedCount}/5`;
+      document.getElementById('missionProgressRatio').textContent = `${completedCount} / 5`;
+    }
+
+    function jumpToMission(formula) {
+      setAppMode('sim');
+    }
+
+    /* =========================================================================
+       ASSESSMENT QUIZ SYSTEM & CERTIFICATE OF MASTERY
+       ========================================================================= */
+    const QUIZ_QUESTIONS = [
+      {
+        question: 'Why does Carbon form 4 covalent bonds with other atoms in stable ground-state organic molecules?',
+        options: [
+          'It has 4 valence electrons and requires 4 more to complete its octet',
+          'It possesses 4 full electron shells and repels hydrogen',
+          'Carbon is an alkali metal that donates 4 electrons ionicly',
+          'Its nuclear charge of 12 attracts 4 external protons'
+        ],
+        correct: 0,
+        explanation: 'Carbon has electron configuration 1s² 2s² 2p², possessing 4 valence electrons. By forming 4 covalent shared pairs, it fulfills the octet rule (8 electrons).'
+      },
+      {
+        question: 'According to VSEPR theory, what is the geometric shape and bond angle of a Water (H₂O) molecule?',
+        options: [
+          'Linear with 180° bond angle',
+          'Bent shape with an angle of approximately 104.5°',
+          'Trigonal planar with 120° bond angle',
+          'Tetrahedral with 90° bond angle'
+        ],
+        correct: 1,
+        explanation: 'Oxygen has 4 electron domains (2 bonding pairs + 2 lone pairs). The repulsive force of the lone pairs compresses the H-O-H bond angle from the ideal tetrahedral 109.5° down to 104.5°.'
+      },
+      {
+        question: 'How many total covalent electron pairs are shared between the two Nitrogen atoms in an N₂ molecule?',
+        options: [
+          '1 pair (single bond)',
+          '2 pairs (double bond)',
+          '3 pairs (triple bond)',
+          '4 pairs (quadruple bond)'
+        ],
+        correct: 2,
+        explanation: 'Nitrogen has 5 valence electrons and needs 3 more to achieve octet. Two nitrogen atoms share 3 electron pairs, forming a very strong triple bond (N≡N).'
+      },
+      {
+        question: 'What is the molecular geometry of Methane (CH₄)?',
+        options: [
+          'Square planar',
+          'Trigonal pyramidal',
+          'Tetrahedral with 109.5° bond angles',
+          'Octahedral'
+        ],
+        correct: 2,
+        explanation: 'Carbon in methane has 4 equivalent single C-H bonds with 0 lone pairs. Mutual electrostatic repulsion drives them into a 3D tetrahedral geometry with 109.5° angles.'
+      },
+      {
+        question: 'In the balanced synthesis of Water: 2 H₂ + O₂ ➔ 2 H₂O, how many molecules of O₂ are needed to react with 6 molecules of H₂?',
+        options: [
+          '2 molecules of O₂',
+          '3 molecules of O₂',
+          '6 molecules of O₂',
+          '12 molecules of O₂'
+        ],
+        correct: 1,
+        explanation: 'The stoichiometric ratio is 2 moles H₂ : 1 mole O₂. Therefore, 6 molecules of H₂ require (6 ÷ 2) = 3 molecules of O₂ to fully react.'
+      }
+    ];
+
+    let userAnswers = new Array(QUIZ_QUESTIONS.length).fill(null);
+
+    function renderQuiz() {
+      const container = document.getElementById('quizContainer');
+      container.innerHTML = '';
+
+      QUIZ_QUESTIONS.forEach((q, qIdx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-card';
+
+        let optsHtml = '';
+        q.options.forEach((opt, oIdx) => {
+          const isSelected = userAnswers[qIdx] === oIdx;
+          const isAnswered = userAnswers[qIdx] !== null;
+          let extraClass = '';
+          if (isAnswered) {
+            if (oIdx === q.correct) extraClass = 'correct';
+            else if (isSelected && oIdx !== q.correct) extraClass = 'wrong';
+          }
+
+          optsHtml += `
+            <button class="quiz-opt-btn ${extraClass}" ${isAnswered ? 'disabled' : ''} onclick="submitQuizAnswer(${qIdx}, ${oIdx})">
+              <span class="quiz-opt-marker">${String.fromCharCode(65 + oIdx)}</span>
+              <span>${opt}</span>
+            </button>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="quiz-q-num">Question ${qIdx + 1} of ${QUIZ_QUESTIONS.length}</div>
+          <div class="quiz-q-text">${q.question}</div>
+          <div class="quiz-options-list">${optsHtml}</div>
+          <div class="quiz-explanation ${userAnswers[qIdx] !== null ? 'visible' : ''}">
+            <strong>Explanation:</strong> ${q.explanation}
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      updateQuizSummary();
+    }
+
+    function submitQuizAnswer(qIdx, optIdx) {
+      if (userAnswers[qIdx] !== null) return;
+      userAnswers[qIdx] = optIdx;
+      chemAudio.playSnap();
+      renderQuiz();
+    }
+
+    function updateQuizSummary() {
+      const answeredCount = userAnswers.filter(a => a !== null).length;
+      let correctCount = 0;
+      userAnswers.forEach((ans, idx) => {
+        if (ans === QUIZ_QUESTIONS[idx].correct) correctCount++;
+      });
+
+      const status = document.getElementById('quizStatusText');
+      status.textContent = `${answeredCount} of ${QUIZ_QUESTIONS.length} Answered (Score: ${correctCount}/${QUIZ_QUESTIONS.length})`;
+
+      const certBtn = document.getElementById('btnCertificateTrigger');
+      if (answeredCount === QUIZ_QUESTIONS.length && correctCount >= 4) {
+        certBtn.style.display = 'inline-block';
+      } else {
+        certBtn.style.display = 'none';
+      }
+
+      // Notify parent LMS if present
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'ELEMENTA_QUIZ_UPDATE',
+          answered: answeredCount,
+          correct: correctCount,
+          total: QUIZ_QUESTIONS.length
+        }, '*');
+      }
+    }
+
+    function resetQuiz() {
+      userAnswers = new Array(QUIZ_QUESTIONS.length).fill(null);
+      renderQuiz();
+    }
+
+    function openCertificate() {
+      document.getElementById('certOverlay').classList.add('active');
+    }
+
+    function closeCertificate() {
+      document.getElementById('certOverlay').classList.remove('active');
+    }
+
+    /* =========================================================================
+       NAVIGATION, SCREENS & MODES
+       ========================================================================= */
+    function setAppMode(modeKey) {
+      if (typeof currentAppMode !== 'undefined') currentAppMode = modeKey;
+      if (typeof appMode !== 'undefined') appMode = modeKey;
+      if (typeof state !== 'undefined' && state && state.mode !== undefined) state.mode = modeKey;
+      if (typeof state !== 'undefined' && state && state.appMode !== undefined) state.appMode = modeKey;
+
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        const btn = document.getElementById('btnModeSim');
+        if (btn) btn.classList.add('active');
+        closeAllModals();
+        if (typeof resizeCanvas === 'function') setTimeout(resizeCanvas, 50);
+        if (typeof resizeCanvases === 'function') setTimeout(resizeCanvases, 50);
+      } else if (modeKey === 'missions') {
+        const btn = document.getElementById('btnModeMissions');
+        if (btn) btn.classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        const btn = document.getElementById('btnModeQuiz');
+        if (btn) btn.classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        const btn = document.getElementById('btnModeTheory');
+        if (btn) btn.classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('open');
+        el.classList.add('active');
+      }
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('open');
+        el.classList.remove('active');
+      }
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => {
+        m.classList.remove('open');
+        m.classList.remove('active');
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    
+    function switchSimScreen(screenName) {
+      state.currentScreen = screenName;
+      document.getElementById('tabScreenSingle').classList.toggle('active', screenName === 'single');
+      document.getElementById('tabScreenMultiple').classList.toggle('active', screenName === 'multiple');
+      document.getElementById('tabScreenPlayground').classList.toggle('active', screenName === 'playground');
+
+      renderCollectionBoxes();
+      checkActiveMoleculeHUD();
+    }
+
+    function resetSimulation() {
+      state.atoms = [];
+      state.bonds = [];
+      state.nextAtomId = 1;
+
+      // Reset collection goals for current screen
+      const goals = SCREEN_COLLECTIONS[state.currentScreen] || [];
+      goals.forEach(g => g.filled = 0);
+
+      renderCollectionBoxes();
+      checkActiveMoleculeHUD();
+    }
+
+    function captureScreenshot() {
+      try {
+        const link = document.createElement('a');
+        link.download = `elementa_build_a_molecule_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (err) {
+        console.error('Screenshot error:', err);
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn('Fullscreen request failed:', err);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    /* =========================================================================
+       INITIALIZATION
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      renderKitDispensers();
+      renderCollectionBoxes();
+      renderMissions();
+      renderQuiz();
+
+      // Pre-seed canvas with a friendly initial water assembly
+      const container = document.getElementById('canvasContainer');
+      const cx = container.clientWidth * 0.45;
+      const cy = container.clientHeight * 0.4;
+
+      const o = spawnAtom('O', cx, cy);
+      const h1 = spawnAtom('H', cx - 36, cy + 28);
+      const h2 = spawnAtom('H', cx + 36, cy + 28);
+      state.bonds.push({ a: o.id, b: h1.id });
+      state.bonds.push({ a: o.id, b: h2.id });
+
+      checkActiveMoleculeHUD();
+      requestAnimationFrame(mainLoop);
+    });
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

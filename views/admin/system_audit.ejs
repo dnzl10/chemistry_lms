@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/admin_spa_handler.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body {
@@ -230,7 +231,7 @@
         </header>
 
         <!-- SCROLLABLE CONTENT -->
-        <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
+        <div id="adminMainContent" class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
             <div class="p-4 md:p-8 flex-1 fade-in">
 
                 <!-- ══════════════════════════════════════════
@@ -255,6 +256,20 @@
                     </a>
                 </div>
 
+                <!-- Tabs -->
+                <div class="flex items-center gap-6 border-b border-indigo-100 mb-6 flex-wrap">
+                    <div class="audit-tab active py-2 px-1 text-sm font-semibold cursor-pointer" onclick="switchTab('system')" id="btn-tab-system">
+                        <i class="fas fa-server mr-2"></i>System Actions
+                    </div>
+                    <div class="audit-tab py-2 px-1 text-sm font-semibold text-slate-500 hover:text-indigo-600 cursor-pointer" onclick="switchTab('receipts')" id="btn-tab-receipts">
+                        <i class="fas fa-shield-halved mr-2"></i>Submission Receipts &amp; Grace Buffer
+                    </div>
+                    <div class="audit-tab py-2 px-1 text-sm font-semibold text-slate-500 hover:text-indigo-600 cursor-pointer" onclick="switchTab('storage')" id="btn-tab-storage">
+                        <i class="fas fa-hard-drive mr-2"></i>Storage &amp; Deliverables Audit
+                    </div>
+                </div>
+
+                <div id="tab-system">
                 <!-- ══════════════════════════════════════════
                      SECTION 1 — KPI SNAPSHOT CARDS
                 ══════════════════════════════════════════ -->
@@ -446,6 +461,7 @@
                                     <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase">Role</th>
                                     <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase">Action</th>
                                     <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase">Description</th>
+                                    <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase whitespace-nowrap">IP &amp; Device</th>
                                     <th class="px-4 py-3 text-left font-black tracking-wide text-[10px] uppercase whitespace-nowrap">Date &amp; Time</th>
                                 </tr>
                             </thead>
@@ -454,7 +470,7 @@
                                     <% logs.forEach(log => {
                                         const actionClass =
                                             /CREATE|GENERATE|UPLOAD|IMPORT|ENROLL|APPROVE|BULK_IMPORT/.test(log.action) ? 'action-create' :
-                                            /DELETE|REVOKE|REJECT/.test(log.action)                                   ? 'action-delete' :
+                                            /DELETE|REVOKE|REJECT|SUSPEND|LOGIN_FAILED/.test(log.action)                ? 'action-delete' :
                                             /EDIT|UPDATE|RESET/.test(log.action)                                      ? 'action-edit'   :
                                             /TOGGLE|ACTIVATE|LOCK/.test(log.action)                                   ? 'action-toggle' :
                                             /EXPORT|GENERATE_TEST/.test(log.action)                                   ? 'action-export' :
@@ -484,6 +500,20 @@
                                         <td class="px-4 py-3 text-slate-500 max-w-[280px] truncate" title="<%= log.description %>">
                                             <%= log.description || '—' %>
                                         </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="px-1.5 py-0.5 rounded font-mono text-[10px] bg-slate-100 text-slate-700 font-bold" title="IP Address: <%= log.ip_address || '—' %>">
+                                                    <i class="fas fa-network-wired text-slate-400 mr-0.5"></i>
+                                                    <%= log.ip_address || '—' %>
+                                                </span>
+                                            </div>
+                                            <% if (log.user_agent) { %>
+                                            <div class="text-[9px] text-slate-400 truncate max-w-[130px] mt-0.5" title="<%= log.user_agent %>">
+                                                <i class="fas fa-laptop text-[8px] mr-0.5"></i>
+                                                <%= log.user_agent.includes('Windows') ? 'Windows' : (log.user_agent.includes('Mac') ? 'macOS' : (log.user_agent.includes('Android') ? 'Android' : (log.user_agent.includes('iPhone') ? 'iOS' : 'Client'))) %>
+                                            </div>
+                                            <% } %>
+                                        </td>
                                         <td class="px-4 py-3 text-slate-400 whitespace-nowrap font-semibold">
                                             <%= new Date(log.created_at).toLocaleString('en-PH', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) %>
                                         </td>
@@ -491,7 +521,7 @@
                                     <% }) %>
                                 <% } else { %>
                                     <tr>
-                                        <td colspan="6" class="text-center py-12 text-slate-300">
+                                        <td colspan="7" class="text-center py-12 text-slate-300">
                                             <i class="fas fa-scroll text-4xl block mb-3"></i>
                                             <p class="font-bold text-slate-400">No log entries match your filters.</p>
                                         </td>
@@ -720,155 +750,7 @@
                     <% } %>
                 </div>
 
-                <!-- ══════════════════════════════════════════
-                     SECTION 7 — ACTIVE SESSIONS MONITOR
-                ══════════════════════════════════════════ -->
-                <div class="glass-card rounded-2xl border border-violet-100 shadow-sm p-6 mb-8">
-                    <div class="flex items-center justify-between mb-5">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
-                                <i class="fas fa-gamepad text-violet-500 text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-black text-indigo-900 text-sm">Live &amp; Recent Arcade Sessions</h3>
-                                <p class="text-[10px] text-slate-400 font-semibold">All active_sessions records — Ongoing &amp; Finished</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="live-dot"></span>
-                            <span class="text-[10px] font-black text-emerald-600"><%= sessionStats.ongoing %> live</span>
-                        </div>
-                    </div>
 
-                    <div class="grid grid-cols-3 gap-4 mb-5">
-                        <div class="bg-violet-50 border border-violet-100 rounded-xl p-3 text-center">
-                            <p class="text-xl font-black text-violet-700"><%= sessionStats.total %></p>
-                            <p class="text-[10px] font-black text-violet-500 uppercase">Total Sessions</p>
-                        </div>
-                        <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
-                            <p class="text-xl font-black text-emerald-700"><%= sessionStats.ongoing %></p>
-                            <p class="text-[10px] font-black text-emerald-500 uppercase">Ongoing</p>
-                        </div>
-                        <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
-                            <p class="text-xl font-black text-slate-700"><%= sessionStats.finished %></p>
-                            <p class="text-[10px] font-black text-slate-500 uppercase">Finished</p>
-                        </div>
-                    </div>
-
-                    <div class="table-scroll custom-scrollbar rounded-xl border border-slate-100 overflow-hidden">
-                        <table class="w-full text-xs">
-                            <thead class="bg-violet-950 text-white sticky top-0">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Student</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Assessment</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Mode</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Progress</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Score</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Status</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Started</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50 bg-white">
-                                <% if (activeSessions && activeSessions.length > 0) { %>
-                                    <% activeSessions.forEach(s => { %>
-                                    <tr class="log-row">
-                                        <td class="px-4 py-3 font-bold text-indigo-900"><%= s.student_name %></td>
-                                        <td class="px-4 py-3 text-slate-500 max-w-[160px] truncate" title="<%= s.assessment_name %>"><%= s.assessment_name %></td>
-                                        <td class="px-4 py-3">
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
-                                                <%= s.player_mode === 'Duel' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700' %>">
-                                                <%= s.player_mode %>
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-3 text-slate-500">Item <%= s.current_item_index %> / <%= s.total_items %></td>
-                                        <td class="px-4 py-3 font-black text-indigo-700"><%= s.accumulated_score %></td>
-                                        <td class="px-4 py-3">
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
-                                                <%= s.session_status === 'Ongoing' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500' %>">
-                                                <%= s.session_status %>
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-3 text-slate-400 whitespace-nowrap">
-                                            <%= new Date(s.start_time).toLocaleString('en-PH', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) %>
-                                        </td>
-                                    </tr>
-                                    <% }) %>
-                                <% } else { %>
-                                    <tr><td colspan="7" class="text-center py-8 text-slate-300">
-                                        <i class="fas fa-gamepad text-3xl block mb-2"></i>
-                                        <p class="font-bold text-slate-400">No arcade sessions recorded.</p>
-                                    </td></tr>
-                                <% } %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- ══════════════════════════════════════════
-                     SECTION 8 — COMPETITIVE MATCH LOG
-                ══════════════════════════════════════════ -->
-                <div class="glass-card rounded-2xl border border-amber-100 shadow-sm p-6 mb-8">
-                    <div class="flex items-center justify-between mb-5">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
-                                <i class="fas fa-swords text-amber-500 text-sm"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-black text-indigo-900 text-sm">Competitive Match Log</h3>
-                                <p class="text-[10px] text-slate-400 font-semibold">All 1v1 duel records from competitive_matches</p>
-                            </div>
-                        </div>
-                        <span class="text-xs font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-xl border border-amber-100">
-                            <%= matchStats.totalMatches %> total matches
-                        </span>
-                    </div>
-
-                    <div class="table-scroll custom-scrollbar rounded-xl border border-slate-100 overflow-hidden">
-                        <table class="w-full text-xs">
-                            <thead class="bg-amber-950 text-white sticky top-0">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Match #</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Player 1</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Player 2</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Score</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Winner</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Assessment</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-black uppercase">Date</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50 bg-white">
-                                <% if (competitiveMatches && competitiveMatches.length > 0) { %>
-                                    <% competitiveMatches.forEach(m => { %>
-                                    <tr class="log-row">
-                                        <td class="px-4 py-3 text-slate-400 font-semibold">#<%= m.match_id %></td>
-                                        <td class="px-4 py-3 font-bold text-indigo-900"><%= m.p1_name || '—' %></td>
-                                        <td class="px-4 py-3 font-bold text-indigo-900"><%= m.p2_name || '—' %></td>
-                                        <td class="px-4 py-3 font-black text-slate-600"><%= m.p1_score %> — <%= m.p2_score %></td>
-                                        <td class="px-4 py-3">
-                                            <% if (m.winner_name) { %>
-                                            <span class="flex items-center gap-1 text-amber-700 font-black">
-                                                <i class="fas fa-crown text-amber-400 text-[10px]"></i><%= m.winner_name %>
-                                            </span>
-                                            <% } else { %>
-                                            <span class="text-slate-400">—</span>
-                                            <% } %>
-                                        </td>
-                                        <td class="px-4 py-3 text-slate-500 max-w-[140px] truncate"><%= m.assessment_name || '—' %></td>
-                                        <td class="px-4 py-3 text-slate-400 whitespace-nowrap">
-                                            <%= new Date(m.match_date).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' }) %>
-                                        </td>
-                                    </tr>
-                                    <% }) %>
-                                <% } else { %>
-                                    <tr><td colspan="7" class="text-center py-8 text-slate-300">
-                                        <i class="fas fa-swords text-3xl block mb-2"></i>
-                                        <p class="font-bold text-slate-400">No competitive matches recorded yet.</p>
-                                    </td></tr>
-                                <% } %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
 
                 <!-- ══════════════════════════════════════════
                      SECTION 9 — SCHOOL YEAR & CLASS OVERVIEW
@@ -1070,6 +952,190 @@
                     </div>
                 </div>
 
+            </div><!-- end #tab-system -->
+
+
+            <!-- ══════════════════════════════════════════
+                 TAB: SUBMISSION RECEIPTS & CAMPUS GRACE BUFFER
+            ══════════════════════════════════════════ -->
+            <div id="tab-receipts" class="hidden space-y-6">
+                <!-- Row 1: Campus-Wide Grace Period Buffer Settings -->
+                <div class="glass-card rounded-2xl p-6 border border-amber-200 shadow-sm bg-gradient-to-br from-amber-50/70 to-orange-50/30">
+                    <div class="flex items-start justify-between gap-4 flex-wrap">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-xl shadow-md shadow-amber-200">
+                                <i class="fas fa-stopwatch"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-slate-800">Campus-Wide Grace Period Buffer Policy</h3>
+                                <p class="text-xs text-slate-500 font-medium">Automatic submission tolerance window applied across all class assessments &amp; assignments.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1.5 bg-white border border-amber-300 rounded-xl px-3 py-1.5 shadow-sm">
+                                <input type="number" id="campusGraceBufferInput" min="1" max="60" value="5" class="w-12 text-center font-black text-sm text-amber-900 outline-none">
+                                <span class="text-xs font-bold text-amber-700">minutes</span>
+                            </div>
+                            <button type="button" onclick="saveCampusGraceBuffer()" class="px-4 py-2 rounded-xl text-xs font-black bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-200 transition flex items-center gap-1.5">
+                                <i class="fas fa-save"></i> Save Campus Default
+                            </button>
+                        </div>
+                    </div>
+                    <div id="graceBufferFeedback" class="hidden mt-3 text-xs font-bold text-emerald-700 bg-emerald-100/80 p-2 rounded-xl border border-emerald-200"></div>
+                </div>
+
+                <!-- Row 2: Cryptographic Non-Repudiation Lookup Console -->
+                <div class="glass-card rounded-2xl p-6 border border-indigo-100 shadow-sm space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black">
+                            <i class="fas fa-fingerprint text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-black text-slate-800">Cryptographic SHA-256 Non-Repudiation Lookup Console</h3>
+                            <p class="text-xs text-slate-500 font-medium">Instantly verify any digital receipt or submission hash presented by students or teachers.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1">
+                            <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" id="adminReceiptSearchHash" placeholder="Paste 64-character SHA-256 hash or receipt fingerprint (e.g., e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none">
+                        </div>
+                        <button type="button" onclick="lookupReceiptByHash()" class="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 transition flex items-center gap-1.5">
+                            <i class="fas fa-magnifying-glass"></i> Verify Hash
+                        </button>
+                    </div>
+
+                    <div id="receiptLookupResult" class="hidden p-4 rounded-2xl border text-xs"></div>
+                </div>
+
+                <!-- Row 3: Live Institutional Submission Receipts Feed -->
+                <div class="glass-card rounded-2xl p-6 border border-slate-100 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-receipt text-indigo-600"></i>
+                            <h4 class="text-sm font-black text-slate-800">Recent Cryptographic Submission Audit Log</h4>
+                        </div>
+                        <button type="button" onclick="loadRecentReceipts()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                            <i class="fas fa-rotate"></i> Refresh Feed
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-50 text-slate-500 uppercase font-black tracking-wider text-[10px] border-b border-slate-100">
+                                <tr>
+                                    <th class="py-2.5 px-3">Receipt ID</th>
+                                    <th class="py-2.5 px-3">Student</th>
+                                    <th class="py-2.5 px-3">Assessment / Assignment</th>
+                                    <th class="py-2.5 px-3">SHA-256 Fingerprint</th>
+                                    <th class="py-2.5 px-3">Server Timestamp</th>
+                                    <th class="py-2.5 px-3 text-center">Verify</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentReceiptsTableBody" class="divide-y divide-slate-100 font-medium text-slate-700">
+                                <tr>
+                                    <td colspan="6" class="py-6 text-center text-slate-400">Loading audit feed...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+            </div><!-- end #tab-receipts -->
+
+            <!-- ══════════════════════════════════════════
+                 TAB 4 — STORAGE & DELIVERABLES AUDIT
+            ══════════════════════════════════════════ -->
+            <div id="tab-storage" class="hidden space-y-6">
+
+                <!-- Header Banner -->
+                <div class="glass-card rounded-2xl border border-indigo-100 shadow-sm p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-100">
+                            <i class="fas fa-hard-drive"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-indigo-950 text-base">Storage Ecosystem &amp; Deliverables Audit</h3>
+                            <p class="text-xs text-slate-400 font-medium">Reconciles physical server storage with active database records to flag and purge orphaned files.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <button type="button" onclick="loadStorageAudit()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-2 transition">
+                            <i class="fas fa-rotate"></i>
+                            <span>Rescan Filesystem</span>
+                        </button>
+                        <button type="button" onclick="cleanupOrphanStorage()" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-200 flex items-center gap-2 transition">
+                            <i class="fas fa-broom"></i>
+                            <span>Purge Orphan Files</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Storage Metric KPI Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <!-- Deliverables -->
+                    <div class="stat-card glass-card rounded-2xl p-4 border border-slate-100 shadow-sm">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Student Deliverables</span>
+                        <p class="text-2xl font-black text-indigo-950" id="storageDeliverablesSize">--</p>
+                        <span class="text-[11px] font-bold text-slate-500" id="storageDeliverablesCount">-- files</span>
+                    </div>
+
+                    <!-- Templates -->
+                    <div class="stat-card glass-card rounded-2xl p-4 border border-slate-100 shadow-sm">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Format Templates</span>
+                        <p class="text-2xl font-black text-teal-700" id="storageTemplatesSize">--</p>
+                        <span class="text-[11px] font-bold text-slate-500" id="storageTemplatesCount">-- files</span>
+                    </div>
+
+                    <!-- Exemplars -->
+                    <div class="stat-card glass-card rounded-2xl p-4 border border-slate-100 shadow-sm">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Teacher Samples</span>
+                        <p class="text-2xl font-black text-indigo-700" id="storageSamplesSize">--</p>
+                        <span class="text-[11px] font-bold text-slate-500" id="storageSamplesCount">-- files</span>
+                    </div>
+
+                    <!-- Audio Notes -->
+                    <div class="stat-card glass-card rounded-2xl p-4 border border-slate-100 shadow-sm">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Voice Feedback</span>
+                        <p class="text-2xl font-black text-purple-700" id="storageAudioSize">--</p>
+                        <span class="text-[11px] font-bold text-slate-500" id="storageAudioCount">-- files</span>
+                    </div>
+
+                    <!-- Orphan Files -->
+                    <div class="stat-card glass-card rounded-2xl p-4 border border-rose-200 bg-rose-50/40 shadow-sm">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-rose-600 block mb-1">Unreferenced Orphans</span>
+                        <p class="text-2xl font-black text-rose-700" id="storageOrphansSize">--</p>
+                        <span class="text-[11px] font-bold text-rose-600" id="storageOrphansCount">-- orphans</span>
+                    </div>
+                </div>
+
+                <!-- Orphan Reconcile Inspection Table -->
+                <div class="glass-card rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-6 space-y-4">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                            <h4 class="font-black text-indigo-950 text-sm">Orphan Storage Audit &amp; File Integrity Log</h4>
+                            <p class="text-xs text-slate-400 font-medium">Files physically present on server without active database association</p>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-100">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-wider border-b border-slate-100">
+                                <tr>
+                                    <th class="py-3 px-4">Filename</th>
+                                    <th class="py-3 px-4">Relative Directory</th>
+                                    <th class="py-3 px-4">Disk Size</th>
+                                    <th class="py-3 px-4">Integrity Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="storageOrphansTableBody" class="divide-y divide-slate-100">
+                                <tr>
+                                    <td colspan="4" class="py-6 text-center text-slate-400">Click "Rescan Filesystem" or open this tab to inspect server storage.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div><!-- end #tab-storage -->
             </div><!-- end .p-4 -->
 
             <!-- FOOTER -->
@@ -1166,317 +1232,252 @@
             }
         }
     });
-</script>
 
-<!-- ═══════════════════════════════════════════════════════
-     NOTIFICATION PANEL — Reusable across all admin pages
-═══════════════════════════════════════════════════════ -->
-
-<!-- Backdrop -->
-<div id="notifBackdrop" class="fixed inset-0 z-[998] hidden" onclick="closeNotifPanel()"></div>
-
-<!-- Slide-in Panel -->
-<div id="notifPanel"
-     class="fixed top-0 right-0 h-full w-full max-w-sm z-[999] flex flex-col
-            bg-white border-l border-cyan-100 shadow-2xl
-            transform translate-x-full transition-transform duration-300 ease-in-out">
-
-    <!-- Panel Header -->
-    <div class="flex items-center justify-between px-5 py-4 border-b border-cyan-100 bg-gradient-to-r from-indigo-950 to-indigo-900 flex-shrink-0">
-        <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
-                <i class="fas fa-bell text-cyan-400"></i>
-            </div>
-            <div>
-                <p class="text-sm font-black text-white tracking-tight">Notifications</p>
-                <p class="text-[10px] text-indigo-400 font-semibold" id="notifSubtitle">Loading…</p>
-            </div>
-        </div>
-        <button onclick="closeNotifPanel()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
-            <i class="fas fa-times text-sm"></i>
-        </button>
-    </div>
-
-    <!-- Category Tabs -->
-    <div class="flex gap-0 border-b border-cyan-100 overflow-x-auto flex-shrink-0 bg-slate-50" id="notifTabs">
-        <button class="notif-tab active px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-cyan-500 text-cyan-600 transition" data-tab="all">All</button>
-        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="alerts">Alerts</button>
-        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="activity">Activity</button>
-        <button class="notif-tab px-4 py-2.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition" data-tab="live">Live</button>
-    </div>
-
-    <!-- Scrollable Body -->
-    <div id="notifBody" class="flex-1 overflow-y-auto p-4 space-y-3" style="scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent;">
-        <div id="notifSkeleton" class="space-y-3">
-            <% for(let i=0;i<5;i++) { %>
-            <div class="animate-pulse flex gap-3 items-start">
-                <div class="w-8 h-8 rounded-lg bg-slate-200 flex-shrink-0"></div>
-                <div class="flex-1 space-y-1.5">
-                    <div class="h-3 bg-slate-200 rounded w-3/4"></div>
-                    <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
-                </div>
-            </div>
-            <% } %>
-        </div>
-        <div id="notifContent" class="hidden space-y-3"></div>
-    </div>
-
-    <!-- Panel Footer -->
-    <div class="px-5 py-3 border-t border-cyan-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
-        <p class="text-[10px] text-slate-400 font-semibold">Auto-refreshes every 60s</p>
-        <button onclick="loadNotifications()" class="text-[11px] font-black text-cyan-600 hover:text-cyan-800 flex items-center gap-1 transition">
-            <i class="fas fa-rotate-right text-[10px]"></i> Refresh
-        </button>
-    </div>
-</div>
-
-<style>
-    .notif-tab.active { border-bottom-color: #06b6d4 !important; color: #0891b2 !important; }
-    .notif-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; transition: border-color 0.15s, box-shadow 0.15s; }
-    .notif-item:hover { border-color: #06b6d4; box-shadow: 0 4px 12px rgba(6,182,212,0.08); }
-    .notif-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
-    .notif-title { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.35; }
-    .notif-sub { font-size: 10.5px; color: #64748b; margin-top: 1px; }
-    .notif-time { font-size: 10px; color: #94a3b8; white-space: nowrap; margin-left: auto; padding-left: 6px; flex-shrink: 0; }
-    .notif-section-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; padding: 4px 0 6px; }
-    .notif-link { font-size: 10.5px; color: #06b6d4; font-weight: 700; text-decoration: none; cursor: pointer; }
-    .notif-link:hover { color: #0891b2; }
-</style>
-
-<script>
-(function() {
-    let _notifData   = null;
-    let _activeTab   = 'all';
-    let _refreshTimer = null;
-
-    function timeAgo(dateStr) {
-        if (!dateStr) return '';
-        const diff = (Date.now() - new Date(dateStr)) / 1000;
-        if (diff < 60)   return 'just now';
-        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-        return Math.floor(diff/86400) + 'd ago';
-    }
-
-    function fmtDate(dateStr) {
-        if (!dateStr) return '—';
-        return new Date(dateStr).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' });
-    }
-
-    window.toggleNotifPanel = function() {
-        const panel    = document.getElementById('notifPanel');
-        const backdrop = document.getElementById('notifBackdrop');
-        const isOpen   = !panel.classList.contains('translate-x-full');
-        if (isOpen) { closeNotifPanel(); return; }
-        panel.classList.remove('translate-x-full');
-        backdrop.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        loadNotifications();
-        _refreshTimer = setInterval(loadNotifications, 60000);
-    };
-
-    window.closeNotifPanel = function() {
-        document.getElementById('notifPanel').classList.add('translate-x-full');
-        document.getElementById('notifBackdrop').classList.add('hidden');
-        document.body.style.overflow = '';
-        clearInterval(_refreshTimer);
-    };
-
-    window.loadNotifications = async function() {
-        document.getElementById('notifSkeleton').classList.remove('hidden');
-        document.getElementById('notifContent').classList.add('hidden');
-        try {
-            const res  = await fetch('/admin/notifications');
-            const data = await res.json();
-            if (!data.success) throw new Error(data.message);
-            _notifData = data;
-            updateBell(data.total);
-            renderTab(_activeTab);
-        } catch(e) {
-            document.getElementById('notifContent').innerHTML =
-                '<div class="py-10 text-center text-slate-400 text-xs">Failed to load notifications.</div>';
-            document.getElementById('notifContent').classList.remove('hidden');
-            document.getElementById('notifSkeleton').classList.add('hidden');
-        }
-    };
-
-    function updateBell(count) {
-        const dot   = document.getElementById('notifDot');
-        const badge = document.getElementById('notifCount');
-        if (count > 0) {
-            dot.classList.remove('hidden');
-            badge.textContent = count > 9 ? '9+' : count;
-            badge.classList.remove('hidden');
-        } else {
-            dot.classList.add('hidden');
-            badge.classList.add('hidden');
-        }
-        document.getElementById('notifSubtitle').textContent =
-            count > 0 ? count + ' item' + (count !== 1 ? 's' : '') + ' need attention' : 'All clear';
-    }
-
-    function renderTab(tab) {
-        _activeTab = tab;
-        const d = _notifData;
-        if (!d) return;
-
-        let html = '';
-
-        if (tab === 'all' || tab === 'alerts') {
-            const alertItems = [
-                ...d.expiredInvites.map(i => ({
-                    icon: 'fas fa-envelope-circle-check', iconBg: 'bg-rose-50', iconColor: 'text-rose-500',
-                    title: 'Expired Invitation',
-                    sub: i.email + ' · ' + (i.role || 'Unknown role'),
-                    time: fmtDate(i.expires_at),
-                    link: '/admin/user_access_control', linkLabel: 'View UAC'
-                })),
-                ...d.flaggedStudents.map(s => ({
-                    icon: 'fas fa-flag', iconBg: 'bg-amber-50', iconColor: 'text-amber-500',
-                    title: 'Flagged Student',
-                    sub: s.full_name + (s.assessment_name ? ' · ' + s.assessment_name : ''),
-                    time: '',
-                    link: '/admin/user_access_control', linkLabel: 'View Student'
-                })),
-                ...d.lockedPastDue.map(a => ({
-                    icon: 'fas fa-lock', iconBg: 'bg-orange-50', iconColor: 'text-orange-500',
-                    title: 'Assessment Past Due & Locked',
-                    sub: a.assessment_name + ' · ' + (a.subject_name || ''),
-                    time: fmtDate(a.due_date),
-                    link: '/admin/gaming_question_bank', linkLabel: 'Manage'
-                })),
-                ...d.overdueDeadlines.map(e => ({
-                    icon: 'fas fa-calendar-xmark', iconBg: 'bg-red-50', iconColor: 'text-red-500',
-                    title: 'Overdue Deadline',
-                    sub: e.event_title + (e.subject_name ? ' · ' + e.subject_name : ''),
-                    time: fmtDate(e.event_date),
-                    link: '/admin/academic_management', linkLabel: 'View'
-                })),
-                ...d.pendingQuestions.map(q => ({
-                    icon: 'fas fa-robot', iconBg: 'bg-indigo-50', iconColor: 'text-indigo-500',
-                    title: 'AI Question Awaiting Approval',
-                    sub: q.question_text.substring(0, 55) + (q.question_text.length > 55 ? '…' : ''),
-                    time: '#' + q.question_id,
-                    link: '/admin/gaming_question_bank', linkLabel: 'Review'
-                })),
-            ];
-
-            if (tab === 'alerts' || tab === 'all') {
-                if (alertItems.length === 0) {
-                    if (tab === 'alerts') html += emptyState('fa-shield-halved', 'No alerts', 'Everything looks good!');
-                } else {
-                    if (tab === 'all') html += '<div class="notif-section-label"><i class="fas fa-triangle-exclamation mr-1 text-rose-400"></i>Alerts Requiring Action</div>';
-                    alertItems.forEach(item => { html += notifItem(item); });
-                }
-            }
-        }
-
-        if (tab === 'activity' || tab === 'all') {
-            const actItems = [
-                ...d.pendingInvites.map(i => ({
-                    icon: 'fas fa-paper-plane', iconBg: 'bg-cyan-50', iconColor: 'text-cyan-500',
-                    title: 'Pending Invitation',
-                    sub: i.email + ' · ' + (i.role || ''),
-                    time: timeAgo(i.created_at),
-                    link: '/admin/user_access_control', linkLabel: 'View'
-                })),
-                ...d.newUsers.map(u => ({
-                    icon: 'fas fa-user-plus', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500',
-                    title: 'New ' + u.role + ' Registered',
-                    sub: u.full_name,
-                    time: timeAgo(u.created_at),
-                    link: '/admin/user_access_control', linkLabel: 'View Profile'
-                })),
-            ];
-
-            if (tab === 'activity') {
-                if (actItems.length === 0) html += emptyState('fa-clock-rotate-left', 'No recent activity', 'No new users or pending invites.');
-                else actItems.forEach(item => { html += notifItem(item); });
-            } else if (tab === 'all' && actItems.length > 0) {
-                html += '<div class="notif-section-label mt-2"><i class="fas fa-bolt mr-1 text-cyan-400"></i>Recent Activity</div>';
-                actItems.forEach(item => { html += notifItem(item); });
-            }
-        }
-
-        if (tab === 'live' || tab === 'all') {
-            if (tab === 'live') {
-                if (d.activeSessions.length === 0) {
-                    html += emptyState('fa-gamepad', 'No live sessions', 'No students are playing right now.');
-                } else {
-                    d.activeSessions.forEach(s => {
-                        html += notifItem({
-                            icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
-                            title: s.student_name + ' is playing',
-                            sub: s.assessment_name + ' · ' + s.player_mode,
-                            time: timeAgo(s.start_time),
-                            link: null
-                        });
-                    });
-                }
-            } else if (tab === 'all' && d.activeSessions.length > 0) {
-                html += '<div class="notif-section-label mt-2"><i class="fas fa-circle text-green-400 mr-1"></i>Live Sessions (' + d.activeSessions.length + ')</div>';
-                d.activeSessions.slice(0, 3).forEach(s => {
-                    html += notifItem({
-                        icon: 'fas fa-gamepad', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
-                        title: s.student_name + ' is playing',
-                        sub: s.assessment_name + ' · ' + s.player_mode,
-                        time: timeAgo(s.start_time),
-                        link: null
-                    });
-                });
-            }
-        }
-
-        if (tab === 'all' && html === '') {
-            html = emptyState('fa-bell-slash', 'All clear!', 'No alerts or pending items.');
-        }
-
-        document.getElementById('notifContent').innerHTML = html;
-        document.getElementById('notifContent').classList.remove('hidden');
-        document.getElementById('notifSkeleton').classList.add('hidden');
-    }
-
-    function notifItem(item) {
-        return '<div class="notif-item">' +
-            '<div class="notif-icon ' + item.iconBg + ' ' + item.iconColor + '">' +
-                '<i class="' + item.icon + '"></i>' +
-            '</div>' +
-            '<div class="flex-1 min-w-0">' +
-                '<p class="notif-title">' + item.title + '</p>' +
-                '<p class="notif-sub truncate">' + item.sub + '</p>' +
-                (item.link ? '<a href="' + item.link + '" class="notif-link">' + item.linkLabel + ' →</a>' : '') +
-            '</div>' +
-            (item.time ? '<span class="notif-time">' + item.time + '</span>' : '') +
-        '</div>';
-    }
-
-    function emptyState(icon, title, sub) {
-        return '<div class="py-10 text-center">' +
-            '<i class="fas ' + icon + ' text-3xl text-slate-200 mb-3 block"></i>' +
-            '<p class="text-sm font-bold text-slate-400">' + title + '</p>' +
-            '<p class="text-xs text-slate-300 mt-1">' + sub + '</p>' +
-        '</div>';
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.notif-tab').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.notif-tab').forEach(function(b) { b.classList.remove('active'); });
-                btn.classList.add('active');
-                renderTab(btn.dataset.tab);
-            });
+    // ── TABS MANAGEMENT (SYSTEM ACTIONS, RECEIPTS & STORAGE) ─────────────────
+    window.switchTab = function(tabName) {
+        // Update tab styling
+        document.querySelectorAll('.audit-tab').forEach(el => {
+            el.classList.remove('active', 'text-indigo-600');
+            el.classList.add('text-slate-500');
         });
+        const activeBtn = document.getElementById('btn-tab-' + tabName);
+        if (activeBtn) {
+            activeBtn.classList.add('active', 'text-indigo-600');
+            activeBtn.classList.remove('text-slate-500');
+        }
 
-        setInterval(async function() {
-            try {
-                const res  = await fetch('/admin/notifications');
-                const data = await res.json();
-                if (data.success) updateBell(data.total);
-            } catch(_) {}
-        }, 120000);
-    });
+        // Toggle content visibility
+        document.getElementById('tab-system').classList.toggle('hidden', tabName !== 'system');
+        const tabReceipts = document.getElementById('tab-receipts');
+        if (tabReceipts) {
+            tabReceipts.classList.toggle('hidden', tabName !== 'receipts');
+            if (tabName === 'receipts') {
+                loadRecentReceipts();
+            }
+        }
+        const tabStorage = document.getElementById('tab-storage');
+        if (tabStorage) {
+            tabStorage.classList.toggle('hidden', tabName !== 'storage');
+            if (tabName === 'storage') {
+                loadStorageAudit();
+            }
+        }
+    };
+
+    // ── STORAGE & DELIVERABLES AUDIT HANDLERS ────────────────────────────────
+    window.loadStorageAudit = async function() {
+        const tbody = document.getElementById('storageOrphansTableBody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i> Reconciling server filesystems with database records...</td></tr>';
+
+        try {
+            const res = await fetch('/admin/api/storage/audit');
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Audit scan failed');
+
+            const s = data.summary;
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
+
+            setVal('storageDeliverablesSize', s.deliverables.sizeMB + ' MB');
+            setVal('storageDeliverablesCount', s.deliverables.count + ' files');
+
+            setVal('storageTemplatesSize', s.templates.sizeMB + ' MB');
+            setVal('storageTemplatesCount', s.templates.count + ' files');
+
+            setVal('storageSamplesSize', s.samples.sizeMB + ' MB');
+            setVal('storageSamplesCount', s.samples.count + ' files');
+
+            setVal('storageAudioSize', s.audioNotes.sizeMB + ' MB');
+            setVal('storageAudioCount', s.audioNotes.count + ' files');
+
+            setVal('storageOrphansSize', s.orphans.sizeMB + ' MB');
+            setVal('storageOrphansCount', s.orphans.count + ' orphans');
+
+            if (!tbody) return;
+
+            if (!data.orphans || data.orphans.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-emerald-600 font-bold text-xs"><i class="fas fa-circle-check text-base mr-1"></i> Excellent! Zero unreferenced orphan files detected on disk.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.orphans.map(o => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-3 px-4 text-xs font-mono font-bold text-slate-800">${o.filename}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500 font-mono">${o.dir}</td>
+                    <td class="py-3 px-4 text-xs font-bold text-slate-600">${(o.size / 1024).toFixed(1)} KB</td>
+                    <td class="py-3 px-4 text-xs">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700">
+                            <i class="fas fa-triangle-exclamation"></i> Unreferenced
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+        } catch (err) {
+            console.error('Storage Audit Error:', err);
+            if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-rose-500 font-bold text-xs"><i class="fas fa-circle-exclamation mr-1"></i> ${err.message}</td></tr>`;
+        }
+    };
+
+    window.cleanupOrphanStorage = async function() {
+        if (!confirm('Are you sure you want to permanently delete all unreferenced orphan files from the server? This operation will free disk space and is logged in the system audit.')) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/admin/api/storage/cleanup-orphans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Orphan Cleanup Completed Successfully!\n\nDeleted Files: ${data.cleanedCount}\nFreed Disk Space: ${data.freedMB} MB`);
+                loadStorageAudit();
+            } else {
+                alert('Cleanup failed: ' + (data.error || 'Server error'));
+            }
+        } catch (err) {
+            console.error('Cleanup Error:', err);
+            alert('Error during orphan cleanup: ' + err.message);
+        }
+    };
+
+    // ── RECEIPT AUDIT & CAMPUS GRACE BUFFER HANDLERS ─────────────────────────
+    window.saveCampusGraceBuffer = async function() {
+        const inp = document.getElementById('campusGraceBufferInput');
+        const minutes = parseInt(inp ? inp.value : 5) || 5;
+        const feedback = document.getElementById('graceBufferFeedback');
+
+        try {
+            const res = await fetch('/admin/api/settings/grace-buffer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ grace_period_minutes: minutes })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (feedback) {
+                    feedback.className = 'mt-3 text-xs font-bold text-emerald-700 bg-emerald-100/80 p-3 rounded-xl border border-emerald-200 block';
+                    feedback.innerHTML = `<i class="fas fa-check-circle mr-1"></i> ${data.message}`;
+                    setTimeout(() => feedback.classList.add('hidden'), 5000);
+                }
+            } else {
+                alert(data.error || 'Failed to update campus grace buffer.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error updating grace buffer policy.');
+        }
+    };
+
+    window.lookupReceiptByHash = async function() {
+        const inp = document.getElementById('adminReceiptSearchHash');
+        const hash = inp ? inp.value.trim() : '';
+        const container = document.getElementById('receiptLookupResult');
+        if (!hash) {
+            alert('Please enter a SHA-256 hash or receipt fingerprint.');
+            return;
+        }
+
+        container.classList.remove('hidden');
+        container.className = 'p-4 rounded-2xl border text-xs bg-slate-50 border-slate-200 text-slate-600 block';
+        container.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verifying cryptographic hash against audit ledger...';
+
+        try {
+            const res = await fetch(`/admin/api/receipts/verify/${encodeURIComponent(hash)}`);
+            const data = await res.json();
+
+            if (data.success && data.verified && data.receipt) {
+                const r = data.receipt;
+                const verifiedTime = new Date(r.server_timestamp).toLocaleString('en-PH', {
+                    month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                container.className = 'p-4 rounded-2xl border text-xs bg-emerald-50 border-emerald-200 text-emerald-900 block space-y-2';
+                container.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="inline-flex items-center gap-1.5 font-black text-emerald-700 uppercase tracking-wider text-[11px]">
+                            <i class="fas fa-circle-check text-emerald-600 text-sm"></i> Cryptographically Verified Valid
+                        </span>
+                        <span class="text-[10px] text-emerald-600 font-mono">ID: ${r.receipt_id}</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-700 pt-1">
+                        <div><strong>Student:</strong> ${r.first_name || ''} ${r.last_name || ''} (${r.email || 'N/A'})</div>
+                        <div><strong>Assessment:</strong> ${r.assessment_name || 'N/A'}</div>
+                        <div><strong>Submitted:</strong> ${verifiedTime}</div>
+                        <div><strong>Grace Window:</strong> ${r.grace_minutes_used ? `<span class="text-amber-600 font-bold">${r.grace_minutes_used} min buffer used</span>` : '<span class="text-emerald-600 font-semibold">On-Time Submission</span>'}</div>
+                    </div>
+                    <div class="pt-1 font-mono text-[10px] break-all text-slate-500 bg-white/70 p-2 rounded-xl border border-emerald-100">
+                        <strong>Fingerprint:</strong> ${r.sha256_hash}
+                    </div>
+                `;
+            } else {
+                container.className = 'p-4 rounded-2xl border text-xs bg-rose-50 border-rose-200 text-rose-800 block';
+                container.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-circle-xmark text-rose-600 text-base"></i>
+                        <div>
+                            <span class="font-black uppercase tracking-wider text-[11px]">Verification Failed / Non-Existent Record</span>
+                            <p class="text-[11px] text-rose-600 mt-0.5">${data.message || 'No submission record matches this SHA-256 fingerprint in the institutional ledger.'}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (err) {
+            console.error(err);
+            container.className = 'p-4 rounded-2xl border text-xs bg-rose-50 border-rose-200 text-rose-800 block';
+            container.innerHTML = `<i class="fas fa-triangle-exclamation text-rose-600 mr-2"></i> Network error connecting to verification service.`;
+        }
+    };
+
+    window.loadRecentReceipts = async function() {
+        const tbody = document.getElementById('recentReceiptsTableBody');
+        if (!tbody) return;
+
+        try {
+            const res = await fetch('/admin/api/receipts/recent');
+            const data = await res.json();
+
+            if (!data.success || !data.receipts || data.receipts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-400 font-bold">No digital submission receipts recorded yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.receipts.map(r => {
+                const dateStr = new Date(r.server_timestamp).toLocaleString('en-PH', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                const shortHash = r.sha256_hash ? r.sha256_hash.substring(0, 16) + '...' : 'N/A';
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-2.5 px-3 font-mono font-bold text-slate-500 text-[10px]">${r.receipt_id}</td>
+                        <td class="py-2.5 px-3 font-bold text-slate-800">${r.first_name || ''} ${r.last_name || ''}</td>
+                        <td class="py-2.5 px-3 text-slate-600">${r.assessment_name || 'Assignment'}</td>
+                        <td class="py-2.5 px-3 font-mono text-[11px] text-indigo-600 font-semibold" title="${r.sha256_hash}">${shortHash}</td>
+                        <td class="py-2.5 px-3 text-slate-500 whitespace-nowrap">${dateStr}</td>
+                        <td class="py-2.5 px-3 text-center">
+                            <button type="button" onclick="document.getElementById('adminReceiptSearchHash').value='${r.sha256_hash}'; lookupReceiptByHash();" class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition">
+                                <i class="fas fa-check-double"></i> Verify
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (err) {
+            console.error('[loadRecentReceipts]', err);
+            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-rose-500 font-bold">Failed to load recent receipts.</td></tr>';
+        }
+    };
+
+
 })();
 </script>
 
+<!-- Elementa Session Security Modals & Client Guardian Controller -->
+<%- include('../partials/session-modals') %>
+<script src="/js/session-guard.js"></script>
+
 </body>
 </html>
+

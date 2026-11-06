@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User & Access Control | Chemistry Arcade</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/admin_spa_handler.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -53,6 +56,7 @@
             padding: 16px;
         }
         .modal-overlay.open { opacity: 1; pointer-events: all; }
+        .swal2-container { z-index: 100000 !important; }
         .modal-box {
             background: white; border-radius: 20px;
             box-shadow: 0 32px 80px rgba(0,0,0,0.22);
@@ -267,7 +271,7 @@
 
         <!-- Scrollable content area -->
         <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
-            <div class="p-4 md:p-8 flex-1 fade-in">
+            <div id="adminMainContent" class="p-4 md:p-8 flex-1 fade-in">
 
                 <!-- ── KPI STAT CARDS ── -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -320,12 +324,7 @@
                         <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600" onclick="switchTab('tab-bulk',this)">
                             <i class="fas fa-file-excel"></i> Bulk Import
                         </button>
-                        <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600" onclick="switchTab('tab-flagged',this)">
-                            <i class="fas fa-flag"></i> Flagged
-                            <% if (flaggedUsers.length > 0) { %>
-                            <span class="ml-1 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full"><%= flaggedUsers.length %></span>
-                            <% } %>
-                        </button>
+
                     </div>
 
                     <!-- ══════════════════════════════
@@ -362,6 +361,7 @@
                                     <tr class="border-b border-slate-100">
                                         <th class="p-3 text-left">User</th>
                                         <th class="p-3 text-left hidden md:table-cell">Role</th>
+                                        <th class="p-3 text-left hidden lg:table-cell">Status</th>
                                         <th class="p-3 text-left hidden lg:table-cell">ID / LRN</th>
                                         <th class="p-3 text-left hidden xl:table-cell">Grade / Dept</th>
                                         <th class="p-3 text-left hidden md:table-cell">Google</th>
@@ -405,6 +405,16 @@
 
                                             <td class="p-3 hidden md:table-cell">
                                                 <span class="badge badge-<%= u.role ? u.role.toLowerCase() : 'user' %>"><%= u.role %></span>
+                                            </td>
+
+                                            <td class="p-3 hidden lg:table-cell">
+                                                <% if (u.is_suspended) { %>
+                                                    <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">Suspended</span>
+                                                <% } else if (!u.is_active) { %>
+                                                    <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">Inactive</span>
+                                                <% } else { %>
+                                                    <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">Active</span>
+                                                <% } %>
                                             </td>
 
                                             <td class="p-3 hidden lg:table-cell text-xs text-slate-500 font-mono">
@@ -463,6 +473,27 @@
                                                     <% } %>
 
                                                     <% if (u.user_id !== user.user_id) { %>
+                                                        <% if (u.is_suspended) { %>
+                                                            <button type="button" class="btn-icon bg-emerald-50 text-emerald-600 hover:bg-emerald-100" title="Activate/Unsuspend User"
+                                                                onclick="confirmToggleStatus('<%= u.user_id %>', '<%= fullName %>', 'activate_suspension')">
+                                                                <i class="fas fa-user-check"></i>
+                                                            </button>
+                                                        <% } else if (!u.is_active) { %>
+                                                            <button type="button" class="btn-icon bg-emerald-50 text-emerald-600 hover:bg-emerald-100" title="Activate Account"
+                                                                onclick="confirmToggleStatus('<%= u.user_id %>', '<%= fullName %>', 'activate')">
+                                                                <i class="fas fa-user-check"></i>
+                                                            </button>
+                                                        <% } else { %>
+                                                            <button type="button" class="btn-icon bg-amber-50 text-amber-600 hover:bg-amber-100" title="Deactivate Account"
+                                                                onclick="confirmToggleStatus('<%= u.user_id %>', '<%= fullName %>', 'deactivate')">
+                                                                <i class="fas fa-user-lock"></i>
+                                                            </button>
+                                                            <button type="button" class="btn-icon bg-rose-50 text-rose-600 hover:bg-rose-100" title="Suspend User"
+                                                                onclick="confirmToggleStatus('<%= u.user_id %>', '<%= fullName %>', 'suspend')">
+                                                                <i class="fas fa-ban"></i>
+                                                            </button>
+                                                        <% } %>
+
                                                     <button type="button" class="btn-icon btn-delete" title="Delete"
                                                         onclick="confirmDelete('<%= u.user_id %>', '<%= fullName %>')">
                                                         <i class="fas fa-trash"></i>
@@ -626,137 +657,335 @@
                     <!-- ══════════════════════════════
                          TAB 3 — BULK IMPORT
                     ══════════════════════════════ -->
-                    <div id="tab-bulk" class="tab-content p-5">
-                        <div class="mb-5 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-3">
-                            <i class="fas fa-triangle-exclamation text-amber-500 mt-0.5 text-lg"></i>
-                            <div class="text-sm">
-                                <p class="font-bold text-amber-800">Bulk import uses the same invitation flow.</p>
-                                <p class="text-amber-600 mt-0.5 text-xs">
-                                    Each row sends one invitation email. Users appear in the User Directory
-                                    only after they confirm and connect their Google account.
-                                    Duplicate emails, LRNs, and Faculty IDs are detected per-row and logged.
+                                        <div id="tab-bulk" class="tab-content p-5">
+                        <!-- Informational Header Banner -->
+                        <div class="mb-6 p-4 bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200/70 rounded-2xl flex items-start gap-3 shadow-sm">
+                            <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center flex-shrink-0 text-base">
+                                <i class="fas fa-shield-halved"></i>
+                            </div>
+                            <div class="text-xs">
+                                <p class="font-extrabold text-sky-950 text-sm">Bulk Registration &amp; Strict Enrollment Verification</p>
+                                <p class="text-slate-600 mt-1 leading-relaxed">
+                                    Every imported student is verified against institutional enrollment rules before invitations are dispatched:
+                                    <span class="font-bold text-sky-800">12-digit DepEd LRN validation</span>,
+                                    <span class="font-bold text-sky-800">Current Active School Year enforcement</span>,
+                                    <span class="font-bold text-sky-800">Enrollment Date Window check</span>, and
+                                    <span class="font-bold text-sky-800">Class Max Capacity verification</span>.
+                                    Duplicate sections across subjects are pinpointed by teacher name.
                                 </p>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Student bulk -->
-                            <div class="bg-sky-50 rounded-2xl border border-sky-100 p-5">
-                                <h3 class="font-black text-sky-900 text-base mb-1 flex items-center gap-2"><i class="fas fa-user-graduate text-sky-500"></i> Student Bulk Import</h3>
-                                <p class="text-xs text-sky-600 mb-4">Upload Excel. Each row → one invitation email sent.</p>
-                                <div id="dropZone" class="drop-zone p-8 text-center mb-4"
-                                     onclick="document.getElementById('studentFile').click()"
-                                     ondragover="event.preventDefault();this.classList.add('dragover')"
-                                     ondragleave="this.classList.remove('dragover')"
-                                     ondrop="handleDrop(event,'student')">
-                                    <i class="fas fa-file-excel text-5xl text-sky-300 mb-3 block"></i>
-                                    <p class="font-bold text-sky-700">Drop file here or click to browse</p>
-                                    <p class="text-xs text-sky-400 mt-1">.xlsx / .xls · max 500 rows</p>
-                                </div>
-                                <input type="file" id="studentFile" accept=".xlsx,.xls" class="hidden" onchange="previewBulk(this,'student')">
-                                <div id="studentPreview" class="hidden mb-4"></div>
-                                <div class="flex items-center gap-3">
-                                    <button onclick="downloadTemplate('student')" class="flex items-center gap-2 text-xs font-bold border border-sky-300 text-sky-700 px-4 py-2 rounded-xl hover:bg-sky-100 transition"><i class="fas fa-download"></i> Template</button>
-                                    <button id="submitStudentBulk" disabled onclick="submitBulk('student')"
-                                        class="flex items-center gap-2 text-xs font-bold bg-sky-500 text-white px-4 py-2 rounded-xl hover:bg-sky-600 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                                        <i class="fas fa-upload"></i> Import &amp; Send Invites
-                                    </button>
-                                </div>
-                            </div>
-                            <!-- Teacher bulk -->
-                            <div class="bg-emerald-50 rounded-2xl border border-emerald-100 p-5">
-                                <h3 class="font-black text-emerald-900 text-base mb-1 flex items-center gap-2"><i class="fas fa-chalkboard-user text-emerald-500"></i> Teacher Bulk Import</h3>
-                                <p class="text-xs text-emerald-600 mb-4">Upload Excel. Each row → one invitation email sent.</p>
-                                <div id="dropZoneTeacher" class="drop-zone p-8 text-center mb-4"
-                                     onclick="document.getElementById('teacherFile').click()"
-                                     ondragover="event.preventDefault();this.classList.add('dragover')"
-                                     ondragleave="this.classList.remove('dragover')"
-                                     ondrop="handleDrop(event,'teacher')">
-                                    <i class="fas fa-file-excel text-5xl text-emerald-300 mb-3 block"></i>
-                                    <p class="font-bold text-emerald-700">Drop file here or click to browse</p>
-                                    <p class="text-xs text-emerald-400 mt-1">.xlsx / .xls · max 200 rows</p>
-                                </div>
-                                <input type="file" id="teacherFile" accept=".xlsx,.xls" class="hidden" onchange="previewBulk(this,'teacher')">
-                                <div id="teacherPreview" class="hidden mb-4"></div>
-                                <div class="flex items-center gap-3">
-                                    <button onclick="downloadTemplate('teacher')" class="flex items-center gap-2 text-xs font-bold border border-emerald-300 text-emerald-700 px-4 py-2 rounded-xl hover:bg-emerald-100 transition"><i class="fas fa-download"></i> Template</button>
-                                    <button id="submitTeacherBulk" disabled onclick="submitBulk('teacher')"
-                                        class="flex items-center gap-2 text-xs font-bold bg-emerald-500 text-white px-4 py-2 rounded-xl hover:bg-emerald-600 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                                        <i class="fas fa-upload"></i> Import &amp; Send Invites
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="importLog" class="hidden mt-6 bg-slate-900 rounded-2xl p-5 text-sm font-mono text-green-400 max-h-56 overflow-y-auto"></div>
-                    </div><!-- /tab-bulk -->
 
-                    <!-- ══════════════════════════════
-                         TAB 4 — FLAGGED USERS
-                    ══════════════════════════════ -->
-                    <div id="tab-flagged" class="tab-content p-5">
-                        <div class="mb-4 p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-3">
-                            <i class="fas fa-triangle-exclamation text-rose-500 mt-0.5"></i>
-                            <div>
-                                <p class="font-bold text-rose-800 text-sm">Flagged students require admin review.</p>
-                                <p class="text-xs text-rose-500 mt-0.5">A <code class="bg-rose-100 px-1 rounded">flagged_assessment_id</code> indicates a possible integrity issue during an arcade session. Review and unflag or take action.</p>
+                        <!-- Role Selector Pill Toolbar -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-slate-200/80 rounded-2xl p-2 mb-6 shadow-xs gap-2">
+                            <div class="flex items-center gap-2">
+                                <button type="button" id="btnBulkRoleStudent" onclick="switchBulkRole('student')"
+                                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-sm">
+                                    <i class="fas fa-user-graduate"></i> Student Bulk Import &amp; Enrollment
+                                </button>
+                                <button type="button" id="btnBulkRoleTeacher" onclick="switchBulkRole('teacher')"
+                                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/60 transition">
+                                    <i class="fas fa-chalkboard-user text-emerald-600"></i> Teacher Bulk Import &amp; Load Assignment
+                                </button>
                             </div>
+                            <span class="text-[11px] font-medium text-slate-400 mr-2">Switch workflow to manage bulk registrations</span>
                         </div>
-                        <% if (flaggedUsers.length === 0) { %>
-                        <div class="py-16 text-center text-slate-400">
-                            <i class="fas fa-check-circle text-5xl mb-3 block text-emerald-300"></i>
-                            <p class="font-bold text-emerald-600">No flagged users — all clear!</p>
-                        </div>
-                        <% } else { %>
-                        <div class="table-wrap rounded-xl border border-slate-100">
-                            <table class="data-table w-full text-sm">
-                                <thead>
-                                    <tr class="border-b border-slate-100">
-                                        <th class="p-3 text-left">Student</th>
-                                        <th class="p-3 text-left hidden md:table-cell">Email</th>
-                                        <th class="p-3 text-left">Flagged Assessment</th>
-                                        <th class="p-3 text-left hidden md:table-cell">Level / EXP</th>
-                                        <th class="p-3 text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                <% flaggedUsers.forEach(function(fu) { %>
-                                <tr class="border-b border-slate-50">
-                                    <td class="p-3">
-                                        <div class="flex items-center gap-3">
-                                            <img src="/profile_uploads/<%= fu.profile_pic || 'default_avatar.png' %>" class="w-9 h-9 rounded-xl object-cover border-2 border-rose-200" onerror="this.src='/profile_uploads/default_avatar.png'">
-                                            <div>
-                                                <p class="font-bold text-slate-800"><%= fu.first_name %> <%= fu.last_name %></p>
-                                                <p class="text-[10px] text-slate-400"><%= fu.grade_level %> · <%= fu.section || '—' %></p>
-                                            </div>
+
+                        <!-- ══ STUDENT BULK PANE ══ -->
+                        <div id="bulkStudentPane">
+                            <div class="bg-white rounded-2xl border border-sky-100 shadow-sm p-6">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-5 border-b border-slate-100 gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center text-lg shadow-md shadow-sky-500/20">
+                                            <i class="fas fa-user-graduate"></i>
                                         </div>
-                                    </td>
-                                    <td class="p-3 hidden md:table-cell text-xs text-slate-500"><%= fu.email %></td>
-                                    <td class="p-3">
-                                        <span class="badge badge-expired"><i class="fas fa-flag mr-1"></i> Assessment #<%= fu.flagged_assessment_id %></span>
-                                        <% if (fu.assessment_name) { %><p class="text-xs text-slate-400 mt-0.5"><%= fu.assessment_name %></p><% } %>
-                                    </td>
-                                    <td class="p-3 hidden md:table-cell text-xs">
-                                        <div class="font-bold text-indigo-700">Lv. <%= fu.current_level %></div>
-                                        <div class="text-slate-400"><%= (fu.total_exp || 0).toLocaleString() %> EXP</div>
-                                    </td>
-                                    <td class="p-3">
-                                        <div class="flex items-center justify-center gap-1.5">
-                                            <button class="btn-icon btn-flag" title="Unflag"
-                                                onclick="confirmUnflag(<%= fu.user_id %>,'<%= (fu.first_name+String.fromCharCode(32)+fu.last_name).split(String.fromCharCode(39)).join(String.fromCharCode(92,39)) %>')">
-                                                <i class="fas fa-flag-checkered"></i>
-                                            </button>
-                                            <button class="btn-icon btn-edit" title="Edit"
-                                                onclick='openEditModal(<%- JSON.stringify(fu) %>)'>
-                                                <i class="fas fa-pen"></i>
+                                        <div>
+                                            <h3 class="font-black text-sky-950 text-lg">Student Bulk Import &amp; Enrollment</h3>
+                                            <p class="text-xs text-slate-500">Configure target class, download pre-filled templates, and verify batch enrollment</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" onclick="downloadStudentTemplate()"
+                                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 transition shadow-sm">
+                                            <i class="fas fa-file-excel text-emerald-600 text-sm"></i> Download Template (.xlsx)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Dynamic Section & Subject Toolbar -->
+                                <div class="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-5 mb-5">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-6 h-6 rounded-lg bg-sky-500 text-white text-[11px] font-black flex items-center justify-center">1</span>
+                                            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Dynamic Section &amp; Teacher Assignment</span>
+                                        </div>
+                                        <span class="text-[11px] text-slate-400 font-medium">Selecting a section automatically binds the corresponding instructor</span>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <!-- Subject Selection -->
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5" for="bulkBatchSubject">
+                                                Subject <span class="text-rose-500">*</span>
+                                            </label>
+                                            <select id="bulkBatchSubject" class="fi text-xs font-semibold" onchange="onBatchSubjectChange()">
+                                                <option value="">-- Select Subject First --</option>
+                                                <% if (locals.subjectsList && subjectsList.length > 0) { %>
+                                                    <% subjectsList.forEach(s => { %>
+                                                        <option value="<%= s.subject_id %>" data-name="<%= s.subject_name %>">
+                                                            <%= s.subject_name %> <%= s.subject_code ? '(' + s.subject_code + ')' : '' %>
+                                                        </option>
+                                                    <% }) %>
+                                                <% } %>
+                                            </select>
+                                        </div>
+
+                                        <!-- Section Selection (Filtered by Subject) -->
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5" for="bulkBatchSection">
+                                                Section <span class="text-rose-500">*</span>
+                                            </label>
+                                            <select id="bulkBatchSection" class="fi text-xs font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" disabled onchange="onBatchSectionChange()">
+                                                <option value="">-- Choose Subject to View Sections --</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Auto-populated Teacher -->
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5" for="bulkBatchTeacher">
+                                                Assigned Teacher
+                                                <span class="text-[9px] text-sky-600 font-extrabold ml-1 bg-sky-100 px-1.5 py-0.5 rounded">Auto</span>
+                                            </label>
+                                            <input type="text" id="bulkBatchTeacher" readonly placeholder="Auto-populated upon section selection"
+                                                class="fi text-xs bg-slate-100/90 text-slate-800 font-bold border-slate-200 cursor-not-allowed">
+                                        </div>
+
+                                        <!-- Preset Track (Academic Track) -->
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5" for="bulkBatchTrack">
+                                                Track
+                                                <span class="text-[9px] text-emerald-600 font-extrabold ml-1 bg-emerald-100 px-1.5 py-0.5 rounded">Preset</span>
+                                            </label>
+                                            <input type="text" id="bulkBatchTrack" value="Academic Track" readonly
+                                                class="fi text-xs bg-slate-100/90 text-slate-800 font-bold border-slate-200 cursor-not-allowed">
+                                        </div>
+                                    </div>
+
+                                    <!-- Live Enrollment Status Banner & Apply to All Toolbar -->
+                                    <div class="mt-4 pt-3 border-t border-slate-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div id="bulkClassStatusBanner" class="hidden"></div>
+                                        <div class="flex items-center gap-2 ml-auto">
+                                            <button type="button" id="btnApplyAllBatch" onclick="applyBatchSelectionToAllRows()"
+                                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-indigo-600 to-sky-600 text-white hover:opacity-95 transition shadow-sm">
+                                                <i class="fas fa-check-double"></i> Apply to All Rows
                                             </button>
                                         </div>
-                                    </td>
-                                </tr>
-                                <% }) %>
-                                </tbody>
-                            </table>
-                        </div>
-                        <% } %>
-                    </div><!-- /tab-flagged -->
+                                    </div>
+                                </div>
+
+                                <!-- File Upload Drop Zone -->
+                                <div class="mb-5">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="w-6 h-6 rounded-lg bg-sky-500 text-white text-[11px] font-black flex items-center justify-center">2</span>
+                                        <span class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Upload Spreadsheet (.xlsx / .xls)</span>
+                                    </div>
+                                    <div id="dropZone" class="drop-zone p-8 text-center bg-slate-50/50 hover:bg-sky-50/50 transition cursor-pointer"
+                                         onclick="document.getElementById('studentFile').click()"
+                                         ondragover="event.preventDefault();this.classList.add('dragover')"
+                                         ondragleave="this.classList.remove('dragover')"
+                                         ondrop="handleDrop(event,'student')">
+                                        <i class="fas fa-file-excel text-5xl text-sky-400 mb-2 block"></i>
+                                        <p class="font-bold text-sky-900 text-sm">Drop student spreadsheet here or click to browse</p>
+                                        <p class="text-xs text-slate-400 mt-1">Accepts official Excel templates (.xlsx, .xls) · up to 500 rows per batch</p>
+                                    </div>
+                                    <input type="file" id="studentFile" accept=".xlsx,.xls" class="hidden" onchange="previewBulk(this,'student')">
+                                    <div id="studentPreview" class="hidden mt-3"></div>
+                                </div>
+
+                                <!-- Live Interactive Preview & Verification Workspace -->
+                                <div id="studentPreviewContainer" class="hidden mt-6 pt-5 border-t border-slate-200">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 gap-2">
+                                        <div>
+                                            <h4 class="font-black text-slate-800 text-sm flex items-center gap-2">
+                                                <i class="fas fa-table-list text-sky-500"></i> Batch Pre-Import Verification Table
+                                            </h4>
+                                            <p class="text-[11px] text-slate-400">Review student LRNs, verify section capacity, and adjust assignments before committing</p>
+                                        </div>
+                                        <div class="flex items-center gap-2" id="previewMetricsBar"></div>
+                                    </div>
+
+                                    <!-- Preview Table wrapper -->
+                                    <div class="table-wrap border border-slate-200 rounded-xl overflow-x-auto max-h-[440px] shadow-inner bg-white">
+                                        <table class="w-full text-left text-xs border-collapse data-table" id="tblStudentPreview">
+                                            <thead class="sticky top-0 bg-slate-100 z-10 border-b border-slate-200">
+                                                <tr>
+                                                    <th class="p-3 w-10 text-center">#</th>
+                                                    <th class="p-3">Student Name</th>
+                                                    <th class="p-3">Email Address</th>
+                                                    <th class="p-3 w-40">LRN (12 Digits)</th>
+                                                    <th class="p-3 min-w-[150px]">
+                                                        <div class="flex items-center justify-between gap-1">
+                                                            <span>Subject</span>
+                                                            <button type="button" onclick="applyColumnToAll('subject')" title="Apply selected subject to all rows" class="text-[10px] text-sky-600 hover:text-sky-800 font-extrabold uppercase tracking-tight underline">Apply All</button>
+                                                        </div>
+                                                    </th>
+                                                    <th class="p-3 min-w-[180px]">
+                                                        <div class="flex items-center justify-between gap-1">
+                                                            <span>Section</span>
+                                                            <button type="button" onclick="applyColumnToAll('section')" title="Apply selected section to all rows" class="text-[10px] text-sky-600 hover:text-sky-800 font-extrabold uppercase tracking-tight underline">Apply All</button>
+                                                        </div>
+                                                    </th>
+                                                    <th class="p-3 min-w-[140px]">Teacher</th>
+                                                    <th class="p-3 w-32">Track</th>
+                                                    <th class="p-3 w-36 text-center">Enrollment Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tblStudentPreviewBody" class="divide-y divide-slate-100"></tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Bottom Action Bar -->
+                                    <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                        <p class="text-xs text-slate-500 font-medium" id="previewSummaryText"></p>
+                                        <button id="submitStudentBulk" disabled onclick="submitBulk('student')"
+                                            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-sky-500 to-indigo-600 text-white hover:opacity-95 transition shadow-lg shadow-sky-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                                            <i class="fas fa-paper-plane"></i> Confirm Enrollment &amp; Send Invites
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div><!-- /bulkStudentPane -->
+
+                        <!-- ══ TEACHER BULK PANE ══ -->
+                        <div id="bulkTeacherPane" class="hidden">
+                            <div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-5 border-b border-slate-100 gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-lg shadow-md shadow-emerald-500/20">
+                                            <i class="fas fa-chalkboard-user"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-black text-emerald-950 text-lg">Teacher Bulk Import &amp; Teaching Load</h3>
+                                            <p class="text-xs text-slate-500">Configure teaching load, download pre-filled templates, and verify unique Faculty IDs</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" onclick="downloadTeacherTemplate()"
+                                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition shadow-sm">
+                                            <i class="fas fa-file-excel text-emerald-600 text-sm"></i> Download Template (.xlsx)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Step 1: Batch Teaching Load Toolbar -->
+                                <div class="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-5 mb-5">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white text-[11px] font-black flex items-center justify-center">1</span>
+                                            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Batch Teaching Load &amp; Department Preset</span>
+                                        </div>
+                                        <span class="text-[11px] text-slate-400 font-medium">Set default classes and department to apply across teachers</span>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <!-- Department Preset -->
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5" for="bulkTeacherBatchDept">
+                                                Default Department
+                                            </label>
+                                            <input type="text" id="bulkTeacherBatchDept" value="Science Department" placeholder="e.g. Science Department"
+                                                class="fi text-xs font-semibold">
+                                        </div>
+
+                                        <!-- Default Classes Preset Button -->
+                                        <div>
+                                            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5">
+                                                Default Teaching Load
+                                            </label>
+                                            <button type="button" onclick="openTeacherRowLoadModal(-1)"
+                                                class="w-full fi text-xs font-bold text-left flex items-center justify-between bg-white hover:border-emerald-400 transition cursor-pointer">
+                                                <span id="bulkTeacherBatchLoadDisplay" class="truncate text-slate-700">None selected (Click to set)</span>
+                                                <i class="fas fa-layer-group text-emerald-600 ml-2"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- Apply to All Rows Button -->
+                                        <div class="flex items-end">
+                                            <button type="button" onclick="applyTeacherBatchLoadToAll()"
+                                                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:opacity-95 transition shadow-sm">
+                                                <i class="fas fa-check-double"></i> Apply to All Rows
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: File Upload Drop Zone -->
+                                <div class="mb-5">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white text-[11px] font-black flex items-center justify-center">2</span>
+                                        <span class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Upload Spreadsheet (.xlsx / .xls)</span>
+                                    </div>
+                                    <div id="dropZoneTeacher" class="drop-zone p-8 text-center bg-slate-50/50 hover:bg-emerald-50/50 transition cursor-pointer"
+                                         onclick="document.getElementById('teacherFile').click()"
+                                         ondragover="event.preventDefault();this.classList.add('dragover')"
+                                         ondragleave="this.classList.remove('dragover')"
+                                         ondrop="handleDrop(event,'teacher')">
+                                        <i class="fas fa-file-excel text-5xl text-emerald-400 mb-2 block"></i>
+                                        <p class="font-bold text-emerald-950 text-sm">Drop teacher spreadsheet here or click to browse</p>
+                                        <p class="text-xs text-slate-400 mt-1">Accepts official Excel templates (.xlsx, .xls) · up to 200 faculty rows per batch</p>
+                                    </div>
+                                    <input type="file" id="teacherFile" accept=".xlsx,.xls" class="hidden" onchange="previewBulk(this,'teacher')">
+                                    <div id="teacherPreview" class="hidden mt-3"></div>
+                                </div>
+
+                                <!-- Step 3: Interactive Verification Workspace -->
+                                <div id="teacherPreviewContainer" class="hidden mt-6 pt-5 border-t border-slate-200">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 gap-2">
+                                        <div>
+                                            <h4 class="font-black text-slate-800 text-sm flex items-center gap-2">
+                                                <i class="fas fa-table-list text-emerald-600"></i> Teacher Pre-Import Verification Table
+                                            </h4>
+                                            <p class="text-[11px] text-slate-400">Verify Faculty ID uniqueness, inspect assigned teaching load, and resolve instructor conflicts</p>
+                                        </div>
+                                        <div class="flex items-center gap-2" id="teacherPreviewMetricsBar"></div>
+                                    </div>
+
+                                    <!-- Table Wrapper -->
+                                    <div class="table-wrap border border-slate-200 rounded-xl overflow-x-auto max-h-[440px] shadow-inner bg-white">
+                                        <table class="w-full text-left text-xs border-collapse data-table" id="tblTeacherPreview">
+                                            <thead class="sticky top-0 bg-slate-100 z-10 border-b border-slate-200">
+                                                <tr>
+                                                    <th class="p-3 w-10 text-center">#</th>
+                                                    <th class="p-3 min-w-[150px]">Teacher Name</th>
+                                                    <th class="p-3 min-w-[180px]">Email Address</th>
+                                                    <th class="p-3 w-36">Faculty ID (Unique)</th>
+                                                    <th class="p-3 w-32">Department</th>
+                                                    <th class="p-3 min-w-[240px]">Assigned Subjects &amp; Classes</th>
+                                                    <th class="p-3 min-w-[180px]">Section Conflict Status</th>
+                                                    <th class="p-3 w-32 text-center">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tblTeacherPreviewBody" class="divide-y divide-slate-100"></tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Bottom Action Bar -->
+                                    <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                        <p class="text-xs text-slate-500 font-medium" id="teacherPreviewSummaryText"></p>
+                                        <button id="submitTeacherBulk" disabled onclick="submitBulk('teacher')"
+                                            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:opacity-95 transition shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                                            <i class="fas fa-paper-plane"></i> Confirm Teaching Load &amp; Send Invites
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div><!-- /bulkTeacherPane -->
+
+                        <!-- Explicit Results & Detailed Error Feedback Panel (Shared) -->
+                        <div id="bulkResultsContainer" class="hidden mt-6"></div>
+                        <div id="importLog" class="hidden mt-4 bg-slate-900 rounded-2xl p-5 text-xs font-mono text-emerald-400 max-h-56 overflow-y-auto"></div></div><!-- /tab-bulk -->
+
+
 
                 </div><!-- /tabs card -->
             </div><!-- /p-8 -->
@@ -917,12 +1146,62 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3 mt-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Section</label>
-                            <input type="text" id="invSection" placeholder="STEM-A" maxlength="50" class="fi text-sm">
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+                                Section / Enrolled Class <span class="text-rose-500">*</span>
+                            </label>
+                            <select id="invClassSelect" class="fi text-sm font-semibold" onchange="onInviteClassChanged(this)">
+                                <option value="">-- Choose Class / Section to Enroll --</option>
+                                <% if (locals.classesList && classesList.length > 0) { %>
+                                    <% classesList.forEach(c => { 
+                                        const actualEnrolled = c.enrolled_count_actual !== undefined ? c.enrolled_count_actual : (c.enrolled_count || 0);
+                                        const isFull = (c.max_capacity !== null && c.max_capacity !== undefined && actualEnrolled >= c.max_capacity);
+                                    %>
+                                        <option value="<%= c.class_id %>"
+                                                data-class-id="<%= c.class_id %>"
+                                                data-class-name="<%= c.class_name %>"
+                                                data-subject-id="<%= c.subject_id %>"
+                                                data-subject-name="<%= c.subject_name || 'Chemistry' %>"
+                                                data-subject-code="<%= c.subject_code || '' %>"
+                                                data-capacity="<%= c.max_capacity !== null ? c.max_capacity : '' %>"
+                                                data-enrolled="<%= actualEnrolled %>"
+                                                data-start="<%= c.enrollment_start ? new Date(c.enrollment_start).toISOString() : '' %>"
+                                                data-end="<%= c.enrollment_end ? new Date(c.enrollment_end).toISOString() : '' %>"
+                                                data-sy-id="<%= c.sy_id || '' %>"
+                                                data-sy-range="<%= c.sy_range || '' %>"
+                                                <%= isFull ? 'class="text-rose-500 font-bold"' : '' %>>
+                                            <%= c.class_name %> — <%= c.subject_name %> <%= c.subject_code ? `(${c.subject_code})` : '' %> [<%= actualEnrolled %>/<%= c.max_capacity !== null ? c.max_capacity : '∞' %>] <%= isFull ? '(FULL)' : '' %>
+                                        </option>
+                                    <% }) %>
+                                <% } %>
+                            </select>
+                            <input type="hidden" id="invSection" value="">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Strand</label>
-                            <input type="text" id="invStrand" placeholder="Academic Track" maxlength="100" class="fi text-sm">
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Track</label>
+                            <input type="text" id="invStrand" value="Academic Track" readonly class="fi text-sm bg-slate-50 text-slate-700 font-semibold cursor-not-allowed">
+                        </div>
+                    </div>
+
+                    <!-- Live Capacity & Enrollment Window Status Indicator -->
+                    <div id="invClassStatusBanner" class="hidden mt-2 p-2.5 rounded-xl text-xs border transition-all"></div>
+
+                    <!-- Auto-detected School Year & Enrolled Course Info -->
+                    <div class="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider flex items-center justify-between">
+                                <span>School Year</span>
+                                <span class="text-[9px] text-emerald-700 font-extrabold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
+                                    <i class="fas fa-magic"></i> Auto-Detected
+                                </span>
+                            </label>
+                            <input type="text" id="invSchoolYear" 
+                                   value="<%= locals.currentSchoolYear ? currentSchoolYear.sy_range : '2026-2027' %>" 
+                                   data-sy-id="<%= locals.currentSchoolYear ? currentSchoolYear.sy_id : '1' %>"
+                                   readonly class="fi text-sm bg-slate-50 text-slate-800 font-mono font-bold cursor-not-allowed">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Enrolled Course</label>
+                            <input type="text" id="invCourseDisplay" placeholder="Auto-filled from class" readonly class="fi text-sm bg-slate-50 text-slate-600 italic">
                         </div>
                     </div>
                     <div class="mt-3">
@@ -936,19 +1215,55 @@
             <div id="invTeacherSection" class="role-section">
                 <div class="border-t border-slate-100 pt-4">
                     <p class="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-3 flex items-center gap-1.5">
-                        <i class="fas fa-chalkboard-user"></i> Teacher Information
+                        <i class="fas fa-chalkboard-user"></i> Teacher Information & Teaching Load
                     </p>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-2 gap-3 mb-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Faculty ID</label>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+                                Faculty ID <span class="text-rose-500">*</span>
+                            </label>
                             <input type="text" id="invFacultyId" placeholder="FAC-001" maxlength="50" class="fi text-sm font-mono"
-                                   onblur="checkInvFacIdDup()">
-                            <p id="errInvFacId" class="ferr">Faculty ID already in use.</p>
+                                   onblur="checkInvFacIdDup()" oninput="clearInvDup(); checkInvFacIdDup()">
+                            <p id="errInvFacId" class="ferr">Faculty ID is required and must be unique.</p>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Department</label>
                             <input type="text" id="invDeptTeacher" placeholder="Science Dept." maxlength="100" class="fi text-sm">
                         </div>
+                    </div>
+
+                    <!-- Hierarchical Subjects & Sections Assignment Container -->
+                    <div id="invTeacherHierarchySection" class="mt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fas fa-layer-group text-emerald-600"></i> Assigned Subjects & Classes <span class="text-rose-500">*</span>
+                            </label>
+                            <span id="teacherTotalSummaryBadge" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                0 sections selected
+                            </span>
+                        </div>
+
+                        <!-- Master Toolbar: Select All across all subjects -->
+                        <div class="flex items-center justify-between bg-slate-100/90 border border-slate-200 rounded-t-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="masterSelectAllTeacherClasses" onchange="toggleMasterAllTeacherClasses(this)"
+                                       class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                <span class="font-bold text-xs text-slate-800">Select All (All Subjects & Classes)</span>
+                            </label>
+                            <button type="button" onclick="const cb = document.getElementById('masterSelectAllTeacherClasses'); cb.checked = !cb.checked; toggleMasterAllTeacherClasses(cb);"
+                                    class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1">
+                                <i class="fas fa-check-double text-[10px]"></i> Toggle All
+                            </button>
+                        </div>
+
+                        <!-- Scrollable Hierarchical Subject Groups Container -->
+                        <div id="invTeacherHierarchyList" class="max-h-60 overflow-y-auto border border-t-0 border-slate-200 rounded-b-xl p-2.5 space-y-2.5 bg-slate-50/50">
+                            <!-- Populated dynamically via JS: grouped by Subject with accordion / cards -->
+                        </div>
+                        <p id="errInvTeacherClasses" class="ferr">Please assign at least one class/section to the teacher.</p>
+
+                        <!-- Live Notice banner if any selected class has an existing teacher -->
+                        <div id="teacherClassesConflictNotice" class="hidden mt-2.5 p-2.5 rounded-xl text-xs border transition-all"></div>
                     </div>
                 </div>
             </div>
@@ -1215,6 +1530,65 @@
     </div>
 </div>
 
+<!-- ════════════════════════════════════════════════════
+     MODAL: TEACHER BULK ROW TEACHING LOAD SELECTOR
+     Allows editing assigned subjects & sections per row or for batch default.
+════════════════════════════════════════════════════ -->
+<div id="modalTeacherRowLoad" class="modal-overlay">
+    <div class="modal-box modal-box-lg p-6">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
+                    <i class="fas fa-chalkboard-user"></i>
+                </div>
+                <div>
+                    <h3 id="modalTeacherRowLoadTitle" class="font-black text-slate-900 text-base">Assign Teaching Load</h3>
+                    <p id="modalTeacherRowLoadSubtitle" class="text-xs text-slate-500">Select subjects and sections for this faculty member</p>
+                </div>
+            </div>
+            <button onclick="closeModal('modalTeacherRowLoad')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="mb-3 flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Available Catalog</span>
+            <span id="modalTeacherRowBadge" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                0 sections selected
+            </span>
+        </div>
+
+        <!-- Master Toolbar in modal -->
+        <div class="flex items-center justify-between bg-slate-100/90 border border-slate-200 rounded-t-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" id="modalRowMasterSelectAll" onchange="toggleModalRowMasterAll(this)"
+                       class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                <span class="font-bold text-xs text-slate-800">Select All (All Subjects & Classes)</span>
+            </label>
+            <button type="button" onclick="const cb = document.getElementById('modalRowMasterSelectAll'); cb.checked = !cb.checked; toggleModalRowMasterAll(cb);"
+                    class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1">
+                <i class="fas fa-check-double text-[10px]"></i> Toggle All
+            </button>
+        </div>
+
+        <!-- Hierarchical List -->
+        <div id="modalTeacherRowHierarchyList" class="max-h-72 overflow-y-auto border border-t-0 border-slate-200 rounded-b-xl p-2.5 space-y-2.5 bg-slate-50/50">
+            <!-- Populated dynamically via JS -->
+        </div>
+
+        <div class="flex justify-end gap-3 mt-5 pt-3 border-t border-slate-100">
+            <button type="button" onclick="closeModal('modalTeacherRowLoad')"
+                class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+                Cancel
+            </button>
+            <button type="button" onclick="saveTeacherRowLoad()"
+                class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black hover:opacity-95 transition shadow-sm">
+                <i class="fas fa-check mr-1"></i> Apply Teaching Load
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Toast notification -->
 <div id="toast"><i id="toastIcon" class="fas"></i> <span id="toastMsg"></span></div>
 
@@ -1222,6 +1596,11 @@
      JAVASCRIPT
 ════════════════════════════════════════════════════ -->
 <script>
+// ─────────────────────────────────
+// GLOBAL SERVER DATA
+// ─────────────────────────────────
+// Server data globals referenced from top of script
+
 // ─────────────────────────────────
 // SIDEBAR
 // ─────────────────────────────────
@@ -1258,20 +1637,98 @@ function switchTab(id, btn) {
     })();
 
 // ─────────────────────────────────
-// MODALS
+// MODAL STACK & DYNAMIC Z-INDEX MANAGER
+// Always ensures the most recently opened modal sits on top.
 // ─────────────────────────────────
+const _baseModalZIndex = 9000;
+let _topModalZIndex = 9000;
+window._openModalStack = [];
+
 function openModal(id) {
-    document.getElementById(id).classList.add('open');
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Increment and assign higher z-index so the newly opened modal is always on top
+    _topModalZIndex += 20;
+    el.style.zIndex = _topModalZIndex;
+
+    // Display modal
+    el.classList.add('open');
+
+    // Track modal in open stack (move to top if already present)
+    const existingIdx = window._openModalStack.indexOf(id);
+    if (existingIdx !== -1) {
+        window._openModalStack.splice(existingIdx, 1);
+    }
+    window._openModalStack.push(id);
+
+    // Prevent background scrolling
     document.body.style.overflow = 'hidden';
 }
+
 function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-    document.body.style.overflow = '';
+    if (!id && window._openModalStack.length > 0) {
+        id = window._openModalStack[window._openModalStack.length - 1];
+    }
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.remove('open');
+        setTimeout(() => {
+            if (!el.classList.contains('open')) {
+                el.style.zIndex = '';
+            }
+        }, 240);
+    }
+
+    if (id) {
+        const idx = window._openModalStack.indexOf(id);
+        if (idx !== -1) {
+            window._openModalStack.splice(idx, 1);
+        }
+    }
+
+    // Only restore body scrolling if all modals are closed
+    if (window._openModalStack.length === 0) {
+        document.body.style.overflow = '';
+        _topModalZIndex = _baseModalZIndex;
+    } else {
+        document.body.style.overflow = 'hidden';
+        // Ensure remaining top modal stays prominently on top
+        const remainingTopId = window._openModalStack[window._openModalStack.length - 1];
+        const remainingTopEl = document.getElementById(remainingTopId);
+        if (remainingTopEl) {
+            remainingTopEl.style.zIndex = _topModalZIndex;
+        }
+    }
 }
-// Close any modal when clicking its backdrop
+
+// Close top modal when clicking backdrop
 document.querySelectorAll('.modal-overlay').forEach(o => {
-    o.addEventListener('click', e => { if (e.target === o) closeModal(o.id); });
+    o.addEventListener('click', e => {
+        if (e.target === o) {
+            // Close the clicked overlay
+            closeModal(o.id);
+        }
+    });
 });
+
+// Close top modal on Escape key
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && window._openModalStack && window._openModalStack.length > 0) {
+        const topModalId = window._openModalStack[window._openModalStack.length - 1];
+        closeModal(topModalId);
+    }
+});
+
+// Lock body scrolling whenever any modal is still active in stack
+const _modalBodyObserver = new MutationObserver(() => {
+    if (window._openModalStack && window._openModalStack.length > 0) {
+        if (document.body.style.overflow !== 'hidden') {
+            document.body.style.overflow = 'hidden';
+        }
+    }
+});
+_modalBodyObserver.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'] });
 
 // ─────────────────────────────────
 // TOAST
@@ -1352,7 +1809,10 @@ function updateInviteRoleFields() {
     document.getElementById('invAdminSection').classList.remove('visible');
     // Show only the relevant one
     if (role === 'Student') document.getElementById('invStudentSection').classList.add('visible');
-    if (role === 'Teacher') document.getElementById('invTeacherSection').classList.add('visible');
+    if (role === 'Teacher') {
+        document.getElementById('invTeacherSection').classList.add('visible');
+        renderTeacherClassHierarchy();
+    }
     if (role === 'Admin')   document.getElementById('invAdminSection').classList.add('visible');
     clearInvDup();
 }
@@ -1375,6 +1835,20 @@ function openInviteModal() {
     document.getElementById('invBirthdate').value  = '';
     document.getElementById('invGradeLevel').value = 'Grade 11';
     document.getElementById('invExpiry').value     = '168';
+    // Reset teacher assignment fields
+    const invTeacherSubj = document.getElementById('invTeacherSubject');
+    if (invTeacherSubj) invTeacherSubj.value = '';
+    const invTeacherClassesSec = document.getElementById('invTeacherClassesSection');
+    if (invTeacherClassesSec) invTeacherClassesSec.classList.add('hidden');
+    const invTeacherClassesList = document.getElementById('invTeacherClassesList');
+    if (invTeacherClassesList) invTeacherClassesList.innerHTML = '';
+    const selectAllTeacherClasses = document.getElementById('selectAllTeacherClasses');
+    if (selectAllTeacherClasses) selectAllTeacherClasses.checked = false;
+    const teacherClassesConflictNotice = document.getElementById('teacherClassesConflictNotice');
+    if (teacherClassesConflictNotice) {
+        teacherClassesConflictNotice.classList.add('hidden');
+        teacherClassesConflictNotice.innerHTML = '';
+    }
     // Reset role to Student
     document.querySelector('input[name="inv_role"][value="Student"]').checked = true;
     updateInviteRoleFields();
@@ -1418,15 +1892,347 @@ async function checkInvLRNDup() {
     } catch(_) {}
 }
 
-// Check Faculty ID duplicate on blur (REQ#6)
+// Check Faculty ID duplicate on blur / input
 async function checkInvFacIdDup() {
-    const fid = document.getElementById('invFacultyId').value.trim();
-    if (!fid) return;
+    const fidEl = document.getElementById('invFacultyId');
+    const errEl = document.getElementById('errInvFacId');
+    const fid = fidEl ? fidEl.value.trim() : '';
+    if (!fid) {
+        if (fidEl) fidEl.classList.remove('invalid');
+        if (errEl) errEl.classList.remove('show');
+        return false;
+    }
     try {
         const res  = await fetch(`/admin/uac/check-dup?type=faculty_id&value=${encodeURIComponent(fid)}`);
         const data = await res.json();
-        if (data.exists) showInvDup(`Faculty ID "${fid}" is already in use.`);
-    } catch(_) {}
+        if (data.exists) {
+            showInvDup(`Faculty ID "${fid}" is already in use.`);
+            if (fidEl) fidEl.classList.add('invalid');
+            if (errEl) {
+                errEl.textContent = `Faculty ID "${fid}" is already in use.`;
+                errEl.classList.add('show');
+            }
+            return true;
+        } else {
+            if (fidEl) fidEl.classList.remove('invalid');
+            if (errEl) errEl.classList.remove('show');
+            return false;
+        }
+    } catch(_) {
+        return false;
+    }
+}
+
+// ─────────────────────────────────
+// TEACHER SUBJECT & SECTIONS HIERARCHICAL SELECTION (OPTION 1)
+// ─────────────────────────────────
+function renderTeacherClassHierarchy() {
+    const listContainer = document.getElementById('invTeacherHierarchyList');
+    if (!listContainer) return;
+
+    if (!_allSubjects || _allSubjects.length === 0) {
+        listContainer.innerHTML = `
+            <div class="py-6 text-center text-xs text-slate-400">
+                <i class="fas fa-circle-exclamation mb-1 text-base block"></i>
+                No subjects found in the system.
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    _allSubjects.forEach(s => {
+        const subjectClasses = _allClasses.filter(c => String(c.subject_id) === String(s.subject_id));
+        const totalInSubj = subjectClasses.length;
+
+        let classesHtml = '';
+        if (totalInSubj === 0) {
+            classesHtml = `
+                <div class="py-2.5 text-center text-[11px] text-slate-400 italic">
+                    No classes currently registered taking this subject.
+                </div>
+            `;
+        } else {
+            subjectClasses.forEach(c => {
+                const hasTeacher = !!(c.teacher_id && c.teacher_name && c.teacher_name.trim());
+                const teacherBadge = hasTeacher
+                    ? `<span class="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                         <i class="fas fa-user-tie text-[9px]"></i> Current: ${c.teacher_name.trim()}
+                       </span>`
+                    : `<span class="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                         <i class="fas fa-user-plus text-[9px]"></i> No Teacher Assigned
+                       </span>`;
+
+                classesHtml += `
+                    <label class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition select-none group border border-transparent hover:border-slate-200">
+                        <div class="flex items-center gap-2.5">
+                            <input type="checkbox"
+                                   name="teacherClassCheckbox"
+                                   value="${c.class_id}"
+                                   data-class-id="${c.class_id}"
+                                   data-class-name="${c.class_name}"
+                                   data-subject-id="${s.subject_id}"
+                                   data-subject-name="${s.subject_name}"
+                                   data-has-teacher="${hasTeacher ? '1' : '0'}"
+                                   data-teacher-name="${hasTeacher ? c.teacher_name.trim() : ''}"
+                                   onchange="updateTeacherHierarchySummary()"
+                                   class="teacher-class-cb teacher-subj-cb-${s.subject_id} w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition">
+                                    ${c.class_name}
+                                </span>
+                                <span class="text-[11px] text-slate-400 ml-1">
+                                    (${c.enrolled_count || 0}/${c.max_capacity !== null ? c.max_capacity : '∞'} students)
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            ${teacherBadge}
+                        </div>
+                    </label>
+                `;
+            });
+        }
+
+        html += `
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs transition hover:border-slate-300">
+                <!-- Subject Group Header -->
+                <div class="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">
+                            <i class="fas fa-book-bookmark text-[11px]"></i>
+                        </span>
+                        <div>
+                            <span class="text-xs font-bold text-slate-800">${s.subject_name}</span>
+                            ${s.subject_code ? `<span class="text-[10px] font-mono text-slate-400 ml-1">(${s.subject_code})</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span id="subjBadge_${s.subject_id}" class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                            0 / ${totalInSubj} selected
+                        </span>
+                        ${totalInSubj > 0 ? `
+                            <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold text-slate-600 hover:text-emerald-700">
+                                <input type="checkbox"
+                                       id="subjSelectAll_${s.subject_id}"
+                                       data-subject-id="${s.subject_id}"
+                                       onchange="toggleSubjectClasses(${s.subject_id}, this)"
+                                       class="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                <span>Select All</span>
+                            </label>
+                        ` : ''}
+                    </div>
+                </div>
+                <!-- Classes Checklist under Subject -->
+                <div class="p-2 space-y-1 divide-y divide-slate-50">
+                    ${classesHtml}
+                </div>
+            </div>
+        `;
+    });
+
+    listContainer.innerHTML = html;
+    updateTeacherHierarchySummary();
+}
+
+function toggleSubjectClasses(subjectId, selectAllCb) {
+    const checkboxes = document.querySelectorAll(`.teacher-subj-cb-${subjectId}`);
+    checkboxes.forEach(cb => {
+        cb.checked = selectAllCb.checked;
+    });
+    updateTeacherHierarchySummary();
+}
+
+function toggleMasterAllTeacherClasses(masterCb) {
+    const checkboxes = document.querySelectorAll('.teacher-class-cb');
+    checkboxes.forEach(cb => {
+        cb.checked = masterCb.checked;
+    });
+    updateTeacherHierarchySummary();
+}
+
+function updateTeacherHierarchySummary() {
+    const allCbs = Array.from(document.querySelectorAll('.teacher-class-cb'));
+    const selected = allCbs.filter(cb => cb.checked);
+    const masterCb = document.getElementById('masterSelectAllTeacherClasses');
+    const totalBadge = document.getElementById('teacherTotalSummaryBadge');
+    const conflictNotice = document.getElementById('teacherClassesConflictNotice');
+    const errClasses = document.getElementById('errInvTeacherClasses');
+
+    if (errClasses && selected.length > 0) {
+        errClasses.classList.remove('show');
+    }
+
+    // Calculate unique subjects selected
+    const selectedSubjIds = new Set(selected.map(cb => cb.dataset.subjectId));
+
+    if (totalBadge) {
+        if (selected.length === 0) {
+            totalBadge.textContent = '0 sections selected';
+            totalBadge.className = 'text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full';
+        } else {
+            totalBadge.textContent = `${selected.length} section${selected.length > 1 ? 's' : ''} across ${selectedSubjIds.size} subject${selectedSubjIds.size > 1 ? 's' : ''}`;
+            totalBadge.className = 'text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full';
+        }
+    }
+
+    // Update each subject group's Select All checkbox and counter badge
+    if (_allSubjects && _allSubjects.length > 0) {
+        _allSubjects.forEach(s => {
+            const subjCbs = Array.from(document.querySelectorAll(`.teacher-subj-cb-${s.subject_id}`));
+            const subjSel = subjCbs.filter(cb => cb.checked);
+            const subjMaster = document.getElementById(`subjSelectAll_${s.subject_id}`);
+            const subjBadge = document.getElementById(`subjBadge_${s.subject_id}`);
+
+            if (subjBadge) {
+                subjBadge.textContent = `${subjSel.length} / ${subjCbs.length} selected`;
+                if (subjSel.length > 0) {
+                    subjBadge.className = 'text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full';
+                } else {
+                    subjBadge.className = 'text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full';
+                }
+            }
+
+            if (subjMaster && subjCbs.length > 0) {
+                subjMaster.checked = (subjSel.length === subjCbs.length);
+                subjMaster.indeterminate = (subjSel.length > 0 && subjSel.length < subjCbs.length);
+            }
+        });
+    }
+
+    // Update Master Select All checkbox
+    if (masterCb && allCbs.length > 0) {
+        masterCb.checked = (selected.length === allCbs.length);
+        masterCb.indeterminate = (selected.length > 0 && selected.length < allCbs.length);
+    }
+
+    // Check for conflicts
+    const conflicted = selected.filter(cb => cb.dataset.hasTeacher === '1');
+    if (conflictNotice) {
+        if (conflicted.length > 0) {
+            conflictNotice.classList.remove('hidden');
+            conflictNotice.className = 'mt-2.5 p-2.5 rounded-xl text-xs border bg-amber-50 border-amber-300 text-amber-900 transition-all flex items-start gap-2';
+            conflictNotice.innerHTML = `
+                <i class="fas fa-triangle-exclamation text-amber-600 mt-0.5 text-sm shrink-0"></i>
+                <div class="flex-1">
+                    <p class="font-bold">${conflicted.length} selected section(s) currently have an assigned teacher:</p>
+                    <ul class="list-disc list-inside mt-1 text-[11px] text-amber-800 space-y-0.5">
+                        ${conflicted.map(cb => `<li><b>${cb.dataset.subjectName} — Section ${cb.dataset.className}</b>: Currently handled by <i>${cb.dataset.teacherName}</i></li>`).join('')}
+                    </ul>
+                    <p class="mt-1 text-[10px] text-amber-700">Inviting this teacher will prompt for confirmation to replace and reassign these sections.</p>
+                </div>
+            `;
+        } else {
+            conflictNotice.classList.add('hidden');
+            conflictNotice.innerHTML = '';
+        }
+    }
+}
+
+// ─────────────────────────────────
+// LIVE CLASS SELECTION & CAPACITY CHECK FOR INVITE MODAL
+// ─────────────────────────────────
+window._selectedClassIsBlocked = false;
+
+function onInviteClassChanged(sel) {
+    const banner = document.getElementById('invClassStatusBanner');
+    const courseDisplay = document.getElementById('invCourseDisplay');
+    const sectionHidden = document.getElementById('invSection');
+    const syInput = document.getElementById('invSchoolYear');
+
+    if (!sel || !sel.value) {
+        banner.classList.add('hidden');
+        courseDisplay.value = '';
+        sectionHidden.value = '';
+        window._selectedClassIsBlocked = false;
+        return;
+    }
+
+    const opt = sel.options[sel.selectedIndex];
+    const className   = opt.dataset.className || '';
+    const subjectName = opt.dataset.subjectName || '';
+    const subjectCode = opt.dataset.subjectCode || '';
+    const rawCap      = opt.dataset.capacity;
+    const enrolled    = parseInt(opt.dataset.enrolled || '0', 10);
+    const startStr    = opt.dataset.start;
+    const endStr      = opt.dataset.end;
+    const syRange     = opt.dataset.syRange;
+
+    sectionHidden.value = className;
+    courseDisplay.value = `${subjectName} ${subjectCode ? '(' + subjectCode + ')' : ''}`.trim();
+    if (syRange && syInput) syInput.value = syRange;
+
+    banner.classList.remove('hidden');
+
+    // 1. Capacity Check
+    let cap = null;
+    let isFull = false;
+    if (rawCap !== '' && rawCap !== undefined && rawCap !== null) {
+        cap = parseInt(rawCap, 10);
+        if (enrolled >= cap) {
+            isFull = true;
+        }
+    }
+
+    if (isFull) {
+        window._selectedClassIsBlocked = true;
+        banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-rose-50 border-rose-200 text-rose-800 transition-all';
+        banner.innerHTML = `
+            <div class="flex items-start gap-2.5">
+                <i class="fas fa-ban text-rose-500 text-base mt-0.5"></i>
+                <div>
+                    <p class="font-bold">Class Full (Capacity: ${enrolled}/${cap} enrolled)</p>
+                    <p class="text-[11px] text-rose-600 mt-0.5">This class has reached its maximum seat limit. You cannot enroll the invited student into this class.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // 2. Timeline Bounds Check
+    const now = new Date();
+    if (startStr && now < new Date(startStr)) {
+        window._selectedClassIsBlocked = true;
+        banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-amber-50 border-amber-200 text-amber-800 transition-all';
+        banner.innerHTML = `
+            <div class="flex items-start gap-2.5">
+                <i class="fas fa-clock text-amber-500 text-base mt-0.5"></i>
+                <div>
+                    <p class="font-bold">Enrollment Not Started Yet</p>
+                    <p class="text-[11px] text-amber-600 mt-0.5">Opens on ${new Date(startStr).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    if (endStr && now > new Date(endStr)) {
+        window._selectedClassIsBlocked = true;
+        banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-rose-50 border-rose-200 text-rose-800 transition-all';
+        banner.innerHTML = `
+            <div class="flex items-start gap-2.5">
+                <i class="fas fa-calendar-xmark text-rose-500 text-base mt-0.5"></i>
+                <div>
+                    <p class="font-bold">Enrollment Period Closed</p>
+                    <p class="text-[11px] text-rose-600 mt-0.5">Ended on ${new Date(endStr).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // 3. Valid & Open
+    window._selectedClassIsBlocked = false;
+    banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-emerald-50 border-emerald-200 text-emerald-800 transition-all';
+    banner.innerHTML = `
+        <div class="flex items-start gap-2.5">
+            <i class="fas fa-check-circle text-emerald-500 text-base mt-0.5"></i>
+            <div>
+                <p class="font-bold">Available for Auto-Enrollment (${enrolled}/${cap !== null ? cap : '∞'} seats filled)</p>
+                <p class="text-[11px] text-emerald-700 mt-0.5">Student will be automatically enrolled in course <b>${subjectName}</b> and section <b>${className}</b> upon account activation.</p>
+            </div>
+        </div>
+    `;
 }
 
 // ─────────────────────────────────
@@ -1442,17 +2248,18 @@ async function submitInviteUser() {
 
     // Clear previous errors
     [fn, ln, email].forEach(el => el.classList.remove('invalid'));
-    ['errInvFN','errInvLN','errInvEmail'].forEach(id => document.getElementById(id).classList.remove('show'));
+    ['errInvFN','errInvLN','errInvEmail','errInvFacId','errInvTeacherSubject','errInvTeacherClasses'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('show');
+    });
 
-    if (!fn.value.trim())    { fn.classList.add('invalid');    document.getElementById('errInvFN').classList.add('show');    valid = false; }
-    if (!ln.value.trim())    { ln.classList.add('invalid');    document.getElementById('errInvLN').classList.add('show');    valid = false; }
     if (!email.value.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
         email.classList.add('invalid');
         document.getElementById('errInvEmail').classList.add('show');
         valid = false;
     }
 
-    // REQ#4 — LRN exactly 12 digits if provided
+    // Student Validation
     if (role === 'Student') {
         const lrnEl = document.getElementById('invLRN');
         if (lrnEl.value && lrnEl.value.length !== 12) {
@@ -1460,8 +2267,105 @@ async function submitInviteUser() {
             document.getElementById('errInvLRN').classList.add('show');
             valid = false;
         }
+
+        const classSel = document.getElementById('invClassSelect');
+        if (!classSel.value) {
+            classSel.classList.add('invalid');
+            showToast('Please select a class / section to enroll the student into.', 'error');
+            valid = false;
+        } else {
+            classSel.classList.remove('invalid');
+        }
+
+        if (window._selectedClassIsBlocked) {
+            showToast('Cannot proceed: Selected class is full or outside its enrollment period.', 'error');
+            valid = false;
+        }
     }
+
+    // Teacher Validation
+    let selectedClassIds = [];
+    let selectedSubjectIds = [];
+    let conflictedClasses = [];
+    if (role === 'Teacher') {
+        const fidEl = document.getElementById('invFacultyId');
+        const fid = fidEl ? fidEl.value.trim() : '';
+        if (!fid) {
+            fidEl.classList.add('invalid');
+            const errEl = document.getElementById('errInvFacId');
+            if (errEl) {
+                errEl.textContent = 'Faculty ID is required for teachers.';
+                errEl.classList.add('show');
+            }
+            valid = false;
+        }
+
+        const selectedCbs = Array.from(document.querySelectorAll('.teacher-class-cb:checked'));
+        if (selectedCbs.length === 0) {
+            const errEl = document.getElementById('errInvTeacherClasses');
+            if (errEl) errEl.classList.add('show');
+            showToast('Please select at least one class/section for the teacher to handle.', 'warning');
+            valid = false;
+        } else {
+            selectedClassIds = selectedCbs.map(cb => parseInt(cb.value, 10));
+            selectedSubjectIds = [...new Set(selectedCbs.map(cb => parseInt(cb.dataset.subjectId, 10)))];
+            conflictedClasses = selectedCbs.filter(cb => cb.dataset.hasTeacher === '1').map(cb => ({
+                id: cb.value,
+                className: cb.dataset.className,
+                subjectName: cb.dataset.subjectName,
+                teacherName: cb.dataset.teacherName
+            }));
+        }
+    }
+
     if (!valid) return;
+
+    // Check duplicate Faculty ID before proceeding
+    if (role === 'Teacher') {
+        const isFidDup = await checkInvFacIdDup();
+        if (isFidDup) return;
+    }
+
+    // If teacher has conflicted classes, ask for confirmation
+    if (role === 'Teacher' && conflictedClasses.length > 0) {
+        const listItemsHtml = conflictedClasses.map(c => 
+            `<li class="py-1 text-left"><b>${c.subjectName} — Section ${c.className}</b>: currently handled by <i>${c.teacherName}</i></li>`
+        ).join('');
+
+        if (window.Swal) {
+            const result = await Swal.fire({
+                title: 'Section Teacher Conflict',
+                html: `
+                    <div class="text-sm text-slate-600">
+                        <p class="mb-2">The following selected section(s) already have an assigned teacher:</p>
+                        <div class="max-h-36 overflow-y-auto bg-amber-50 border border-amber-200 rounded-xl p-3 my-2 text-xs text-amber-900">
+                            <ul class="list-disc list-inside space-y-1">
+                                ${listItemsHtml}
+                            </ul>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">
+                            Proceeding will replace the current teacher assigned to these section(s) once the invitation is sent.
+                        </p>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#059669',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="fas fa-check-circle mr-1"></i> Proceed & Replace',
+                cancelButtonText: '<i class="fas fa-arrow-left mr-1"></i> Cancel & Review Selection',
+                reverseButtons: true
+            });
+
+            if (!result.isConfirmed) {
+                return; // User chose to cancel and review selections
+            }
+        } else {
+            const listNames = conflictedClasses.map(c => `${c.className} (${c.teacherName})`).join(', ');
+            const proceed = confirm(`The following section(s) already have an assigned teacher: ${listNames}. Proceeding will replace the current teacher. Do you want to proceed?`);
+            if (!proceed) return;
+        }
+    }
 
     // Build payload — only role-relevant fields are included
     const payload = {
@@ -1475,16 +2379,20 @@ async function submitInviteUser() {
         birthdate    : document.getElementById('invBirthdate').value,
         expiryHours  : document.getElementById('invExpiry').value || null,
         // Student
+        classId      : role === 'Student' ? document.getElementById('invClassSelect').value          : null,
         lrn          : role === 'Student' ? document.getElementById('invLRN').value.trim()          : null,
         gradeLevel   : role === 'Student' ? document.getElementById('invGradeLevel').value           : null,
         section      : role === 'Student' ? document.getElementById('invSection').value.trim()       : null,
-        strand       : role === 'Student' ? document.getElementById('invStrand').value.trim()        : null,
+        strand       : role === 'Student' ? 'Academic Track'                                        : null,
+        schoolYear   : role === 'Student' ? document.getElementById('invSchoolYear').value           : null,
         interests    : role === 'Student' ? document.getElementById('invInterests').value.trim()     : null,
         // Teacher
         facultyId    : role === 'Teacher' ? document.getElementById('invFacultyId').value.trim()    :
                        role === 'Admin'   ? document.getElementById('invAdminFacId').value.trim()   : null,
         department   : role === 'Teacher' ? document.getElementById('invDeptTeacher').value.trim()  :
                        role === 'Admin'   ? document.getElementById('invDeptAdmin').value.trim()    : null,
+        teacherSubjectIds: role === 'Teacher' ? selectedSubjectIds : [],
+        teacherClassIds  : role === 'Teacher' ? selectedClassIds   : []
     };
 
     try {
@@ -1497,7 +2405,7 @@ async function submitInviteUser() {
         if (data.success) {
             showToast(`Invitation sent to ${email.value}!`, 'success');
             closeModal('modalInviteUser');
-            setTimeout(() => location.reload(), 1400);
+            refreshAdminContent({ message: 'Sending invitation...' });
         } else if (data.duplicate) {
             showInvDup(data.message);
         } else {
@@ -1508,11 +2416,6 @@ async function submitInviteUser() {
     }
 }
 
-// ─────────────────────────────────
-// REQ#1 — OPEN EDIT MODAL
-// Populates ALL fields from the user object
-// passed via JSON from EJS. Shows/hides
-// Student vs Teacher/Admin sections.
 // ─────────────────────────────────
 function openEditModal(u) {
     document.getElementById('editUserId').value    = u.user_id;
@@ -1617,7 +2520,7 @@ function submitEditUser(e) {
                 if (data.success) {
                     showToast('User updated successfully!', 'success');
                     closeModal('modalEditUser');
-                    setTimeout(() => location.reload(), 1300);
+                    refreshAdminContent({ message: 'Updating user profile...' });
                 } else {
                     showToast(data.message || 'Failed to update user.', 'error');
                 }
@@ -1658,7 +2561,7 @@ function confirmDelete(userId, name) {
             const res  = await fetch(`/admin/uac/users/${userId}`, { method: 'DELETE' });
             const data = await res.json();
             closeModal('modalConfirm');
-            if (data.success) { showToast('User deleted.', 'success'); setTimeout(() => location.reload(), 1200); }
+            if (data.success) { showToast('User deleted.', 'success'); refreshAdminContent({ message: 'Removing user...' }); }
             else showToast(data.message || 'Delete failed.', 'error');
         },
     });
@@ -1718,7 +2621,7 @@ function confirmUnlinkGoogle(userId, name) {
             closeModal('modalConfirm');
             showToast(data.success ? 'Google account unlinked.' : (data.message || 'Failed.'),
                       data.success ? 'success' : 'error');
-            if (data.success) setTimeout(() => location.reload(), 1200);
+            if (data.success) refreshAdminContent({ message: 'Unlinking Google account...' });
         },
     });
 }
@@ -1738,10 +2641,117 @@ function confirmUnflag(userId, name) {
             closeModal('modalConfirm');
             showToast(data.success ? 'Student unflagged.' : (data.message || 'Failed.'),
                       data.success ? 'success' : 'error');
-            if (data.success) setTimeout(() => location.reload(), 1200);
+            if (data.success) refreshAdminContent({ message: 'Clearing student flag...' });
         },
     });
 }
+
+// ─────────────────────────────────
+// TOGGLE USER STATUS (ACTIVATE / DEACTIVATE / SUSPEND)
+// ─────────────────────────────────
+async function confirmToggleStatus(id, name, actionType) {
+    let title = "";
+    let confirmText = "";
+    let confirmBtnColor = "";
+    let iconClass = "fas fa-user-check";
+    let iconBg = "bg-emerald-100";
+    let iconColor = "text-emerald-600";
+    
+    if (actionType === 'suspend') {
+        title = "Suspend User?";
+        confirmText = `Are you sure you want to completely suspend <b>${name}</b>? They will not be able to log in.`;
+        confirmBtnColor = "bg-rose-600 hover:bg-rose-700";
+        iconClass = "fas fa-ban";
+        iconBg = "bg-rose-100";
+        iconColor = "text-rose-600";
+    } else if (actionType === 'deactivate') {
+        title = "Deactivate User?";
+        confirmText = `Are you sure you want to deactivate <b>${name}</b>?`;
+        confirmBtnColor = "bg-amber-500 hover:bg-amber-600";
+        iconClass = "fas fa-user-lock";
+        iconBg = "bg-amber-100";
+        iconColor = "text-amber-600";
+    } else {
+        title = "Activate User?";
+        confirmText = `Are you sure you want to activate/unsuspend <b>${name}</b>?`;
+        confirmBtnColor = "bg-emerald-600 hover:bg-emerald-700";
+        iconClass = "fas fa-user-check";
+        iconBg = "bg-emerald-100";
+        iconColor = "text-emerald-600";
+    }
+
+    const executeAction = async () => {
+        try {
+            const res = await fetch(`/admin/users/${id}/toggle-status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: actionType })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: data.message,
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => refreshAdminContent({ message: 'Updating user status...' }));
+                } else {
+                    showToast(data.message, 'success');
+                    refreshAdminContent({ message: 'Updating user status...' });
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('Error', data.message || 'Action failed', 'error');
+                } else {
+                    showToast(data.message || 'Action failed', 'error');
+                }
+            }
+        } catch (err) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Error', err.message, 'error');
+            } else {
+                showToast(err.message, 'error');
+            }
+        }
+    };
+
+    if (typeof Swal !== 'undefined') {
+        const { isConfirmed } = await Swal.fire({
+            title: title,
+            html: confirmText,
+            icon: actionType.includes('activate') ? 'info' : 'warning',
+            showCancelButton: true,
+            confirmButtonColor: 'transparent',
+            cancelButtonColor: 'transparent',
+            customClass: {
+                confirmButton: `px-4 py-2 ${confirmBtnColor} text-white font-bold rounded-lg ml-2`,
+                cancelButton: 'px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-lg',
+                popup: 'rounded-2xl'
+            },
+            buttonsStyling: false
+        });
+        if (isConfirmed) {
+            await executeAction();
+        }
+    } else {
+        showConfirm({
+            icon: iconClass, iconBg: iconBg, iconColor: iconColor,
+            title: title,
+            desc: confirmText.replace(/<[^>]+>/g, ''),
+            btnLabel: actionType === 'suspend' ? 'Suspend User' : (actionType === 'deactivate' ? 'Deactivate User' : 'Activate User'),
+            btnColor: actionType === 'suspend' ? 'bg-rose-600' : (actionType === 'deactivate' ? 'bg-amber-500' : 'bg-emerald-600'),
+            onConfirm: async () => {
+                closeModal('modalConfirm');
+                await executeAction();
+            }
+        });
+    }
+}
+
+
 
 // ─────────────────────────────────
 // INVITATION ACTIONS
@@ -1765,7 +2775,7 @@ async function submitQuickInvite(e) {
             document.getElementById('qiLink').value = link;
             document.getElementById('qiLinkBox').classList.remove('hidden');
             showToast('Invite link generated!', 'success');
-            setTimeout(() => location.reload(), 3000);
+            refreshAdminContent({ message: 'Updating invitation list...' });
         } else {
             showToast(data.message || 'Failed to generate invite.', 'error');
         }
@@ -1797,7 +2807,7 @@ function confirmRevokeInvite(invId, email) {
             closeModal('modalConfirm');
             showToast(data.success ? 'Invitation revoked.' : (data.message || 'Failed.'),
                       data.success ? 'success' : 'error');
-            if (data.success) setTimeout(() => location.reload(), 1200);
+            if (data.success) refreshAdminContent({ message: 'Revoking invitation...' });
         },
     });
 }
@@ -1815,77 +2825,878 @@ function confirmCleanExpired() {
             closeModal('modalConfirm');
             showToast(data.success ? `Removed ${data.count} expired invite(s).` : 'Failed.',
                       data.success ? 'success' : 'error');
-            if (data.success && data.count > 0) setTimeout(() => location.reload(), 1400);
+            if (data.success && data.count > 0) refreshAdminContent({ message: 'Cleaning expired invites...' });
         },
     });
 }
 
 // ─────────────────────────────────
-// BULK IMPORT
 // ─────────────────────────────────
-let _bulkFiles = { student: null, teacher: null };
+// BULK IMPORT CLIENT-SIDE ENGINE
+// ─────────────────────────────────
+window._allClasses = <%- JSON.stringify(locals.classesList || []) %>;
+window._allSubjects = <%- JSON.stringify(locals.subjectsList || []) %>;
+window._activeSY = <%- JSON.stringify(locals.currentSchoolYear || null) %>;
+window._existingLrnsMap = <%- JSON.stringify(locals.existingLrnsMap || {}) %>;
+window._pendingLrnsMap = <%- JSON.stringify(locals.pendingLrnsMap || {}) %>;
+window._existingFacultyIdsMap = <%- JSON.stringify(locals.existingFacultyIdsMap || {}) %>;
+window._pendingFacultyIdsMap = <%- JSON.stringify(locals.pendingFacultyIdsMap || {}) %>;
+
+var _allClasses = window._allClasses;
+var _allSubjects = window._allSubjects;
+var _activeSY = window._activeSY;
+var _existingLrnsMap = window._existingLrnsMap;
+var _pendingLrnsMap = window._pendingLrnsMap;
+var _existingFacultyIdsMap = window._existingFacultyIdsMap;
+var _pendingFacultyIdsMap = window._pendingFacultyIdsMap;
+
+var _bulkFiles = { student: null, teacher: null };
+var _parsedStudentRows = [];
+var _parsedTeacherRows = [];
+var _batchDefaultTeacherClassIds = [];
+var _activeTeacherEditingRow = -1;
+
+function onBatchSubjectChange() {
+    const subjectSelect = document.getElementById('bulkBatchSubject');
+    const sectionSelect = document.getElementById('bulkBatchSection');
+    const teacherInput  = document.getElementById('bulkBatchTeacher');
+    const statusBanner  = document.getElementById('bulkClassStatusBanner');
+
+    const subjectId = subjectSelect.value;
+    sectionSelect.innerHTML = '<option value="">-- Choose Section --</option>';
+    teacherInput.value = '';
+    statusBanner.classList.add('hidden');
+
+    if (!subjectId) {
+        sectionSelect.disabled = true;
+        return;
+    }
+
+    const matchingClasses = _allClasses.filter(c => String(c.subject_id) === String(subjectId));
+    if (matchingClasses.length === 0) {
+        sectionSelect.innerHTML = '<option value="">No sections found for this subject</option>';
+        sectionSelect.disabled = true;
+        return;
+    }
+
+    matchingClasses.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.class_id;
+        opt.dataset.className   = c.class_name;
+        opt.dataset.subjectName = c.subject_name;
+        opt.dataset.teacherName = c.teacher_name || '';
+        opt.dataset.capacity    = c.max_capacity !== null && c.max_capacity !== undefined ? c.max_capacity : '';
+        opt.dataset.enrolled    = c.enrolled_count_actual !== undefined ? c.enrolled_count_actual : (c.enrolled_count || 0);
+        opt.dataset.start       = c.enrollment_start || '';
+        opt.dataset.end         = c.enrollment_end || '';
+        opt.dataset.syId        = c.sy_id || '';
+        opt.dataset.syRange     = c.sy_range || '';
+        opt.dataset.syActive    = c.sy_is_active ? '1' : '0';
+
+        const capText = c.max_capacity !== null ? `${opt.dataset.enrolled}/${c.max_capacity}` : `${opt.dataset.enrolled}/∞`;
+        opt.textContent = `${c.class_name} — Teacher: ${c.teacher_name || 'Unassigned'} [${capText}]`;
+        sectionSelect.appendChild(opt);
+    });
+
+    sectionSelect.disabled = false;
+}
+
+function onBatchSectionChange() {
+    const sectionSelect = document.getElementById('bulkBatchSection');
+    const teacherInput  = document.getElementById('bulkBatchTeacher');
+    const statusBanner  = document.getElementById('bulkClassStatusBanner');
+
+    const selectedOpt = sectionSelect.options[sectionSelect.selectedIndex];
+    if (!selectedOpt || !selectedOpt.value) {
+        teacherInput.value = '';
+        statusBanner.classList.add('hidden');
+        return;
+    }
+
+    const teacherName = selectedOpt.dataset.teacherName || 'Unassigned';
+    teacherInput.value = teacherName;
+
+    // Build live status badge
+    statusBanner.classList.remove('hidden');
+    const cap = selectedOpt.dataset.capacity;
+    const enrolled = parseInt(selectedOpt.dataset.enrolled || '0', 10);
+    const start = selectedOpt.dataset.start;
+    const end = selectedOpt.dataset.end;
+    const isSyActive = selectedOpt.dataset.syActive === '1';
+    const syRange = selectedOpt.dataset.syRange;
+
+    const now = new Date();
+    const isFull = cap !== '' && enrolled >= parseInt(cap, 10);
+    const notStarted = start && now < new Date(start);
+    const ended = end && now > new Date(end);
+
+    statusBanner.innerHTML = `
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="font-bold ${isSyActive ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-rose-700 bg-rose-50 border-rose-200'} px-2.5 py-1 rounded-lg border">
+                <i class="fas ${isSyActive ? 'fa-check-circle' : 'fa-times-circle'} mr-1"></i> SY: ${syRange || 'N/A'} ${isSyActive ? '(Active SY ✓)' : '(Inactive SY ✗)'}
+            </span>
+            <span class="font-bold ${!isFull ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : 'text-rose-700 bg-rose-50 border-rose-200'} px-2.5 py-1 rounded-lg border">
+                <i class="fas fa-users mr-1"></i> Capacity: ${enrolled}/${cap || '∞'} ${isFull ? '(FULL ✗)' : '(Seats Available ✓)'}
+            </span>
+            <span class="font-bold ${(!notStarted && !ended) ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-rose-700 bg-rose-50 border-rose-200'} px-2.5 py-1 rounded-lg border">
+                <i class="fas fa-calendar mr-1"></i> Window: ${(!notStarted && !ended) ? 'Open ✓' : (notStarted ? 'Not Started ✗' : 'Closed ✗')}
+            </span>
+        </div>`;
+}
+
+function applyBatchSelectionToAllRows() {
+    const sectionSelect = document.getElementById('bulkBatchSection');
+    const selectedOpt = sectionSelect ? sectionSelect.options[sectionSelect.selectedIndex] : null;
+
+    if (!selectedOpt || !selectedOpt.value) {
+        showToast('Please select a Subject and Section from the toolbar first.', 'warning');
+        return;
+    }
+
+    const className   = selectedOpt.dataset.className;
+    const subjectName = selectedOpt.dataset.subjectName;
+    const teacherName = selectedOpt.dataset.teacherName || '';
+
+    if (_parsedStudentRows.length === 0) {
+        showToast(`Selection active: "${className}" (${subjectName} - ${teacherName}). Drop your Excel file to apply.`, 'info');
+        return;
+    }
+
+    _parsedStudentRows.forEach(r => {
+        r.subject = subjectName;
+        r.section = className;
+        r.teacher = teacherName;
+        r.track   = 'Academic Track';
+    });
+
+    renderStudentPreviewTable();
+    showToast(`Applied "${className}" (${subjectName}) across all ${_parsedStudentRows.length} rows!`, 'success');
+}
+
+function applyColumnToAll(colType) {
+    if (_parsedStudentRows.length === 0) return;
+    const firstRow = _parsedStudentRows[0];
+    if (colType === 'subject') {
+        const targetSubj = firstRow.subject;
+        if (!targetSubj) { showToast('Row 1 has no subject selected.', 'warning'); return; }
+        _parsedStudentRows.forEach(r => { r.subject = targetSubj; });
+        showToast(`Applied subject "${targetSubj}" across all rows!`, 'success');
+    } else if (colType === 'section') {
+        const targetSec = firstRow.section;
+        const targetSub = firstRow.subject;
+        const targetTea = firstRow.teacher;
+        if (!targetSec) { showToast('Row 1 has no section selected.', 'warning'); return; }
+        _parsedStudentRows.forEach(r => {
+            r.section = targetSec;
+            if (targetSub) r.subject = targetSub;
+            if (targetTea) r.teacher = targetTea;
+        });
+        showToast(`Applied section "${targetSec}" (Teacher: ${targetTea}) across all rows!`, 'success');
+    }
+    renderStudentPreviewTable();
+}
+
+function downloadStudentTemplate() {
+    const sectionSelect = document.getElementById('bulkBatchSection');
+    const selectedOpt = sectionSelect && sectionSelect.selectedIndex > 0 ? sectionSelect.options[sectionSelect.selectedIndex] : null;
+    let url = '/admin/uac/bulk-template?type=student';
+    if (selectedOpt && selectedOpt.value) {
+        url += `&classId=${encodeURIComponent(selectedOpt.value)}&section=${encodeURIComponent(selectedOpt.dataset.className || '')}&subject=${encodeURIComponent(selectedOpt.dataset.subjectName || '')}&teacher=${encodeURIComponent(selectedOpt.dataset.teacherName || '')}`;
+    }
+    window.location.href = url;
+}
 
 function handleDrop(e, type) {
     e.preventDefault();
     const zoneId = type === 'student' ? 'dropZone' : 'dropZoneTeacher';
-    document.getElementById(zoneId).classList.remove('dragover');
+    const zone = document.getElementById(zoneId);
+    if (zone) zone.classList.remove('dragover');
     const file = e.dataTransfer.files[0];
     if (file) setBulkFile(file, type);
 }
+
 function previewBulk(input, type) {
-    if (input.files[0]) setBulkFile(input.files[0], type);
+    if (input.files && input.files[0]) setBulkFile(input.files[0], type);
 }
+
 function setBulkFile(file, type) {
     _bulkFiles[type] = file;
-    document.getElementById(type === 'student' ? 'submitStudentBulk' : 'submitTeacherBulk').disabled = false;
     const prev = document.getElementById(`${type}Preview`);
-    prev.classList.remove('hidden');
-    prev.innerHTML = `
-        <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100">
-            <i class="fas fa-file-excel text-emerald-500 text-2xl"></i>
-            <div>
-                <p class="font-bold text-sm text-slate-700">${file.name}</p>
-                <p class="text-xs text-slate-400">${(file.size/1024).toFixed(1)} KB</p>
-            </div>
-            <span class="ml-auto badge badge-pending">Ready</span>
-        </div>`;
+    if (prev) {
+        prev.classList.remove('hidden');
+        prev.innerHTML = `
+            <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <i class="fas fa-file-excel text-emerald-500 text-2xl"></i>
+                <div class="overflow-hidden">
+                    <p class="font-bold text-xs text-slate-800 truncate">${file.name}</p>
+                    <p class="text-[10px] text-slate-400">${(file.size/1024).toFixed(1)} KB · Ready to process</p>
+                </div>
+                <span class="ml-auto badge badge-pending">Ready</span>
+            </div>`;
+    }
+
+    if (type === 'student') {
+        parseAndPreviewStudentExcel(file);
+    } else if (type === 'teacher') {
+        parseAndPreviewTeacherExcel(file);
+    }
+}
+
+function parseAndPreviewStudentExcel(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+
+            if (!jsonRows || jsonRows.length === 0) {
+                showToast('The uploaded spreadsheet contains no rows.', 'error');
+                return;
+            }
+
+            // Read batch toolbar selection if set
+            const sectionSelect = document.getElementById('bulkBatchSection');
+            const selectedOpt = sectionSelect && sectionSelect.selectedIndex > 0 ? sectionSelect.options[sectionSelect.selectedIndex] : null;
+            const defClass   = selectedOpt ? (selectedOpt.dataset.className || '') : '';
+            const defSubject = selectedOpt ? (selectedOpt.dataset.subjectName || '') : '';
+            const defTeacher = selectedOpt ? (selectedOpt.dataset.teacherName || '') : '';
+
+            _parsedStudentRows = jsonRows.map((r, i) => {
+                const row = {};
+                for (const [k, v] of Object.entries(r)) {
+                    const norm = String(k).replace('*', '').replace(/\(.*\)/, '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+                    row[norm] = String(v !== undefined && v !== null ? v : '').trim();
+                }
+
+                const rawLrn = (row.lrn_number || row.lrn || row.learner_reference_number || '').trim();
+                return {
+                    first_name  : row.first_name || '',
+                    middle_name : row.middle_name || '',
+                    last_name   : row.last_name || '',
+                    suffix      : row.suffix || '',
+                    email       : (row.email || '').toLowerCase().trim(),
+                    lrn_number  : rawLrn,
+                    grade_level : row.grade_level || 'Grade 11',
+                    subject     : row.subject || row.subject_name || row.course || defSubject,
+                    section     : row.section || row.class || defClass,
+                    teacher     : row.teacher || row.teacher_name || row.instructor || defTeacher,
+                    track       : row.track || row.strand || 'Academic Track',
+                    sex         : row.sex || '',
+                    birthdate   : row.birthdate || '',
+                    mobile_number: row.mobile_number || '',
+                    city_town   : row.city_town || '',
+                    interests   : row.interests || '',
+                };
+            });
+
+            renderStudentPreviewTable();
+            document.getElementById('studentPreviewContainer').classList.remove('hidden');
+            document.getElementById('submitStudentBulk').disabled = false;
+            showToast(`Loaded ${_parsedStudentRows.length} student rows for review.`, 'success');
+
+        } catch (err) {
+            console.error('Error reading spreadsheet:', err);
+            showToast('Failed to parse Excel file: ' + err.message, 'error');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function evaluateStudentRow(r, idx, allRows) {
+    const rawLrn = String(r.lrn_number || '').trim();
+    const cleanLrn = rawLrn.replace(/\D/g, '');
+    const lrnLen = cleanLrn.length;
+    const isLrnDigitsOnly = /^\d{12}$/.test(rawLrn);
+
+    if (!r.email) return { ok: false, msg: 'Missing email', badgeClass: 'badge-expired' };
+    if (!r.first_name || !r.last_name) return { ok: false, msg: 'Missing name', badgeClass: 'badge-expired' };
+    if (!rawLrn) return { ok: false, msg: 'LRN required (12 digits)', badgeClass: 'badge-expired', isLrnMissing: true };
+    if (!isLrnDigitsOnly) return { ok: false, msg: `LRN must be 12 digits (${lrnLen}/12)`, badgeClass: 'badge-expired', isLrnInvalid: true };
+
+    // Strict LRN Uniqueness Check within Batch
+    if (allRows && idx !== undefined) {
+        const dupIdx = allRows.findIndex((other, oIdx) => oIdx !== idx && String(other.lrn_number || '').trim() === rawLrn);
+        if (dupIdx !== -1) {
+            return {
+                ok: false,
+                msg: `Duplicate LRN (matches Row #${dupIdx + 1})`,
+                badgeClass: 'badge-expired',
+                isLrnDup: true,
+                dupRow: dupIdx + 1
+            };
+        }
+    }
+
+    // Strict LRN Uniqueness Check against Registered Users
+    if (typeof _existingLrnsMap !== 'undefined' && _existingLrnsMap && _existingLrnsMap[cleanLrn]) {
+        return {
+            ok: false,
+            msg: `Duplicate LRN: Already registered to "${_existingLrnsMap[cleanLrn]}"`,
+            badgeClass: 'badge-expired',
+            isLrnDup: true,
+            isExistingUser: true
+        };
+    }
+
+    // Strict LRN Uniqueness Check against Pending Invitations
+    if (typeof _pendingLrnsMap !== 'undefined' && _pendingLrnsMap && _pendingLrnsMap[cleanLrn]) {
+        return {
+            ok: false,
+            msg: `Duplicate LRN: Reserved in invite (${_pendingLrnsMap[cleanLrn]})`,
+            badgeClass: 'badge-expired',
+            isLrnDup: true,
+            isPendingInvite: true
+        };
+    }
+
+    if (!r.section) return { ok: false, msg: 'No section assigned', badgeClass: 'badge-pending' };
+
+    // Find class match
+    let matches = _allClasses.filter(c => c.class_name.toLowerCase().trim() === r.section.toLowerCase().trim());
+    if (r.teacher) {
+        const tNorm = r.teacher.toLowerCase().trim();
+        const tMatches = matches.filter(c => (c.teacher_name || '').toLowerCase().includes(tNorm) || (c.teacher_last || '').toLowerCase() === tNorm);
+        if (tMatches.length > 0) matches = tMatches;
+    }
+    if (r.subject) {
+        const sNorm = r.subject.toLowerCase().trim();
+        const sMatches = matches.filter(c => (c.subject_name || '').toLowerCase().includes(sNorm) || (c.subject_code || '').toLowerCase() === sNorm);
+        if (sMatches.length > 0) matches = sMatches;
+    }
+
+    if (matches.length === 0) return { ok: false, msg: 'Section not found', badgeClass: 'badge-expired' };
+    if (matches.length > 1) return { ok: false, msg: 'Ambiguous section (specify Teacher)', badgeClass: 'badge-pending' };
+
+    const cls = matches[0];
+    if (_activeSY && (cls.sy_id !== _activeSY.sy_id || !cls.sy_is_active)) {
+        return { ok: false, msg: `Inactive SY (${cls.sy_range || 'Past/Future'})`, badgeClass: 'badge-expired' };
+    }
+
+    const now = new Date();
+    if (cls.enrollment_start && now < new Date(cls.enrollment_start)) {
+        return { ok: false, msg: 'Enrollment not started', badgeClass: 'badge-expired' };
+    }
+    if (cls.enrollment_end && now > new Date(cls.enrollment_end)) {
+        return { ok: false, msg: 'Enrollment ended', badgeClass: 'badge-expired' };
+    }
+
+    const enrolled = parseInt(cls.enrolled_count_actual !== undefined ? cls.enrolled_count_actual : (cls.enrolled_count || 0), 10);
+    if (cls.max_capacity !== null && cls.max_capacity !== undefined && enrolled >= cls.max_capacity) {
+        return { ok: false, msg: `Capacity full (${enrolled}/${cls.max_capacity})`, badgeClass: 'badge-expired' };
+    }
+
+    return { ok: true, msg: 'Eligible ✓', badgeClass: 'badge-teacher', classObj: cls };
+}
+
+function renderStudentPreviewTable() {
+    const tbody = document.getElementById('tblStudentPreviewBody');
+    if (!tbody) return;
+
+    let validCount = 0;
+    let issueCount = 0;
+    let dupLrnCount = 0;
+
+    let html = '';
+    _parsedStudentRows.forEach((r, idx) => {
+        const evalResult = evaluateStudentRow(r, idx, _parsedStudentRows);
+        if (evalResult.ok) validCount++; else issueCount++;
+        if (evalResult.isLrnDup) dupLrnCount++;
+
+        // Subject options
+        let subjOptions = '<option value="">-- Choose Subject --</option>';
+        _allSubjects.forEach(s => {
+            const isSel = r.subject && (r.subject.toLowerCase() === s.subject_name.toLowerCase() || String(r.subject) === String(s.subject_id));
+            subjOptions += `<option value="${s.subject_name}" ${isSel ? 'selected' : ''}>${s.subject_name}</option>`;
+        });
+
+        // Filter sections for this row based on chosen subject
+        let secOptions = '<option value="">-- Choose Section --</option>';
+        const rowClasses = r.subject 
+            ? _allClasses.filter(c => c.subject_name.toLowerCase() === r.subject.toLowerCase() || String(c.subject_id) === String(r.subject))
+            : _allClasses;
+
+        rowClasses.forEach(c => {
+            const isSel = r.section && r.section.toLowerCase() === c.class_name.toLowerCase() && (!r.teacher || (c.teacher_name || '').toLowerCase().includes(r.teacher.toLowerCase()));
+            secOptions += `<option value="${c.class_name}" data-teacher="${c.teacher_name || ''}" data-subject="${c.subject_name}" ${isSel ? 'selected' : ''}>${c.class_name} (${c.subject_name} - ${c.teacher_name || 'Unassigned'})</option>`;
+        });
+
+        const rawLrn = String(r.lrn_number || '');
+        const cleanLrn = rawLrn.replace(/\D/g, '');
+        const lrnLen = cleanLrn.length;
+        
+        let lrnBorderClass = 'border-slate-300';
+        let lrnStatusBadge = '';
+        if (!rawLrn) {
+            lrnBorderClass = 'border-rose-400 bg-rose-50 text-rose-700';
+            lrnStatusBadge = '<span class="text-[10px] text-rose-500 font-extrabold ml-1">✗ Missing</span>';
+        } else if (!/^\d{12}$/.test(rawLrn)) {
+            lrnBorderClass = 'border-rose-400 bg-rose-50 text-rose-700';
+            lrnStatusBadge = `<span class="text-[10px] text-rose-500 font-extrabold ml-1 animate-pulse">✗ ${lrnLen}/12d</span>`;
+        } else if (evalResult.isLrnDup) {
+            lrnBorderClass = 'border-rose-500 bg-rose-100 text-rose-900 font-black ring-2 ring-rose-400';
+            lrnStatusBadge = `<span class="text-[10px] text-rose-700 font-black ml-1 whitespace-nowrap bg-rose-200 px-1.5 py-0.5 rounded shadow-sm"><i class="fas fa-triangle-exclamation mr-0.5"></i> Duplicate</span>`;
+        } else {
+            lrnBorderClass = 'border-emerald-300 bg-emerald-50/40 text-slate-800';
+            lrnStatusBadge = '<span class="text-[10px] text-emerald-600 font-extrabold ml-1">✓ Unique</span>';
+        }
+
+        html += `
+            <tr class="${!evalResult.ok ? 'bg-rose-50/40' : ''} hover:bg-slate-50 transition">
+                <td class="p-3 text-center font-mono font-bold text-slate-400">${idx + 1}</td>
+                <td class="p-3 font-bold text-slate-800">
+                    <span class="block truncate max-w-[150px]">${r.first_name} ${r.last_name}</span>
+                </td>
+                <td class="p-3 text-slate-600">
+                    <span class="block truncate max-w-[170px]">${r.email}</span>
+                </td>
+                <td class="p-3">
+                    <div class="flex items-center">
+                        <input type="text" value="${rawLrn}" maxlength="12"
+                            oninput="onRowLrnChange(${idx}, this)"
+                            placeholder="12-digit LRN"
+                            class="fi text-xs font-mono py-1 px-2 w-28 ${lrnBorderClass}">
+                        ${lrnStatusBadge}
+                    </div>
+                </td>
+                <td class="p-3">
+                    <select class="fi text-xs py-1 px-2 font-semibold" onchange="onRowSubjectChange(${idx}, this)">
+                        ${subjOptions}
+                    </select>
+                </td>
+                <td class="p-3">
+                    <select class="fi text-xs py-1 px-2 font-semibold" onchange="onRowSectionChange(${idx}, this)">
+                        ${secOptions}
+                    </select>
+                </td>
+                <td class="p-3 text-slate-700 font-semibold text-xs">
+                    <input type="text" readonly value="${r.teacher || 'Unassigned'}" class="fi text-xs py-1 px-2 bg-slate-100/80 font-bold border-transparent">
+                </td>
+                <td class="p-3">
+                    <input type="text" readonly value="${r.track || 'Academic Track'}" class="fi text-xs py-1 px-2 bg-slate-100/80 font-bold border-transparent text-slate-600">
+                </td>
+                <td class="p-3 text-center">
+                    <span class="badge ${evalResult.badgeClass} whitespace-nowrap">${evalResult.msg}</span>
+                </td>
+            </tr>`;
+    });
+
+    tbody.innerHTML = html;
+
+    // Metrics Bar
+    const metricsBar = document.getElementById('previewMetricsBar');
+    if (metricsBar) {
+        metricsBar.innerHTML = `
+            <span class="badge text-[11px] font-black bg-slate-100 text-slate-700 px-3 py-1">Total: ${_parsedStudentRows.length}</span>
+            <span class="badge text-[11px] font-black bg-emerald-100 text-emerald-800 px-3 py-1">✓ Ready: ${validCount}</span>
+            ${issueCount > 0 ? `<span class="badge text-[11px] font-black bg-rose-100 text-rose-800 px-3 py-1 animate-pulse">⚠ Issues: ${issueCount}</span>` : ''}
+            ${dupLrnCount > 0 ? `<span class="badge text-[11px] font-black bg-rose-200 text-rose-900 px-3 py-1 font-black animate-pulse"><i class="fas fa-triangle-exclamation mr-1 text-rose-600"></i> ${dupLrnCount} Duplicate LRN(s)</span>` : ''}
+        `;
+    }
+
+    const summaryText = document.getElementById('previewSummaryText');
+    if (summaryText) {
+        summaryText.textContent = issueCount === 0
+            ? `All ${_parsedStudentRows.length} students are eligible and ready for enrollment.`
+            : `${issueCount} student(s) have validation issues (marked in red)${dupLrnCount > 0 ? ` including ${dupLrnCount} duplicate LRN(s)` : ''}. Fix errors before importing.`;
+    }
+}
+
+function onRowSubjectChange(rowIdx, selectElem) {
+    if (!_parsedStudentRows[rowIdx]) return;
+    _parsedStudentRows[rowIdx].subject = selectElem.value;
+    // Auto-select first matching section
+    const matching = _allClasses.filter(c => c.subject_name.toLowerCase() === selectElem.value.toLowerCase());
+    if (matching.length > 0) {
+        _parsedStudentRows[rowIdx].section = matching[0].class_name;
+        _parsedStudentRows[rowIdx].teacher = matching[0].teacher_name || '';
+    } else {
+        _parsedStudentRows[rowIdx].section = '';
+        _parsedStudentRows[rowIdx].teacher = '';
+    }
+    renderStudentPreviewTable();
+}
+
+function onRowSectionChange(rowIdx, selectElem) {
+    if (!_parsedStudentRows[rowIdx]) return;
+    const selectedOpt = selectElem.options[selectElem.selectedIndex];
+    _parsedStudentRows[rowIdx].section = selectElem.value;
+    if (selectedOpt && selectedOpt.dataset) {
+        _parsedStudentRows[rowIdx].teacher = selectedOpt.dataset.teacher || '';
+        if (selectedOpt.dataset.subject) _parsedStudentRows[rowIdx].subject = selectedOpt.dataset.subject;
+    }
+    renderStudentPreviewTable();
+}
+
+function onRowLrnChange(rowIdx, inputElem) {
+    if (!_parsedStudentRows[rowIdx]) return;
+    _parsedStudentRows[rowIdx].lrn_number = inputElem.value.trim();
+    renderStudentPreviewTable();
 }
 
 async function submitBulk(type) {
     const file = _bulkFiles[type];
-    if (!file) return;
+    if (!file && (type === 'teacher' || _parsedStudentRows.length === 0)) {
+        showToast('Please select an Excel file first.', 'warning');
+        return;
+    }
+
+    const resultsContainer = document.getElementById('bulkResultsContainer');
+
+    if (type === 'student' && _parsedStudentRows.length > 0) {
+        // Pre-validate duplicate LRNs before submitting
+        const lrnTracker = {};
+        const dupRowsFound = [];
+        _parsedStudentRows.forEach((r, idx) => {
+            const rawLrn = String(r.lrn_number || '').trim();
+            if (rawLrn) {
+                if (lrnTracker[rawLrn]) {
+                    dupRowsFound.push({ lrn: rawLrn, row1: lrnTracker[rawLrn], row2: idx + 1, name: `${r.first_name} ${r.last_name}` });
+                } else {
+                    lrnTracker[rawLrn] = idx + 1;
+                }
+            }
+        });
+
+        if (dupRowsFound.length > 0) {
+            const dupListHtml = dupRowsFound.map(d => `<li>LRN <b>${d.lrn}</b> duplicated in Row #${d.row1} and Row #${d.row2} (${d.name})</li>`).join('');
+            if (resultsContainer) {
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.innerHTML = `
+                    <div class="p-5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 shadow-sm">
+                        <p class="font-black text-sm flex items-center gap-2"><i class="fas fa-triangle-exclamation text-rose-600 text-base"></i> Duplicate LRN Detected — Import Blocked</p>
+                        <p class="text-xs text-rose-700 mt-1 mb-2">Each student must have a unique 12-digit LRN. Duplicate LRNs cannot be imported:</p>
+                        <ul class="list-disc list-inside text-xs font-mono font-bold text-rose-800 bg-white p-3 rounded-xl border border-rose-200 space-y-1">
+                            ${dupListHtml}
+                        </ul>
+                        <p class="text-[11px] text-rose-600 mt-2">Please correct the duplicate rows in the preview table or in your Excel file before submitting.</p>
+                    </div>`;
+            }
+            showToast('Duplicate LRNs detected! Each student must have a unique LRN.', 'error');
+            return;
+        }
+    }
+
+    if (type === 'teacher' && _parsedTeacherRows.length > 0) {
+        // 1. Pre-validate missing or duplicate Faculty IDs
+        const fidTracker = {};
+        const dupFidRows = [];
+        let missingFidRows = 0;
+        let missingClassRows = 0;
+        const conflictedSectionsMap = {};
+
+        const existingFids = (typeof _existingFacultyIdsMap !== 'undefined' && _existingFacultyIdsMap) ? _existingFacultyIdsMap : (window._existingFacultyIdsMap || {});
+        const pendingFids  = (typeof _pendingFacultyIdsMap !== 'undefined' && _pendingFacultyIdsMap) ? _pendingFacultyIdsMap : (window._pendingFacultyIdsMap || {});
+
+        _parsedTeacherRows.forEach((r, idx) => {
+            const fid = String(r.faculty_id || '').trim();
+            if (!fid) {
+                missingFidRows++;
+            } else if (fidTracker[fid]) {
+                dupFidRows.push({ fid, row1: fidTracker[fid], row2: idx + 1, name: `${r.first_name} ${r.last_name}` });
+            } else if (existingFids[fid]) {
+                dupFidRows.push({ fid, row1: 'Active User', row2: idx + 1, name: `${r.first_name} ${r.last_name} (Used by ${existingFids[fid]})` });
+            } else if (pendingFids[fid]) {
+                dupFidRows.push({ fid, row1: 'Pending Invite', row2: idx + 1, name: `${r.first_name} ${r.last_name} (Reserved for ${pendingFids[fid]})` });
+            } else {
+                fidTracker[fid] = idx + 1;
+            }
+
+            if (!r.class_ids || r.class_ids.length === 0) {
+                missingClassRows++;
+            } else {
+                r.class_ids.forEach(cid => {
+                    const cls = _allClasses.find(c => c.class_id === cid);
+                    if (cls && cls.teacher_id && cls.teacher_name && cls.teacher_name.trim()) {
+                        conflictedSectionsMap[cid] = {
+                            className: cls.class_name,
+                            subjectName: cls.subject_name,
+                            teacherName: cls.teacher_name.trim()
+                        };
+                    }
+                });
+            }
+        });
+
+        if (missingFidRows > 0 || dupFidRows.length > 0 || missingClassRows > 0) {
+            let errorMsg = '';
+            if (missingFidRows > 0) errorMsg += `<li>${missingFidRows} teacher(s) have missing Faculty IDs.</li>`;
+            if (missingClassRows > 0) errorMsg += `<li>${missingClassRows} teacher(s) have no classes assigned.</li>`;
+            dupFidRows.forEach(d => {
+                errorMsg += `<li>Faculty ID <b>${d.fid}</b> is duplicate (Row #${d.row2} - ${d.name}).</li>`;
+            });
+
+            if (resultsContainer) {
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.innerHTML = `
+                    <div class="p-5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 shadow-sm">
+                        <p class="font-black text-sm flex items-center gap-2"><i class="fas fa-triangle-exclamation text-rose-600 text-base"></i> Validation Errors — Import Blocked</p>
+                        <ul class="list-disc list-inside text-xs font-bold text-rose-800 bg-white p-3 rounded-xl border border-rose-200 mt-2 space-y-1">
+                            ${errorMsg}
+                        </ul>
+                    </div>`;
+            }
+            showToast('Please correct Faculty ID and Class assignment errors before proceeding.', 'error');
+            return;
+        }
+
+        // 2. Pre-flight Section Teacher Conflict Check
+        const conflictsList = Object.values(conflictedSectionsMap);
+        if (conflictsList.length > 0) {
+            const listHtml = conflictsList.map(c => `<li class="py-1 text-left"><b>${c.subjectName} — Section ${c.className}</b>: currently handled by <i>${c.teacherName}</i></li>`).join('');
+
+            if (window.Swal) {
+                const res = await Swal.fire({
+                    title: 'Section Teacher Conflicts Detected',
+                    html: `
+                        <div class="text-sm text-slate-600">
+                            <p class="mb-2">The following section(s) currently have an assigned teacher:</p>
+                            <div class="max-h-40 overflow-y-auto bg-amber-50 border border-amber-200 rounded-xl p-3 my-2 text-xs text-amber-900">
+                                <ul class="list-disc list-inside space-y-1">
+                                    ${listHtml}
+                                </ul>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-2">
+                                Proceeding with the import will replace these existing instructors and reassign the sections to the imported teachers.
+                            </p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#059669',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="fas fa-check-circle mr-1"></i> Proceed & Replace',
+                    cancelButtonText: '<i class="fas fa-arrow-left mr-1"></i> Cancel & Review Selection',
+                    reverseButtons: true
+                });
+
+                if (!res.isConfirmed) {
+                    return; // User canceled
+                }
+            } else {
+                const proceed = confirm(`${conflictsList.length} section(s) already have an assigned instructor. Proceeding will replace them. Continue?`);
+                if (!proceed) return;
+            }
+        }
+    }
+
     const fd = new FormData();
-    fd.append('file', file);
+    if (file) fd.append('file', file);
     fd.append('type', type);
+
+    if (type === 'student' && _parsedStudentRows.length > 0) {
+        fd.append('students_json', JSON.stringify(_parsedStudentRows));
+    } else if (type === 'teacher' && _parsedTeacherRows.length > 0) {
+        fd.append('teachers_json', JSON.stringify(_parsedTeacherRows));
+        if (typeof _batchDefaultTeacherClassIds !== 'undefined' && _batchDefaultTeacherClassIds && _batchDefaultTeacherClassIds.length > 0) {
+            fd.append('default_classes', JSON.stringify(_batchDefaultTeacherClassIds));
+        }
+    }
+
     const log = document.getElementById('importLog');
-    log.classList.remove('hidden');
-    log.innerHTML = `<div class="text-cyan-400 animate-pulse">⏳ Processing and sending invitation emails…</div>`;
+    
+    if (resultsContainer) {
+        resultsContainer.classList.remove('hidden');
+        resultsContainer.innerHTML = `
+            <div class="p-6 rounded-2xl bg-sky-50 border border-sky-200 text-center animate-pulse">
+                <i class="fas fa-spinner fa-spin text-3xl text-sky-600 mb-2"></i>
+                <p class="font-bold text-sky-900 text-sm">${type === 'teacher' ? 'Processing teacher invitations & assigning teaching loads…' : 'Processing registration & enforcing enrollment rules…'}</p>
+                <p class="text-xs text-sky-600 mt-1">${type === 'teacher' ? 'Verifying Faculty IDs, resolving sections, and dispatching invitation emails' : 'Verifying LRNs, capacity caps, timeframe validity, and dispatching invitation emails'}</p>
+            </div>`;
+    }
+
+    const submitBtn = document.getElementById(type === 'student' ? 'submitStudentBulk' : 'submitTeacherBulk');
+    if (submitBtn) submitBtn.disabled = true;
+
     try {
         const res  = await fetch('/admin/uac/bulk-import', { method: 'POST', body: fd });
         const data = await res.json();
+
+        if (submitBtn) submitBtn.disabled = false;
+
         if (data.success) {
-            log.innerHTML = `
-                <div class="text-emerald-400 font-bold mb-2">✅ Done — invitations sent!</div>
-                <div class="text-slate-400 mb-2">
-                    Invited: <span class="text-white font-bold">${data.created}</span>
-                    &nbsp; Skipped: <span class="text-amber-400 font-bold">${data.skipped}</span>
-                    &nbsp; Errors: <span class="text-rose-400 font-bold">${data.errors}</span>
-                </div>
-                ${(data.log||[]).map(l=>`<div class="text-xs mt-0.5 ${l.ok?'text-slate-400':'text-rose-400'}">${l.msg}</div>`).join('')}
-            `;
-            showToast(`Sent ${data.created} invitation(s)!`, 'success');
+            renderBulkImportResults(data, type);
+            showToast(`Processed ${data.created} invitation(s) successfully!`, 'success');
         } else {
-            log.innerHTML = `<div class="text-rose-400">❌ ${data.message || 'Import failed.'}</div>`;
-            showToast('Import failed.', 'error');
+            if (resultsContainer) {
+                resultsContainer.innerHTML = `
+                    <div class="p-5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800">
+                        <p class="font-black text-sm flex items-center gap-2"><i class="fas fa-circle-xmark text-rose-600 text-base"></i> Bulk Import Failed</p>
+                        <p class="text-xs mt-1.5">${data.message || 'An error occurred during bulk import.'}</p>
+                    </div>`;
+            }
+            showToast(data.message || 'Import failed.', 'error');
         }
-    } catch (_) {
-        log.innerHTML = `<div class="text-rose-400">❌ Network error.</div>`;
-        showToast('Network error.', 'error');
+    } catch (err) {
+        if (submitBtn) submitBtn.disabled = false;
+        if (resultsContainer) {
+            resultsContainer.innerHTML = `
+                <div class="p-5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800">
+                    <p class="font-black text-sm"><i class="fas fa-triangle-exclamation mr-1"></i> Network error during import</p>
+                    <p class="text-xs mt-1">${err.message}</p>
+                </div>`;
+        }
+        showToast('Network error occurred.', 'error');
     }
 }
 
+function renderBulkImportResults(data, type) {
+    const container = document.getElementById('bulkResultsContainer');
+    if (!container) return;
+
+    const details = data.details || {};
+    const passedRows = details.passedRows || [];
+    const failedRows = details.failedRows || [];
+
+    const isTeacher = (type === 'teacher');
+
+    let html = `
+        <div class="space-y-4">
+            <!-- Summary Header -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Total Processed</p>
+                        <p class="text-2xl font-black text-slate-800">${details.totalRows || (data.created + data.skipped + data.errors)}</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-black"><i class="fas fa-list"></i></div>
+                </div>
+                <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-black uppercase tracking-wider text-emerald-700">${isTeacher ? 'Assigned &amp; Invited' : 'Enrolled &amp; Invited'}</p>
+                        <p class="text-2xl font-black text-emerald-800">${data.created}</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-200/50 flex items-center justify-center text-emerald-700 font-black"><i class="fas fa-check"></i></div>
+                </div>
+                <div class="p-4 rounded-xl ${failedRows.length > 0 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'} shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-black uppercase tracking-wider ${failedRows.length > 0 ? 'text-rose-700' : 'text-slate-400'}">Blocked / Issues</p>
+                        <p class="text-2xl font-black ${failedRows.length > 0 ? 'text-rose-800' : 'text-slate-400'}">${data.skipped + data.errors}</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl ${failedRows.length > 0 ? 'bg-rose-200/50 text-rose-700' : 'bg-slate-200/50 text-slate-400'} flex items-center justify-center font-black">
+                        <i class="fas fa-triangle-exclamation"></i>
+                    </div>
+                </div>
+            </div>`;
+
+    // If there are failures: EXPLICIT DETAILED ERROR MESSAGES
+    if (failedRows.length > 0) {
+        html += `
+            <div class="p-5 rounded-2xl bg-rose-50 border border-rose-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-3 text-rose-900">
+                    <i class="fas fa-circle-exclamation text-rose-600 text-lg"></i>
+                    <h4 class="font-black text-sm">${isTeacher ? `Invitation Blocked for ${failedRows.length} Teacher(s) — Action Required` : `Registration Blocked for ${failedRows.length} Student(s) — Action Required`}</h4>
+                </div>
+                <p class="text-xs text-rose-700 mb-3">
+                    ${isTeacher 
+                        ? 'The following teachers could not be invited because teaching load assignment or Faculty ID verification failed. Please review the detailed reason for each teacher:' 
+                        : 'The following students could not be registered because standard enrollment criteria or LRN requirements failed. Please review the detailed reason for each student:'}
+                </p>
+                <div class="border border-rose-200 rounded-xl overflow-hidden bg-white shadow-sm max-h-72 overflow-y-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-rose-100/70 border-b border-rose-200 font-black text-rose-900 uppercase">
+                            <tr>
+                                <th class="p-2.5 w-12 text-center">Row</th>
+                                <th class="p-2.5">${isTeacher ? 'Teacher / Email' : 'Student / Email'}</th>
+                                <th class="p-2.5">${isTeacher ? 'Reason for Blocked Invitation' : 'Explicit Enrollment Error Reason'}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-rose-100">
+                            ${failedRows.map(f => `
+                                <tr class="hover:bg-rose-50/50 transition">
+                                    <td class="p-2.5 text-center font-bold text-rose-500 font-mono">${f.row}</td>
+                                    <td class="p-2.5 font-bold text-slate-800">
+                                        <span>${f.name}</span>
+                                        <span class="block text-[11px] font-normal text-slate-500">${f.email}</span>
+                                    </td>
+                                    <td class="p-2.5 font-bold text-rose-700 leading-snug">
+                                        <i class="fas fa-ban text-rose-500 mr-1 text-[11px]"></i> ${f.reason}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+    }
+
+    // If there are passed rows: Confirmed list
+    if (passedRows.length > 0) {
+        html += `
+            <div class="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-3 text-emerald-900">
+                    <i class="fas fa-circle-check text-emerald-600 text-lg"></i>
+                    <h4 class="font-black text-sm">${isTeacher ? `Successfully Assigned &amp; Invitations Sent (${passedRows.length})` : `Successfully Enrolled &amp; Invitations Sent (${passedRows.length})`}</h4>
+                </div>
+                <div class="border border-emerald-200 rounded-xl overflow-hidden bg-white shadow-sm max-h-60 overflow-y-auto">`;
+
+        if (isTeacher) {
+            html += `
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-emerald-100/70 border-b border-emerald-200 font-black text-emerald-900 uppercase">
+                            <tr>
+                                <th class="p-2.5 w-12 text-center">#</th>
+                                <th class="p-2.5">Teacher Name</th>
+                                <th class="p-2.5">Faculty ID</th>
+                                <th class="p-2.5">Department</th>
+                                <th class="p-2.5">Assigned Classes / Teaching Load</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-emerald-100">
+                            ${passedRows.map((p, idx) => `
+                                <tr class="hover:bg-emerald-50/50 transition">
+                                    <td class="p-2.5 text-center font-bold text-emerald-600 font-mono">${idx + 1}</td>
+                                    <td class="p-2.5 font-bold text-slate-800">${p.name} <span class="text-[10px] text-slate-400 block">${p.email}</span></td>
+                                    <td class="p-2.5 font-mono font-bold text-slate-700">${p.faculty_id || '—'}</td>
+                                    <td class="p-2.5 font-bold text-teal-700">${p.department || 'Science Department'}</td>
+                                    <td class="p-2.5 font-bold text-emerald-800">${p.assigned_load || '—'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+        } else {
+            html += `
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-emerald-100/70 border-b border-emerald-200 font-black text-emerald-900 uppercase">
+                            <tr>
+                                <th class="p-2.5 w-12 text-center">#</th>
+                                <th class="p-2.5">Student Name</th>
+                                <th class="p-2.5">LRN</th>
+                                <th class="p-2.5">Section</th>
+                                <th class="p-2.5">Subject</th>
+                                <th class="p-2.5">Teacher</th>
+                                <th class="p-2.5">Track</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-emerald-100">
+                            ${passedRows.map((p, idx) => `
+                                <tr class="hover:bg-emerald-50/50 transition">
+                                    <td class="p-2.5 text-center font-bold text-emerald-600 font-mono">${idx + 1}</td>
+                                    <td class="p-2.5 font-bold text-slate-800">${p.name} <span class="text-[10px] text-slate-400 block">${p.email}</span></td>
+                                    <td class="p-2.5 font-mono font-bold text-slate-700">${p.lrn || '—'}</td>
+                                    <td class="p-2.5 font-bold text-indigo-700">${p.section}</td>
+                                    <td class="p-2.5 text-slate-700">${p.subject}</td>
+                                    <td class="p-2.5 text-slate-700 font-medium">${p.teacher}</td>
+                                    <td class="p-2.5 font-bold text-slate-600">${p.track}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+        }
+
+        html += `
+                </div>
+            </div>`;
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
 function downloadTemplate(type) {
-    window.location.href = `/admin/uac/bulk-template?type=${type}`;
+    if (type === 'student') downloadStudentTemplate();
+    else window.location.href = `/admin/uac/bulk-template?type=${type}`;
 }
 </script>
 
@@ -2205,7 +4016,489 @@ function downloadTemplate(type) {
         }, 120000);
     });
 })();
+
+
+// ─────────────────────────────────
+// TEACHER BULK IMPORT ENGINE
+// ─────────────────────────────────
+var _allClasses = window._allClasses || [];
+var _allSubjects = window._allSubjects || [];
+var _existingFacultyIdsMap = window._existingFacultyIdsMap || {};
+var _pendingFacultyIdsMap = window._pendingFacultyIdsMap || {};
+var _parsedTeacherRows = window._parsedTeacherRows || [];
+var _batchDefaultTeacherClassIds = window._batchDefaultTeacherClassIds || [];
+var _activeTeacherEditingRow = typeof window._activeTeacherEditingRow !== 'undefined' ? window._activeTeacherEditingRow : -1;
+
+function switchBulkRole(role) {
+    const studentPane = document.getElementById('bulkStudentPane');
+    const teacherPane = document.getElementById('bulkTeacherPane');
+    const btnStudent  = document.getElementById('btnBulkRoleStudent');
+    const btnTeacher  = document.getElementById('btnBulkRoleTeacher');
+
+    if (role === 'student') {
+        studentPane.classList.remove('hidden');
+        teacherPane.classList.add('hidden');
+        btnStudent.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-sm';
+        btnTeacher.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/60 transition';
+    } else {
+        studentPane.classList.add('hidden');
+        teacherPane.classList.remove('hidden');
+        btnTeacher.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm';
+        btnStudent.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:text-sky-700 hover:bg-sky-50/60 transition';
+    }
+}
+
+function downloadTeacherTemplate() {
+    window.location.href = '/admin/uac/bulk-template?type=teacher';
+}
+
+function parseAndPreviewTeacherExcel(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+
+            if (!jsonRows || jsonRows.length === 0) {
+                showToast('The uploaded teacher spreadsheet contains no rows.', 'error');
+                return;
+            }
+
+            const defDept = (document.getElementById('bulkTeacherBatchDept').value || '').trim() || 'Science Department';
+
+            _parsedTeacherRows = jsonRows.map((r, i) => {
+                const row = {};
+                for (const [k, v] of Object.entries(r)) {
+                    const norm = String(k).replace('*', '').replace(/\(.*\)/, '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+                    row[norm] = String(v !== undefined && v !== null ? v : '').trim();
+                }
+
+                const rawFid = (row.faculty_id || row.facultyid || row.id || '').trim();
+
+                // Parse assigned classes from text if provided
+                const classIds = [];
+                const rawClassesText = String(row.assigned_classes || row.classes || row.sections || row.subject || '').trim();
+                const allClassesList = (typeof _allClasses !== 'undefined' && _allClasses) ? _allClasses : (window._allClasses || []);
+                if (rawClassesText && allClassesList.length > 0) {
+                    const subjectBlocks = rawClassesText.split(';').map(b => b.trim()).filter(Boolean);
+                    subjectBlocks.forEach(block => {
+                        if (block.includes(':')) {
+                            const parts = block.split(':');
+                            const subjPart = parts[0].trim().toLowerCase();
+                            const secParts = parts[1].split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                            secParts.forEach(secName => {
+                                const match = allClassesList.find(c => 
+                                    (c.subject_name.toLowerCase().includes(subjPart) || (c.subject_code && c.subject_code.toLowerCase().includes(subjPart))) &&
+                                    c.class_name.toLowerCase().trim() === secName
+                                ) || allClassesList.find(c => c.class_name.toLowerCase().trim() === secName);
+                                if (match && !classIds.includes(match.class_id)) {
+                                    classIds.push(match.class_id);
+                                }
+                            });
+                        } else {
+                            const secTokens = block.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                            secTokens.forEach(secName => {
+                                const numId = parseInt(secName, 10);
+                                if (!isNaN(numId) && allClassesList.some(c => c.class_id === numId)) {
+                                    if (!classIds.includes(numId)) classIds.push(numId);
+                                    return;
+                                }
+                                const match = allClassesList.find(c => c.class_name.toLowerCase().trim() === secName);
+                                if (match && !classIds.includes(match.class_id)) {
+                                    classIds.push(match.class_id);
+                                }
+                            });
+                        }
+                    });
+                }
+
+                // If no class IDs parsed from Excel, apply batch default if configured
+                if (classIds.length === 0 && _batchDefaultTeacherClassIds.length > 0) {
+                    classIds.push(..._batchDefaultTeacherClassIds);
+                }
+
+                return {
+                    first_name  : row.first_name || '',
+                    middle_name : row.middle_name || '',
+                    last_name   : row.last_name || '',
+                    suffix      : row.suffix || '',
+                    email       : (row.email || '').toLowerCase().trim(),
+                    faculty_id  : rawFid,
+                    department  : row.department || defDept,
+                    class_ids   : classIds,
+                    sex         : row.sex || '',
+                    birthdate   : row.birthdate || '',
+                    mobile_number: row.mobile_number || '',
+                    city_town   : row.city_town || ''
+                };
+            });
+
+            renderTeacherPreviewTable();
+            document.getElementById('teacherPreviewContainer').classList.remove('hidden');
+            document.getElementById('submitTeacherBulk').disabled = false;
+
+        } catch (err) {
+            console.error('[Parse Teacher Excel Error]', err);
+            showToast('Failed to parse Excel file: ' + err.message, 'error');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function renderTeacherPreviewTable() {
+    const tbody = document.getElementById('tblTeacherPreviewBody');
+    if (!tbody) return;
+
+    let validCount = 0;
+    let conflictCount = 0;
+    let fidErrorCount = 0;
+
+    // Track duplicate faculty IDs within sheet
+    const fidTracker = {};
+    _parsedTeacherRows.forEach(r => {
+        if (r.faculty_id) {
+            fidTracker[r.faculty_id] = (fidTracker[r.faculty_id] || 0) + 1;
+        }
+    });
+
+    let rowsHtml = '';
+    _parsedTeacherRows.forEach((r, idx) => {
+        const rowNum = idx + 1;
+        const fid = String(r.faculty_id || '').trim();
+        const email = String(r.email || '').trim();
+
+        // 1. Faculty ID validation
+        const existingFids = (typeof _existingFacultyIdsMap !== 'undefined' && _existingFacultyIdsMap) ? _existingFacultyIdsMap : (window._existingFacultyIdsMap || {});
+        const pendingFids  = (typeof _pendingFacultyIdsMap !== 'undefined' && _pendingFacultyIdsMap) ? _pendingFacultyIdsMap : (window._pendingFacultyIdsMap || {});
+
+        let fidStatus = { ok: true, msg: 'Valid', class: 'text-emerald-700 font-mono font-bold' };
+        if (!fid) {
+            fidStatus = { ok: false, msg: 'Missing Faculty ID', class: 'text-rose-600 font-bold' };
+            fidErrorCount++;
+        } else if (fidTracker[fid] > 1) {
+            fidStatus = { ok: false, msg: 'Duplicate in Sheet', class: 'text-rose-600 font-mono font-bold' };
+            fidErrorCount++;
+        } else if (existingFids[fid]) {
+            fidStatus = { ok: false, msg: `Used by ${existingFids[fid]}`, class: 'text-rose-600 font-mono font-bold' };
+            fidErrorCount++;
+        } else if (pendingFids[fid]) {
+            fidStatus = { ok: false, msg: `Reserved for ${pendingFids[fid]}`, class: 'text-amber-700 font-mono font-bold' };
+            fidErrorCount++;
+        }
+
+        // 2. Email format validation
+        const emailOk = /^[^s@]+@[^s@]+.[^s@]+$/.test(email);
+
+        // 3. Assigned classes chips & conflict check
+        const assignedClasses = _allClasses.filter(c => r.class_ids && r.class_ids.includes(c.class_id));
+        let loadChipsHtml = '';
+        let rowHasConflict = false;
+        let conflictDetails = [];
+
+        if (assignedClasses.length === 0) {
+            loadChipsHtml = `<span class="text-[11px] text-slate-400 italic">No classes assigned</span>`;
+        } else {
+            // Group by subject
+            const bySubj = {};
+            assignedClasses.forEach(c => {
+                const sName = c.subject_name || 'General';
+                if (!bySubj[sName]) bySubj[sName] = [];
+                bySubj[sName].push(c);
+            });
+
+            loadChipsHtml = Object.entries(bySubj).map(([sName, clsList]) => {
+                const secBadges = clsList.map(c => {
+                    const hasTeacher = !!(c.teacher_id && c.teacher_name && c.teacher_name.trim());
+                    if (hasTeacher) {
+                        rowHasConflict = true;
+                        conflictDetails.push(`${c.subject_name || sName} - ${c.class_name} (Current: ${c.teacher_name})`);
+                    }
+                    return `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${hasTeacher ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">${c.class_name}</span>`;
+                }).join(' ');
+                return `<div class="mb-1"><span class="font-extrabold text-[10px] text-slate-500 uppercase">${sName}:</span> ${secBadges}</div>`;
+            }).join('');
+        }
+
+        // Conflict status display
+        let conflictBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full"><i class="fas fa-check-circle"></i> Clear</span>`;
+        if (assignedClasses.length === 0) {
+            conflictBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full"><i class="fas fa-circle-exclamation"></i> No Load</span>`;
+        } else if (rowHasConflict) {
+            conflictCount++;
+            conflictBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full" title="${conflictDetails.join(', ')}"><i class="fas fa-triangle-exclamation text-amber-600"></i> ${conflictDetails.length} Replaced</span>`;
+        }
+
+        // Overall row status
+        const isRowValid = r.first_name && r.last_name && emailOk && fidStatus.ok && assignedClasses.length > 0;
+        if (isRowValid) validCount++;
+
+        let statusBadge = '';
+        if (!isRowValid) {
+            statusBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full"><i class="fas fa-ban"></i> Invalid</span>`;
+        } else if (rowHasConflict) {
+            statusBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-full"><i class="fas fa-triangle-exclamation"></i> Ready (Conflict)</span>`;
+        } else {
+            statusBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full"><i class="fas fa-check-circle"></i> Ready</span>`;
+        }
+
+        rowsHtml += `
+            <tr class="hover:bg-slate-50 transition">
+                <td class="p-3 text-center font-bold text-slate-400 text-xs">${rowNum}</td>
+                <td class="p-3">
+                    <p class="font-bold text-slate-800 text-xs">${r.first_name} ${r.last_name}</p>
+                    ${r.middle_name ? `<p class="text-[10px] text-slate-400">Mid: ${r.middle_name}</p>` : ''}
+                </td>
+                <td class="p-3">
+                    <p class="text-xs font-mono ${emailOk ? 'text-slate-700' : 'text-rose-600 font-bold'}">${email || '—'}</p>
+                </td>
+                <td class="p-3">
+                    <span class="${fidStatus.class}">${fid || '—'}</span>
+                    <p class="text-[10px] ${fidStatus.ok ? 'text-slate-400' : 'text-rose-600 font-semibold'}">${fidStatus.msg}</p>
+                </td>
+                <td class="p-3">
+                    <input type="text" value="${r.department || 'Science Department'}" onchange="_parsedTeacherRows[${idx}].department = this.value"
+                           class="w-full text-[11px] p-1 border border-slate-200 rounded font-semibold text-slate-700 bg-slate-50 focus:bg-white">
+                </td>
+                <td class="p-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex-1">${loadChipsHtml}</div>
+                        <button type="button" onclick="openTeacherRowLoadModal(${idx})"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition shrink-0">
+                            <i class="fas fa-pen-to-square"></i> Edit
+                        </button>
+                    </div>
+                </td>
+                <td class="p-3">${conflictBadge}</td>
+                <td class="p-3 text-center">${statusBadge}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = rowsHtml;
+
+    // Update metrics bar
+    const metricsBar = document.getElementById('teacherPreviewMetricsBar');
+    if (metricsBar) {
+        metricsBar.innerHTML = `
+            <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                Total: ${_parsedTeacherRows.length}
+            </span>
+            <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Valid: ${validCount}
+            </span>
+            ${conflictCount > 0 ? `
+                <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    Conflicts: ${conflictCount}
+                </span>` : ''}
+            ${fidErrorCount > 0 ? `
+                <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                    Faculty ID Issues: ${fidErrorCount}
+                </span>` : ''}
+        `;
+    }
+
+    const summaryText = document.getElementById('teacherPreviewSummaryText');
+    if (summaryText) {
+        summaryText.textContent = `Showing ${_parsedTeacherRows.length} teacher row(s) · ${validCount} ready to dispatch`;
+    }
+}
+
+// ─────────────────────────────────
+// ROW-LEVEL & BATCH DEFAULT TEACHING LOAD MODAL
+// ─────────────────────────────────
+function openTeacherRowLoadModal(rowIdx) {
+    _activeTeacherEditingRow = rowIdx;
+    const titleEl = document.getElementById('modalTeacherRowLoadTitle');
+    const subtitleEl = document.getElementById('modalTeacherRowLoadSubtitle');
+
+    let currentSelectedIds = [];
+    if (rowIdx === -1) {
+        // Batch default
+        titleEl.textContent = 'Configure Batch Default Teaching Load';
+        subtitleEl.textContent = 'Select default subjects & sections to apply across all imported teachers';
+        currentSelectedIds = [..._batchDefaultTeacherClassIds];
+    } else {
+        const teacher = _parsedTeacherRows[rowIdx];
+        titleEl.textContent = `Teaching Load: ${teacher.first_name} ${teacher.last_name}`;
+        subtitleEl.textContent = `Faculty ID: ${teacher.faculty_id || 'Not set'} · ${teacher.email}`;
+        currentSelectedIds = Array.isArray(teacher.class_ids) ? [...teacher.class_ids] : [];
+    }
+
+    renderModalRowHierarchy(currentSelectedIds);
+    openModal('modalTeacherRowLoad');
+}
+
+function renderModalRowHierarchy(selectedIds) {
+    const listContainer = document.getElementById('modalTeacherRowHierarchyList');
+    if (!listContainer) return;
+
+    if (!_allSubjects || _allSubjects.length === 0) {
+        listContainer.innerHTML = `<div class="py-4 text-center text-xs text-slate-400">No subjects found.</div>`;
+        return;
+    }
+
+    let html = '';
+    _allSubjects.forEach(s => {
+        const subjectClasses = _allClasses.filter(c => String(c.subject_id) === String(s.subject_id));
+        const totalInSubj = subjectClasses.length;
+
+        let classesHtml = '';
+        if (totalInSubj === 0) {
+            classesHtml = `<div class="py-2 text-center text-[11px] text-slate-400 italic">No classes in this subject.</div>`;
+        } else {
+            subjectClasses.forEach(c => {
+                const isChecked = selectedIds.includes(c.class_id);
+                const hasTeacher = !!(c.teacher_id && c.teacher_name && c.teacher_name.trim());
+                const teacherBadge = hasTeacher
+                    ? `<span class="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">Current: ${c.teacher_name.trim()}</span>`
+                    : `<span class="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">No Teacher</span>`;
+
+                classesHtml += `
+                    <label class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition select-none group border border-transparent hover:border-slate-200">
+                        <div class="flex items-center gap-2.5">
+                            <input type="checkbox"
+                                   value="${c.class_id}"
+                                   data-subject-id="${s.subject_id}"
+                                   ${isChecked ? 'checked' : ''}
+                                   onchange="updateModalRowHierarchySummary()"
+                                   class="modal-row-cb modal-row-subj-${s.subject_id} w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition">${c.class_name}</span>
+                                <span class="text-[11px] text-slate-400 ml-1">(${c.enrolled_count || 0}/${c.max_capacity !== null ? c.max_capacity : '∞'})</span>
+                            </div>
+                        </div>
+                        <div>${teacherBadge}</div>
+                    </label>
+                `;
+            });
+        }
+
+        html += `
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                <div class="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                            <i class="fas fa-book"></i>
+                        </span>
+                        <span class="text-xs font-bold text-slate-800">${s.subject_name}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="modalRowSubjBadge_${s.subject_id}" class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                            0 / ${totalInSubj} selected
+                        </span>
+                        ${totalInSubj > 0 ? `
+                            <label class="flex items-center gap-1 cursor-pointer select-none text-[11px] font-bold text-slate-600 hover:text-emerald-700">
+                                <input type="checkbox" id="modalRowSubjSelect_${s.subject_id}" onchange="toggleModalRowSubjectClasses(${s.subject_id}, this)"
+                                       class="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                <span>Select All</span>
+                            </label>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="p-2 space-y-1 divide-y divide-slate-50">
+                    ${classesHtml}
+                </div>
+            </div>
+        `;
+    });
+
+    listContainer.innerHTML = html;
+    updateModalRowHierarchySummary();
+}
+
+function toggleModalRowSubjectClasses(subjId, selectAllCb) {
+    const checkboxes = document.querySelectorAll(`.modal-row-subj-${subjId}`);
+    checkboxes.forEach(cb => cb.checked = selectAllCb.checked);
+    updateModalRowHierarchySummary();
+}
+
+function toggleModalRowMasterAll(masterCb) {
+    const checkboxes = document.querySelectorAll('.modal-row-cb');
+    checkboxes.forEach(cb => cb.checked = masterCb.checked);
+    updateModalRowHierarchySummary();
+}
+
+function updateModalRowHierarchySummary() {
+    const allCbs = Array.from(document.querySelectorAll('.modal-row-cb'));
+    const selected = allCbs.filter(cb => cb.checked);
+    const masterCb = document.getElementById('modalRowMasterSelectAll');
+    const badge = document.getElementById('modalTeacherRowBadge');
+
+    if (badge) {
+        badge.textContent = `${selected.length} section${selected.length === 1 ? '' : 's'} selected`;
+    }
+
+    if (masterCb && allCbs.length > 0) {
+        masterCb.checked = (selected.length === allCbs.length);
+        masterCb.indeterminate = (selected.length > 0 && selected.length < allCbs.length);
+    }
+
+    if (_allSubjects && _allSubjects.length > 0) {
+        _allSubjects.forEach(s => {
+            const subjCbs = Array.from(document.querySelectorAll(`.modal-row-subj-${s.subject_id}`));
+            const subjSel = subjCbs.filter(cb => cb.checked);
+            const subjMaster = document.getElementById(`modalRowSubjSelect_${s.subject_id}`);
+            const subjBadge = document.getElementById(`modalRowSubjBadge_${s.subject_id}`);
+
+            if (subjBadge) {
+                subjBadge.textContent = `${subjSel.length} / ${subjCbs.length} selected`;
+            }
+            if (subjMaster && subjCbs.length > 0) {
+                subjMaster.checked = (subjSel.length === subjCbs.length);
+                subjMaster.indeterminate = (subjSel.length > 0 && subjSel.length < subjCbs.length);
+            }
+        });
+    }
+}
+
+function saveTeacherRowLoad() {
+    const selectedCbs = Array.from(document.querySelectorAll('.modal-row-cb:checked'));
+    const selectedClassIds = selectedCbs.map(cb => parseInt(cb.value, 10));
+
+    if (_activeTeacherEditingRow === -1) {
+        // Saving batch default
+        _batchDefaultTeacherClassIds = selectedClassIds;
+        const display = document.getElementById('bulkTeacherBatchLoadDisplay');
+        if (display) {
+            display.textContent = selectedClassIds.length > 0
+                ? `${selectedClassIds.length} default class${selectedClassIds.length > 1 ? 'es' : ''} configured`
+                : 'None selected (Click to set)';
+        }
+        showToast('Default teaching load updated!', 'info');
+    } else if (_activeTeacherEditingRow >= 0 && _parsedTeacherRows[_activeTeacherEditingRow]) {
+        _parsedTeacherRows[_activeTeacherEditingRow].class_ids = selectedClassIds;
+        renderTeacherPreviewTable();
+        showToast('Teacher load updated!', 'success');
+    }
+
+    closeModal('modalTeacherRowLoad');
+}
+
+function applyTeacherBatchLoadToAll() {
+    if (_batchDefaultTeacherClassIds.length === 0) {
+        showToast('Please configure a default teaching load first.', 'warning');
+        openTeacherRowLoadModal(-1);
+        return;
+    }
+
+    const defDept = (document.getElementById('bulkTeacherBatchDept').value || '').trim();
+
+    _parsedTeacherRows.forEach(r => {
+        r.class_ids = [..._batchDefaultTeacherClassIds];
+        if (defDept) r.department = defDept;
+    });
+
+    renderTeacherPreviewTable();
+    showToast(`Applied teaching load to all ${_parsedTeacherRows.length} teacher(s)!`, 'success');
+}
+
 </script>
+
+<!-- Elementa Session Security Modals & Client Guardian Controller -->
+<%- include('../partials/session-modals') %>
+<script src="/js/session-guard.js"></script>
 
 </body>
 </html>

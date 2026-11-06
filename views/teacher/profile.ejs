@@ -209,17 +209,7 @@
         .profile-dropdown-item:hover { background: #f0f9ff; color: #0369a1; }
         .profile-dropdown-item.danger:hover { background: #fff1f2; color: #be123c; }
 
-        /* ── Notification panel ── */
-        #notifPanel {
-            position: fixed; top: 0; right: 0; height: 100%; width: 100%; max-width: 22rem;
-            z-index: 200; display: flex; flex-direction: column;
-            transform: translateX(100%); transition: transform .3s ease;
-            background: linear-gradient(180deg, #0d1a2e 0%, #0f1f38 100%);
-            box-shadow: -8px 0 40px rgba(6,182,212,.15);
-        }
-        #notifPanel.open { transform: translateX(0); }
-
-        /* ── Edit drawer ── */
+                /* ── Edit drawer ── */
         #editDrawerBackdrop {
             display: none; position: fixed; inset: 0;
             background: rgba(15,23,42,.45); z-index: 150;
@@ -260,148 +250,78 @@
         }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
     </style>
+    <%- include('../partials/teacher-nav-styles') %>
 </head>
 <body class="text-slate-900">
 
 <div id="profileToast"><i class="fas fa-circle-check"></i> <span id="profileToastMsg"></span></div>
 
 <div class="flex min-h-screen relative overflow-x-hidden">
-    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
-
-        <aside id="sidebar" class="text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-900/60" style="background: linear-gradient(180deg, #0d1a2e 0%, #0b1523 100%);">
-            <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
-                <!-- Mobile close button -->
-                <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-
-                <!-- Logo -->
-                <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
-
-                <!-- Brand name -->
-                <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
-                    Elem<span class="text-white">enta</span>
-                </h1>
-                <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Teacher Portal</p>
-
-                <!-- Divider -->
-                <!-- <div class="w-full mt-5 border-t border-indigo-800/60"></div> -->
-            </div>
-
-            <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
-
-                <div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Main Interface</p>
-                    <div class="space-y-1">
-                        <a href="/teacher/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                            <i class="fas fa-chart-pie w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
-                            <span class="font-bold tracking-tight text-base">Dashboard</span>
-                        </a>
-                    </div>
-                </div>
-
-                <div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Academic Management</p>
-                    <div class="space-y-1">
-                        <a href="/teacher/classes" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                            <i class="fas fa-chalkboard-user w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
-                            <span class="font-bold tracking-tight text-base">My Classes</span>
-                        </a>
-                    </div>
-
-                    <div class="space-y-1">
-                        <a href="/teacher/question-bank" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                            <i class="fas fa-database w-5 text-rose-400 group-hover:scale-110 transition-transform"></i>
-                            <span class="font-bold tracking-tight text-base">Question Bank</span>
-                        </a>
-                    </div>
-                </div>
-
-                <div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Engagement and Communication</p>
-                    <div class="space-y-1">
-                        <a href="/teacher/forums" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                            <i class="fas fa-comments w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
-                            <span class="font-bold tracking-tight text-base">Forums</span>
-                        </a>
-                    </div>
-                </div>
-
-                <div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-3 mb-2 opacity-90">Reports and Analytics</p>
-                    <div class="space-y-1">
-                        <a href="/teacher/reports" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-500/10 transition text-indigo-200 hover:text-white group">
-                            <i class="fas fa-file-export w-5 text-fuchsia-400 group-hover:scale-110 transition-transform"></i>
-                            <span class="font-bold tracking-tight text-base">Reports</span>
-                        </a>
-                    </div>
-                </div>
-            </nav>
-
-            <div class="p-4 border-t" style="border-color: rgba(99,102,241,0.25);">
-                <a href="/logout"
-                class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
-                    <i class="fas fa-right-from-bracket w-5"></i> Log Out
-                </a>
-            </div>
-        </aside>
+    <%- include('../partials/teacher-sidebar', { activeNav: 'profile' }) %>
 
 <!-- ═══════════════ MAIN ═══════════════ -->
-<main class="flex-1 flex flex-col min-w-0 md:ml-64 transition-all duration-300">
+<main id="mainContent" class="flex-1 flex flex-col min-w-0 md:ml-64 transition-all duration-300">
 
     <!-- ── TOP HEADER ── -->
-    <header class="h-20 bg-white/90 backdrop-blur-md border-b border-cyan-100 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-50">
+    <header class="h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-4 md:px-8 fixed top-0 left-0 right-0 md:left-64 z-40">
         <div class="flex items-center gap-4">
-            <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-cyan-50 text-cyan-600 md:hidden">
+            <button onclick="toggleSidebar()" aria-label="Toggle navigation sidebar" class="p-2 rounded-lg hover:bg-slate-100 text-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 transition">
                 <i class="fas fa-bars text-xl"></i>
             </button>
             <div class="hidden sm:block">
-                <h2 class="text-lg font-bold text-indigo-900 uppercase tracking-tight">My Profile</h2>
-                <p class="text-xs text-slate-400">
-                    <i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>
+                <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">My Profile</h1>
+                <p class="text-xs text-slate-600 font-medium">
+                    <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
                     Teacher Portal &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
                 </p>
             </div>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
-            <!-- Notification bell -->
-            <div class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
-                <i class="far fa-bell text-xl text-cyan-600"></i>
-                <% if (notifications && notifications.length > 0) { %>
-                <span class="absolute top-2 right-2 flex h-2.5 w-2.5">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                </span>
-                <% } %>
-            </div>
+                    <!-- Messages Navigation Button (Entry point to teacher messages workspace) -->
+                    <a href="/teacher/messages" id="messagesBtn" aria-label="Open messages and conversations" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
+                        <i class="far fa-comment-dots text-xl"></i>
+                        
+                        <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                            Messages
+                        </span>
+                    </a>
 
-            <!-- Profile dropdown -->
-            <div class="flex items-center gap-3 pl-4 border-l border-cyan-100">
-                <div class="text-right hidden lg:block">
-                    <p class="text-sm font-bold text-indigo-900"><%= user.first_name %> <%= user.last_name %></p>
-                    <p class="text-[10px] uppercase font-black text-cyan-500 tracking-widest">Instructor</p>
-                </div>
-                <div class="relative" id="profileDropdownWrap">
-                    <button onclick="toggleProfileDropdown()"
-                            class="block rounded-xl ring-2 ring-cyan-400 shadow-sm shadow-cyan-200 hover:ring-indigo-400 transition focus:outline-none">
-                        <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
-                             class="w-10 h-10 rounded-xl object-cover"
-                             onerror="this.src='/profile_uploads/default_avatar.png'">
-                    </button>
-                    <div class="profile-dropdown" id="profileDropdown">
-                        <div class="px-4 pt-4 pb-3 border-b border-slate-100">
-                            <div class="flex items-center gap-3">
-                                <img src="/profile_uploads/<%= user.profile_pic || 'default_avatar.png' %>"
-                                     class="w-9 h-9 rounded-xl object-cover ring-2 ring-cyan-300"
-                                     onerror="this.src='/profile_uploads/default_avatar.png'">
-                                <div class="min-w-0">
-                                    <p class="text-xs font-black text-indigo-900 truncate"><%= user.first_name %> <%= user.last_name %></p>
-                                    <p class="text-[10px] text-cyan-500 font-bold uppercase tracking-widest">Instructor</p>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Notification Button with keyboard-accessible tooltip -->
+            <button type="button" onclick="toggleNotifPanel()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
+                <i class="far fa-bell text-xl text-slate-700"></i>
+                <span class="absolute top-2 right-2 flex h-2.5 w-2.5 notif-badge <%= (typeof notifications !== 'undefined' && notifications && notifications.some(n => !n.is_read)) ? '' : 'hidden' %>" aria-hidden="true">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white"></span>
+                </span>
+                <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                    Notifications
+                </span>
+            </button>
+
+            <!-- User Profile Dropdown -->
+            <div class="relative">
+                <button type="button" onclick="toggleUserMenu(event)" id="userMenuBtn" aria-expanded="false" aria-label="Open user profile menu" class="flex items-center gap-3 pl-4 border-l border-slate-200 hover:opacity-85 transition focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-lg">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-bold text-slate-800 leading-none mb-1"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-xs uppercase font-bold text-slate-600 tracking-wider leading-none"><%= user.role || 'Teacher' %></p>
                     </div>
+                    <img src="<%= user.profile_pic ? '/profile_uploads/' + user.profile_pic : '/profile_uploads/default_avatar.png' %>" alt="<%= user.first_name %>'s avatar" class="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-100" onerror="this.src='/profile_uploads/default_avatar.png'">
+                    <i class="fas fa-chevron-down text-xs text-slate-600 ml-1"></i>
+                </button>
+
+                <div id="userDropdown" class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+                    <div class="px-4 py-3 border-b border-slate-100 lg:hidden">
+                        <p class="text-sm font-bold text-slate-800"><%= user.first_name %> <%= user.last_name %></p>
+                        <p class="text-xs text-slate-600 mt-1 uppercase font-bold"><%= user.role || 'Teacher' %></p>
+                    </div>
+                    <a href="/teacher/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                        <i class="far fa-user w-5 text-center"></i> View Profile
+                    </a>
+                    <hr class="my-2 border-slate-100">
+                    <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition font-bold">
+                        <i class="fas fa-sign-out-alt w-5 text-center"></i> Log Out
+                    </a>
                 </div>
             </div>
         </div>
@@ -444,7 +364,7 @@
                     <button class="profile-nav-item" onclick="toggleEditDrawer()">
                         <i class="fas fa-pen-nib w-4 text-indigo-400 text-sm"></i> Edit Profile
                     </button>
-                    <a href="/auth/logout" class="profile-nav-item" style="color:#ef4444;">
+                    <a href="/logout" class="profile-nav-item" style="color:#ef4444;">
                         <i class="fas fa-right-from-bracket w-4 text-sm"></i> Log Out
                     </a>
                 </div>
@@ -707,67 +627,7 @@
 </main>
 </div><!-- /flex wrapper -->
 
-<!-- ═══════════════════════════════
-     NOTIFICATION PANEL
-═══════════════════════════════ -->
-<div id="notifPanel" style="background:linear-gradient(180deg,#0d1a2e 0%,#0f1f38 100%);box-shadow:-8px 0 40px rgba(6,182,212,.15);">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;">
-        <div>
-            <h3 style="color:white;font-weight:900;font-size:14px;text-transform:uppercase;font-style:italic;display:flex;align-items:center;gap:8px;">
-                <i class="fas fa-bell" style="color:#67e8f9;font-size:13px;"></i> Notifications
-            </h3>
-            <p style="color:#818cf8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-top:2px;">
-                <%= notifications ? notifications.length : 0 %> updates
-            </p>
-        </div>
-        <button onclick="toggleNotifPanel()" style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.05);border:none;color:#818cf8;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-
-    <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;">
-        <% if (notifications && notifications.length > 0) { %>
-            <% notifications.forEach(notif => { %>
-                <%
-                    let href = '#', iconClass = 'fas fa-bell text-cyan-400', badgeLabel = 'Update', badgeClass = 'background:rgba(6,182,212,.2);color:#67e8f9;border:1px solid rgba(6,182,212,.3);';
-                    if (notif.notif_type === 'forum_reply') { href = '/teacher/forums#forum-'+notif.link_id; iconClass='fas fa-comments'; badgeLabel='Forum Reply'; badgeClass='background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.3);'; }
-                    else if (notif.notif_type === 'private_message') { href = '/teacher/messages/'+notif.link_id; iconClass='fas fa-envelope'; badgeLabel='Message'; badgeClass='background:rgba(99,102,241,.2);color:#a5b4fc;border:1px solid rgba(99,102,241,.3);'; }
-                %>
-                <a href="<%= href %>" style="display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.05);text-decoration:none;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.09)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">
-                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
-                        <i class="<%= iconClass %>" style="color:#67e8f9;font-size:13px;"></i>
-                    </div>
-                    <div style="flex:1;min-width:0;">
-                        <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:6px;<%= badgeClass %>"><%= badgeLabel %></span>
-                        <p style="color:white;font-size:11px;font-weight:700;line-height:1.4;margin-top:5px;">
-                            <span style="color:#67e8f9;"><%= notif.actor_name %></span>
-                            <%= notif.message %>
-                        </p>
-                        <p style="color:#4f46e5;font-size:9px;font-weight:700;margin-top:3px;text-transform:uppercase;">
-                            <%= notif.notif_time ? new Date(notif.notif_time).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—' %>
-                        </p>
-                    </div>
-                    <i class="fas fa-chevron-right" style="color:#4f46e5;font-size:10px;align-self:center;flex-shrink:0;"></i>
-                </a>
-            <% }) %>
-        <% } else { %>
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">
-                <div style="width:56px;height:56px;border-radius:20px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-                    <i class="fas fa-bell-slash" style="color:#4f46e5;font-size:22px;"></i>
-                </div>
-                <p style="color:#818cf8;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">All caught up!</p>
-                <p style="color:#4f46e5;font-size:11px;font-weight:600;margin-top:4px;">No new notifications</p>
-            </div>
-        <% } %>
-    </div>
-
-    <div style="padding:16px 24px;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0;">
-        <a href="/teacher/reports" style="display:block;width:100%;padding:11px;text-align:center;background:linear-gradient(135deg,#06b6d4,#6366f1);color:white;font-size:12px;font-weight:800;border-radius:14px;text-decoration:none;letter-spacing:.05em;text-transform:uppercase;">
-            View Full Reports
-        </a>
-    </div>
-</div>
-<div id="notifBackdrop" onclick="toggleNotifPanel()" style="display:none;position:fixed;inset:0;background:rgba(13,26,46,.5);backdrop-filter:blur(4px);z-index:199;"></div>
+<%- include('../partials/notification-panel') %>
 
 <!-- ═══════════════════════════════
      EDIT PROFILE DRAWER
@@ -933,15 +793,6 @@ document.addEventListener('click', function(e) {
     }
 });
 
-/* ── Notification panel ── */
-function toggleNotifPanel() {
-    const panel    = document.getElementById('notifPanel');
-    const backdrop = document.getElementById('notifBackdrop');
-    const isOpen   = panel.classList.contains('open');
-    panel.classList.toggle('open', !isOpen);
-    backdrop.style.display = isOpen ? 'none' : 'block';
-}
-
 /* ── Section switching ── */
 function switchSection(name, btn) {
     document.querySelectorAll('.section-view').forEach(s => s.classList.remove('active'));
@@ -1074,20 +925,45 @@ async function saveProfile() {
         const photoInput = document.getElementById('editPhotoInput');
         if (photoInput.files[0]) fd.append('profile_pic', photoInput.files[0]);
 
-        const res  = await fetch('/teacher/profile/update', { method: 'POST', body: fd });
-
-        // The POST redirects to /teacher/profile?updated=1 on success
-        if (res.redirected) {
-            showToast('Profile updated!', 'success');
-            setTimeout(() => { window.location.href = res.url; }, 800);
-            return;
-        }
+        const res = await fetch('/teacher/profile/update', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: fd
+        });
 
         if (!res.ok) throw new Error('Update failed. Please try again.');
 
         showDrawerMsg('Profile updated successfully!', 'success');
         showToast('Profile updated!', 'success');
-        setTimeout(() => { closeEditDrawer(); location.reload(); }, 1200);
+        closeEditDrawer();
+
+        // Seamlessly refresh profile DOM in background without full page reload
+        const pageRes = await fetch('/teacher/profile?updated=1', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            cache: 'no-store'
+        });
+        if (pageRes.ok) {
+            const html = await pageRes.text();
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(html, 'text/html');
+
+            ['section-info', 'userMenuBtn', 'userDropdown'].forEach(id => {
+                const curEl = document.getElementById(id);
+                const newEl = newDoc.getElementById(id);
+                if (curEl && newEl) {
+                    curEl.innerHTML = newEl.innerHTML;
+                }
+            });
+
+            const curLeft = document.querySelector('.profile-left');
+            const newLeft = newDoc.querySelector('.profile-left');
+            if (curLeft && newLeft) {
+                curLeft.innerHTML = newLeft.innerHTML;
+            }
+        }
 
     } catch (err) {
         showDrawerMsg(err.message, 'error');
@@ -1098,15 +974,6 @@ async function saveProfile() {
     }
 }
 
-/* ── Notification panel inline styles (applied on load) ── */
-const notifPanel = document.getElementById('notifPanel');
-Object.assign(notifPanel.style, {
-    position: 'fixed', top: '0', right: '0', height: '100%',
-    width: '100%', maxWidth: '22rem', zIndex: '200',
-    display: 'flex', flexDirection: 'column',
-    transform: 'translateX(100%)',
-    transition: 'transform .3s ease',
-});
 </script>
 </body>
 </html>

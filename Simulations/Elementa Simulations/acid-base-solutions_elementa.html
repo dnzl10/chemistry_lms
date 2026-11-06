@@ -1,0 +1,3637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Acid-Base Solutions | Elementa LMS Edition</title>
+  <meta name="description" content="Next-generation interactive cellular and chemical equilibrium simulator for Elementa LMS. Explore strong/weak acids and bases, pH, conductivity, and equilibrium concentrations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(14, 23, 42, 0.78);
+      --bg-card-hover: rgba(22, 34, 60, 0.88);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.35);
+
+      --color-h3o: #ef4444;      /* Hydronium: Crimson/Red */
+      --color-oh: #06b6d4;       /* Hydroxide: Cyan/Blue */
+      --color-a-minus: #a855f7;  /* Conjugate Base A-: Purple */
+      --color-ha: #10b981;       /* Undissociated HA: Green */
+      --color-bh-plus: #f59e0b;  /* Conjugate Acid BH+: Amber */
+      --color-b: #3b82f6;        /* Undissociated Base B: Blue */
+      --color-water: #38bdf8;    /* Water: Light Blue */
+
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --topbar-height: 58px;
+      --tabs-height: 48px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* Top Navigation Bar */
+    header.elementa-topbar {
+      height: var(--topbar-height);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.9) 100%);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .brand-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .lms-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lms-breadcrumb span.current {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Mode Switcher Buttons */
+    .top-mode-pills {
+      display: flex;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-card);
+      gap: 2px;
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .mode-pill-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-pill-btn.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.85) 0%, rgba(99, 102, 241, 0.85) 100%);
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+    }
+
+    .mode-pill-btn .badge-counter {
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 10px;
+    }
+
+    /* Right Action Bar */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .action-btn.icon-only {
+      width: 34px;
+      padding: 0;
+    }
+
+    /* Screen Selector Header Bar (Intro vs My Solution) */
+    nav.sim-screens-nav {
+      height: var(--tabs-height);
+      background: rgba(10, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    .screens-tabs-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .screen-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-heading);
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .screen-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .screen-tab-btn.active {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.25);
+    }
+
+    .screen-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -7px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: #38bdf8;
+      border-radius: 2px;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    .screen-tab-number {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+    }
+
+    .screen-tab-btn.active .screen-tab-number {
+      background: #38bdf8;
+      color: #080c14;
+      font-weight: 700;
+    }
+
+    /* Equation Banner above Beaker */
+    .equation-banner-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #e2e8f0;
+    }
+
+    /* Main Workspace Layout */
+    main.simulation-workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Canvas Viewport */
+    .canvas-viewport-container {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at 45% 45%, #0c1427 0%, #060913 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #chemCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* Floating Diagnostic Tools Rack */
+    .tools-shelf {
+      position: absolute;
+      top: 14px;
+      right: 18px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      padding: 8px 12px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 30;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .tools-shelf-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 2px;
+    }
+
+    .tool-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.76rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tool-btn:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .tool-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    /* Color Swatch Reference Strip (pH 0-14) */
+    .ph-color-key-panel {
+      position: absolute;
+      bottom: 14px;
+      left: 18px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
+      padding: 8px 12px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 30;
+      pointer-events: auto;
+    }
+
+    .ph-strip-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ph-swatches-row {
+      display: flex;
+      gap: 2px;
+    }
+
+    .ph-swatch {
+      width: 18px;
+      height: 22px;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    /* Right Sidebar Control Panel */
+    aside.simulation-sidebar {
+      width: 360px;
+      background: rgba(11, 17, 32, 0.95);
+      border-left: 1px solid var(--border-card);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+      z-index: 50;
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .sidebar-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .section-title svg { color: #38bdf8; }
+
+    /* Custom Radio Option Cards */
+    .radio-card-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .radio-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .radio-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .radio-card.active {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+
+    .radio-card-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .radio-bullet {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .radio-card.active .radio-bullet {
+      border-color: #38bdf8;
+    }
+
+    .radio-card.active .radio-bullet::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #38bdf8;
+    }
+
+    .radio-card-formula {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    /* Slider Row */
+    .param-slider-group {
+      margin-bottom: 12px;
+    }
+
+    .param-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .param-value-tag {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 6px #38bdf8;
+      transition: transform 0.1s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Views Radio Buttons (Particles, Graph, Hide Views) */
+    .views-toggle-pills {
+      display: flex;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+      margin-bottom: 10px;
+    }
+
+    .view-pill-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .view-pill-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    /* Checkbox Row */
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: #38bdf8;
+    }
+
+    /* Live Data Cards (pH, pOH, [H3O+], [OH-], % Ionization) */
+    .data-cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .data-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .data-card-title {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .data-card-value {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    /* Species Key / Legend */
+    .species-legend-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .species-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .legend-color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Modals (Missions, Quiz, Theory) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .close-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Missions Styling */
+    .mission-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(52, 211, 153, 0.4);
+      background: rgba(52, 211, 153, 0.05);
+    }
+
+    .mission-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .mission-title {
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: #ffffff;
+    }
+
+    .mission-status-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+
+    .mission-status-badge.pending {
+      background: rgba(251, 146, 60, 0.15);
+      color: #fb923c;
+      border: 1px solid rgba(251, 146, 60, 0.3);
+    }
+
+    .mission-status-badge.done {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .mission-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .mission-progress-bar-wrap {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .mission-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8 0%, #34d399 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* Quiz Styling */
+    .quiz-question-card {
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 14px;
+      border-radius: 10px;
+    }
+
+    .quiz-q-num {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .quiz-question-text {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      line-height: 1.35;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .quiz-option-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-option-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    .quiz-option-btn.selected {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      color: #ffffff;
+    }
+
+    .quiz-option-btn.correct {
+      border-color: #34d399;
+      background: rgba(52, 211, 153, 0.18);
+      color: #ffffff;
+    }
+
+    .quiz-option-btn.wrong {
+      border-color: #f87171;
+      background: rgba(248, 113, 113, 0.18);
+      color: #ffffff;
+    }
+
+    .quiz-feedback-box {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: none;
+      line-height: 1.35;
+    }
+
+    .quiz-feedback-box.correct {
+      display: block;
+      background: rgba(52, 211, 153, 0.1);
+      border-left: 3px solid #34d399;
+      color: #a7f3d0;
+    }
+
+    .quiz-feedback-box.wrong {
+      display: block;
+      background: rgba(248, 113, 113, 0.1);
+      border-left: 3px solid #f87171;
+      color: #fecaca;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    /* Certificate Box */
+    .certificate-view {
+      border: 2px dashed rgba(56, 189, 248, 0.5);
+      background: radial-gradient(circle at 50% 50%, rgba(14, 23, 42, 0.9) 0%, rgba(8, 12, 22, 0.95) 100%);
+      padding: 24px;
+      border-radius: 12px;
+      text-align: center;
+      margin-top: 14px;
+    }
+
+    .cert-heading {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      color: #7dd3fc;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .cert-sub {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .cert-student-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      display: inline-block;
+      padding: 0 20px 4px 20px;
+      margin-bottom: 10px;
+    }
+
+    /* Toasts */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast-msg {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.8rem;
+      color: #ffffff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastSlide 0.3s ease forwards;
+    }
+
+    @keyframes toastSlide {
+      from { transform: translateX(50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+  <!-- Elementa Unified Splash / Loading Screen -->
+  <script src="elementa-splash.js"></script>
+</head>
+<body>
+
+  <!-- Elementa Top Navigation Bar -->
+  <header class="elementa-topbar">
+    <div class="brand-group">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 2v7.31"></path>
+            <path d="M14 9.3V1.99"></path>
+            <path d="M8.5 2h7"></path>
+            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+            <path d="M5.52 16h12.96"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ELEMENTA</span>
+        <span class="brand-badge">LMS Sim</span>
+      </a>
+
+      <div class="lms-breadcrumb">
+        <span>Chemistry</span>
+        <span>›</span>
+        <span>Equilibria & pH</span>
+        <span>›</span>
+        <span class="current">Acid-Base Solutions</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="top-mode-pills">
+      <button class="mode-pill-btn active" id="btnModeSim" onclick="setAppMode('sim')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Simulation Lab
+      </button>
+      <button class="mode-pill-btn" id="btnModeMissions" onclick="setAppMode('missions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Guided Missions
+        <span class="badge-counter" id="missionBadgeCount">0/5</span>
+      </button>
+      <button class="mode-pill-btn" id="btnModeQuiz" onclick="setAppMode('quiz')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Assessment Quiz
+      </button>
+      <button class="mode-pill-btn" id="btnModeTheory" onclick="setAppMode('theory')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Theory & Formulas
+      </button>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="topbar-actions">
+      <button class="action-btn icon-only active" id="btnSoundToggle" title="Toggle Sound Synthesis" onclick="toggleAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      </button>
+
+      <button class="action-btn icon-only" title="Capture Lab Screenshot" onclick="captureScreenshot()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+
+      <button class="action-btn" title="Reset All" onclick="resetSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset All
+      </button>
+
+      <button class="action-btn icon-only" title="Toggle Fullscreen" onclick="toggleFullscreen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Screens Tabs (Intro vs My Solution) -->
+  <nav class="sim-screens-nav">
+    <div class="screens-tabs-list">
+      <button class="screen-tab-btn active" id="tabScreenIntro" onclick="switchScreen('intro')">
+        <span class="screen-tab-number">1</span>
+        Intro
+      </button>
+      <button class="screen-tab-btn" id="tabScreenMySolution" onclick="switchScreen('mySolution')">
+        <span class="screen-tab-number">2</span>
+        My Solution
+      </button>
+    </div>
+
+    <!-- Chemical Equilibrium Reaction Banner -->
+    <div class="equation-banner-strip" id="equationBanner">
+      <span style="color:#7dd3fc; font-weight:700;">Reaction:</span>
+      <span id="equationText">2 H₂O (l) ⇌ H₃O⁺ (aq) + OH⁻ (aq)</span>
+    </div>
+  </nav>
+
+  <!-- Main Interactive Simulation Workspace -->
+  <main class="simulation-workspace">
+
+    <!-- Canvas Viewport for Beaker and Diagnostic Tools -->
+    <div class="canvas-viewport-container" id="canvasViewport">
+      <canvas id="chemCanvas"></canvas>
+
+      <!-- Diagnostic Tools Rack Overlay -->
+      <div class="tools-shelf">
+        <div class="tools-shelf-title">Diagnostic Tools</div>
+        <button class="tool-btn" id="btnToolPhMeter" onclick="toggleTool('phMeter')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="12" rx="2"></rect><line x1="12" y1="14" x2="12" y2="22"></line><circle cx="12" cy="22" r="1"></circle></svg>
+          pH Meter
+        </button>
+        <button class="tool-btn" id="btnToolPhPaper" onclick="toggleTool('phPaper')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          pH Paper
+        </button>
+        <button class="tool-btn" id="btnToolConductivity" onclick="toggleTool('conductivity')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path><circle cx="12" cy="12" r="5"></circle></svg>
+          Conductivity Tester
+        </button>
+      </div>
+
+      <!-- Universal pH Indicator Paper Color Key (0 to 14) -->
+      <div class="ph-color-key-panel" id="phKeyPanel">
+        <div class="ph-strip-title">pH Indicator Color Scale</div>
+        <div class="ph-swatches-row" id="phSwatchesRow"></div>
+      </div>
+    </div>
+
+    <!-- Right Control Sidebar -->
+    <aside class="simulation-sidebar">
+      
+      <!-- Screen 1: Introduction Solution Choice -->
+      <div class="sidebar-section" id="sectionIntroSolution">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path></svg>
+            Select Solution
+          </div>
+        </div>
+
+        <div class="radio-card-group">
+          <div class="radio-card active" onclick="selectIntroSolution('water')" id="rc_water">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <span>Water</span>
+            </div>
+            <div class="radio-card-formula">H₂O</div>
+          </div>
+
+          <div class="radio-card" onclick="selectIntroSolution('strongAcid')" id="rc_strongAcid">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <span>Strong Acid</span>
+            </div>
+            <div class="radio-card-formula">HA</div>
+          </div>
+
+          <div class="radio-card" onclick="selectIntroSolution('weakAcid')" id="rc_weakAcid">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <span>Weak Acid</span>
+            </div>
+            <div class="radio-card-formula">HA</div>
+          </div>
+
+          <div class="radio-card" onclick="selectIntroSolution('strongBase')" id="rc_strongBase">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <span>Strong Base</span>
+            </div>
+            <div class="radio-card-formula">MOH</div>
+          </div>
+
+          <div class="radio-card" onclick="selectIntroSolution('weakBase')" id="rc_weakBase">
+            <div class="radio-card-left">
+              <div class="radio-bullet"></div>
+              <span>Weak Base</span>
+            </div>
+            <div class="radio-card-formula">B</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen 2: My Solution Custom Solution Configurator -->
+      <div class="sidebar-section" id="sectionMySolutionControls" style="display:none;">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Solution Parameters
+          </div>
+        </div>
+
+        <!-- Acid / Base Toggle -->
+        <div class="views-toggle-pills">
+          <button class="view-pill-btn active" id="btnMyTypeAcid" onclick="setMySolutionType('acid')">Acid (HA)</button>
+          <button class="view-pill-btn" id="btnMyTypeBase" onclick="setMySolutionType('base')">Base (B)</button>
+        </div>
+
+        <!-- Initial Concentration Slider -->
+        <div class="param-slider-group">
+          <div class="param-label-row">
+            <span>Initial Concentration (mol/L):</span>
+            <span class="param-value-tag" id="valInitialConc">0.010 M</span>
+          </div>
+          <input type="range" min="-3" max="0" step="0.05" value="-2" id="sliderInitialConc" oninput="onInitialConcSlider(this.value)">
+        </div>
+
+        <!-- Strength / Ka Slider -->
+        <div class="param-slider-group">
+          <div class="param-label-row">
+            <span>Strength (<span id="lblStrengthConstant">Ka</span>):</span>
+            <span class="param-value-tag" id="valStrength">1.00 × 10⁻⁷</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-dim); margin-bottom:3px;">
+            <span>weaker</span>
+            <span>stronger</span>
+          </div>
+          <input type="range" min="-7" max="2" step="0.1" value="-7" id="sliderStrength" oninput="onStrengthSlider(this.value)">
+        </div>
+      </div>
+
+      <!-- Views Controls (Particles, Graph, Hide Views) -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            Views
+          </div>
+        </div>
+
+        <div class="views-toggle-pills">
+          <button class="view-pill-btn active" id="btnViewParticles" onclick="setViewMode('particles')">Particles</button>
+          <button class="view-pill-btn" id="btnViewGraph" onclick="setViewMode('graph')">Graph</button>
+          <button class="view-pill-btn" id="btnViewHide" onclick="setViewMode('hide')">Hide Views</button>
+        </div>
+
+        <div id="wrapParticlesControls">
+          <label class="checkbox-row">
+            <input type="checkbox" id="chkShowSolvent" onchange="toggleSolvent(this.checked)">
+            Show Solvent (H₂O) Molecules
+          </label>
+        </div>
+
+        <div id="wrapGraphControls" style="display:none; margin-top:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.75rem; color:var(--text-muted);">Scale:</span>
+            <div class="views-toggle-pills" style="margin-bottom:0; width:140px;">
+              <button class="view-pill-btn active" id="btnScaleLog" onclick="setGraphScale('log')">Log</button>
+              <button class="view-pill-btn" id="btnScaleLinear" onclick="setGraphScale('linear')">Linear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Equilibrium Chemistry Analytical Readout -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            Equilibrium Quantities
+          </div>
+        </div>
+
+        <div class="data-cards-grid">
+          <div class="data-card">
+            <div class="data-card-title">pH (-log[H₃O⁺])</div>
+            <div class="data-card-value" id="disp_pH" style="color:#38bdf8;">7.00</div>
+          </div>
+          <div class="data-card">
+            <div class="data-card-title">pOH (-log[OH⁻])</div>
+            <div class="data-card-value" id="disp_pOH" style="color:#06b6d4;">7.00</div>
+          </div>
+          <div class="data-card">
+            <div class="data-card-title">[H₃O⁺] (mol/L)</div>
+            <div class="data-card-value" id="disp_h3o" style="color:#ef4444; font-size:0.78rem;">1.00 × 10⁻⁷</div>
+          </div>
+          <div class="data-card">
+            <div class="data-card-title">[OH⁻] (mol/L)</div>
+            <div class="data-card-value" id="disp_oh" style="color:#06b6d4; font-size:0.78rem;">1.00 × 10⁻⁷</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">
+            <span>Degree of Ionization (α):</span>
+            <span id="disp_alpha" style="font-family:var(--font-mono); font-weight:700; color:#34d399;">0.00 %</span>
+          </div>
+        </div>
+
+        <!-- Species Legend -->
+        <div style="font-size:0.68rem; font-weight:700; color:var(--text-dim); text-transform:uppercase; margin-top:14px; letter-spacing:0.04em;">
+          Chemical Species Color Key:
+        </div>
+        <div class="species-legend-grid">
+          <div class="species-legend-item">
+            <div class="legend-color-dot" style="background:var(--color-h3o);"></div>
+            <span>H₃O⁺ (Hydronium)</span>
+          </div>
+          <div class="species-legend-item">
+            <div class="legend-color-dot" style="background:var(--color-oh);"></div>
+            <span>OH⁻ (Hydroxide)</span>
+          </div>
+          <div class="species-legend-item">
+            <div class="legend-color-dot" style="background:var(--color-a-minus);"></div>
+            <span>A⁻ or BH⁺ (Ions)</span>
+          </div>
+          <div class="species-legend-item">
+            <div class="legend-color-dot" style="background:var(--color-ha);"></div>
+            <span>HA or B (Undissoc.)</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- Elementa LMS Guided Missions Modal -->
+  <div class="modal-backdrop" id="modalMissions">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M12 15l-2 5l9-11h-7l2-5l-9 11h7z"></path></svg>
+          <span class="modal-title">Guided Inquiry Experiments</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalMissions')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:14px;">
+          Complete these 5 curriculum-aligned lab challenges. Your real-time interactions are verified automatically by the Elementa LMS physics engine.
+        </p>
+
+        <!-- Mission 1 -->
+        <div class="mission-card" id="missionCard1">
+          <div class="mission-top">
+            <span class="mission-title">Mission 1: The Autoionization of Pure Water</span>
+            <span class="mission-status-badge pending" id="missionBadge1">In Progress</span>
+          </div>
+          <div class="mission-desc">
+            In <b>Intro</b>, select <b>Water</b>. Dip the <b>pH Meter</b> into the beaker to confirm neutral pH 7.00. Then immerse the <b>Conductivity Tester</b> to observe that pure water is essentially non-conductive.
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress1" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 2 -->
+        <div class="mission-card" id="missionCard2">
+          <div class="mission-top">
+            <span class="mission-title">Mission 2: Strong vs. Weak Acid Dissociation</span>
+            <span class="mission-status-badge pending" id="missionBadge2">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Compare <b>Strong Acid (HA)</b> with <b>Weak Acid (HA)</b>. Observe that the strong acid completely ionizes (pH ~2.00) producing a dazzling light bulb, while the weak acid maintains mostly intact HA molecules with a dim filament.
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress2" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 3 -->
+        <div class="mission-card" id="missionCard3">
+          <div class="mission-top">
+            <span class="mission-title">Mission 3: Universal pH Paper Colorimetry</span>
+            <span class="mission-status-badge pending" id="missionBadge3">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Take the <b>pH Paper</b> test strip and dip it into both an acid (red/orange stain) and a base (blue/violet stain). Compare the submerged color against the 0–14 reference scale.
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress3" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 4 -->
+        <div class="mission-card" id="missionCard4">
+          <div class="mission-top">
+            <span class="mission-title">Mission 4: Quantitative Electrolyte Conductivity</span>
+            <span class="mission-status-badge pending" id="missionBadge4">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Immerse the <b>Conductivity Tester</b> into <b>Strong Base (MOH)</b>. Verify that the massive free ion concentration ([M⁺] + [OH⁻]) produces maximum radiant rays from the bulb.
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress4" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Mission 5 -->
+        <div class="mission-card" id="missionCard5">
+          <div class="mission-top">
+            <span class="mission-title">Mission 5: Custom Solution Engineering</span>
+            <span class="mission-status-badge pending" id="missionBadge5">Pending</span>
+          </div>
+          <div class="mission-desc">
+            Switch to <b>My Solution</b>. Adjust the initial concentration and strength slider until you engineer an acid solution with a target <b>pH between 3.00 and 4.00</b>.
+          </div>
+          <div class="mission-progress-bar-wrap">
+            <div class="mission-progress-bar" id="missionProgress5" style="width: 0%;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalMissions')">Resume Lab Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elementa LMS Assessment Quiz Modal -->
+  <div class="modal-backdrop" id="modalQuiz">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span class="modal-title">Elementa LMS Graded Assessment</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalQuiz')">&times;</button>
+      </div>
+
+      <div class="modal-body" id="quizBody">
+        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:16px;">
+          Answer these 5 conceptual and quantitative problems. Scores are synchronized with the Elementa LMS Gradebook.
+        </p>
+
+        <!-- Question 1 -->
+        <div class="quiz-question-card" id="qq1">
+          <div class="quiz-q-num">Question 1 of 5 • Water Autoionization</div>
+          <div class="quiz-question-text">
+            At 25°C, pure water has [H₃O⁺] = 1.0 × 10⁻⁷ M and [OH⁻] = 1.0 × 10⁻⁷ M. What is the value of the ion-product constant Kw?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 0)">
+              A. Kw = 1.0 × 10⁻¹⁴ (the product of [H₃O⁺] and [OH⁻])
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 1)">
+              B. Kw = 1.0 × 10⁻⁷
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 2)">
+              C. Kw = 14.0
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(1, 3)">
+              D. Kw = 7.00
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb1"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="quiz-question-card" id="qq2">
+          <div class="quiz-q-num">Question 2 of 5 • Strong vs. Weak Acids</div>
+          <div class="quiz-question-text">
+            Why does a 0.010 M solution of a Strong Acid light the conductivity bulb much brighter than a 0.010 M solution of a Weak Acid?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 0)">
+              A. Strong acids dissociate 100% into free mobile ions, whereas weak acids remain largely unionized with few charge carriers.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 1)">
+              B. Strong acids generate higher voltage inside the battery electrodes.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 2)">
+              C. Weak acids physically coat the copper electrodes with an insulating plastic film.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(2, 3)">
+              D. The strong acid solution has a higher water temperature.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb2"></div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="quiz-question-card" id="qq3">
+          <div class="quiz-q-num">Question 3 of 5 • pH Definition & Logarithms</div>
+          <div class="quiz-question-text">
+            If the pH of an acid solution decreases by 2 units (e.g., from pH 5.00 to pH 3.00), by what factor has the hydronium ion concentration [H₃O⁺] changed?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 0)">
+              A. [H₃O⁺] has increased by a factor of 100 (10²).
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 1)">
+              B. [H₃O⁺] has doubled (factor of 2).
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 2)">
+              C. [H₃O⁺] has decreased by half.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(3, 3)">
+              D. [H₃O⁺] has increased by 20%.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb3"></div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="quiz-question-card" id="qq4">
+          <div class="quiz-q-num">Question 4 of 5 • Weak Acid Equilibrium</div>
+          <div class="quiz-question-text">
+            For a weak monoprotic acid HA at initial concentration C with equilibrium constant Ka, which expression represents the equilibrium constant?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 0)">
+              A. Ka = ([H₃O⁺][A⁻]) / [HA]
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 1)">
+              B. Ka = [HA] / ([H₃O⁺][A⁻])
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 2)">
+              C. Ka = [H₃O⁺] + [A⁻] - [HA]
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(4, 3)">
+              D. Ka = [H₃O⁺] / [OH⁻]
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb4"></div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="quiz-question-card" id="qq5">
+          <div class="quiz-q-num">Question 5 of 5 • Dilution & % Ionization</div>
+          <div class="quiz-question-text">
+            According to Ostwald's Dilution Law, what happens to the degree of ionization (α) of a weak acid as water is added to dilute the solution?
+          </div>
+          <div class="quiz-options-list">
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 0)">
+              A. The percentage ionization increases, as Le Chatelier's principle shifts equilibrium toward more particle dissociation.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 1)">
+              B. The percentage ionization decreases to zero immediately.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 2)">
+              C. The percentage ionization remains completely unchanged.
+            </div>
+            <div class="quiz-option-btn" onclick="selectQuizAnswer(5, 3)">
+              D. The acid converts into a strong base.
+            </div>
+          </div>
+          <div class="quiz-feedback-box" id="qfb5"></div>
+        </div>
+
+        <!-- Certificate Container -->
+        <div id="quizCertificateWrap" style="display:none;">
+          <div class="certificate-view">
+            <div class="cert-heading">Certificate of Mastery</div>
+            <div class="cert-sub">Elementa Learning Management System • Chemical Equilibria</div>
+            <div class="cert-student-name" id="certStudentName">Student Scholar</div>
+            <p style="font-size:0.86rem; color:#cbd5e1; margin-bottom:12px;">
+              has demonstrated conceptual and quantitative mastery of <b>Aqueous Acid-Base Solutions, pH Metrics, and Electrolyte Conductivity</b>.
+            </p>
+            <div style="font-family:var(--font-mono); font-size:1.1rem; color:#34d399; font-weight:700;" id="certScoreDisplay">
+              Grade: 100% (5/5) • Mastered
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-dim); margin-top:10px;" id="certDateDisplay">
+              Verified on Elementa LMS
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" id="btnSubmitQuiz" onclick="submitQuiz()">Submit to Elementa LMS Gradebook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Formulas Modal -->
+  <div class="modal-backdrop" id="modalTheory">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span class="modal-title">Acid-Base Theory & Mathematical Principles</span>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal('modalTheory')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="line-height:1.6; font-size:0.86rem;">
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">1. Brønsted-Lowry Acid-Base Definition</h3>
+        <p style="color:var(--text-muted); margin-bottom:14px;">
+          An <b>acid</b> is a proton (H⁺) donor, while a <b>base</b> is a proton acceptor. In aqueous solution, transferred protons immediately hydrate to form hydronium ions: H⁺ + H₂O → H₃O⁺.
+        </p>
+
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">2. Autoionization of Water & Kw</h3>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; font-family:var(--font-mono); margin-bottom:14px;">
+          Kw = [H₃O⁺] &times; [OH⁻] = 1.0 &times; 10⁻¹⁴ (at 25°C)<br>
+          pH + pOH = 14.00
+        </div>
+
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">3. Weak Acid Equilibrium & Ka</h3>
+        <p style="color:var(--text-muted); margin-bottom:10px;">
+          For a weak acid HA: HA (aq) + H₂O (l) ⇌ H₃O⁺ (aq) + A⁻ (aq)
+        </p>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; font-family:var(--font-mono); margin-bottom:14px;">
+          Ka = ([H₃O⁺][A⁻]) / [HA]<br>
+          [H₃O⁺] = (-Ka + √(Ka² + 4(Ka&middot;C₀ + Kw))) / 2
+        </div>
+
+        <h3 style="color:#7dd3fc; margin-bottom:6px;">4. Electrical Conductivity</h3>
+        <p style="color:var(--text-muted);">
+          Electrolytic conductivity is directly proportional to the total concentration and mobility of dissolved ions: I ∝ ([H₃O⁺] + [OH⁻] + [A⁻] + [M⁺]). Strong acids and bases are strong electrolytes (intense light bulb radiance); weak acids and bases are weak electrolytes (faint glow).
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="primary-btn" onclick="closeModal('modalTheory')">Close Reference Guide</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Simulation JavaScript Engine -->
+  <script>
+    /* ==========================================================================
+       ELEMENTA LMS ACID-BASE SOLUTIONS ENGINE
+       - Exact mathematical equilibrium solver (quadratic roots for Ka and Kb)
+       - Universal pH indicator colorimetry (pH 0-14)
+       - Real-time electrolytic conductivity & incandescent light bulb physics
+       - Draggable interactive tools: digital pH probe, test strip, light bulb
+       - LMS Guided Missions and Assessment Quiz integration
+       ========================================================================== */
+
+    // App State
+    const state = {
+      screen: 'intro', // 'intro' | 'mySolution'
+      mode: 'sim',      // 'sim' | 'missions' | 'quiz' | 'theory'
+      soundEnabled: true,
+      
+      // Intro Screen Solution
+      introSolution: 'water', // 'water' | 'strongAcid' | 'weakAcid' | 'strongBase' | 'weakBase'
+      
+      // My Solution Parameters
+      myType: 'acid', // 'acid' | 'base'
+      myInitialConc: 0.010, // mol/L
+      myStrengthExp: -7.0,  // log10(Ka or Kb)
+      
+      // View Modes
+      viewMode: 'particles', // 'particles' | 'graph' | 'hide'
+      showSolvent: false,
+      graphScale: 'log',     // 'log' | 'linear'
+      
+      // Tools State & Coordinates
+      tools: {
+        phMeter: { active: true, x: 260, y: 160, isDragging: false },
+        phPaper: { active: true, x: 440, y: 180, isDragging: false, dipped: false, dippedColor: '#2f9e44' },
+        conductivity: { active: true, x: 120, y: 140, isDragging: false }
+      },
+
+      // Chemical Equilibrium Quantities
+      chem: {
+        pH: 7.00,
+        pOH: 7.00,
+        h3o: 1e-7,
+        oh: 1e-7,
+        ha_or_b: 0,
+        a_or_bh: 0,
+        h2o: 55.5,
+        alpha: 0, // %
+        ionConcentration: 2e-7
+      },
+
+      // Mission Statuses
+      missions: {
+        1: { done: false, progress: 0 },
+        2: { done: false, progress: 0 },
+        3: { done: false, progress: 0 },
+        4: { done: false, progress: 0 },
+        5: { done: false, progress: 0 }
+      },
+
+      // Quiz State
+      quizAnswers: { 1: null, 2: null, 3: null, 4: null, 5: null }
+    };
+
+    const QUIZ_KEY = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const QUIZ_RATIONALES = {
+      1: {
+        correct: "Correct! Kw = [H₃O⁺][OH⁻] = (1.0 × 10⁻⁷)(1.0 × 10⁻⁷) = 1.0 × 10⁻¹⁴ at 25°C.",
+        wrong: "Incorrect. Kw is the autoionization product: [H₃O⁺] × [OH⁻] = 1.0 × 10⁻¹⁴."
+      },
+      2: {
+        correct: "Correct! Strong acids dissociate completely into mobile ions (H₃O⁺ and A⁻), providing ample charge carriers to conduct electric current through the filament.",
+        wrong: "Incorrect. The light bulb brightness depends on the concentration of dissolved mobile charge-carrying ions in solution."
+      },
+      3: {
+        correct: "Correct! Because pH is a negative logarithmic scale (-log[H₃O⁺]), a decrease of 2 pH units corresponds to a 10² = 100-fold increase in [H₃O⁺].",
+        wrong: "Incorrect. Each 1 unit decrease in pH represents a 10-fold increase in [H₃O⁺]; a 2 unit decrease represents a 100-fold increase."
+      },
+      4: {
+        correct: "Correct! By definition, Ka = [products] / [reactants] = ([H₃O⁺][A⁻]) / [HA].",
+        wrong: "Incorrect. The equilibrium constant is the ratio of ionized products to unionized acid: Ka = ([H₃O⁺][A⁻]) / [HA]."
+      },
+      5: {
+        correct: "Correct! Ostwald's dilution law states that as a weak electrolyte is diluted, the equilibrium shifts to favor dissociation, increasing the percentage of acid molecules ionized.",
+        wrong: "Incorrect. Dilution increases the volume, driving the forward dissociation reaction according to Le Chatelier's principle."
+      }
+    };
+
+    // Universal pH Indicator Color Palette (pH 0 to 14)
+    const PH_COLORS = [
+      '#c92a2a', // 0: Deep Red
+      '#e03131', // 1: Red
+      '#f76707', // 2: Red-Orange
+      '#ff922b', // 3: Orange
+      '#f59f00', // 4: Yellow-Orange
+      '#fcc419', // 5: Yellow
+      '#94d82d', // 6: Yellow-Green
+      '#2f9e44', // 7: Neutral Green
+      '#20c997', // 8: Teal-Green
+      '#15aabf', // 9: Cyan
+      '#1c7ed6', // 10: Bright Blue
+      '#228be6', // 11: Deep Blue
+      '#364fc7', // 12: Indigo
+      '#5f3dc4', // 13: Purple
+      '#3b1a82'  // 14: Dark Violet
+    ];
+
+    function getPhColor(ph) {
+      const clamped = Math.max(0, Math.min(14, ph));
+      const idx = Math.floor(clamped);
+      const frac = clamped - idx;
+      if (idx >= 14) return PH_COLORS[14];
+      
+      const c1 = hexToRgb(PH_COLORS[idx]);
+      const c2 = hexToRgb(PH_COLORS[idx + 1]);
+      const r = Math.round(c1.r + (c2.r - c1.r) * frac);
+      const g = Math.round(c1.g + (c2.g - c1.g) * frac);
+      const b = Math.round(c1.b + (c2.b - c1.b) * frac);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function hexToRgb(hex) {
+      const bigint = parseInt(hex.slice(1), 16);
+      return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+    }
+
+    // Audio Synthesizer
+    class SimAudio {
+      constructor() { this.ctx = null; }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      }
+      playSplash() {
+        if (!state.soundEnabled) return;
+        this.init(); if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(140, this.ctx.currentTime + 0.12);
+          gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.14);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+        } catch(e) {}
+      }
+      playBeep() {
+        if (!state.soundEnabled) return;
+        this.init(); if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(); osc.stop(this.ctx.currentTime + 0.09);
+        } catch(e) {}
+      }
+      playConductivityHum(intensity) {
+        if (!state.soundEnabled || intensity <= 0.02) return;
+        this.init(); if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.03 * Math.min(1, intensity), this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.18);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+        } catch(e) {}
+      }
+    }
+    const audio = new SimAudio();
+
+    // Canvas Setup
+    const canvas = document.getElementById('chemCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let width = 800;
+    let height = 600;
+    let beaker = { x: 380, y: 350, w: 320, h: 280, liquidTop: 220 };
+    let particles = [];
+    let simTime = 0;
+    let dragTarget = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    // Chemical Particle Class
+    class ChemParticle {
+      constructor(type) {
+        this.type = type;
+        this.resetPosition();
+        const angle = Math.random() * Math.PI * 2;
+        const speed = (type === 'h2o' ? 1.0 : 1.4) * (Math.random() * 0.5 + 0.8);
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+      }
+      resetPosition() {
+        const left = beaker.x - beaker.w / 2 + 20;
+        const right = beaker.x + beaker.w / 2 - 20;
+        const top = beaker.liquidTop + 20;
+        const btm = beaker.y + beaker.h / 2 - 20;
+        this.x = Math.random() * (right - left) + left;
+        this.y = Math.random() * (btm - top) + top;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Beaker boundary reflections
+        const left = beaker.x - beaker.w / 2 + 14;
+        const right = beaker.x + beaker.w / 2 - 14;
+        const top = beaker.liquidTop + 10;
+        const btm = beaker.y + beaker.h / 2 - 14;
+
+        if (this.x < left) { this.x = left; this.vx *= -1; }
+        else if (this.x > right) { this.x = right; this.vx *= -1; }
+        if (this.y < top) { this.y = top; this.vy *= -1; }
+        else if (this.y > btm) { this.y = btm; this.vy *= -1; }
+
+        this.vx += (Math.random() - 0.5) * 0.1;
+        this.vy += (Math.random() - 0.5) * 0.1;
+        const speed = Math.hypot(this.vx, this.vy);
+        if (speed > 2.0) {
+          this.vx = (this.vx / speed) * 2.0;
+          this.vy = (this.vy / speed) * 2.0;
+        }
+      }
+      draw(c) {
+        c.save();
+        if (this.type === 'h3o') {
+          // H3O+ Hydronium: Trigonal Pyramidal 3D Ball-and-Stick
+          // Central Oxygen (Deep Ruby Red 3D Sphere)
+          draw3DSphere(c, this.x, this.y, 6.5, '#dc2626', '#fca5a5', '#7f1d1d');
+          // 3 Hydrogen Protons (Pearl White 3D Spheres with subtle ambient shadow)
+          draw3DSphere(c, this.x - 5.2, this.y - 4.2, 3.4, '#e2e8f0', '#ffffff', '#64748b');
+          draw3DSphere(c, this.x + 5.2, this.y - 4.2, 3.4, '#e2e8f0', '#ffffff', '#64748b');
+          draw3DSphere(c, this.x, this.y + 6.2, 3.4, '#e2e8f0', '#ffffff', '#64748b');
+          // Soft radiant positive charge field
+          c.fillStyle = 'rgba(239, 68, 68, 0.18)';
+          c.beginPath();
+          c.arc(this.x, this.y, 11, 0, Math.PI * 2);
+          c.fill();
+        } else if (this.type === 'oh') {
+          // OH- Hydroxide: Oxygen + Hydrogen with negative aura
+          draw3DSphere(c, this.x - 2, this.y, 6.5, '#06b6d4', '#a5f3fc', '#164e63');
+          draw3DSphere(c, this.x + 5.4, this.y - 2.5, 3.4, '#e2e8f0', '#ffffff', '#64748b');
+          c.fillStyle = 'rgba(6, 182, 212, 0.2)';
+          c.beginPath();
+          c.arc(this.x, this.y, 10, 0, Math.PI * 2);
+          c.fill();
+        } else if (this.type === 'ha') {
+          // HA Undissociated Acid
+          draw3DSphere(c, this.x - 2, this.y, 7.2, '#10b981', '#6ee7b7', '#064e3b');
+          draw3DSphere(c, this.x + 5.5, this.y - 4, 3.5, '#e2e8f0', '#ffffff', '#64748b');
+        } else if (this.type === 'a') {
+          // A- Conjugate Base Anion
+          draw3DSphere(c, this.x, this.y, 7.0, '#a855f7', '#e9d5ff', '#581c87');
+          c.fillStyle = '#ffffff';
+          c.font = 'bold 9px var(--font-mono, monospace)';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('−', this.x, this.y);
+          c.fillStyle = 'rgba(168, 85, 247, 0.22)';
+          c.beginPath();
+          c.arc(this.x, this.y, 11, 0, Math.PI * 2);
+          c.fill();
+        } else if (this.type === 'bh' || this.type === 'm') {
+          // BH+ Conjugate Acid or M+ Metal Cation
+          draw3DSphere(c, this.x, this.y, 7.0, '#f59e0b', '#fef3c7', '#78350f');
+          c.fillStyle = '#0f172a';
+          c.font = 'bold 9px var(--font-mono, monospace)';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('+', this.x, this.y);
+          c.fillStyle = 'rgba(245, 158, 11, 0.2)';
+          c.beginPath();
+          c.arc(this.x, this.y, 11, 0, Math.PI * 2);
+          c.fill();
+        } else if (this.type === 'b') {
+          // Undissociated Base B
+          draw3DSphere(c, this.x, this.y, 7.2, '#3b82f6', '#93c5fd', '#1e3a8a');
+        } else if (this.type === 'h2o' && state.showSolvent) {
+          // H2O Water Molecule (bent 104.5 degrees)
+          c.globalAlpha = 0.55;
+          draw3DSphere(c, this.x, this.y, 4.8, '#38bdf8', '#bae6fd', '#0284c7');
+          draw3DSphere(c, this.x - 3.8, this.y - 3.2, 2.6, '#e2e8f0', '#ffffff', '#64748b');
+          draw3DSphere(c, this.x + 3.8, this.y - 3.2, 2.6, '#e2e8f0', '#ffffff', '#64748b');
+        }
+        c.restore();
+      }
+    }
+
+    // Helper: 3D Ray-Shaded Sphere with Specular Highlight and Depth Shading
+    function draw3DSphere(c, x, y, r, baseColor, highlightColor, darkColor) {
+      const grad = c.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.08, x, y, r);
+      grad.addColorStop(0, highlightColor || '#ffffff');
+      grad.addColorStop(0.32, baseColor);
+      grad.addColorStop(0.85, darkColor || 'rgba(15, 23, 42, 0.7)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0.85)');
+      c.fillStyle = grad;
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI * 2);
+      c.fill();
+    }
+
+    // Micro-Bubbles for Electrolysis & Aqueous Solution Realism
+    let electrolysisBubbles = [];
+    function updateAndDrawBubbles(c) {
+      // Check if conductivity tester is actively conducting in solution
+      const ct = state.tools.conductivity;
+      const inSolution = checkToolSubmerged('conductivity');
+      const intensity = inSolution ? Math.min(1.0, Math.max(0, Math.log10(state.chem.ionConcentration / 1e-7 + 1) / 5.2)) : 0;
+
+      // Spawn effervescence bubbles from electrode surfaces
+      if (ct.active && inSolution && intensity > 0.04) {
+        const spawnCount = Math.random() < (intensity * 0.8) ? 2 : (Math.random() < 0.4 ? 1 : 0);
+        for (let s = 0; s < spawnCount; s++) {
+          const isCathode = Math.random() < 0.65; // H2 at cathode produces more volume
+          const ex = isCathode ? ct.x - 14 : ct.x + 14;
+          const ey = ct.y + 5 + Math.random() * 32;
+          electrolysisBubbles.push({
+            x: ex + (Math.random() - 0.5) * 3,
+            y: ey,
+            r: Math.random() * 1.6 + 0.8,
+            vy: -(Math.random() * 0.9 + 0.6 + intensity * 0.7),
+            vx: (Math.random() - 0.5) * 0.3,
+            alpha: 0.8
+          });
+        }
+      }
+
+      // Update & render bubbles
+      for (let i = electrolysisBubbles.length - 1; i >= 0; i--) {
+        const b = electrolysisBubbles[i];
+        b.y += b.vy;
+        b.x += b.vx + Math.sin(simTime * 0.1 + b.y * 0.05) * 0.25;
+        b.vx *= 0.98;
+
+        // Pop when reaching liquid meniscus surface
+        if (b.y <= beaker.liquidTop + 2) {
+          electrolysisBubbles.splice(i, 1);
+          continue;
+        }
+
+        c.save();
+        c.fillStyle = `rgba(255, 255, 255, ${b.alpha * 0.45})`;
+        c.strokeStyle = `rgba(255, 255, 255, ${b.alpha * 0.85})`;
+        c.lineWidth = 0.8;
+        c.beginPath();
+        c.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+        // Tiny bright highlight dot
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.28, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      }
+
+      // Cap array size
+      if (electrolysisBubbles.length > 70) electrolysisBubbles.splice(0, electrolysisBubbles.length - 70);
+    }
+
+    // Mathematical Chemistry Equilibrium Solver
+    function solveEquilibrium() {
+      const Kw = 1.0e-14;
+      let h3o = 1.0e-7;
+      let oh = 1.0e-7;
+      let ha_or_b = 0;
+      let a_or_bh = 0;
+      let alpha = 0;
+      let eqEquation = '';
+
+      if (state.screen === 'intro') {
+        const sol = state.introSolution;
+        if (sol === 'water') {
+          h3o = 1.0e-7;
+          oh = 1.0e-7;
+          ha_or_b = 0;
+          a_or_bh = 0;
+          alpha = 0;
+          eqEquation = '2 H₂O (l) ⇌ H₃O⁺ (aq) + OH⁻ (aq)';
+        } else if (sol === 'strongAcid') {
+          const C0 = 0.010; // PhET standard 0.010 M
+          h3o = C0;
+          oh = Kw / h3o;
+          a_or_bh = C0;
+          ha_or_b = 1.0e-16;
+          alpha = 100.0;
+          eqEquation = 'HA (aq) + H₂O (l) → H₃O⁺ (aq) + A⁻ (aq)';
+        } else if (sol === 'weakAcid') {
+          const C0 = 0.010;
+          const Ka = 1.0e-7;
+          // Solve quadratic: [H3O+]^2 + Ka[H3O+] - Ka*C0 = 0
+          h3o = (-Ka + Math.sqrt(Ka * Ka + 4 * Ka * C0)) / 2;
+          oh = Kw / h3o;
+          a_or_bh = h3o;
+          ha_or_b = Math.max(0, C0 - a_or_bh);
+          alpha = (a_or_bh / C0) * 100;
+          eqEquation = 'HA (aq) + H₂O (l) ⇌ H₃O⁺ (aq) + A⁻ (aq)';
+        } else if (sol === 'strongBase') {
+          const C0 = 0.010;
+          oh = C0;
+          h3o = Kw / oh;
+          a_or_bh = C0; // M+
+          ha_or_b = 1.0e-16;
+          alpha = 100.0;
+          eqEquation = 'MOH (aq) → M⁺ (aq) + OH⁻ (aq)';
+        } else if (sol === 'weakBase') {
+          const C0 = 0.010;
+          const Kb = 1.0e-7;
+          oh = (-Kb + Math.sqrt(Kb * Kb + 4 * Kb * C0)) / 2;
+          h3o = Kw / oh;
+          a_or_bh = oh; // BH+
+          ha_or_b = Math.max(0, C0 - a_or_bh);
+          alpha = (a_or_bh / C0) * 100;
+          eqEquation = 'B (aq) + H₂O (l) ⇌ BH⁺ (aq) + OH⁻ (aq)';
+        }
+      } else {
+        // My Solution Screen
+        const C0 = state.myInitialConc;
+        const Kval = Math.pow(10, state.myStrengthExp);
+        if (state.myType === 'acid') {
+          // If Kval >= 10, treat as strong acid
+          if (Kval >= 10) {
+            h3o = C0;
+            oh = Kw / h3o;
+            a_or_bh = C0;
+            ha_or_b = 1.0e-16;
+            alpha = 100.0;
+            eqEquation = 'HA (aq) + H₂O (l) → H₃O⁺ (aq) + A⁻ (aq)';
+          } else {
+            h3o = (-Kval + Math.sqrt(Kval * Kval + 4 * Kval * C0)) / 2;
+            oh = Kw / h3o;
+            a_or_bh = h3o;
+            ha_or_b = Math.max(0, C0 - a_or_bh);
+            alpha = (a_or_bh / C0) * 100;
+            eqEquation = 'HA (aq) + H₂O (l) ⇌ H₃O⁺ (aq) + A⁻ (aq)';
+          }
+        } else {
+          // Base
+          if (Kval >= 10) {
+            oh = C0;
+            h3o = Kw / oh;
+            a_or_bh = C0;
+            ha_or_b = 1.0e-16;
+            alpha = 100.0;
+            eqEquation = 'B (aq) + H₂O (l) → BH⁺ (aq) + OH⁻ (aq)';
+          } else {
+            oh = (-Kval + Math.sqrt(Kval * Kval + 4 * Kval * C0)) / 2;
+            h3o = Kw / oh;
+            a_or_bh = oh;
+            ha_or_b = Math.max(0, C0 - a_or_bh);
+            alpha = (a_or_bh / C0) * 100;
+            eqEquation = 'B (aq) + H₂O (l) ⇌ BH⁺ (aq) + OH⁻ (aq)';
+          }
+        }
+      }
+
+      const pH = -Math.log10(h3o);
+      const pOH = -Math.log10(oh);
+      const totalIons = h3o + oh + a_or_bh;
+
+      state.chem = {
+        pH: Math.max(0, Math.min(14, pH)),
+        pOH: Math.max(0, Math.min(14, pOH)),
+        h3o: h3o,
+        oh: oh,
+        ha_or_b: ha_or_b,
+        a_or_bh: a_or_bh,
+        h2o: 55.5,
+        alpha: alpha,
+        ionConcentration: totalIons
+      };
+
+      // Update UI readouts
+      document.getElementById('equationText').textContent = eqEquation;
+      document.getElementById('disp_pH').textContent = state.chem.pH.toFixed(2);
+      document.getElementById('disp_pOH').textContent = state.chem.pOH.toFixed(2);
+      document.getElementById('disp_h3o').textContent = formatSci(state.chem.h3o);
+      document.getElementById('disp_oh').textContent = formatSci(state.chem.oh);
+      document.getElementById('disp_alpha').textContent = state.chem.alpha.toFixed(2) + ' %';
+
+      // Update dipped pH paper color
+      state.tools.phPaper.dippedColor = getPhColor(state.chem.pH);
+
+      // Rebuild particle counts matching equilibrium
+      rebuildParticles();
+      updateMissionProgress();
+    }
+
+    function formatSci(val) {
+      if (val === 0) return '0.00';
+      const exp = Math.floor(Math.log10(val));
+      const mant = val / Math.pow(10, exp);
+      return `${mant.toFixed(2)} × 10${toSup(exp)}`;
+    }
+
+    function toSup(num) {
+      const sups = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+      return String(num).split('').map(c => sups[c] || c).join('');
+    }
+
+    // Rebuild particles matching equilibrium ratios
+    function rebuildParticles() {
+      particles = [];
+      const totalCapacity = 45;
+
+      if (state.screen === 'intro' && state.introSolution === 'water') {
+        particles.push(new ChemParticle('h3o'));
+        particles.push(new ChemParticle('oh'));
+      } else if (state.screen === 'intro' && state.introSolution === 'strongAcid') {
+        for (let i = 0; i < 22; i++) particles.push(new ChemParticle('h3o'));
+        for (let i = 0; i < 22; i++) particles.push(new ChemParticle('a'));
+      } else if (state.screen === 'intro' && state.introSolution === 'weakAcid') {
+        const ionized = 3;
+        for (let i = 0; i < ionized; i++) particles.push(new ChemParticle('h3o'));
+        for (let i = 0; i < ionized; i++) particles.push(new ChemParticle('a'));
+        for (let i = 0; i < 35; i++) particles.push(new ChemParticle('ha'));
+      } else if (state.screen === 'intro' && state.introSolution === 'strongBase') {
+        for (let i = 0; i < 22; i++) particles.push(new ChemParticle('oh'));
+        for (let i = 0; i < 22; i++) particles.push(new ChemParticle('m'));
+      } else if (state.screen === 'intro' && state.introSolution === 'weakBase') {
+        const ionized = 3;
+        for (let i = 0; i < ionized; i++) particles.push(new ChemParticle('oh'));
+        for (let i = 0; i < ionized; i++) particles.push(new ChemParticle('bh'));
+        for (let i = 0; i < 35; i++) particles.push(new ChemParticle('b'));
+      } else {
+        // My Solution Screen
+        const alphaFrac = state.chem.alpha / 100;
+        const totalMol = 40;
+        const ionizedCount = Math.max(1, Math.round(totalMol * alphaFrac));
+        const intactCount = Math.max(0, totalMol - ionizedCount);
+
+        if (state.myType === 'acid') {
+          for (let i = 0; i < ionizedCount; i++) {
+            particles.push(new ChemParticle('h3o'));
+            particles.push(new ChemParticle('a'));
+          }
+          for (let i = 0; i < intactCount; i++) {
+            particles.push(new ChemParticle('ha'));
+          }
+        } else {
+          for (let i = 0; i < ionizedCount; i++) {
+            particles.push(new ChemParticle('oh'));
+            particles.push(new ChemParticle('bh'));
+          }
+          for (let i = 0; i < intactCount; i++) {
+            particles.push(new ChemParticle('b'));
+          }
+        }
+      }
+
+      // Add solvent water molecules if toggled
+      if (state.showSolvent) {
+        for (let i = 0; i < 30; i++) {
+          particles.push(new ChemParticle('h2o'));
+        }
+      }
+    }
+
+    // Screen and Solution Switching
+    function switchScreen(screenKey) {
+      state.screen = screenKey;
+      document.querySelectorAll('.screen-tab-btn').forEach(b => b.classList.remove('active'));
+      const activeTab = screenKey === 'intro' ? 'tabScreenIntro' : 'tabScreenMySolution';
+      document.getElementById(activeTab).classList.add('active');
+
+      document.getElementById('sectionIntroSolution').style.display = screenKey === 'intro' ? 'block' : 'none';
+      document.getElementById('sectionMySolutionControls').style.display = screenKey === 'mySolution' ? 'block' : 'none';
+
+      solveEquilibrium();
+    }
+
+    function selectIntroSolution(solKey) {
+      state.introSolution = solKey;
+      document.querySelectorAll('#sectionIntroSolution .radio-card').forEach(rc => rc.classList.remove('active'));
+      document.getElementById('rc_' + solKey).classList.add('active');
+      solveEquilibrium();
+      showToast(`Selected solution: ${solKey.toUpperCase()}`);
+    }
+
+    function setMySolutionType(type) {
+      state.myType = type;
+      document.getElementById('btnMyTypeAcid').classList.toggle('active', type === 'acid');
+      document.getElementById('btnMyTypeBase').classList.toggle('active', type === 'base');
+      document.getElementById('lblStrengthConstant').textContent = type === 'acid' ? 'Ka' : 'Kb';
+      solveEquilibrium();
+    }
+
+    function onInitialConcSlider(val) {
+      const conc = Math.pow(10, parseFloat(val));
+      state.myInitialConc = conc;
+      document.getElementById('valInitialConc').textContent = conc >= 0.1 ? conc.toFixed(3) + ' M' : conc.toExponential(2) + ' M';
+      solveEquilibrium();
+    }
+
+    function onStrengthSlider(val) {
+      const exp = parseFloat(val);
+      state.myStrengthExp = exp;
+      const kVal = Math.pow(10, exp);
+      document.getElementById('valStrength').textContent = exp >= 1 ? 'Strong (Complete)' : kVal.toExponential(2);
+      solveEquilibrium();
+    }
+
+    function setViewMode(v) {
+      state.viewMode = v;
+      document.getElementById('btnViewParticles').classList.toggle('active', v === 'particles');
+      document.getElementById('btnViewGraph').classList.toggle('active', v === 'graph');
+      document.getElementById('btnViewHide').classList.toggle('active', v === 'hide');
+
+      document.getElementById('wrapParticlesControls').style.display = v === 'particles' ? 'block' : 'none';
+      document.getElementById('wrapGraphControls').style.display = v === 'graph' ? 'block' : 'none';
+    }
+
+    function toggleSolvent(checked) {
+      state.showSolvent = checked;
+      rebuildParticles();
+    }
+
+    function setGraphScale(scale) {
+      state.graphScale = scale;
+      document.getElementById('btnScaleLog').classList.toggle('active', scale === 'log');
+      document.getElementById('btnScaleLinear').classList.toggle('active', scale === 'linear');
+    }
+
+    function toggleTool(toolKey) {
+      state.tools[toolKey].active = !state.tools[toolKey].active;
+      const btn = document.getElementById({
+        phMeter: 'btnToolPhMeter',
+        phPaper: 'btnToolPhPaper',
+        conductivity: 'btnToolConductivity'
+      }[toolKey]);
+      btn.classList.toggle('active', state.tools[toolKey].active);
+      showToast(state.tools[toolKey].active ? `${toolKey} enabled` : `${toolKey} stowed`);
+    }
+
+    // Canvas Rendering & Particle Animation Loop
+    function initSimulation() {
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      canvas.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      
+      canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+
+      buildPhColorKey();
+      solveEquilibrium();
+      requestAnimationFrame(simLoop);
+    }
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvasViewport');
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      width = rect.width;
+      height = rect.height;
+
+      beaker.x = width * 0.48;
+      beaker.y = height * 0.58;
+      beaker.w = Math.min(360, width * 0.42);
+      beaker.h = Math.min(300, height * 0.52);
+      beaker.liquidTop = beaker.y - beaker.h / 2 + 50;
+
+      // Realistic laboratory arrangement around beaker if not yet user-dragged
+      if (!state.tools.phMeter.moved) {
+        state.tools.phMeter.x = beaker.x - beaker.w * 0.25;
+        state.tools.phMeter.y = beaker.liquidTop - 45;
+      }
+      if (!state.tools.phPaper.moved) {
+        state.tools.phPaper.x = beaker.x + beaker.w * 0.58;
+        state.tools.phPaper.y = beaker.liquidTop - 35;
+      }
+      if (!state.tools.conductivity.moved) {
+        state.tools.conductivity.x = Math.max(85, beaker.x - beaker.w * 0.72);
+        state.tools.conductivity.y = beaker.liquidTop - 35;
+      }
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+    }
+
+    function buildPhColorKey() {
+      const row = document.getElementById('phSwatchesRow');
+      row.innerHTML = '';
+      for (let i = 0; i <= 14; i++) {
+        const sw = document.createElement('div');
+        sw.className = 'ph-swatch';
+        sw.style.backgroundColor = PH_COLORS[i];
+        sw.textContent = i;
+        row.appendChild(sw);
+      }
+    }
+
+    function simLoop() {
+      simTime++;
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Draw Lab Beaker & Solution (Background, Fluid Meniscus, Glass Walls, Graduations)
+      drawBeaker(ctx);
+
+      // 2. Draw Active View: Particles or Concentration Graph
+      if (state.viewMode === 'particles') {
+        particles.forEach(p => {
+          p.update();
+          p.draw(ctx);
+        });
+        // Real-life Electrolysis & Effervescence Micro-Bubbles
+        updateAndDrawBubbles(ctx);
+        // Beaker Foreground Glass & Liquid Meniscus Surface Highlights
+        drawBeakerForeGlass(ctx);
+      } else if (state.viewMode === 'graph') {
+        drawConcentrationGraph(ctx);
+      }
+
+      // 3. Draw Diagnostic Tools (Precision Ion Meter, Test Paper, Conductivity Apparatus)
+      drawDiagnosticTools(ctx);
+
+      requestAnimationFrame(simLoop);
+    }
+
+    // Realistic Borosilicate Glass Beaker (Pyrex 1000 mL Laboratory Standard)
+    function drawBeaker(c) {
+      c.save();
+      const left = beaker.x - beaker.w / 2;
+      const right = beaker.x + beaker.w / 2;
+      const top = beaker.y - beaker.h / 2;
+      const btm = beaker.y + beaker.h / 2;
+      const liquidTop = beaker.liquidTop;
+      const wave = Math.sin(simTime * 0.045) * 1.3;
+
+      // 1. Benchtop Ambient Shadow beneath Beaker
+      c.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      c.beginPath();
+      c.ellipse(beaker.x, btm + 5, beaker.w * 0.46, 10, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // 2. Aqueous Solution Liquid Fill
+      // Realistic pH-dependent natural solution tint
+      let liqTopTint;
+      let liqMidTint;
+      if (state.chem.pH < 6.8) {
+        // Acidic: subtle rose-coral undertone deepening with acidity
+        const acidFrac = Math.max(0, Math.min(1, (7 - state.chem.pH) / 7));
+        liqTopTint = `rgba(${Math.round(244 - 15 * acidFrac)}, ${Math.round(63 + 30 * (1 - acidFrac))}, ${Math.round(94 + 20 * (1 - acidFrac))}, ${(0.10 + 0.14 * acidFrac).toFixed(2)})`;
+        liqMidTint = `rgba(159, 18, 57, ${(0.08 + 0.12 * acidFrac).toFixed(2)})`;
+      } else if (state.chem.pH > 7.2) {
+        // Alkaline: clear cerulean to royal cobalt undertone
+        const baseFrac = Math.max(0, Math.min(1, (state.chem.pH - 7) / 7));
+        liqTopTint = `rgba(${Math.round(59 - 25 * baseFrac)}, ${Math.round(130 - 30 * baseFrac)}, ${Math.round(246 + 9 * baseFrac)}, ${(0.10 + 0.15 * baseFrac).toFixed(2)})`;
+        liqMidTint = `rgba(30, 58, 138, ${(0.08 + 0.14 * baseFrac).toFixed(2)})`;
+      } else {
+        // Neutral Pure Water: Ultra-clear DI water with cyan-blue high-clarity refraction
+        liqTopTint = 'rgba(56, 189, 248, 0.09)';
+        liqMidTint = 'rgba(14, 116, 144, 0.12)';
+      }
+
+      const liqGrad = c.createLinearGradient(0, liquidTop, 0, btm);
+      liqGrad.addColorStop(0, liqTopTint);
+      liqGrad.addColorStop(0.35, liqMidTint);
+      liqGrad.addColorStop(1, 'rgba(15, 23, 42, 0.90)');
+
+      c.fillStyle = liqGrad;
+      c.beginPath();
+      c.roundRect(left + 6, liquidTop, beaker.w - 12, btm - liquidTop, [0, 0, 18, 18]);
+      c.fill();
+
+      // Fluid Internal Caustic Refraction Shimmer
+      c.save();
+      c.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      c.lineWidth = 14;
+      c.beginPath();
+      c.moveTo(left + 25, liquidTop + 45);
+      c.bezierCurveTo(beaker.x - 30, liquidTop + 75 + wave * 2, beaker.x + 30, btm - 60, right - 25, btm - 35);
+      c.stroke();
+      c.restore();
+
+      // 3. Fluid Meniscus (Water-Borosilicate Physical Capillary Wetting Curve)
+      c.save();
+      c.fillStyle = 'rgba(255, 255, 255, 0.14)';
+      c.beginPath();
+      // Contact angle pulls water ~5px upwards at both glass contact walls
+      c.moveTo(left + 6, liquidTop - 5);
+      c.quadraticCurveTo(left + 22, liquidTop + 1, beaker.x - beaker.w * 0.25, liquidTop + wave);
+      c.quadraticCurveTo(beaker.x, liquidTop + wave + 1.2, beaker.x + beaker.w * 0.25, liquidTop + wave);
+      c.quadraticCurveTo(right - 22, liquidTop + 1, right - 6, liquidTop - 5);
+      c.lineTo(right - 6, liquidTop + 7);
+      c.quadraticCurveTo(beaker.x, liquidTop + 12 + wave, left + 6, liquidTop + 7);
+      c.closePath();
+      c.fill();
+      c.restore();
+
+      // 4. Borosilicate Glass Beaker Walls & Flared Pouring Spout
+      // Lip spout on upper left
+      c.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      c.lineWidth = 3.5;
+      c.beginPath();
+      c.moveTo(left - 14, top - 3);
+      c.quadraticCurveTo(left - 2, top + 2, left, top + 8);
+      c.lineTo(left, btm - 18);
+      c.arcTo(left, btm, left + 18, btm, 18);
+      c.lineTo(right - 18, btm);
+      c.arcTo(right, btm, right, btm - 18, 18);
+      c.lineTo(right, top);
+      c.lineTo(right - 6, top);
+      c.stroke();
+
+      // Rounded Top Beaded Rim
+      c.strokeStyle = 'rgba(255, 255, 255, 0.40)';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(left - 14, top - 3);
+      c.lineTo(right, top);
+      c.stroke();
+
+      // Inner Glass Refraction Thickness Line
+      c.strokeStyle = 'rgba(255, 255, 255, 0.20)';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(left + 6, top + 10);
+      c.lineTo(left + 6, btm - 16);
+      c.arcTo(left + 6, btm - 6, left + 18, btm - 6, 12);
+      c.lineTo(right - 18, btm - 6);
+      c.arcTo(right - 6, btm - 6, right - 6, btm - 16, 12);
+      c.lineTo(right - 6, top + 8);
+      c.stroke();
+
+      // 5. Authentic White Frosted Ceramic Marking Patch (Pyrex Boro 3.3 Style)
+      const badgeX = beaker.x + beaker.w * 0.10;
+      const badgeY = top + 34;
+      const badgeW = 74;
+      const badgeH = 54;
+      c.save();
+      c.fillStyle = 'rgba(255, 255, 255, 0.86)';
+      c.strokeStyle = 'rgba(226, 232, 240, 0.9)';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+      c.fill();
+      c.stroke();
+
+      c.fillStyle = '#0f172a';
+      c.font = 'bold 9.5px var(--font-heading, sans-serif)';
+      c.textAlign = 'center';
+      c.fillText('PYREX®', badgeX + badgeW / 2, badgeY + 14);
+
+      c.fillStyle = '#334155';
+      c.font = 'bold 6.5px var(--font-mono, monospace)';
+      c.fillText('BORO 3.3', badgeX + badgeW / 2, badgeY + 24);
+
+      c.fillStyle = '#0f172a';
+      c.font = 'bold 11px var(--font-mono, monospace)';
+      c.fillText('1000 mL', badgeX + badgeW / 2, badgeY + 38);
+
+      c.fillStyle = '#64748b';
+      c.font = '6px var(--font-mono, monospace)';
+      c.fillText('APPROX. VOL.', badgeX + badgeW / 2, badgeY + 48);
+      c.restore();
+
+      // 6. Accurate Enamel Volume Graduations (0.2L to 1.0L)
+      c.font = 'bold 8px var(--font-mono, monospace)';
+      for (let i = 1; i <= 5; i++) {
+        const gy = btm - (i / 5) * (btm - liquidTop);
+        const isMajor = (i % 2 === 0 || i === 5);
+        c.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        c.lineWidth = isMajor ? 2.0 : 1.2;
+        c.beginPath();
+        c.moveTo(left + 6, gy);
+        c.lineTo(left + (isMajor ? 26 : 16), gy);
+        c.stroke();
+
+        if (isMajor) {
+          c.fillStyle = 'rgba(255, 255, 255, 0.75)';
+          c.textAlign = 'left';
+          c.fillText((i * 200) + ' mL', left + 30, gy + 3);
+        }
+      }
+
+      // Sub-divisions (every 100 mL)
+      for (let i = 1; i <= 9; i++) {
+        if (i % 2 !== 0) {
+          const gy = btm - (i / 10) * (btm - liquidTop);
+          c.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+          c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(left + 6, gy);
+          c.lineTo(left + 12, gy);
+          c.stroke();
+        }
+      }
+
+      c.restore();
+    }
+
+    // Foreground Glass Specular Highlights & Meniscus Light Gleam
+    function drawBeakerForeGlass(c) {
+      c.save();
+      const left = beaker.x - beaker.w / 2;
+      const right = beaker.x + beaker.w / 2;
+      const top = beaker.y - beaker.h / 2;
+      const btm = beaker.y + beaker.h / 2;
+      const liquidTop = beaker.liquidTop;
+      const wave = Math.sin(simTime * 0.045) * 1.3;
+
+      // Left Vertical Cylindrical Specular Glare Band
+      const leftGlare = c.createLinearGradient(left + 8, 0, left + 22, 0);
+      leftGlare.addColorStop(0, 'rgba(255, 255, 255, 0.32)');
+      leftGlare.addColorStop(0.5, 'rgba(255, 255, 255, 0.12)');
+      leftGlare.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      c.fillStyle = leftGlare;
+      c.fillRect(left + 8, top + 12, 14, btm - top - 30);
+
+      // Right Vertical Sharp Glass Highlight Line
+      c.strokeStyle = 'rgba(255, 255, 255, 0.38)';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(right - 10, top + 15);
+      c.lineTo(right - 10, btm - 22);
+      c.stroke();
+
+      // Meniscus Surface Specular Gleam
+      c.strokeStyle = 'rgba(255, 255, 255, 0.42)';
+      c.lineWidth = 1.8;
+      c.beginPath();
+      c.moveTo(left + 8, liquidTop - 4);
+      c.quadraticCurveTo(left + 24, liquidTop + 1, beaker.x - beaker.w * 0.25, liquidTop + wave);
+      c.quadraticCurveTo(beaker.x, liquidTop + wave + 1.2, beaker.x + beaker.w * 0.25, liquidTop + wave);
+      c.quadraticCurveTo(right - 24, liquidTop + 1, right - 8, liquidTop - 4);
+      c.stroke();
+
+      c.restore();
+    }
+
+    // Diagnostic Tools (pH Meter, pH Paper, Conductivity Tester)
+    function drawDiagnosticTools(c) {
+      // 1. Precision Digital pH Meter
+      if (state.tools.phMeter.active) {
+        drawPhMeter(c);
+      }
+      // 2. pH Indicator Test Paper Strip
+      if (state.tools.phPaper.active) {
+        drawPhPaper(c);
+      }
+      // 3. Conductivity Tester Apparatus
+      if (state.tools.conductivity.active) {
+        drawConductivityTester(c);
+      }
+    }
+
+    // 1. Precision Benchtop Ion/pH Laboratory Meter
+    function drawPhMeter(c) {
+      const tool = state.tools.phMeter;
+      const inSolution = isSubmerged(tool.x, tool.y);
+
+      c.save();
+      // Benchtop Console Box (fixed on upper lab shelf above beaker)
+      const conX = Math.round(beaker.x - beaker.w * 0.28);
+      const conY = Math.max(58, Math.round(beaker.y - beaker.h * 0.64));
+      const conW = 154;
+      const conH = 86;
+
+      // Console Drop Shadow on Wall/Shelf
+      c.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      c.beginPath();
+      c.roundRect(conX - conW / 2 + 4, conY - conH / 2 + 6, conW, conH, 12);
+      c.fill();
+
+      // Molded Polymeric Instrument Casing (Matte Dark Slate with Bevel)
+      const caseGrad = c.createLinearGradient(conX - conW / 2, conY - conH / 2, conX + conW / 2, conY + conH / 2);
+      caseGrad.addColorStop(0, '#2a374a');
+      caseGrad.addColorStop(0.5, '#1e293b');
+      caseGrad.addColorStop(1, '#0f172a');
+      c.fillStyle = caseGrad;
+      c.strokeStyle = '#475569';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.roundRect(conX - conW / 2, conY - conH / 2, conW, conH, 10);
+      c.fill();
+      c.stroke();
+
+      // Branded Fascia Header Plate
+      c.fillStyle = '#090d16';
+      c.beginPath();
+      c.roundRect(conX - conW / 2 + 8, conY - conH / 2 + 6, conW - 16, 15, [4, 4, 0, 0]);
+      c.fill();
+
+      c.fillStyle = '#38bdf8';
+      c.font = 'bold 7.5px var(--font-heading, sans-serif)';
+      c.textAlign = 'left';
+      c.fillText('ELEMENTA® pH-9000', conX - conW / 2 + 12, conY - conH / 2 + 16.5);
+
+      c.fillStyle = '#64748b';
+      c.font = '6px var(--font-mono, monospace)';
+      c.textAlign = 'right';
+      c.fillText('ION ANALYZER', conX + conW / 2 - 12, conY - conH / 2 + 16.5);
+
+      // Backlit High-Contrast Dual-Line LCD Screen Window
+      const lcdX = conX - 60;
+      const lcdY = conY - 18;
+      const lcdW = 120;
+      const lcdH = 40;
+
+      // Recessed Bezel
+      c.fillStyle = '#060a12';
+      c.beginPath();
+      c.roundRect(lcdX - 2, lcdY - 2, lcdW + 4, lcdH + 4, 5);
+      c.fill();
+
+      // Electroluminescent Teal/Cyan Backlit Matrix Screen
+      const lcdGrad = c.createLinearGradient(lcdX, lcdY, lcdX, lcdY + lcdH);
+      lcdGrad.addColorStop(0, '#031c1b');
+      lcdGrad.addColorStop(1, '#042d2a');
+      c.fillStyle = lcdGrad;
+      c.beginPath();
+      c.roundRect(lcdX, lcdY, lcdW, lcdH, 4);
+      c.fill();
+
+      // Anti-glare Screen Refraction Sheen
+      c.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      c.beginPath();
+      c.moveTo(lcdX, lcdY);
+      c.lineTo(lcdX + 35, lcdY);
+      c.lineTo(lcdX + 10, lcdY + lcdH);
+      c.lineTo(lcdX, lcdY + lcdH);
+      c.closePath();
+      c.fill();
+
+      if (inSolution) {
+        // Upper Telemetry Row: ATC 25.0 °C and STABLE Badge
+        c.fillStyle = '#2dd4bf';
+        c.font = 'bold 7px var(--font-mono, monospace)';
+        c.textAlign = 'left';
+        c.fillText('ATC 25.0 °C', lcdX + 6, lcdY + 10);
+
+        c.fillStyle = '#10b981';
+        c.textAlign = 'right';
+        c.fillText('STABLE ●', lcdX + lcdW - 6, lcdY + 10);
+
+        // Primary High-Precision Digital pH Value
+        c.fillStyle = '#2dd4bf';
+        c.shadowColor = '#2dd4bf';
+        c.shadowBlur = 6;
+        c.font = 'bold 19px var(--font-mono, monospace)';
+        c.textAlign = 'center';
+        c.fillText(state.chem.pH.toFixed(2), conX - 8, lcdY + 31);
+        c.shadowBlur = 0;
+
+        // "pH" unit tag
+        c.font = 'bold 9px var(--font-heading, sans-serif)';
+        c.fillStyle = '#5eead4';
+        c.textAlign = 'left';
+        c.fillText('pH', conX + 28, lcdY + 30);
+      } else {
+        // Out of solution: Standby Scan State
+        c.fillStyle = '#64748b';
+        c.font = 'bold 7px var(--font-mono, monospace)';
+        c.textAlign = 'left';
+        c.fillText('ATC 25.0 °C [AIR]', lcdX + 6, lcdY + 10);
+
+        c.fillStyle = '#eab308';
+        c.textAlign = 'right';
+        c.fillText('STANDBY', lcdX + lcdW - 6, lcdY + 10);
+
+        // Standby dashed digits
+        c.fillStyle = '#334155';
+        c.font = 'bold 19px var(--font-mono, monospace)';
+        c.textAlign = 'center';
+        c.fillText('- - . - -', conX - 8, lcdY + 31);
+
+        c.font = 'bold 9px var(--font-heading, sans-serif)';
+        c.fillText('pH', conX + 28, lcdY + 30);
+      }
+
+      // Tactile Front Membrane Push Buttons: CAL, MODE, READ
+      const btns = [
+        { label: 'CAL', color: '#eab308' },
+        { label: 'MODE', color: '#06b6d4' },
+        { label: 'READ', color: '#10b981' }
+      ];
+      btns.forEach((btn, i) => {
+        const bx = conX - 44 + i * 44;
+        const by = conY + 28;
+        c.fillStyle = '#0f172a';
+        c.strokeStyle = '#334155';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.roundRect(bx - 16, by - 6, 32, 12, 3);
+        c.fill();
+        c.stroke();
+
+        // Indicator pip
+        c.fillStyle = btn.color;
+        c.beginPath();
+        c.arc(bx - 10, by, 2, 0, Math.PI * 2);
+        c.fill();
+
+        c.fillStyle = '#cbd5e1';
+        c.font = 'bold 6.5px var(--font-mono, monospace)';
+        c.textAlign = 'left';
+        c.fillText(btn.label, bx - 5, by + 2.5);
+      });
+
+      // BNC Metal Jack & Rubber Strain Relief Boot on Meter Chassis
+      const bncX = conX + 54;
+      const bncY = conY + 26;
+      c.fillStyle = '#64748b';
+      c.fillRect(bncX - 4, bncY - 4, 8, 8);
+      c.fillStyle = '#0f172a';
+      c.fillRect(bncX - 2, bncY + 4, 4, 6);
+
+      // Heavy-Duty Coaxial BNC Cable Connecting Meter to Probe Handle Top
+      const probeTopX = tool.x;
+      const probeTopY = tool.y - 72;
+
+      // Realistic Catenary Sagging Curve
+      const midX = (bncX + probeTopX) / 2 + 10;
+      const sagY = Math.max(bncY, probeTopY) + 40;
+
+      // Cable Outer Dark Rubber Jacket
+      c.strokeStyle = '#090d16';
+      c.lineWidth = 4.2;
+      c.beginPath();
+      c.moveTo(bncX, bncY + 8);
+      c.bezierCurveTo(bncX + 5, sagY, midX, sagY + 25, probeTopX, probeTopY);
+      c.stroke();
+
+      // Cable Specular 3D Ridge Highlight
+      c.strokeStyle = '#334155';
+      c.lineWidth = 1.4;
+      c.beginPath();
+      c.moveTo(bncX, bncY + 8);
+      c.bezierCurveTo(bncX + 5, sagY, midX, sagY + 25, probeTopX, probeTopY);
+      c.stroke();
+
+      // Precision Combination Glass Electrode Probe
+      // 1. Probe Ergonomic Upper Polymer Handle
+      const hGrad = c.createLinearGradient(tool.x - 7, 0, tool.x + 7, 0);
+      hGrad.addColorStop(0, '#334155');
+      hGrad.addColorStop(0.4, '#475569');
+      hGrad.addColorStop(1, '#0f172a');
+      c.fillStyle = hGrad;
+      c.beginPath();
+      c.roundRect(tool.x - 7, tool.y - 72, 14, 38, [4, 4, 2, 2]);
+      c.fill();
+
+      // Handle Finger Grip Ribs
+      c.strokeStyle = 'rgba(15, 23, 42, 0.7)';
+      c.lineWidth = 1.2;
+      for (let r = 0; r < 4; r++) {
+        c.beginPath();
+        c.moveTo(tool.x - 6, tool.y - 62 + r * 6);
+        c.lineTo(tool.x + 6, tool.y - 62 + r * 6);
+        c.stroke();
+      }
+
+      // Stainless Steel Collar Ferrule
+      c.fillStyle = '#94a3b8';
+      c.fillRect(tool.x - 6, tool.y - 34, 12, 4);
+
+      // 2. Clear Borosilicate Glass Shaft
+      const glassTop = tool.y - 30;
+      const glassBtm = tool.y - 8;
+      const glassW = 9;
+
+      // Internal Ag/AgCl Reference Wire
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.moveTo(tool.x, glassTop);
+      c.lineTo(tool.x, glassBtm);
+      c.stroke();
+
+      // Internal 3M KCl Electrolyte Level
+      c.fillStyle = 'rgba(56, 189, 248, 0.20)';
+      c.fillRect(tool.x - 3.5, glassTop + 4, 7, glassBtm - glassTop - 4);
+
+      // Outer Glass Tube with Specular Highlights
+      c.fillStyle = 'rgba(255, 255, 255, 0.18)';
+      c.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.rect(tool.x - 4.5, glassTop, glassW, glassBtm - glassTop);
+      c.fill();
+      c.stroke();
+
+      // Porous Ceramic Liquid Junction Diaphragm Dot
+      c.fillStyle = '#ffffff';
+      c.beginPath();
+      c.arc(tool.x + 3.5, glassBtm - 4, 1.2, 0, Math.PI * 2);
+      c.fill();
+
+      // 3. Spherical pH-Sensitive Glass Bulb Tip (at tool.x, tool.y - 4)
+      const bulbR = 6.5;
+      const bulbGrad = c.createRadialGradient(tool.x - 2, tool.y - 6, 1, tool.x, tool.y - 4, bulbR);
+      if (inSolution) {
+        bulbGrad.addColorStop(0, '#ffffff');
+        bulbGrad.addColorStop(0.35, '#38bdf8');
+        bulbGrad.addColorStop(0.85, '#0284c7');
+        bulbGrad.addColorStop(1, '#0c4a6e');
+        c.shadowColor = '#38bdf8';
+        c.shadowBlur = 12;
+      } else {
+        bulbGrad.addColorStop(0, '#ffffff');
+        bulbGrad.addColorStop(0.4, '#94a3b8');
+        bulbGrad.addColorStop(0.85, '#475569');
+        bulbGrad.addColorStop(1, '#1e293b');
+        c.shadowColor = '#94a3b8';
+        c.shadowBlur = 3;
+      }
+      c.fillStyle = bulbGrad;
+      c.beginPath();
+      c.arc(tool.x, tool.y - 4, bulbR, 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 0;
+
+      // Protective Slotted Polymeric Bulb Shield Guard
+      c.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+      c.lineWidth = 1.4;
+      c.beginPath();
+      c.arc(tool.x, tool.y - 4, bulbR + 1.5, Math.PI * 0.15, Math.PI * 0.85);
+      c.stroke();
+
+      // Fluid Wetting Meniscus Ring around glass shaft if submerged
+      if (inSolution) {
+        c.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.ellipse(tool.x, beaker.liquidTop, 6, 2, 0, 0, Math.PI * 2);
+        c.stroke();
+      }
+
+      c.restore();
+    }
+
+    // 2. Real-life Laboratory Universal Indicator pH Test Paper Strip
+    function drawPhPaper(c) {
+      const tool = state.tools.phPaper;
+      const inSolution = isSubmerged(tool.x, tool.y + 35);
+
+      if (inSolution) {
+        tool.dipped = true;
+        tool.dippedColor = getPhColor(state.chem.pH);
+      }
+
+      c.save();
+      const sx = tool.x - 7;
+      const sy = tool.y - 35;
+      const stripW = 14;
+      const handleH = 45;
+      const padH = 35;
+      const totalH = handleH + padH;
+
+      // Ambient Drop Shadow
+      c.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      c.beginPath();
+      c.roundRect(sx + 2, sy + 3, stripW, totalH, 3);
+      c.fill();
+
+      // 1. Plastic Backing Handle (Chemically Inert Ivory Polypropylene)
+      const handleGrad = c.createLinearGradient(sx, sy, sx + stripW, sy);
+      handleGrad.addColorStop(0, '#f8fafc');
+      handleGrad.addColorStop(0.5, '#e2e8f0');
+      handleGrad.addColorStop(1, '#cbd5e1');
+      c.fillStyle = handleGrad;
+      c.beginPath();
+      c.roundRect(sx, sy, stripW, handleH, [4, 4, 0, 0]);
+      c.fill();
+
+      // Tactile Non-Slip Forceps Grip Ridges
+      c.strokeStyle = 'rgba(100, 116, 139, 0.45)';
+      c.lineWidth = 1;
+      for (let g = 0; g < 4; g++) {
+        c.beginPath();
+        c.moveTo(sx + 2.5, sy + 6 + g * 5);
+        c.lineTo(sx + stripW - 2.5, sy + 6 + g * 5);
+        c.stroke();
+      }
+
+      // Technical Handle Imprint: "pH 0-14"
+      c.save();
+      c.translate(sx + stripW / 2, sy + 32);
+      c.rotate(-Math.PI / 2);
+      c.fillStyle = '#64748b';
+      c.font = 'bold 6.5px var(--font-mono, monospace)';
+      c.textAlign = 'center';
+      c.fillText('pH 0-14', 0, 2);
+      c.restore();
+
+      // 2. Fibrous Cellulose Indicator Paper Pad
+      const padY = sy + handleH;
+      if (tool.dipped) {
+        // Dipped State: Cellulose paper saturated with universal indicator
+        const padGrad = c.createLinearGradient(0, padY, 0, padY + padH);
+        padGrad.addColorStop(0, '#fef3c7'); // capillary dry/wet transition at top
+        padGrad.addColorStop(0.25, tool.dippedColor);
+        padGrad.addColorStop(1, tool.dippedColor);
+        c.fillStyle = padGrad;
+        c.fillRect(sx, padY, stripW, padH);
+
+        // Capillary Wicking Action: Organic uneven wet boundary line
+        c.fillStyle = 'rgba(255, 255, 255, 0.28)';
+        c.beginPath();
+        c.moveTo(sx, padY + 3);
+        c.quadraticCurveTo(sx + stripW * 0.3, padY + 1, sx + stripW * 0.6, padY + 4);
+        c.quadraticCurveTo(sx + stripW * 0.85, padY + 2, sx + stripW, padY + 3.5);
+        c.lineTo(sx + stripW, padY + 6);
+        c.lineTo(sx, padY + 6);
+        c.closePath();
+        c.fill();
+
+        // Moist Paper Sheen
+        c.fillStyle = 'rgba(255, 255, 255, 0.18)';
+        c.fillRect(sx + 1, padY + 4, 3, padH - 6);
+
+        // Surface Tension Clinging Teardrop Droplet at Bottom Edge
+        c.fillStyle = tool.dippedColor;
+        c.beginPath();
+        c.ellipse(tool.x, padY + padH + 2.5, 3.2, 4.5, 0, 0, Math.PI * 2);
+        c.fill();
+        // Droplet specular glint
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(tool.x - 1, padY + padH + 1.2, 1, 0, Math.PI * 2);
+        c.fill();
+      } else {
+        // Dry Unwetted State: Fine buff/amber cellulose paper texture
+        c.fillStyle = '#fef3c7';
+        c.fillRect(sx, padY, stripW, padH);
+
+        // Subtle fibrous texture
+        c.fillStyle = 'rgba(217, 119, 6, 0.08)';
+        for (let f = 0; f < 6; f++) {
+          c.fillRect(sx + (f * 2.2) % stripW, padY + f * 5, 2, 1);
+        }
+      }
+
+      // Outer Fine Edge Border
+      c.strokeStyle = 'rgba(15, 23, 42, 0.35)';
+      c.lineWidth = 1;
+      c.strokeRect(sx, sy, stripW, totalH);
+
+      c.restore();
+    }
+
+    // 3. Authentic Laboratory Conductivity Tester Apparatus
+    function drawConductivityTester(c) {
+      const tool = state.tools.conductivity;
+      const inSolution = checkToolSubmerged('conductivity');
+
+      // Intensity scales with mobile charge-carrying ion concentration
+      const ionConc = state.chem.ionConcentration;
+      let intensity = 0;
+      if (inSolution) {
+        intensity = Math.min(1.0, Math.max(0.02, Math.log10(ionConc / 1e-7 + 1) / 5.2));
+      }
+
+      c.save();
+      const bx = tool.x;
+      const by = tool.y;
+
+      // Apparatus Drop Shadow
+      c.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      c.beginPath();
+      c.ellipse(bx - 20, by - 12, 16, 5, 0, 0, Math.PI * 2);
+      c.ellipse(bx + 18, by - 12, 14, 5, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // 1. Industrial Heavy-Duty 9V Battery Casing (Matte Graphite + Brushed Brass)
+      const batX = bx - 34;
+      const batY = by - 56;
+      const batW = 28;
+      const batH = 44;
+
+      // Battery Casing Body
+      c.fillStyle = '#1e293b';
+      c.strokeStyle = '#475569';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.roundRect(batX, batY, batW, batH, 4);
+      c.fill();
+      c.stroke();
+
+      // Brushed Brass/Gold Metallic Lower Wrap
+      const goldGrad = c.createLinearGradient(batX, 0, batX + batW, 0);
+      goldGrad.addColorStop(0, '#b45309');
+      goldGrad.addColorStop(0.5, '#f59e0b');
+      goldGrad.addColorStop(1, '#d97706');
+      c.fillStyle = goldGrad;
+      c.beginPath();
+      c.roundRect(batX, batY + 18, batW, batH - 18, [0, 0, 4, 4]);
+      c.fill();
+
+      // Silver dividing pinstripe
+      c.strokeStyle = '#e2e8f0';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(batX, batY + 18);
+      c.lineTo(batX + batW, batY + 18);
+      c.stroke();
+
+      // Battery Technical Labeling
+      c.fillStyle = '#ffffff';
+      c.font = 'bold 6px var(--font-mono, monospace)';
+      c.textAlign = 'center';
+      c.fillText('9V LAB', batX + batW / 2, batY + 12);
+      c.fillStyle = '#0f172a';
+      c.font = 'bold 6.5px var(--font-mono, monospace)';
+      c.fillText('HEAVY DUTY', batX + batW / 2, batY + 30);
+
+      // Snap Terminal Connectors on top of 9V Battery
+      // Positive terminal (Octagonal Snap)
+      c.fillStyle = '#94a3b8';
+      c.fillRect(batX + 5, batY - 5, 6, 5);
+      c.fillStyle = '#cbd5e1';
+      c.fillRect(batX + 6, batY - 7, 4, 2);
+
+      // Negative terminal (Circular Stud)
+      c.fillStyle = '#94a3b8';
+      c.beginPath();
+      c.arc(batX + batW - 7, batY - 3, 3.5, 0, Math.PI * 2);
+      c.fill();
+
+      // 2. Porcelain / Bakelite Edison Screw Light Bulb Socket
+      const sockX = bx + 16;
+      const sockY = by - 46;
+      const sockW = 18;
+      const sockH = 12;
+
+      // Ribbed Ceramic Base
+      const sockGrad = c.createLinearGradient(sockX - sockW / 2, 0, sockX + sockW / 2, 0);
+      sockGrad.addColorStop(0, '#f1f5f9');
+      sockGrad.addColorStop(0.5, '#e2e8f0');
+      sockGrad.addColorStop(1, '#94a3b8');
+      c.fillStyle = sockGrad;
+      c.strokeStyle = '#64748b';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(sockX - sockW / 2, sockY, sockW, sockH, 3);
+      c.fill();
+      c.stroke();
+
+      // Brass Threaded Collar
+      c.fillStyle = '#d97706';
+      c.fillRect(sockX - 6, sockY - 3, 12, 3);
+
+      // 3. Clear Incandescent Laboratory Light Bulb
+      const bulbCx = sockX;
+      const bulbCy = sockY - 14;
+      const bulbR = 13;
+
+      // Realistic Incandescent Multi-Stage Glow & Bloom (when conducting)
+      if (inSolution && intensity > 0.04) {
+        // Multi-Layer Radial Bloom Halo
+        const bloomR = 24 + intensity * 48;
+        const bloomGrad = c.createRadialGradient(bulbCx, bulbCy, 2, bulbCx, bulbCy, bloomR);
+        bloomGrad.addColorStop(0, `rgba(255, 255, 255, ${Math.min(0.95, intensity * 0.95)})`);
+        bloomGrad.addColorStop(0.2, `rgba(254, 240, 138, ${Math.min(0.85, intensity * 0.85)})`);
+        bloomGrad.addColorStop(0.5, `rgba(250, 204, 21, ${Math.min(0.55, intensity * 0.55)})`);
+        bloomGrad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+        c.fillStyle = bloomGrad;
+        c.beginPath();
+        c.arc(bulbCx, bulbCy, bloomR, 0, Math.PI * 2);
+        c.fill();
+
+        // Shimmering Optical Starburst Diffraction Rays
+        const numRays = 12;
+        const rayLen = 16 + intensity * 38;
+        c.strokeStyle = `rgba(253, 224, 71, ${0.25 + intensity * 0.65})`;
+        c.lineWidth = 1.4;
+        for (let i = 0; i < numRays; i++) {
+          const angle = (i * Math.PI * 2) / numRays + simTime * 0.02;
+          c.beginPath();
+          c.moveTo(bulbCx + Math.cos(angle) * 7, bulbCy + Math.sin(angle) * 7);
+          c.lineTo(bulbCx + Math.cos(angle) * rayLen, bulbCy + Math.sin(angle) * rayLen);
+          c.stroke();
+        }
+      }
+
+      // Bulb Borosilicate Teardrop Glass Envelope
+      c.beginPath();
+      c.arc(bulbCx, bulbCy, bulbR, 0, Math.PI * 2);
+      c.fillStyle = inSolution && intensity > 0.04
+        ? `rgba(254, 240, 138, ${0.25 + intensity * 0.70})`
+        : 'rgba(255, 255, 255, 0.14)';
+      c.fill();
+      c.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      c.lineWidth = 1.4;
+      c.stroke();
+
+      // Glass Specular Curved Highlights
+      c.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.arc(bulbCx, bulbCy, bulbR - 2.5, -Math.PI * 0.7, -Math.PI * 0.2);
+      c.stroke();
+
+      // Internal Nickel Support Wires & Coiled Tungsten Filament
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 1.0;
+      c.beginPath();
+      c.moveTo(bulbCx - 4, sockY - 2);
+      c.lineTo(bulbCx - 3.5, bulbCy - 1);
+      c.moveTo(bulbCx + 4, sockY - 2);
+      c.lineTo(bulbCx + 3.5, bulbCy - 1);
+      c.stroke();
+
+      // Tungsten Filament
+      if (inSolution && intensity > 0.04) {
+        // Glowing Incandescent Coiled Filament (White-Hot Core + Amber Glow)
+        c.strokeStyle = '#ffffff';
+        c.shadowColor = '#facc15';
+        c.shadowBlur = 10 * intensity;
+        c.lineWidth = 2.2;
+        c.beginPath();
+        c.moveTo(bulbCx - 3.5, bulbCy - 1);
+        c.lineTo(bulbCx, bulbCy - 5);
+        c.lineTo(bulbCx + 3.5, bulbCy - 1);
+        c.stroke();
+        c.shadowBlur = 0;
+      } else {
+        // Cold Dark Metallic Tungsten Wire
+        c.strokeStyle = '#64748b';
+        c.lineWidth = 1.0;
+        c.beginPath();
+        c.moveTo(bulbCx - 3.5, bulbCy - 1);
+        c.lineTo(bulbCx, bulbCy - 4.5);
+        c.lineTo(bulbCx + 3.5, bulbCy - 1);
+        c.stroke();
+      }
+
+      // 4. Heavy Insulated Mounting Block & Cylindrical Metal Electrodes
+      const mountX = bx;
+      const mountY = by - 14;
+      c.fillStyle = '#334155';
+      c.strokeStyle = '#64748b';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(mountX - 24, mountY - 5, 48, 10, 3);
+      c.fill();
+      c.stroke();
+
+      // Dual Heavy Platinum / Copper Electrode Rods
+      const leftElX = bx - 14;
+      const rightElX = bx + 14;
+      const elTop = mountY + 2;
+      const elBtm = by + 42;
+
+      // Left Electrode (Cathode)
+      const elGrad = c.createLinearGradient(leftElX - 2.5, 0, leftElX + 2.5, 0);
+      elGrad.addColorStop(0, '#78350f');
+      elGrad.addColorStop(0.4, '#d97706');
+      elGrad.addColorStop(1, '#b45309');
+      c.fillStyle = elGrad;
+      c.beginPath();
+      c.roundRect(leftElX - 2.5, elTop, 5, elBtm - elTop, [0, 0, 2.5, 2.5]);
+      c.fill();
+
+      // Right Electrode (Anode)
+      c.beginPath();
+      c.roundRect(rightElX - 2.5, elTop, 5, elBtm - elTop, [0, 0, 2.5, 2.5]);
+      c.fill();
+
+      // Insulated Heavy-Duty Alligator Clips on top of Electrodes
+      // Left Alligator Clip (Black Boot)
+      c.fillStyle = '#0f172a';
+      c.fillRect(leftElX - 5, mountY - 14, 10, 10);
+      c.fillStyle = '#94a3b8';
+      c.fillRect(leftElX - 3, mountY - 5, 6, 4);
+
+      // Right Alligator Clip (Red Boot)
+      c.fillStyle = '#dc2626';
+      c.fillRect(rightElX - 5, mountY - 14, 10, 10);
+      c.fillStyle = '#94a3b8';
+      c.fillRect(rightElX - 3, mountY - 5, 6, 4);
+
+      // 5. Heavy Stranded Copper Lead Wires with Catenary Droop
+      // Positive Red Wire: Battery (+) to Bulb Socket
+      c.strokeStyle = '#ef4444';
+      c.lineWidth = 2.4;
+      c.beginPath();
+      c.moveTo(batX + 8, batY - 6);
+      c.bezierCurveTo(batX + 8, batY - 26, sockX - 12, by - 70, sockX - 6, sockY + 4);
+      c.stroke();
+
+      // Red Wire: Bulb Socket to Right Electrode (Anode)
+      c.beginPath();
+      c.moveTo(sockX + 4, sockY + 4);
+      c.bezierCurveTo(sockX + 16, sockY + 16, rightElX + 14, mountY - 24, rightElX, mountY - 14);
+      c.stroke();
+
+      // Negative Black Wire: Battery (-) to Left Electrode (Cathode)
+      c.strokeStyle = '#090d16';
+      c.lineWidth = 2.4;
+      c.beginPath();
+      c.moveTo(batX + batW - 7, batY - 4);
+      c.bezierCurveTo(batX + batW, mountY - 32, leftElX - 18, mountY - 26, leftElX, mountY - 14);
+      c.stroke();
+
+      // Wire 3D Spine Highlight
+      c.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(batX + 8, batY - 6);
+      c.bezierCurveTo(batX + 8, batY - 26, sockX - 12, by - 70, sockX - 6, sockY + 4);
+      c.stroke();
+
+      c.restore();
+    }
+
+    function isSubmerged(x, y) {
+      const left = beaker.x - beaker.w / 2;
+      const right = beaker.x + beaker.w / 2;
+      const liquidTop = beaker.liquidTop;
+      const btm = beaker.y + beaker.h / 2;
+      return (x >= left && x <= right && y >= liquidTop && y <= btm);
+    }
+
+    function checkToolSubmerged(toolKey) {
+      if (toolKey === 'phMeter') {
+        return isSubmerged(state.tools.phMeter.x, state.tools.phMeter.y);
+      } else if (toolKey === 'phPaper') {
+        return isSubmerged(state.tools.phPaper.x, state.tools.phPaper.y + 35);
+      } else if (toolKey === 'conductivity') {
+        const ct = state.tools.conductivity;
+        return (isSubmerged(ct.x - 14, ct.y + 35) || isSubmerged(ct.x + 14, ct.y + 35) || isSubmerged(ct.x, ct.y));
+      }
+      return false;
+    }
+
+    // Drag and Drop Handling for Tools
+    function handleMouseDown(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      startDrag(mx, my);
+    }
+
+    function handleMouseMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      moveDrag(mx, my);
+    }
+
+    function handleMouseUp() {
+      endDrag();
+    }
+
+    function handleTouchStart(e) {
+      if (e.touches.length === 1) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.touches[0].clientX - rect.left;
+        const my = e.touches[0].clientY - rect.top;
+        if (startDrag(mx, my)) e.preventDefault();
+      }
+    }
+
+    function handleTouchMove(e) {
+      if (dragTarget && e.touches.length === 1) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.touches[0].clientX - rect.left;
+        const my = e.touches[0].clientY - rect.top;
+        moveDrag(mx, my);
+        e.preventDefault();
+      }
+    }
+
+    function handleTouchEnd() {
+      endDrag();
+    }
+
+    function startDrag(mx, my) {
+      // Check pH Meter (Probe Handle, Stem, or Bulb)
+      if (state.tools.phMeter.active) {
+        const pm = state.tools.phMeter;
+        if (Math.hypot(mx - pm.x, my - pm.y) < 38 || (Math.abs(mx - pm.x) < 24 && my >= pm.y - 78 && my <= pm.y + 18)) {
+          dragTarget = pm;
+          dragOffset.x = mx - pm.x;
+          dragOffset.y = my - pm.y;
+          return true;
+        }
+      }
+      // Check pH Paper Strip (Handle or Paper Pad)
+      if (state.tools.phPaper.active) {
+        const pp = state.tools.phPaper;
+        if (Math.abs(mx - pp.x) < 24 && my >= pp.y - 40 && my <= pp.y + 50) {
+          dragTarget = pp;
+          dragOffset.x = mx - pp.x;
+          dragOffset.y = my - pp.y;
+          return true;
+        }
+      }
+      // Check Conductivity Tester Apparatus (Battery, Bulb, or Electrode Mount)
+      if (state.tools.conductivity.active) {
+        const ct = state.tools.conductivity;
+        if (Math.hypot(mx - ct.x, my - (ct.y - 30)) < 65 || Math.hypot(mx - ct.x, my - ct.y) < 50) {
+          dragTarget = ct;
+          dragOffset.x = mx - ct.x;
+          dragOffset.y = my - ct.y;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function moveDrag(mx, my) {
+      if (dragTarget) {
+        dragTarget.moved = true;
+        let toolKey = null;
+        if (dragTarget === state.tools.phMeter) toolKey = 'phMeter';
+        else if (dragTarget === state.tools.phPaper) toolKey = 'phPaper';
+        else if (dragTarget === state.tools.conductivity) toolKey = 'conductivity';
+
+        const wasIn = toolKey ? checkToolSubmerged(toolKey) : false;
+        dragTarget.x = mx - dragOffset.x;
+        dragTarget.y = my - dragOffset.y;
+        const nowIn = toolKey ? checkToolSubmerged(toolKey) : false;
+
+        if (!wasIn && nowIn) {
+          audio.playSplash();
+          audio.playBeep();
+        }
+        updateMissionProgress();
+      }
+    }
+
+    function endDrag() {
+      if (dragTarget) {
+        dragTarget = null;
+      }
+    }
+
+    // Guided Missions Real-Time Auto-Validation
+    function updateMissionProgress() {
+      // Mission 1: Water autoionization & probe
+      if (!state.missions[1].done) {
+        const meterSub = state.tools.phMeter.active && isSubmerged(state.tools.phMeter.x, state.tools.phMeter.y);
+        if (state.screen === 'intro' && state.introSolution === 'water' && meterSub) {
+          document.getElementById('missionProgress1').style.width = '100%';
+          completeMission(1);
+        }
+      }
+
+      // Mission 2: Compare strong vs weak acid
+      if (!state.missions[2].done) {
+        if (state.screen === 'intro' && (state.introSolution === 'strongAcid' || state.introSolution === 'weakAcid')) {
+          const meterSub = isSubmerged(state.tools.phMeter.x, state.tools.phMeter.y);
+          if (meterSub) {
+            document.getElementById('missionProgress2').style.width = '100%';
+            completeMission(2);
+          }
+        }
+      }
+
+      // Mission 3: pH paper colorimetric assay
+      if (!state.missions[3].done) {
+        if (state.tools.phPaper.dipped) {
+          document.getElementById('missionProgress3').style.width = '100%';
+          completeMission(3);
+        }
+      }
+
+      // Mission 4: Conductivity tester in strong base
+      if (!state.missions[4].done) {
+        const condSub = checkToolSubmerged('conductivity');
+        if (condSub && state.chem.ionConcentration > 0.01) {
+          document.getElementById('missionProgress4').style.width = '100%';
+          completeMission(4);
+        }
+      }
+
+      // Mission 5: Custom Solution pH 3-4
+      if (!state.missions[5].done) {
+        if (state.screen === 'mySolution' && state.chem.pH >= 3.0 && state.chem.pH <= 4.0) {
+          document.getElementById('missionProgress5').style.width = '100%';
+          completeMission(5);
+        }
+      }
+    }
+
+    function completeMission(id) {
+      if (state.missions[id].done) return;
+      state.missions[id].done = true;
+      state.missions[id].progress = 100;
+
+      const badge = document.getElementById('missionBadge' + id);
+      const card = document.getElementById('missionCard' + id);
+      if (badge && card) {
+        badge.className = 'mission-status-badge done';
+        badge.textContent = 'Completed!';
+        card.classList.add('completed');
+      }
+
+      const doneCount = Object.values(state.missions).filter(m => m.done).length;
+      document.getElementById('missionBadgeCount').textContent = `${doneCount}/5`;
+      showToast(`🏆 Mission ${id} Completed! Elementa XP Awarded!`);
+
+      dispatchLmsEvent('ELEMENTA_MISSION_COMPLETE', { missionId: id, totalDone: doneCount });
+    }
+
+    // Modal Control (Sim / Missions / Quiz / Theory)
+    function setAppMode(modeKey) {
+      state.mode = modeKey;
+      document.querySelectorAll('.mode-pill-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (modeKey === 'sim') {
+        document.getElementById('btnModeSim').classList.add('active');
+        closeAllModals();
+      } else if (modeKey === 'missions') {
+        document.getElementById('btnModeMissions').classList.add('active');
+        openModal('modalMissions');
+      } else if (modeKey === 'quiz') {
+        document.getElementById('btnModeQuiz').classList.add('active');
+        openModal('modalQuiz');
+      } else if (modeKey === 'theory') {
+        document.getElementById('btnModeTheory').classList.add('active');
+        openModal('modalTheory');
+      }
+    }
+
+    function openModal(id) {
+      closeAllModals();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+      setAppMode('sim');
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
+    // Scored Assessment Quiz Handlers
+    function selectQuizAnswer(qNum, optionIdx) {
+      state.quizAnswers[qNum] = optionIdx;
+      const qCard = document.getElementById('qq' + qNum);
+      const options = qCard.querySelectorAll('.quiz-option-btn');
+      options.forEach((opt, idx) => {
+        opt.classList.toggle('selected', idx === optionIdx);
+      });
+    }
+
+    function submitQuiz() {
+      let score = 0;
+      let allAnswered = true;
+
+      for (let i = 1; i <= 5; i++) {
+        if (state.quizAnswers[i] === null) {
+          allAnswered = false;
+          break;
+        }
+      }
+
+      if (!allAnswered) {
+        showToast('Please answer all 5 questions before submitting.');
+        return;
+      }
+
+      for (let i = 1; i <= 5; i++) {
+        const userChoice = state.quizAnswers[i];
+        const isCorrect = userChoice === QUIZ_KEY[i];
+        if (isCorrect) score += 20;
+
+        const qCard = document.getElementById('qq' + i);
+        const options = qCard.querySelectorAll('.quiz-option-btn');
+        options.forEach((opt, idx) => {
+          if (idx === QUIZ_KEY[i]) opt.classList.add('correct');
+          else if (idx === userChoice) opt.classList.add('wrong');
+        });
+
+        const fbBox = document.getElementById('qfb' + i);
+        fbBox.className = 'quiz-feedback-box ' + (isCorrect ? 'correct' : 'wrong');
+        fbBox.textContent = isCorrect ? QUIZ_RATIONALES[i].correct : QUIZ_RATIONALES[i].wrong;
+      }
+
+      // Show Certificate
+      const certWrap = document.getElementById('quizCertificateWrap');
+      certWrap.style.display = 'block';
+      document.getElementById('certScoreDisplay').textContent = `Score: ${score}% (${score/20}/5) • Grade: ${score >= 80 ? 'A (Distinction)' : 'B (Passing)'}`;
+      document.getElementById('certDateDisplay').textContent = `Verified on Elementa LMS • ${new Date().toLocaleDateString()}`;
+
+      // Dispatch LMS Gradebook Integration PostMessage
+      dispatchLmsEvent('ELEMENTA_GRADE_SUBMIT', {
+        score: score,
+        maxScore: 100,
+        percentage: score,
+        passed: score >= 70,
+        sim: 'acid-base-solutions'
+      });
+
+      showToast(`Grade ${score}% submitted to Elementa LMS Gradebook!`);
+      document.getElementById('btnSubmitQuiz').textContent = 'Synchronized with LMS Gradebook ✓';
+      document.getElementById('btnSubmitQuiz').disabled = true;
+    }
+
+    // Elementa LMS SCORM / PostMessage Bridge
+    function dispatchLmsEvent(eventName, payload) {
+      const data = {
+        source: 'Elementa_Simulation',
+        sim: 'Acid_Base_Solutions',
+        event: eventName,
+        payload: payload,
+        timestamp: Date.now()
+      };
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(data, '*');
+      }
+      console.log('[Elementa LMS Event Dispatched]', data);
+    }
+
+    function toggleAudio() {
+      state.soundEnabled = !state.soundEnabled;
+      document.getElementById('btnSoundToggle').classList.toggle('active', state.soundEnabled);
+      showToast(state.soundEnabled ? 'Audio synthesis unmuted' : 'Audio muted');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function captureScreenshot() {
+      const link = document.createElement('a');
+      link.download = 'elementa-acid-base-solutions.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Lab screenshot captured and downloaded');
+    }
+
+    function resetSimulation() {
+      state.introSolution = 'water';
+      state.myType = 'acid';
+      state.myInitialConc = 0.010;
+      state.myStrengthExp = -7.0;
+      state.viewMode = 'particles';
+      state.showSolvent = false;
+      state.tools.phMeter.x = 260; state.tools.phMeter.y = 160;
+      state.tools.phPaper.x = 440; state.tools.phPaper.y = 180; state.tools.phPaper.dipped = false;
+      state.tools.conductivity.x = 120; state.tools.conductivity.y = 140;
+
+      switchScreen('intro');
+      selectIntroSolution('water');
+      showToast('Simulation reset to default state');
+    }
+
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast-msg';
+      toast.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>${msg}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    window.addEventListener('DOMContentLoaded', initSimulation);
+  </script>
+  <!-- Elementa Dynamic Simulation Assessment Quiz Engine -->
+  <script src="/js/elementa-simulation-quiz.js"></script>
+</body>
+</html>

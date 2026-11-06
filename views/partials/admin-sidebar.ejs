@@ -1,0 +1,87 @@
+<%
+    // Standardized Admin Sidebar Partial
+    var currentActive = typeof activeNav !== 'undefined' ? activeNav : 'simulation_quizzes';
+%>
+<!-- Overlay for mobile sidebar -->
+<div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden"></div>
+
+<aside id="sidebar" class="bg-indigo-950 text-white w-64 flex-shrink-0 flex flex-col z-50 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 h-screen border-r border-indigo-800/50">
+    <div class="pt-8 pb-4 px-4 flex flex-col items-center text-center relative">
+        <!-- Mobile close button -->
+        <button onclick="toggleSidebar()" class="md:hidden text-indigo-300 hover:text-white absolute top-4 right-4" aria-label="Close navigation sidebar">
+            <i class="fas fa-times text-xl"></i>
+        </button>
+
+        <!-- Logo -->
+        <img src="/assets/logo.png" alt="ChemArcade Logo" class="w-16 h-16 object-contain mb-3">
+
+        <!-- Brand name -->
+        <h1 class="text-xl font-black tracking-tighter text-cyan-400 uppercase italic leading-none">
+            Elem<span class="text-white">enta</span>
+        </h1>
+        <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Admin Console</p>
+    </div>
+    <nav class="flex-1 px-4 mt-4 space-y-6 overflow-y-auto no-scrollbar pb-6">
+        <div>
+            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Main Interface</p>
+            <div class="space-y-1">
+                <a href="/admin/dashboard" class="<%= currentActive === 'dashboard' ? 'nav-active ' : '' %>flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white hover:bg-white/10 group">
+                    <i class="fas fa-chart-pie w-5 <%= currentActive === 'dashboard' ? 'text-white' : 'text-cyan-400' %> group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold tracking-tight text-sm">Main Dashboard</span>
+                </a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Administrative</p>
+            <div class="space-y-1">
+                <a href="/admin/user_access_control" class="<%= currentActive === 'user_access_control' ? 'nav-active ' : '' %>flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                    <i class="fas fa-users w-5 <%= currentActive === 'user_access_control' ? 'text-white' : 'text-sky-400' %> group-hover:scale-110 transition-transform"></i>
+                    <span class="font-semibold text-sm">User & Access Control</span>
+                </a>
+                <a href="/admin/academic_management" class="<%= currentActive === 'academic_management' ? 'nav-active ' : '' %>flex items-center gap-3 p-3 rounded-xl transition text-indigo-200 hover:text-white group">
+                    <i class="fas fa-graduation-cap w-5 <%= currentActive === 'academic_management' ? 'text-white' : 'text-emerald-400' %> group-hover:scale-110 transition-transform"></i>
+                    <span class="font-semibold text-sm">Academic Management</span>
+                </a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">Learning Assets</p>
+            <div class="space-y-1">
+                <a href="/admin/gaming_question_bank" class="<%= currentActive === 'gaming_question_bank' ? 'nav-active ' : '' %>flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                    <i class="fas fa-gamepad w-5 <%= currentActive === 'gaming_question_bank' ? 'text-white' : 'text-amber-400' %> group-hover:scale-110 transition-transform"></i>
+                    <span class="font-semibold text-sm">Gaming & Q-Bank</span>
+                </a>
+                <a href="/admin/resources_engagement" class="<%= currentActive === 'resources_engagement' ? 'nav-active ' : '' %>flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                    <i class="fas fa-lightbulb w-5 <%= currentActive === 'resources_engagement' ? 'text-white' : 'text-lime-400' %> group-hover:scale-110 transition-transform"></i>
+                    <span class="font-semibold text-sm">Resources & Engagement</span>
+                </a>
+                <a href="/admin/simulation-quizzes" class="<%= currentActive === 'simulation_quizzes' ? 'nav-active ' : '' %>flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                    <i class="fas fa-flask-vial w-5 <%= currentActive === 'simulation_quizzes' ? 'text-white' : 'text-cyan-400' %> group-hover:scale-110 transition-transform"></i>
+                    <span class="font-semibold text-sm">Simulation Quizzes</span>
+                </a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-3 mb-2 opacity-70">System Health</p>
+            <div class="space-y-1">
+                <a href="/admin/reports_monitoring" class="<%= currentActive === 'reports_monitoring' ? 'nav-active ' : '' %>flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                    <i class="fas fa-chart-line w-5 <%= currentActive === 'reports_monitoring' ? 'text-white' : 'text-blue-400' %> group-hover:scale-110 transition-transform"></i>
+                    <span class="font-semibold text-sm">Reports & Monitoring</span>
+                </a>
+                <a href="/admin/system_audit" class="<%= currentActive === 'system_audit' ? 'nav-active ' : '' %>flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition text-indigo-200 hover:text-white group">
+                    <i class="fas fa-fingerprint w-5 <%= currentActive === 'system_audit' ? 'text-white' : 'text-indigo-300' %> group-hover:scale-110 transition-transform"></i>
+                    <span class="font-semibold text-sm">System Audit</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+    <div class="p-4 border-t border-indigo-800">
+        <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition group font-bold">
+            <i class="fas fa-right-from-bracket w-5"></i> Log Out
+        </a>
+    </div>
+</aside>
+
+<!-- Elementa Session Security Modals & Client Guardian Controller -->
+<%- include('session-modals') %>
+<script src="/js/session-guard.js"></script>
