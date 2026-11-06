@@ -508,13 +508,27 @@ app.post('/reset-password', async (req, res) => {
     }
 });
 
-//Ang Google Strategy Logic
-//Dito natin gagamitin ang Client ID at Client Secret na kinuha mo sa Google Cloud Console kanina.
+// Ang Google Strategy Logic
+// Dito natin gagamitin ang Client ID at Client Secret na kinuha mo sa Google Cloud Console kanina.
+
+// Smart callback URL resolver: prevents accidental redirect to localhost on production cloud hosts
+const googleCallbackURL = (() => {
+    if (process.env.NODE_ENV === 'production') {
+        if (process.env.APP_URL && !process.env.APP_URL.includes('localhost')) {
+            return `${process.env.APP_URL.replace(/\/+$/, '')}/auth/google/callback`;
+        }
+        if (process.env.GOOGLE_CALLBACK_URL && !process.env.GOOGLE_CALLBACK_URL.includes('localhost')) {
+            return process.env.GOOGLE_CALLBACK_URL;
+        }
+        return '/auth/google/callback';
+    }
+    return process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback';
+})();
 
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL,
+    callbackURL: googleCallbackURL,
     proxy: true
   },
   async (accessToken, refreshToken, profile, done) => {
