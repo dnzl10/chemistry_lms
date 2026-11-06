@@ -29,4 +29,13 @@ if (
 
 const pool = mysql.createPool(poolConfig);
 
+// Automatically relax ONLY_FULL_GROUP_BY on every new connection so aggregation queries run smoothly in all environments
+pool.on('connection', (connection) => {
+    connection.query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))", (err) => {
+        if (err) {
+            // Silently fall back if already relaxed or unsupported
+        }
+    });
+});
+
 module.exports = pool.promise();
