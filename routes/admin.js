@@ -306,14 +306,14 @@ router.get('/notifications', requireAdmin, async (req, res) => {
 
         // 7. Active game sessions right now (Elementa Arcade Sessions)
         const [activeSessions] = await db.query(`
-            SELECT s.session_id, s.play_mode AS player_mode, s.session_start AS start_time,
+            SELECT s.session_id, s.play_mode AS player_mode, s.started_at AS start_time,
                    CONCAT(u.first_name,' ',u.last_name) AS student_name,
                    COALESCE(a.assessment_name, 'Arcade Session') AS assessment_name
             FROM elementa_game_sessions s
             LEFT JOIN users u ON u.user_id = s.student_id_p1
             LEFT JOIN assessments a ON a.assessment_id = s.assessment_id
-            WHERE s.run_status = 'Ongoing'
-            ORDER BY s.session_start DESC LIMIT 10
+            WHERE s.session_status = 'Ongoing'
+            ORDER BY s.started_at DESC LIMIT 10
         `);
 
         // 8. New user registrations in last 24 hours
