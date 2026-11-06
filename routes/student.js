@@ -1010,18 +1010,15 @@ async function handleGetConversations(req, res) {
                     WHERE cs.student_id = ? AND c.teacher_id = partner.user_id
                 ), 'adviser', 'classmate')                             AS contact_type
             FROM (
-                SELECT DISTINCT
-                    IF(sender_id = ?, receiver_id, sender_id) AS partner_id
+                SELECT 
+                    IF(sender_id = ?, receiver_id, sender_id) AS partner_id,
+                    MAX(message_id) AS latest_message_id
                 FROM private_messages
                 WHERE sender_id = ? OR receiver_id = ?
+                GROUP BY partner_id
             ) convo
             JOIN users partner ON partner.user_id = convo.partner_id
-            JOIN private_messages latest ON latest.message_id = (
-                SELECT message_id FROM private_messages
-                WHERE (sender_id = ? AND receiver_id = convo.partner_id)
-                   OR (sender_id = convo.partner_id AND receiver_id = ?)
-                ORDER BY sent_at DESC LIMIT 1
-            )
+            JOIN private_messages latest ON latest.message_id = convo.latest_message_id
             LEFT JOIN (
                 SELECT sender_id, COUNT(*) AS cnt
                 FROM private_messages
@@ -1044,7 +1041,7 @@ async function handleGetConversations(req, res) {
                 )
             )
             ORDER BY latest.sent_at DESC
-        `, [myId, myId, myId, myId, myId, myId, myId, myId, myId]);
+        `, [myId, myId, myId, myId, myId, myId, myId]);
 
         res.json(rows);
     } catch (err) {

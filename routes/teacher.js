@@ -4583,18 +4583,15 @@ router.get('/api/messaging/conversations', isTeacher, async (req, res) => {
                     WHERE c.teacher_id = ? AND cs.student_id = partner.user_id
                 ) AS shared_subjects
             FROM (
-                SELECT DISTINCT
-                    IF(sender_id = ?, receiver_id, sender_id) AS partner_id
+                SELECT 
+                    IF(sender_id = ?, receiver_id, sender_id) AS partner_id,
+                    MAX(message_id) AS latest_message_id
                 FROM private_messages
                 WHERE sender_id = ? OR receiver_id = ?
+                GROUP BY partner_id
             ) convo
             JOIN users partner ON partner.user_id = convo.partner_id
-            JOIN private_messages latest ON latest.message_id = (
-                SELECT message_id FROM private_messages
-                WHERE (sender_id = ? AND receiver_id = convo.partner_id)
-                   OR (sender_id = convo.partner_id AND receiver_id = ?)
-                ORDER BY sent_at DESC, message_id DESC LIMIT 1
-            )
+            JOIN private_messages latest ON latest.message_id = convo.latest_message_id
             LEFT JOIN (
                 SELECT sender_id, COUNT(*) AS cnt
                 FROM private_messages
@@ -4602,7 +4599,7 @@ router.get('/api/messaging/conversations', isTeacher, async (req, res) => {
                 GROUP BY sender_id
             ) unread ON unread.sender_id = convo.partner_id
             ORDER BY latest.sent_at DESC, latest.message_id DESC
-        `, [teacherId, teacherId, teacherId, teacherId, teacherId, teacherId, teacherId, teacherId]);
+        `, [teacherId, teacherId, teacherId, teacherId, teacherId]);
 
         res.json(rows);
     } catch (err) {
