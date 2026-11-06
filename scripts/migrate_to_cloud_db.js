@@ -93,6 +93,23 @@ async function migrateToCloud() {
         console.log(`✅ (${rows.length} rows)`);
     }
 
+    // Migrate SQL Views as well
+    const [views] = await localConn.query(`SHOW FULL TABLES WHERE Table_type = 'VIEW'`);
+    const viewNames = views.map(row => Object.values(row)[0]);
+    if (viewNames.length > 0) {
+        console.log(`\n👁️  Found ${viewNames.length} views to migrate...`);
+        for (const view of viewNames) {
+            process.stdout.write(`  ➡️  Migrating view [${view}]... `);
+            const [[createRow]] = await localConn.query(`SHOW CREATE VIEW \`${view}\``);
+            let createSql = createRow['Create View'];
+            // Strip definer to ensure compatibility across different DB users
+            createSql = createSql.replace(/DEFINER=`[^`]+`@`[^`]+`/i, '');
+            createSql = createSql.replace(/^CREATE\s+/i, 'CREATE OR REPLACE ');
+            await cloudConn.query(createSql);
+            console.log(`✅`);
+        }
+    }
+
     await cloudConn.query(`SET FOREIGN_KEY_CHECKS = 1;`);
     await localConn.end();
     await cloudConn.end();

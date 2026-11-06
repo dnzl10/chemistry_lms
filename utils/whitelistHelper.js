@@ -1,11 +1,9 @@
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer');
+const { createTransporter } = require('../services/emailService');
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-});
+// Use unified email transporter (Resend HTTPS + SMTP fallback)
+const transporter = createTransporter();
 
 async function processWhitelistEntries(db, classId, entries, expirationDateStr) {
     const expiresAt = new Date(expirationDateStr);

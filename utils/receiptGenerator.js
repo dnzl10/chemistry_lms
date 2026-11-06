@@ -1,18 +1,9 @@
 const crypto = require('crypto');
 const db = require('../db');
-const nodemailer = require('nodemailer');
+const { createTransporter } = require('../services/emailService');
 
-// Reuse existing SMTP transport if configured
-let transporter = null;
-if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
-}
+// Use unified email transporter (Resend HTTPS + SMTP fallback)
+const transporter = createTransporter();
 
 /**
  * Calculates SHA-256 cryptographic digest for a buffer or string payload.

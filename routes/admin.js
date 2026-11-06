@@ -370,17 +370,11 @@ router.get('/notifications', requireAdmin, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
  
 // ─────────────────────────────────────────────────────────────────────────────
-// NODEMAILER — Transporter (shared by all email-sending routes)
-// Reads from process.env.EMAIL_USER / process.env.EMAIL_PASS
+// EMAIL TRANSPORTER — Unified (Resend HTTP REST API on Port 443 + SMTP Fallback)
 // ─────────────────────────────────────────────────────────────────────────────
+const emailService = require('../services/emailService');
 function createTransporter() {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-        },
-    });
+    return emailService.createTransporter();
 }
  
 // ─────────────────────────────────────────────────────────────────────────────
@@ -965,12 +959,25 @@ router.post('/uac/invite', requireAdmin, async (req, res) => {
             `,
         };
  
-        await createTransporter().sendMail(mailOptions);
- 
-        await logActivity(req.user.user_id, 'Admin', 'SEND_INVITATION',
-            `Sent ${role} invitation to: ${cleanEmail}`);
- 
-        return res.json({ success: true, token });
+        let emailDelivered = true;
+        let emailDeliveryErr = null;
+        try {
+            await createTransporter().sendMail(mailOptions);
+            await logActivity(req.user.user_id, 'Admin', 'SEND_INVITATION',
+                `Sent ${role} invitation to: ${cleanEmail}`);
+        } catch (mailErr) {
+            console.error('[UAC Invite Mail Error]', mailErr.message);
+            emailDelivered = false;
+            emailDeliveryErr = mailErr.message;
+        }
+
+        return res.json({
+            success: true,
+            token,
+            regLink,
+            emailSent: emailDelivered,
+            warning: emailDelivered ? null : `Invitation created, but email could not be sent: ${emailDeliveryErr}. You can copy the registration link manually.`
+        });
  
     } catch (err) {
         console.error('[UAC Invite Error]', err);
