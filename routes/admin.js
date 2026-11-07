@@ -23,6 +23,7 @@ const {
 const ExcelJS = require('exceljs');
 const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const topicScheduleService = require('../services/topicScheduleService');
+const termHelper = require('../utils/termHelper');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MIDDLEWARE
@@ -2439,13 +2440,14 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
     try {
         // ── All school years ──────────────────────────────────────────────────
         const [allSchoolYears] = await db.query(
-            `SELECT sy_id, sy_range, is_active, created_at FROM school_years ORDER BY sy_range DESC`
+            `SELECT sy_id, sy_range, sy_code, term_structure, status, start_date, end_date, description, is_active, created_at 
+             FROM school_years ORDER BY sy_range DESC`
         );
         // Show only 2 latest in the card; all go to the "past SY" modal
         const schoolYears    = allSchoolYears.slice(0, 2);
         const pastSchoolYears = allSchoolYears; // all, sorted latest-to-oldest
 
-        // ── Active school year with class/enroll counts ───────────────────────
+        // ── Active school year with class/enroll counts & terms ───────────────
         let activeSY = null;
         const activeSYRow = schoolYears.find(sy => sy.is_active);
         if (activeSYRow) {
@@ -2455,10 +2457,22 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
             const [[enrollCountRow]] = await db.query(
                 `SELECT COUNT(*) AS cnt FROM class_students WHERE sy_id = ?`, [activeSYRow.sy_id]
             );
+            const [terms] = await db.query(
+                `SELECT term_id, sy_id, term_name, term_code, term_order, 
+                        DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
+                        DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date,
+                        DATE_FORMAT(enrollment_start, '%Y-%m-%d %H:%i') AS enrollment_start,
+                        DATE_FORMAT(enrollment_end, '%Y-%m-%d %H:%i') AS enrollment_end,
+                        DATE_FORMAT(add_drop_deadline, '%Y-%m-%d %H:%i') AS add_drop_deadline,
+                        DATE_FORMAT(grading_deadline, '%Y-%m-%d %H:%i') AS grading_deadline,
+                        status, is_active
+                 FROM academic_terms WHERE sy_id = ? ORDER BY term_order ASC`, [activeSYRow.sy_id]
+            );
             activeSY = {
                 ...activeSYRow,
                 classCount   : classCountRow.cnt,
                 enrolledCount: enrollCountRow.cnt,
+                terms        : terms || [],
             };
         }
 
@@ -2502,6 +2516,7 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
             subjects,
             teachers,
             amStats,
+            termHelper,
         });
 
     } catch (err) {
@@ -2517,13 +2532,13 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/school-years
-// Create a new school year.
-// Body: { sy_range }
-// Returns: { success: true } | { success: false, message }
+// Create a new school year with configured Term Structure.
+// Body: { sy_range, sy_code, term_structure, start_date, end_date, description, include_summer }
+// Returns: { success: true, sy_id } | { success: false, message }
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/school-years', requireAdmin, async (req, res) => {
     try {
-        const { sy_range } = req.body;
+        let { sy_range, sy_code, term_structure, start_date, end_date, description, include_summer } = req.body;
 
         if (!sy_range || !sy_range.trim())
             return res.json({ success: false, message: 'SY range is required.' });
@@ -2540,29 +2555,52 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
         if (endYear !== startYear + 1)
             return res.json({ success: false, message: `Invalid range: "${cleanRange}". The second year must be exactly one year after the first (e.g. 2026-2027).` });
 
-        const currentYear = new Date().getFullYear();
+        // Optional custom short code (or auto-generate)
+        const cleanCode = (sy_code && sy_code.trim())
+            ? sy_code.trim()
+            : `SY${cleanRange.replace('-', '')}`;
 
-        // Cannot add a school year that is fully in the past
-        if (startYear < currentYear)
-            return res.json({ success: false, message: `"${cleanRange}" is a past school year and can no longer be added.` });
-
-        // Cannot add a future school year — only the current year's SY is allowed
-        if (startYear > currentYear)
-            return res.json({ success: false, message: `"${cleanRange}" is too far in advance. You can only add the current school year (${currentYear}-${currentYear + 1}).` });
+        // Term structure validation
+        const validStructures = ['semestral', 'trimester', 'quarterly'];
+        const cleanStructure = validStructures.includes(term_structure) ? term_structure : 'quarterly';
 
         // Check duplicate
         const [[existing]] = await db.query(
-            `SELECT sy_id FROM school_years WHERE sy_range = ?`, [cleanRange]
+            `SELECT sy_id FROM school_years WHERE sy_range = ? OR (sy_code IS NOT NULL AND sy_code = ?)`,
+            [cleanRange, cleanCode]
         );
         if (existing)
-            return res.json({ success: false, message: `School year "${cleanRange}" already exists.` });
+            return res.json({ success: false, message: `School year "${cleanRange}" or code "${cleanCode}" already exists.` });
 
-        await db.query(`INSERT INTO school_years (sy_range, is_active) VALUES (?, 0)`, [cleanRange]);
+        const [result] = await db.query(
+            `INSERT INTO school_years (sy_range, sy_code, term_structure, description, start_date, end_date, status, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, 'active', 0)`,
+            [
+                cleanRange,
+                cleanCode,
+                cleanStructure,
+                description ? description.trim() : null,
+                start_date || null,
+                end_date || null
+            ]
+        );
+        const newSyId = result.insertId;
+
+        // Auto-provision default academic terms based on chosen term structure
+        const shouldIncludeSummer = include_summer === true || include_summer === 'true' || include_summer === '1';
+        const defaultTerms = termHelper.getDefaultTermsForStructure(cleanStructure, cleanRange, shouldIncludeSummer);
+        for (const dt of defaultTerms) {
+            await db.query(
+                `INSERT INTO academic_terms (sy_id, term_name, term_code, term_order, status, is_active)
+                 VALUES (?, ?, ?, ?, 'open', ?)`,
+                [newSyId, dt.term_name, dt.term_code, dt.term_order, dt.is_active]
+            );
+        }
 
         await logActivity(req.user.user_id, 'Admin', 'CREATE_SCHOOL_YEAR',
-            `Created school year: ${cleanRange}`);
+            `Created school year: ${cleanRange} (${cleanCode}, ${cleanStructure})`);
 
-        return res.json({ success: true });
+        return res.json({ success: true, sy_id: newSyId });
 
     } catch (err) {
         console.error('[AM Create SY Error]', err);
@@ -2572,17 +2610,17 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/school-years/:id
-// Edit an existing school year's range.
-// Body: { sy_range }
+// Edit an existing school year's configuration.
+// Body: { sy_range, sy_code, term_structure, start_date, end_date, description, status }
 // Returns: { success: true } | { success: false, message }
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/school-years/:id', requireAdmin, async (req, res) => {
     try {
-        const syId      = parseInt(req.params.id, 10);
-        const { sy_range } = req.body;
+        const syId = parseInt(req.params.id, 10);
+        let { sy_range, sy_code, term_structure, start_date, end_date, description, status } = req.body;
 
-        if (isNaN(syId))                        return res.json({ success: false, message: 'Invalid school year ID.' });
-        if (!sy_range || !sy_range.trim())      return res.json({ success: false, message: 'SY range is required.' });
+        if (isNaN(syId))                   return res.json({ success: false, message: 'Invalid school year ID.' });
+        if (!sy_range || !sy_range.trim()) return res.json({ success: false, message: 'SY range is required.' });
 
         const cleanRange = sy_range.trim();
 
@@ -2593,21 +2631,45 @@ router.post('/am/school-years/:id', requireAdmin, async (req, res) => {
         if (endYear !== startYear + 1)
             return res.json({ success: false, message: `Invalid range: end year must be exactly start year + 1.` });
 
+        const cleanCode = (sy_code && sy_code.trim())
+            ? sy_code.trim()
+            : `SY${cleanRange.replace('-', '')}`;
+
+        const validStructures = ['semestral', 'trimester', 'quarterly'];
+        const cleanStructure = validStructures.includes(term_structure) ? term_structure : 'quarterly';
+        const validStatuses = ['draft', 'active', 'archived'];
+        const cleanStatus = validStatuses.includes(status) ? status : 'active';
+
         // Ensure the SY actually exists
         const [[sy]] = await db.query(`SELECT sy_id FROM school_years WHERE sy_id = ?`, [syId]);
         if (!sy) return res.json({ success: false, message: 'School year not found.' });
 
         // Check conflict with another record
         const [[conflict]] = await db.query(
-            `SELECT sy_id FROM school_years WHERE sy_range = ? AND sy_id <> ?`, [cleanRange, syId]
+            `SELECT sy_id FROM school_years WHERE (sy_range = ? OR sy_code = ?) AND sy_id <> ?`,
+            [cleanRange, cleanCode, syId]
         );
         if (conflict)
-            return res.json({ success: false, message: `School year "${cleanRange}" already exists.` });
+            return res.json({ success: false, message: `School year "${cleanRange}" or code "${cleanCode}" already exists.` });
 
-        await db.query(`UPDATE school_years SET sy_range = ? WHERE sy_id = ?`, [cleanRange, syId]);
+        await db.query(
+            `UPDATE school_years 
+             SET sy_range = ?, sy_code = ?, term_structure = ?, description = ?, start_date = ?, end_date = ?, status = ?
+             WHERE sy_id = ?`,
+            [
+                cleanRange,
+                cleanCode,
+                cleanStructure,
+                description ? description.trim() : null,
+                start_date || null,
+                end_date || null,
+                cleanStatus,
+                syId
+            ]
+        );
 
         await logActivity(req.user.user_id, 'Admin', 'EDIT_SCHOOL_YEAR',
-            `Updated school year ID ${syId} → ${cleanRange}`);
+            `Updated school year ID ${syId} → ${cleanRange} (${cleanCode})`);
 
         return res.json({ success: true });
 
@@ -2636,6 +2698,16 @@ router.post('/am/school-years/:id/activate', requireAdmin, async (req, res) => {
         await db.query(`UPDATE school_years SET is_active = 0`);
         await db.query(`UPDATE school_years SET is_active = 1 WHERE sy_id = ?`, [syId]);
 
+        // Ensure at least one term in this school year is marked active
+        const [[activeTerm]] = await db.query(
+            `SELECT term_id FROM academic_terms WHERE sy_id = ? AND is_active = 1 LIMIT 1`, [syId]
+        );
+        if (!activeTerm) {
+            await db.query(
+                `UPDATE academic_terms SET is_active = 1 WHERE sy_id = ? ORDER BY term_order ASC LIMIT 1`, [syId]
+            );
+        }
+
         await logActivity(req.user.user_id, 'Admin', 'ACTIVATE_SCHOOL_YEAR',
             `Activated school year: ${sy.sy_range}`);
 
@@ -2643,6 +2715,152 @@ router.post('/am/school-years/:id/activate', requireAdmin, async (req, res) => {
 
     } catch (err) {
         console.error('[AM Activate SY Error]', err);
+        return res.json({ success: false, message: err.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACADEMIC TERMS LIFECYCLE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /admin/am/school-years/:id/terms
+// Return all terms belonging to a school year.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/am/school-years/:id/terms', requireAdmin, async (req, res) => {
+    try {
+        const syId = parseInt(req.params.id, 10);
+        if (isNaN(syId)) return res.json({ success: false, message: 'Invalid school year ID.' });
+
+        const [terms] = await db.query(`
+            SELECT term_id, sy_id, term_name, term_code, term_order,
+                   DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
+                   DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date,
+                   DATE_FORMAT(enrollment_start, '%Y-%m-%d %H:%i') AS enrollment_start,
+                   DATE_FORMAT(enrollment_end, '%Y-%m-%d %H:%i') AS enrollment_end,
+                   DATE_FORMAT(add_drop_deadline, '%Y-%m-%d %H:%i') AS add_drop_deadline,
+                   DATE_FORMAT(grading_deadline, '%Y-%m-%d %H:%i') AS grading_deadline,
+                   status, is_active
+            FROM academic_terms
+            WHERE sy_id = ?
+            ORDER BY term_order ASC
+        `, [syId]);
+
+        return res.json({ success: true, terms });
+    } catch (err) {
+        console.error('[AM Get Terms Error]', err);
+        return res.json({ success: false, message: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/am/terms/:id/status
+// Transition term lifecycle: 'draft' | 'open' | 'grading_locked' | 'archived'
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/am/terms/:id/status', requireAdmin, async (req, res) => {
+    try {
+        const termId = parseInt(req.params.id, 10);
+        const { status } = req.body;
+
+        if (isNaN(termId)) return res.json({ success: false, message: 'Invalid term ID.' });
+
+        const allowed = ['draft', 'open', 'grading_locked', 'archived'];
+        if (!allowed.includes(status)) {
+            return res.json({ success: false, message: 'Invalid status value.' });
+        }
+
+        const [[term]] = await db.query(
+            `SELECT term_id, term_name, sy_id FROM academic_terms WHERE term_id = ?`, [termId]
+        );
+        if (!term) return res.json({ success: false, message: 'Academic term not found.' });
+
+        await db.query(`UPDATE academic_terms SET status = ? WHERE term_id = ?`, [status, termId]);
+
+        await logActivity(req.user.user_id, 'Admin', 'UPDATE_TERM_STATUS',
+            `Updated term "${term.term_name}" (ID: ${termId}) status to ${status}`);
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('[AM Update Term Status Error]', err);
+        return res.json({ success: false, message: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/am/terms/:id/dates
+// Set calendar boundaries, enrollment windows, add/drop and grading deadlines.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/am/terms/:id/dates', requireAdmin, async (req, res) => {
+    try {
+        const termId = parseInt(req.params.id, 10);
+        if (isNaN(termId)) return res.json({ success: false, message: 'Invalid term ID.' });
+
+        let {
+            start_date,
+            end_date,
+            enrollment_start,
+            enrollment_end,
+            add_drop_deadline,
+            grading_deadline
+        } = req.body;
+
+        const [[term]] = await db.query(
+            `SELECT term_id, term_name FROM academic_terms WHERE term_id = ?`, [termId]
+        );
+        if (!term) return res.json({ success: false, message: 'Academic term not found.' });
+
+        await db.query(`
+            UPDATE academic_terms
+            SET start_date = ?,
+                end_date = ?,
+                enrollment_start = ?,
+                enrollment_end = ?,
+                add_drop_deadline = ?,
+                grading_deadline = ?
+            WHERE term_id = ?
+        `, [
+            start_date || null,
+            end_date || null,
+            enrollment_start || null,
+            enrollment_end || null,
+            add_drop_deadline || null,
+            grading_deadline || null,
+            termId
+        ]);
+
+        await logActivity(req.user.user_id, 'Admin', 'UPDATE_TERM_DATES',
+            `Updated calendar dates for term "${term.term_name}" (ID: ${termId})`);
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('[AM Update Term Dates Error]', err);
+        return res.json({ success: false, message: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/am/terms/:id/activate
+// Set this term as the default/active term for its school year.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/am/terms/:id/activate', requireAdmin, async (req, res) => {
+    try {
+        const termId = parseInt(req.params.id, 10);
+        if (isNaN(termId)) return res.json({ success: false, message: 'Invalid term ID.' });
+
+        const [[term]] = await db.query(
+            `SELECT term_id, sy_id, term_name FROM academic_terms WHERE term_id = ?`, [termId]
+        );
+        if (!term) return res.json({ success: false, message: 'Academic term not found.' });
+
+        await db.query(`UPDATE academic_terms SET is_active = 0 WHERE sy_id = ?`, [term.sy_id]);
+        await db.query(`UPDATE academic_terms SET is_active = 1 WHERE term_id = ?`, [termId]);
+
+        await logActivity(req.user.user_id, 'Admin', 'ACTIVATE_TERM',
+            `Set term "${term.term_name}" as active for SY ID ${term.sy_id}`);
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('[AM Activate Term Error]', err);
         return res.json({ success: false, message: err.message });
     }
 });
@@ -3523,13 +3741,15 @@ router.get('/am/subjects/:id/classes', requireAdmin, async (req, res) => {
 
         const [classes] = await db.query(`
             SELECT
-                c.class_id, c.class_name, c.teacher_id, c.sy_id,
+                c.class_id, c.class_name, c.teacher_id, c.sy_id, c.term_id,
                 CONCAT(u.first_name, ' ', u.last_name) AS teacher_name,
                 sy.sy_range,
+                at.term_name, at.term_code, at.status AS term_status,
                 COUNT(cs.student_id) AS student_count
             FROM classes c
-            LEFT JOIN users u         ON u.user_id     = c.teacher_id
-            LEFT JOIN school_years sy ON sy.sy_id      = c.sy_id
+            LEFT JOIN users u          ON u.user_id     = c.teacher_id
+            LEFT JOIN school_years sy  ON sy.sy_id      = c.sy_id
+            LEFT JOIN academic_terms at ON at.term_id   = c.term_id
             LEFT JOIN class_students cs ON cs.class_id = c.class_id
             WHERE c.subject_id = ? AND c.sy_id = ?
             GROUP BY c.class_id
@@ -3547,12 +3767,12 @@ router.get('/am/subjects/:id/classes', requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/classes
 // Create a new class.
-// Body: { class_name, teacher_id, sy_id, subject_id }
+// Body: { class_name, teacher_id, sy_id, subject_id, term_id }
 // Returns: { success: true } | { success: false, message }
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/classes', requireAdmin, async (req, res) => {
     try {
-        let { class_name, teacher_id, sy_id, subject_id } = req.body;
+        let { class_name, teacher_id, sy_id, subject_id, term_id } = req.body;
 
         if (!class_name || !class_name.trim())
             return res.json({ success: false, message: 'Class name is required.' });
@@ -3582,9 +3802,19 @@ router.post('/am/classes', requireAdmin, async (req, res) => {
 
         sy_id = activeSY.sy_id;
 
+        // Resolve term: explicitly passed or default to active term of the active school year
+        let targetTermId = term_id ? parseInt(term_id, 10) : null;
+        if (!targetTermId || isNaN(targetTermId)) {
+            const [[activeTerm]] = await db.query(
+                `SELECT term_id FROM academic_terms WHERE sy_id = ? AND is_active = 1 LIMIT 1`,
+                [activeSY.sy_id]
+            );
+            targetTermId = activeTerm ? activeTerm.term_id : null;
+        }
+
         const [result] = await db.query(
-            `INSERT INTO classes (class_name, teacher_id, subject_id, sy_id) VALUES (?, ?, ?, ?)`,
-            [class_name, teacher_id, subject_id, sy_id]
+            `INSERT INTO classes (class_name, teacher_id, subject_id, sy_id, term_id) VALUES (?, ?, ?, ?, ?)`,
+            [class_name, teacher_id, subject_id, sy_id, targetTermId]
         );
 
         await logActivity(req.user.user_id, 'Admin', 'CREATE_CLASS',
@@ -3620,8 +3850,8 @@ router.post('/am/classes', requireAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/classes/:id
-// Edit an existing class (class_name, teacher_id, sy_id).
-// Body: { class_name, teacher_id, sy_id }
+// Edit an existing class (class_name, teacher_id, sy_id, term_id).
+// Body: { class_name, teacher_id, sy_id, term_id }
 // Returns: { success: true } | { success: false, message }
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/classes/:id', requireAdmin, async (req, res) => {
@@ -3629,7 +3859,7 @@ router.post('/am/classes/:id', requireAdmin, async (req, res) => {
         const classId = parseInt(req.params.id, 10);
         if (isNaN(classId)) return res.json({ success: false, message: 'Invalid class ID.' });
 
-        let { class_name, teacher_id, sy_id } = req.body;
+        let { class_name, teacher_id, sy_id, term_id } = req.body;
         if (!class_name || !class_name.trim())
             return res.json({ success: false, message: 'Class name is required.' });
 
@@ -3637,12 +3867,17 @@ router.post('/am/classes/:id', requireAdmin, async (req, res) => {
         teacher_id = teacher_id ? parseInt(teacher_id, 10) : null;
         sy_id      = sy_id      ? parseInt(sy_id, 10)      : null;
 
+        let targetTermId = (term_id !== undefined && term_id !== null && term_id !== '')
+            ? parseInt(term_id, 10)
+            : null;
+        if (isNaN(targetTermId)) targetTermId = null;
+
         const [[cls]] = await db.query(`SELECT class_id, teacher_id AS prev_teacher_id FROM classes WHERE class_id = ?`, [classId]);
         if (!cls) return res.json({ success: false, message: 'Class not found.' });
 
         await db.query(
-            `UPDATE classes SET class_name = ?, teacher_id = ?, sy_id = ? WHERE class_id = ?`,
-            [class_name, teacher_id, sy_id, classId]
+            `UPDATE classes SET class_name = ?, teacher_id = ?, sy_id = ?, term_id = ? WHERE class_id = ?`,
+            [class_name, teacher_id, sy_id, targetTermId, classId]
         );
 
         await logActivity(req.user.user_id, 'Admin', 'EDIT_CLASS',
