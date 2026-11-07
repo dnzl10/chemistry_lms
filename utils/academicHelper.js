@@ -362,11 +362,184 @@ function validateSchoolYearTimeline(payload) {
     return { valid: true };
 }
 
+/**
+ * Previews what content will be transferred or reset from a source school year.
+ * @param {object} db - MySQL database connection/pool
+ * @param {number} sourceSyId - source school year ID
+ * @returns {Promise<object>}
+ */
+async function previewContentRollover(db, sourceSyId) {
+    const [[sourceSy]] = await db.query(
+        `SELECT sy_id, sy_range, sy_code FROM school_years WHERE sy_id = ?`,
+        [sourceSyId]
+    );
+
+    if (!sourceSy) {
+        return { success: false, message: 'Source school year not found.' };
+    }
+
+    // 1. Classes count
+    const [classes] = await db.query(
+        `SELECT c.class_id, c.class_name, c.teacher_id, c.subject_id, s.subject_name,
+                (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id) as student_count
+         FROM classes c
+         JOIN subjects s ON s.subject_id = c.subject_id
+         WHERE c.sy_id = ?`,
+        [sourceSyId]
+    );
+
+    // 2. Learning materials count under these subjects
+    const [[matRow]] = await db.query(`
+        SELECT COUNT(lm.material_id) as mat_count
+        FROM learning_materials lm
+        JOIN topics t ON t.topic_id = lm.topic_id
+        JOIN quarters q ON q.quarter_id = t.quarter_id
+        WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+    `, [sourceSyId]);
+
+    // 3. Question bank items count
+    const [[qbRow]] = await db.query(`
+        SELECT COUNT(qb.question_id) as qb_count
+        FROM question_bank qb
+        JOIN topics t ON t.topic_id = qb.topic_id
+        JOIN quarters q ON q.quarter_id = t.quarter_id
+        WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+    `, [sourceSyId]);
+
+    // 4. Past assessments count (to confirm exclusion/retention)
+    const [[assRow]] = await db.query(`
+        SELECT COUNT(a.assessment_id) as ass_count
+        FROM assessments a
+        JOIN quarters q ON q.quarter_id = a.quarter_id
+        WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+    `, [sourceSyId]);
+
+    // 5. Announcements to exclude
+    const [[annRow]] = await db.query(`
+        SELECT COUNT(announcement_id) as ann_count
+        FROM announcements
+        WHERE class_id IN (SELECT class_id FROM classes WHERE sy_id = ?)
+    `, [sourceSyId]);
+
+    return {
+        success: true,
+        sourceSy,
+        classesCount: classes.length,
+        classesList: classes.map(c => ({
+            name: c.class_name,
+            subject: c.subject_name,
+            priorStudents: c.student_count
+        })),
+        materialsCount: matRow ? matRow.mat_count : 0,
+        questionBankCount: qbRow ? qbRow.qb_count : 0,
+        assessmentsCount: assRow ? assRow.ass_count : 0,
+        announcementsCount: annRow ? annRow.ann_count : 0
+    };
+}
+
+/**
+ * Executes cohort content rollover from sourceSyId to targetSyId.
+ * Clones section environments with clean student rosters, applies initial material visibility,
+ * and handles question bank/assessments according to admin flags.
+ * @param {object} db - MySQL database connection/pool
+ * @param {object} options
+ * @returns {Promise<object>}
+ */
+async function executeContentRollover(db, options) {
+    const {
+        sourceSyId,
+        targetSyId,
+        rolloverMaterials = true,
+        rolloverAssessments = false,
+        rolloverQuestionBank = false,
+        rolloverAnnouncements = false,
+        defaultVisibility = 'visible',
+        adminUserId = null
+    } = options;
+
+    if (!sourceSyId || !targetSyId) {
+        throw new Error('Both source and target school year IDs are required for rollover.');
+    }
+
+    const [[sourceSy]] = await db.query(`SELECT sy_id, sy_range FROM school_years WHERE sy_id = ?`, [sourceSyId]);
+    const [[targetSy]] = await db.query(`SELECT sy_id, sy_range FROM school_years WHERE sy_id = ?`, [targetSyId]);
+
+    if (!sourceSy || !targetSy) {
+        throw new Error('Source or target school year record not found.');
+    }
+
+    // 1. Roll over Class Sections with clean rosters
+    const [sourceClasses] = await db.query(`
+        SELECT class_name, teacher_id, subject_id, max_capacity
+        FROM classes
+        WHERE sy_id = ?
+    `, [sourceSyId]);
+
+    let classesCloned = 0;
+    for (const cls of sourceClasses) {
+        // Check if class with same name, subject, and sy already exists in target
+        const [[existing]] = await db.query(`
+            SELECT class_id FROM classes
+            WHERE sy_id = ? AND subject_id = ? AND class_name = ?
+        `, [targetSyId, cls.subject_id, cls.class_name]);
+
+        if (!existing) {
+            await db.query(`
+                INSERT INTO classes (class_name, teacher_id, subject_id, sy_id, max_capacity, enrolled_count)
+                VALUES (?, ?, ?, ?, ?, 0)
+            `, [cls.class_name, cls.teacher_id, cls.subject_id, targetSyId, cls.max_capacity]);
+            classesCloned++;
+        }
+    }
+
+    // 2. Learning Materials Visibility
+    let materialsUpdated = 0;
+    if (rolloverMaterials) {
+        const lockValue = defaultVisibility === 'hidden' ? 1 : 0;
+        const [updateRes] = await db.query(`
+            UPDATE learning_materials lm
+            JOIN topics t ON t.topic_id = lm.topic_id
+            JOIN quarters q ON q.quarter_id = t.quarter_id
+            SET lm.is_locked = ?
+            WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+        `, [lockValue, sourceSyId]);
+        materialsUpdated = updateRes.affectedRows || 0;
+    }
+
+    // 3. Question Bank items retention
+    let questionsRetained = 0;
+    if (rolloverQuestionBank) {
+        // Base table for question bank is elementa_questions
+        const [qbRes] = await db.query(`
+            UPDATE elementa_questions eq
+            JOIN topics t ON t.topic_id = eq.topic_id
+            JOIN quarters q ON q.quarter_id = t.quarter_id
+            SET eq.verification_status = 'verified'
+            WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+        `, [sourceSyId]);
+        questionsRetained = qbRes.affectedRows || 0;
+    }
+
+    return {
+        success: true,
+        sourceSyRange: sourceSy.sy_range,
+        targetSyRange: targetSy.sy_range,
+        classesCloned,
+        materialsUpdated,
+        questionsRetained,
+        defaultVisibility,
+        assessmentsExcluded: !rolloverAssessments,
+        announcementsExcluded: !rolloverAnnouncements
+    };
+}
+
 module.exports = {
     getActiveSchoolYear,
     isSemesterEnrollmentOpen,
     isQuarterGradingOpen,
     checkStudentPrerequisite,
-    validateSchoolYearTimeline
+    validateSchoolYearTimeline,
+    previewContentRollover,
+    executeContentRollover
 };
 

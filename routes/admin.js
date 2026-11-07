@@ -2675,13 +2675,97 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
 
         const newSyId = insertResult.insertId;
 
+        // Execute Course Content Rollover if a source SY is selected
+        let rolloverSummary = null;
+        if (source_sy_id) {
+            try {
+                rolloverSummary = await academicHelper.executeContentRollover(db, {
+                    sourceSyId: parseInt(source_sy_id, 10),
+                    targetSyId: newSyId,
+                    rolloverMaterials: Number(rollover_materials) === 1,
+                    rolloverAssessments: Number(rollover_assessments) === 1,
+                    rolloverQuestionBank: Number(rollover_question_bank) === 1,
+                    rolloverAnnouncements: Number(rollover_announcements) === 1,
+                    defaultVisibility: default_rollover_visibility,
+                    adminUserId: req.user.user_id
+                });
+                await logActivity(req.user.user_id, 'Admin', 'ROLLOVER_SCHOOL_YEAR',
+                    `Rolled over ${rolloverSummary.classesCloned} class sections, set ${rolloverSummary.materialsUpdated} materials visibility to ${default_rollover_visibility} from SY ${source_sy_id} to ${newSyId}`);
+            } catch (rolloverErr) {
+                console.error('[Rollover Execution Warning]', rolloverErr);
+            }
+        }
+
         await logActivity(req.user.user_id, 'Admin', 'CREATE_SCHOOL_YEAR',
             `Created school year: ${cleanRange} (${cleanCode}) [Status: ${finalStatus}]`);
 
-        return res.json({ success: true, sy_id: newSyId, message: `School year ${cleanRange} created successfully!` });
+        return res.json({
+            success: true,
+            sy_id: newSyId,
+            rollover: rolloverSummary,
+            message: `School year ${cleanRange} created successfully!${rolloverSummary ? ` (${rolloverSummary.classesCloned} class sections rolled over with clean rosters)` : ''}`
+        });
 
     } catch (err) {
         console.error('[AM Create SY Error]', err);
+        return res.json({ success: false, message: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /admin/am/school-years/:id/rollover-preview
+// Preview what content will be transferred/reset from a source school year.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/am/school-years/:id/rollover-preview', requireAdmin, async (req, res) => {
+    try {
+        const sourceSyId = parseInt(req.params.id, 10);
+        if (isNaN(sourceSyId)) return res.json({ success: false, message: 'Invalid source school year ID.' });
+
+        const preview = await academicHelper.previewContentRollover(db, sourceSyId);
+        return res.json(preview);
+    } catch (err) {
+        console.error('[Rollover Preview Error]', err);
+        return res.json({ success: false, message: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/am/school-years/:id/rollover
+// Manual trigger for course content rollover from source to target school year.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/am/school-years/:id/rollover', requireAdmin, async (req, res) => {
+    try {
+        const targetSyId = parseInt(req.params.id, 10);
+        const {
+            source_sy_id,
+            rollover_materials = 1,
+            rollover_assessments = 0,
+            rollover_question_bank = 0,
+            rollover_announcements = 0,
+            default_rollover_visibility = 'visible'
+        } = req.body;
+
+        if (isNaN(targetSyId) || !source_sy_id) {
+            return res.json({ success: false, message: 'Both source and target school year IDs are required.' });
+        }
+
+        const result = await academicHelper.executeContentRollover(db, {
+            sourceSyId: parseInt(source_sy_id, 10),
+            targetSyId,
+            rolloverMaterials: Number(rollover_materials) === 1,
+            rolloverAssessments: Number(rollover_assessments) === 1,
+            rolloverQuestionBank: Number(rollover_question_bank) === 1,
+            rolloverAnnouncements: Number(rollover_announcements) === 1,
+            defaultVisibility: default_rollover_visibility,
+            adminUserId: req.user.user_id
+        });
+
+        await logActivity(req.user.user_id, 'Admin', 'ROLLOVER_SCHOOL_YEAR',
+            `Executed rollover: ${result.classesCloned} classes cloned, ${result.materialsUpdated} materials updated.`);
+
+        return res.json({ success: true, ...result, message: 'Course content rollover completed successfully!' });
+    } catch (err) {
+        console.error('[Manual Rollover Error]', err);
         return res.json({ success: false, message: err.message });
     }
 });
