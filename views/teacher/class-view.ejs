@@ -1595,7 +1595,7 @@ Enrollment Key: <%= subject.enrollment_code || 'N/A' %></div>
                                         <button type="button" onclick="changeAttendanceDate(-1)" class="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center text-slate-500 transition shadow-sm" title="Previous Day">
                                             <i class="fas fa-chevron-left text-xs"></i>
                                         </button>
-                                        <input type="date" id="attendanceDatePicker" onchange="loadAttendance()" class="bg-transparent border-0 text-xs font-bold text-slate-700 px-2 py-1 focus:ring-0 outline-none">
+                                        <input type="date" id="attendanceDatePicker" onchange="onAttendanceDatePickerChange()" class="bg-transparent border-0 text-xs font-bold text-slate-700 px-2 py-1 focus:ring-0 outline-none">
                                         <button type="button" id="attNextDayBtn" onclick="changeAttendanceDate(1)" class="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center text-slate-500 transition shadow-sm" title="Next Day">
                                             <i class="fas fa-chevron-right text-xs"></i>
                                         </button>
@@ -1607,7 +1607,8 @@ Enrollment Key: <%= subject.enrollment_code || 'N/A' %></div>
                                         <i class="fas fa-check-double text-xs"></i> Mark All Present
                                     </button>
                                     <button type="button" id="saveAttendanceBtn" onclick="saveAttendance()" class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition flex items-center gap-2">
-                                        <i class="fas fa-save text-xs"></i> <span>Save Attendance</span>
+                                        <i class="fas fa-save text-xs"></i> <span id="saveAttendanceBtnLabel">Save Attendance</span>
+                                        <span id="unsavedAttendanceBadge" class="hidden ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black leading-none shadow-sm">Unsaved</span>
                                     </button>
                                 </div>
                             </div>
@@ -5123,6 +5124,49 @@ Enrollment Key: <%= subject.enrollment_code || 'N/A' %></div>
                             <button type="button" onclick="closeModal('attendanceSuccessModal')" class="sort-btn active px-6 py-2.5 font-bold shadow-sm" style="background:#059669;border-color:#10b981;color:white">
                                 <i class="fas fa-check text-xs mr-1.5"></i> Acknowledge
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======= UNSAVED ATTENDANCE CONFIRMATION MODAL ======= -->
+                <div class="modal-backdrop" id="unsavedAttendanceModal">
+                    <div class="modal-card" style="max-width:480px">
+                        <div class="modal-header">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+                                    <i class="fas fa-triangle-exclamation text-base"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-800 text-base">Unsaved Attendance Changes</h3>
+                            </div>
+                            <button type="button" onclick="closeUnsavedAttendanceModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
+                                <i class="fas fa-times text-base"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body text-center py-6 px-6">
+                            <div class="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-sm border border-amber-200">
+                                <i class="fas fa-floppy-disk"></i>
+                            </div>
+                            <h4 class="text-base font-extrabold text-slate-800 mb-1.5" id="unsavedAttendanceTitle">Don't forget to save your attendance!</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed mb-3" id="unsavedAttendanceDetails">
+                                You have unsaved attendance changes on the Roll Call Sheet. Would you like to save your changes before leaving?
+                            </p>
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                                <i class="fas fa-circle-info text-amber-600"></i>
+                                <span id="unsavedAttendanceSummaryBadge">Modified records pending save</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer justify-between bg-slate-50/70 gap-2 flex-wrap">
+                            <button type="button" onclick="closeUnsavedAttendanceModal()" class="sort-btn px-3.5 py-2 font-bold text-slate-600 hover:bg-slate-100">
+                                <i class="fas fa-arrow-left text-xs mr-1"></i> Stay &amp; Review
+                            </button>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="confirmDiscardUnsavedAttendance()" class="sort-btn px-3.5 py-2 font-bold" style="background:#fff1f2;border-color:#fecdd3;color:#be123c">
+                                    <i class="fas fa-trash-can text-xs mr-1"></i> Discard Changes
+                                </button>
+                                <button type="button" id="unsavedAttSaveAndContinueBtn" onclick="confirmSaveAndContinueAttendance()" class="sort-btn active px-4 py-2 font-bold shadow-sm" style="background:#4f46e5;border-color:#4338ca;color:white">
+                                    <i class="fas fa-save text-xs mr-1.5"></i> Save &amp; Continue
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -11495,6 +11539,12 @@ async function uploadSubjectImage(input) {
 
         // ── Main Tab Switching ──
         function switchMainTab(targetId, btn) {
+            if (typeof hasUnsavedAttendanceChanges !== 'undefined' && hasUnsavedAttendanceChanges && !bypassUnsavedAttendanceGuard) {
+                guardUnsavedAttendance(function() {
+                    switchMainTab(targetId, btn);
+                });
+                return;
+            }
             // Remove active from all tabs
             document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
             // Hide all tab contents
@@ -11578,6 +11628,12 @@ async function uploadSubjectImage(input) {
         let attendanceWeekdayChart = null;
         let currentAttendanceSubView = 'analytics';
         let currentMasterTierFilter = 'all';
+        let attendanceInitialSnapshot = {};
+        let hasUnsavedAttendanceChanges = false;
+        let unsavedAttendanceModifiedCount = 0;
+        let lastLoadedAttendanceDate = '';
+        let pendingAttendanceNavigationAction = null;
+        let bypassUnsavedAttendanceGuard = false;
 
         function initAttendanceTab() {
             const picker = document.getElementById('attendanceDatePicker');
@@ -11594,6 +11650,12 @@ async function uploadSubjectImage(input) {
 
         // --- SUBVIEW SWITCHER (Analytics vs Daily Rollcall) ---
         function switchAttendanceSubView(view) {
+            if (view !== 'rollcall' && hasUnsavedAttendanceChanges && !bypassUnsavedAttendanceGuard) {
+                guardUnsavedAttendance(function() {
+                    switchAttendanceSubView(view);
+                });
+                return;
+            }
             currentAttendanceSubView = view;
             const analyticsView = document.getElementById('attSubViewAnalytics');
             const rollcallView = document.getElementById('attSubViewRollcall');
@@ -12635,6 +12697,7 @@ async function uploadSubjectImage(input) {
                 document.getElementById('attKpiUnmarked').textContent = data.summary.unmarked;
 
                 if (!currentAttendanceRecords.length) {
+                    captureAttendanceInitialSnapshot([], date);
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="6" class="table-empty-cell">
@@ -12691,14 +12754,15 @@ async function uploadSubjectImage(input) {
                             </div>
                         </td>
                         <td>
-                            <input type="time" id="att-time-${s.student_id}" value="${timeInVal}" ${isFuture ? 'disabled' : ''} class="px-2 py-1 text-xs font-bold border border-slate-200 rounded-lg bg-white text-slate-700 focus:ring-1 focus:ring-indigo-500 ${isFuture ? 'bg-slate-100 cursor-not-allowed opacity-60' : ''}">
+                            <input type="time" id="att-time-${s.student_id}" value="${timeInVal}" ${isFuture ? 'disabled' : 'oninput="checkAttendanceDirtyState()" onchange="checkAttendanceDirtyState()"'} class="px-2 py-1 text-xs font-bold border border-slate-200 rounded-lg bg-white text-slate-700 focus:ring-1 focus:ring-indigo-500 ${isFuture ? 'bg-slate-100 cursor-not-allowed opacity-60' : ''}">
                         </td>
                         <td>
-                            <input type="text" id="att-reason-${s.student_id}" value="${reasonVal}" ${isFuture ? 'disabled' : ''} placeholder="${isFuture ? 'Cannot mark attendance for future dates' : 'e.g. Medical excuse / tardy note'}" class="w-full px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 placeholder-slate-300 focus:ring-1 focus:ring-indigo-500 ${isFuture ? 'bg-slate-100 cursor-not-allowed opacity-60' : ''}">
+                            <input type="text" id="att-reason-${s.student_id}" value="${reasonVal}" ${isFuture ? 'disabled' : 'oninput="checkAttendanceDirtyState()" onchange="checkAttendanceDirtyState()"'} placeholder="${isFuture ? 'Cannot mark attendance for future dates' : 'e.g. Medical excuse / tardy note'}" class="w-full px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 placeholder-slate-300 focus:ring-1 focus:ring-indigo-500 ${isFuture ? 'bg-slate-100 cursor-not-allowed opacity-60' : ''}">
                         </td>
                     </tr>`;
                 });
                 tbody.innerHTML = rowsHtml;
+                captureAttendanceInitialSnapshot(currentAttendanceRecords, date);
             } catch (err) {
                 console.error(err);
                 tbody.innerHTML = `
@@ -12714,6 +12778,188 @@ async function uploadSubjectImage(input) {
                         </td>
                     </tr>`;
             }
+        }
+
+        function captureAttendanceInitialSnapshot(students, date) {
+            lastLoadedAttendanceDate = date || getAttendanceTodayStr();
+            attendanceInitialSnapshot = {};
+            (students || []).forEach(s => {
+                attendanceInitialSnapshot[s.student_id] = {
+                    status: s.status || 'Unmarked',
+                    timeIn: s.check_in_time || '08:00',
+                    reason: (s.override_reason || '').trim()
+                };
+            });
+            setAttendanceDirtyState(false, 0);
+        }
+
+        function getCurrentStudentAttendanceDomState(studentId) {
+            const container = document.querySelector(`[data-student-id="${studentId}"]`);
+            let status = 'Unmarked';
+            if (container) {
+                const activeBtn = container.querySelector('.text-white');
+                if (activeBtn) status = activeBtn.getAttribute('data-status') || 'Unmarked';
+            }
+            const timeIn = document.getElementById('att-time-' + studentId)?.value || '08:00';
+            const reason = (document.getElementById('att-reason-' + studentId)?.value || '').trim();
+            return { status, timeIn, reason };
+        }
+
+        function setAttendanceDirtyState(isDirty, changedCount) {
+            hasUnsavedAttendanceChanges = !!isDirty;
+            unsavedAttendanceModifiedCount = changedCount || 0;
+            const badge = document.getElementById('unsavedAttendanceBadge');
+            const saveBtn = document.getElementById('saveAttendanceBtn');
+            if (badge) {
+                if (hasUnsavedAttendanceChanges) {
+                    badge.textContent = unsavedAttendanceModifiedCount > 0 ? `${unsavedAttendanceModifiedCount} Unsaved` : 'Unsaved';
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+            if (saveBtn) {
+                if (hasUnsavedAttendanceChanges) {
+                    saveBtn.classList.add('ring-2', 'ring-amber-400', 'ring-offset-1');
+                } else {
+                    saveBtn.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-1');
+                }
+            }
+        }
+
+        function checkAttendanceDirtyState() {
+            if (!Array.isArray(currentAttendanceRecords) || !currentAttendanceRecords.length) {
+                setAttendanceDirtyState(false, 0);
+                return false;
+            }
+            let changedCount = 0;
+            currentAttendanceRecords.forEach(s => {
+                const initial = attendanceInitialSnapshot[s.student_id];
+                if (!initial) return;
+                const current = getCurrentStudentAttendanceDomState(s.student_id);
+                if (
+                    current.status !== initial.status ||
+                    current.timeIn !== initial.timeIn ||
+                    current.reason !== initial.reason
+                ) {
+                    changedCount++;
+                }
+            });
+            setAttendanceDirtyState(changedCount > 0, changedCount);
+            return changedCount > 0;
+        }
+
+        function revertUnsavedAttendanceDomToSnapshot() {
+            if (!Array.isArray(currentAttendanceRecords)) return;
+            currentAttendanceRecords.forEach(s => {
+                const initial = attendanceInitialSnapshot[s.student_id];
+                if (!initial) return;
+                const container = document.querySelector(`[data-student-id="${s.student_id}"]`);
+                if (container) {
+                    const buttons = container.querySelectorAll('.att-btn');
+                    buttons.forEach(btn => {
+                        const st = btn.getAttribute('data-status');
+                        btn.className = 'att-btn px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition text-slate-500 hover:text-indigo-700';
+                        if (st === initial.status) {
+                            if (st === 'Present') btn.className = 'att-btn px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition bg-emerald-600 text-white shadow-sm';
+                            else if (st === 'Late') btn.className = 'att-btn px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition bg-amber-500 text-white shadow-sm';
+                            else if (st === 'Absent') btn.className = 'att-btn px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition bg-rose-600 text-white shadow-sm';
+                            else if (st === 'Excused') btn.className = 'att-btn px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition bg-sky-600 text-white shadow-sm';
+                        }
+                    });
+                }
+                const timeInput = document.getElementById('att-time-' + s.student_id);
+                if (timeInput) timeInput.value = initial.timeIn;
+                const reasonInput = document.getElementById('att-reason-' + s.student_id);
+                if (reasonInput) reasonInput.value = initial.reason;
+            });
+            recalculateAttendanceKpis();
+            setAttendanceDirtyState(false, 0);
+        }
+
+        function guardUnsavedAttendance(actionFn) {
+            if (!hasUnsavedAttendanceChanges || bypassUnsavedAttendanceGuard) {
+                if (typeof actionFn === 'function') actionFn();
+                return;
+            }
+            pendingAttendanceNavigationAction = actionFn;
+            const summaryBadge = document.getElementById('unsavedAttendanceSummaryBadge');
+            const detailsEl = document.getElementById('unsavedAttendanceDetails');
+            const count = unsavedAttendanceModifiedCount || 1;
+            const dateLabel = lastLoadedAttendanceDate || getAttendanceTodayStr();
+            if (summaryBadge) {
+                summaryBadge.textContent = `${count} modified student record${count === 1 ? '' : 's'} for ${dateLabel}`;
+            }
+            if (detailsEl) {
+                detailsEl.textContent = `You took or modified attendance for ${count} student${count === 1 ? '' : 's'} on ${dateLabel} without clicking "Save Attendance". Would you like to save before leaving?`;
+            }
+            openModal('unsavedAttendanceModal');
+        }
+
+        function closeUnsavedAttendanceModal() {
+            pendingAttendanceNavigationAction = null;
+            closeModal('unsavedAttendanceModal');
+        }
+
+        function confirmDiscardUnsavedAttendance() {
+            const action = pendingAttendanceNavigationAction;
+            pendingAttendanceNavigationAction = null;
+            closeModal('unsavedAttendanceModal');
+            revertUnsavedAttendanceDomToSnapshot();
+            if (typeof action === 'function') {
+                bypassUnsavedAttendanceGuard = true;
+                try {
+                    action();
+                } finally {
+                    bypassUnsavedAttendanceGuard = false;
+                }
+            }
+        }
+
+        async function confirmSaveAndContinueAttendance() {
+            const saveContBtn = document.getElementById('unsavedAttSaveAndContinueBtn');
+            const origBtnHtml = saveContBtn ? saveContBtn.innerHTML : '';
+            if (saveContBtn) {
+                saveContBtn.disabled = true;
+                saveContBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs mr-1.5"></i> Saving...';
+            }
+            try {
+                const ok = await saveAttendance({ silentSuccessModal: true });
+                if (!ok) return;
+                const action = pendingAttendanceNavigationAction;
+                pendingAttendanceNavigationAction = null;
+                closeModal('unsavedAttendanceModal');
+                if (typeof cmToast === 'function') {
+                    cmToast('Attendance saved successfully!', 'success');
+                }
+                if (typeof action === 'function') {
+                    bypassUnsavedAttendanceGuard = true;
+                    try {
+                        action();
+                    } finally {
+                        bypassUnsavedAttendanceGuard = false;
+                    }
+                }
+            } finally {
+                if (saveContBtn) {
+                    saveContBtn.disabled = false;
+                    saveContBtn.innerHTML = origBtnHtml;
+                }
+            }
+        }
+
+        function onAttendanceDatePickerChange() {
+            const picker = document.getElementById('attendanceDatePicker');
+            const targetDateStr = picker?.value || getAttendanceTodayStr();
+            if (hasUnsavedAttendanceChanges && !bypassUnsavedAttendanceGuard && lastLoadedAttendanceDate && targetDateStr !== lastLoadedAttendanceDate) {
+                if (picker) picker.value = lastLoadedAttendanceDate;
+                guardUnsavedAttendance(function() {
+                    if (picker) picker.value = targetDateStr;
+                    loadAttendance();
+                });
+                return;
+            }
+            loadAttendance();
         }
 
         function changeAttendanceDate(offset) {
@@ -12742,13 +12988,29 @@ async function uploadSubjectImage(input) {
                 return;
             }
 
+            if (hasUnsavedAttendanceChanges && !bypassUnsavedAttendanceGuard && targetDateStr !== curVal) {
+                guardUnsavedAttendance(function() {
+                    picker.value = targetDateStr;
+                    loadAttendance();
+                });
+                return;
+            }
+
             picker.value = targetDateStr;
             loadAttendance();
         }
 
         function setAttendanceToday() {
             const picker = document.getElementById('attendanceDatePicker');
-            picker.value = getAttendanceTodayStr();
+            const todayStr = getAttendanceTodayStr();
+            if (hasUnsavedAttendanceChanges && !bypassUnsavedAttendanceGuard && picker && picker.value !== todayStr) {
+                guardUnsavedAttendance(function() {
+                    picker.value = todayStr;
+                    loadAttendance();
+                });
+                return;
+            }
+            if (picker) picker.value = todayStr;
             loadAttendance();
         }
 
@@ -12775,6 +13037,7 @@ async function uploadSubjectImage(input) {
                 }
             });
             recalculateAttendanceKpis();
+            checkAttendanceDirtyState();
         }
 
         function markAllAttendance(status) {
@@ -12789,6 +13052,7 @@ async function uploadSubjectImage(input) {
             currentAttendanceRecords.forEach(s => {
                 setStudentStatus(s.student_id, status);
             });
+            checkAttendanceDirtyState();
         }
 
         function recalculateAttendanceKpis() {
@@ -12812,7 +13076,8 @@ async function uploadSubjectImage(input) {
             document.getElementById('attKpiUnmarked').textContent = u;
         }
 
-        async function saveAttendance() {
+        async function saveAttendance(options) {
+            const opts = options || {};
             const picker = document.getElementById('attendanceDatePicker');
             const date = picker?.value || getAttendanceTodayStr();
             const todayStr = getAttendanceTodayStr();
@@ -12822,7 +13087,7 @@ async function uploadSubjectImage(input) {
                 } else {
                     alert('Attendance cannot be recorded or saved for future dates.');
                 }
-                return;
+                return false;
             }
 
             const btn = document.getElementById('saveAttendanceBtn');
@@ -12859,18 +13124,23 @@ async function uploadSubjectImage(input) {
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error || 'Failed to save attendance');
 
-                const detailsEl = document.getElementById('attendanceSuccessDetails');
-                if (detailsEl) {
-                    if (records.length > 0) {
-                        detailsEl.textContent = 'Successfully recorded attendance for ' + records.length + ' student' + (records.length === 1 ? '.' : 's.');
-                    } else {
-                        detailsEl.textContent = 'All student attendance records have been securely logged and updated for this class session.';
-                    }
-                }
-                openModal('attendanceSuccessModal');
+                setAttendanceDirtyState(false, 0);
 
-                loadAttendance();
+                if (!opts.silentSuccessModal) {
+                    const detailsEl = document.getElementById('attendanceSuccessDetails');
+                    if (detailsEl) {
+                        if (records.length > 0) {
+                            detailsEl.textContent = 'Successfully recorded attendance for ' + records.length + ' student' + (records.length === 1 ? '.' : 's.');
+                        } else {
+                            detailsEl.textContent = 'All student attendance records have been securely logged and updated for this class session.';
+                        }
+                    }
+                    openModal('attendanceSuccessModal');
+                }
+
+                await loadAttendance();
                 loadAttendanceAnalytics();
+                return true;
             } catch (err) {
                 console.error(err);
                 if (typeof Swal !== 'undefined') {
@@ -12878,11 +13148,44 @@ async function uploadSubjectImage(input) {
                 } else {
                     alert('Save failed: ' + err.message);
                 }
+                return false;
             } finally {
                 btn.innerHTML = origHtml;
                 btn.disabled = false;
+                checkAttendanceDirtyState();
             }
         }
+
+        // Intercept link clicks and page exits when attendance changes are unsaved
+        document.addEventListener('click', function(e) {
+            if (!hasUnsavedAttendanceChanges || bypassUnsavedAttendanceGuard) return;
+            const link = e.target.closest('a[href]');
+            if (!link) return;
+            const rawHref = link.getAttribute('href') || '';
+            if (
+                !rawHref ||
+                rawHref.startsWith('#') ||
+                rawHref.toLowerCase().startsWith('javascript:') ||
+                link.target === '_blank' ||
+                link.hasAttribute('download')
+            ) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            const destUrl = link.href;
+            guardUnsavedAttendance(function() {
+                window.location.href = destUrl;
+            });
+        }, true);
+
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedAttendanceChanges && !bypassUnsavedAttendanceGuard) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
     
 
         // =====================================================================
