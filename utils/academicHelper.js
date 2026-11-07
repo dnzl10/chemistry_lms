@@ -5,21 +5,53 @@
  */
 
 /**
- * Fetch the currently active School Year with all attributes.
+ * Fetch the single Current active School Year with all attributes.
+ * Prioritizes status = 'Current' AND is_active = 1.
  * @param {object} db - MySQL database connection/pool
  * @returns {Promise<object|null>}
  */
-async function getActiveSchoolYear(db) {
+async function getCurrentSchoolYear(db) {
+    const [[currentSY]] = await db.query(
+        `SELECT * FROM school_years WHERE status = 'Current' AND is_active = 1 LIMIT 1`
+    );
+    if (currentSY) return currentSY;
+
+    // Fallback if status or is_active was updated separately
     const [[activeSY]] = await db.query(
-        `SELECT * FROM school_years WHERE is_active = 1 LIMIT 1`
+        `SELECT * FROM school_years WHERE is_active = 1 OR status = 'Current' ORDER BY is_active DESC, sy_id DESC LIMIT 1`
     );
     if (activeSY) return activeSY;
 
-    // Fallback to latest created if none active
+    // Fallback to latest created if none active/current
     const [[latestSY]] = await db.query(
         `SELECT * FROM school_years ORDER BY sy_id DESC LIMIT 1`
     );
     return latestSY || null;
+}
+
+/**
+ * Fetch the currently active School Year (alias for getCurrentSchoolYear).
+ * @param {object} db - MySQL database connection/pool
+ * @returns {Promise<object|null>}
+ */
+async function getActiveSchoolYear(db) {
+    return getCurrentSchoolYear(db);
+}
+
+/**
+ * Normalizes status strings from UI or legacy payloads to canonical ('Current', 'Draft', 'Archive').
+ * @param {string} status
+ * @param {boolean|number} [isActive]
+ * @returns {'Current'|'Draft'|'Archive'}
+ */
+function normalizeSchoolYearStatus(status, isActive = null) {
+    if (isActive === 1 || isActive === true || isActive === '1') {
+        return 'Current';
+    }
+    const clean = String(status || '').trim();
+    if (clean === 'Current' || clean === 'Active') return 'Current';
+    if (clean === 'Archive' || clean === 'Archived') return 'Archive';
+    return 'Draft';
 }
 
 /**
@@ -358,6 +390,13 @@ function validateSchoolYearTimeline(payload) {
         return { valid: false, message: 'The second year in SY Range must be exactly 1 year after the first (e.g. 2026-2027).' };
     }
 
+    if (payload.status) {
+        const allowedStatuses = ['Current', 'Draft', 'Archive', 'Active', 'Archived'];
+        if (!allowedStatuses.includes(payload.status)) {
+            return { valid: false, message: 'Invalid School Year status. Must be Current, Draft, or Archive.' };
+        }
+    }
+
     // Helper to compare dates
     const isAfter = (d1, d2) => new Date(d1).getTime() > new Date(d2).getTime();
     const isBeforeOrEqual = (d1, d2) => new Date(d1).getTime() <= new Date(d2).getTime();
@@ -430,6 +469,20 @@ function validateSchoolYearTimeline(payload) {
  * @returns {Promise<object>}
  */
 async function previewContentRollover(db, sourceSyId) {
+    if (!sourceSyId) {
+        return {
+            success: true,
+            isFreshStart: true,
+            classesCount: 0,
+            classesList: [],
+            materialsCount: 0,
+            questionBankCount: 0,
+            assessmentsCount: 0,
+            announcementsCount: 0,
+            message: 'No rollover source selected. School year will start fresh.'
+        };
+    }
+
     const [[sourceSy]] = await db.query(
         `SELECT sy_id, sy_range, sy_code FROM school_years WHERE sy_id = ?`,
         [sourceSyId]
@@ -518,8 +571,19 @@ async function executeContentRollover(db, options) {
         adminUserId = null
     } = options;
 
-    if (!sourceSyId || !targetSyId) {
-        throw new Error('Both source and target school year IDs are required for rollover.');
+    if (!sourceSyId) {
+        return {
+            success: true,
+            isFreshStart: true,
+            classesCloned: 0,
+            materialsUpdated: 0,
+            questionsRetained: 0,
+            message: 'Fresh start: No cohort structures cloned.'
+        };
+    }
+
+    if (!targetSyId) {
+        throw new Error('Target school year ID is required for rollover.');
     }
 
     const [[sourceSy]] = await db.query(`SELECT sy_id, sy_range FROM school_years WHERE sy_id = ?`, [sourceSyId]);
@@ -595,7 +659,9 @@ async function executeContentRollover(db, options) {
 }
 
 module.exports = {
+    getCurrentSchoolYear,
     getActiveSchoolYear,
+    normalizeSchoolYearStatus,
     isSemesterEnrollmentOpen,
     isQuarterGradingOpen,
     resolveAssessmentQuarter,

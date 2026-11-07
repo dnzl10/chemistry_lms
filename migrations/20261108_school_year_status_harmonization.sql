@@ -21,3 +21,4 @@ WHERE `status` = 'Archived' OR (`is_active` = 0 AND `status` != 'Draft' AND `sta
 -- Step 3: Shrink ENUM to canonical 3 statuses: ('Current', 'Draft', 'Archive')
 ALTER TABLE `school_years` 
 MODIFY COLUMN `status` ENUM('Current', 'Draft', 'Archive') NOT NULL DEFAULT 'Draft';
+
