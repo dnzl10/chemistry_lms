@@ -1892,7 +1892,22 @@ Enrollment Key: <%= subject.enrollment_code || 'N/A' %></div>
 
                                     <!-- Quarter label -->
                                     <div>
-                                        <p class="font-bold text-slate-700 text-base">Quarter <%= quarter.quarter_number %></p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="font-bold text-slate-700 text-base">Quarter <%= quarter.quarter_number %></p>
+                                            <% if (quarter.gradingStatus) { %>
+                                                <% if (quarter.gradingStatus.isAllowed) { %>
+                                                    <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold inline-flex items-center gap-1" title="<%= quarter.gradingStatus.message %>">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                        Grading Open (<%= quarter.gradingStatus.remainingDays ? quarter.gradingStatus.remainingDays + 'd left' : 'Open' %>)
+                                                    </span>
+                                                <% } else { %>
+                                                    <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold inline-flex items-center gap-1" title="<%= quarter.gradingStatus.message %>">
+                                                        <i class="fas fa-lock text-[9px]"></i>
+                                                        Grading Locked
+                                                    </span>
+                                                <% } %>
+                                            <% } %>
+                                        </div>
                                         <p class="text-sm text-slate-400">
                                             <%= quarter.topics ? quarter.topics.length : 0 %> topic<%= (quarter.topics && quarter.topics.length !== 1) ? 's' : '' %>
                                             <% if (qLocked) { %><span class="ml-2 text-orange-500 font-semibold"><i class="fas fa-lock text-sm"></i> Locked</span><% } %>

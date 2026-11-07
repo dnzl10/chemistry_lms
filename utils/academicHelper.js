@@ -88,11 +88,15 @@ function isSemesterEnrollmentOpen(schoolYear, semester, currentDate = new Date()
  * @returns {object} { isAllowed: boolean, status: string, message: string, deadline: Date|null, remainingHours: number|null }
  */
 function isQuarterGradingOpen(schoolYear, quarterNumber, currentDate = new Date()) {
-    if (!schoolYear) {
+    if (!schoolYear || !quarterNumber) {
         return { isAllowed: true, status: 'unrestricted', message: 'No grade encoding deadline set.' };
     }
 
     const qNum = parseInt(quarterNumber, 10);
+    if (isNaN(qNum) || qNum < 1 || qNum > 4) {
+        return { isAllowed: true, status: 'unrestricted', message: 'No grade encoding deadline set.' };
+    }
+
     const deadlineRaw = schoolYear[`q${qNum}_grade_deadline`];
 
     if (!deadlineRaw) {
@@ -125,6 +129,63 @@ function isQuarterGradingOpen(schoolYear, quarterNumber, currentDate = new Date(
         remainingHours,
         remainingDays
     };
+}
+
+/**
+ * Resolves the quarter number (1, 2, 3, or 4) and quarter info for an assessment or score record.
+ * @param {object} db - MySQL database connection/pool
+ * @param {object} params - { assessmentId, scoreId }
+ * @returns {Promise<{ quarterNumber: number|null, quarterId: number|null, assessmentId: number|null, assessmentName: string|null }>}
+ */
+async function resolveAssessmentQuarter(db, { assessmentId = null, scoreId = null } = {}) {
+    if (assessmentId) {
+        const [rows] = await db.query(`
+            SELECT COALESCE(q1.quarter_number, q2.quarter_number) AS quarter_number,
+                   COALESCE(q1.quarter_id, q2.quarter_id) AS quarter_id,
+                   a.assessment_id, a.assessment_name
+            FROM assessments a
+            LEFT JOIN quarters q1 ON a.quarter_id = q1.quarter_id
+            LEFT JOIN topics t ON a.topic_id = t.topic_id
+            LEFT JOIN quarters q2 ON t.quarter_id = q2.quarter_id
+            WHERE a.assessment_id = ?
+            LIMIT 1
+        `, [assessmentId]);
+
+        if (rows.length > 0) {
+            return {
+                quarterNumber: rows[0].quarter_number ? Number(rows[0].quarter_number) : null,
+                quarterId: rows[0].quarter_id ? Number(rows[0].quarter_id) : null,
+                assessmentId: Number(rows[0].assessment_id),
+                assessmentName: rows[0].assessment_name
+            };
+        }
+    }
+
+    if (scoreId && scoreId !== 'new' && scoreId !== '0') {
+        const [rows] = await db.query(`
+            SELECT COALESCE(q1.quarter_number, q2.quarter_number) AS quarter_number,
+                   COALESCE(q1.quarter_id, q2.quarter_id) AS quarter_id,
+                   a.assessment_id, a.assessment_name
+            FROM student_scores ss
+            JOIN assessments a ON ss.assessment_id = a.assessment_id
+            LEFT JOIN quarters q1 ON a.quarter_id = q1.quarter_id
+            LEFT JOIN topics t ON a.topic_id = t.topic_id
+            LEFT JOIN quarters q2 ON t.quarter_id = q2.quarter_id
+            WHERE ss.score_id = ?
+            LIMIT 1
+        `, [scoreId]);
+
+        if (rows.length > 0) {
+            return {
+                quarterNumber: rows[0].quarter_number ? Number(rows[0].quarter_number) : null,
+                quarterId: rows[0].quarter_id ? Number(rows[0].quarter_id) : null,
+                assessmentId: Number(rows[0].assessment_id),
+                assessmentName: rows[0].assessment_name
+            };
+        }
+    }
+
+    return { quarterNumber: null, quarterId: null, assessmentId: null, assessmentName: null };
 }
 
 /**
@@ -537,6 +598,7 @@ module.exports = {
     getActiveSchoolYear,
     isSemesterEnrollmentOpen,
     isQuarterGradingOpen,
+    resolveAssessmentQuarter,
     checkStudentPrerequisite,
     validateSchoolYearTimeline,
     previewContentRollover,

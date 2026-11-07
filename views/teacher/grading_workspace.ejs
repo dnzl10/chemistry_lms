@@ -95,6 +95,19 @@
                 <span class="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[11px] font-bold">
                     Max: <span class="text-indigo-400 font-extrabold"><%= assessment.max_score || 100 %></span> pts
                 </span>
+                <% if (typeof gradingStatus !== 'undefined' && gradingStatus) { %>
+                    <% if (gradingStatus.isAllowed) { %>
+                        <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1.5 hidden xl:flex" title="<%= gradingStatus.message %>">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            Q<%= quarterNumber || 1 %> Grading Open (<%= gradingStatus.remainingDays ? gradingStatus.remainingDays + 'd left' : 'Open' %>)
+                        </span>
+                    <% } else { %>
+                        <span class="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold flex items-center gap-1.5 hidden xl:flex" title="<%= gradingStatus.message %>">
+                            <i class="fas fa-lock text-[9px] text-rose-400"></i>
+                            Q<%= quarterNumber || 1 %> Grading Locked
+                        </span>
+                    <% } %>
+                <% } %>
             </div>
         </div>
 
@@ -154,6 +167,24 @@
             </button>
         </div>
     </header>
+
+    <% if (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) { %>
+        <!-- Persistent Read-Only Lockout Banner -->
+        <div class="bg-gradient-to-r from-rose-950 via-rose-900 to-slate-900 border-b border-rose-500/50 px-4 py-2.5 flex items-center justify-between text-xs text-rose-200 z-20 flex-shrink-0 shadow-md">
+            <div class="flex items-center gap-3">
+                <span class="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-300">
+                    <i class="fas fa-lock text-xs"></i>
+                </span>
+                <div>
+                    <span class="font-extrabold text-white text-xs">Quarter <%= quarterNumber || 1 %> Grading Deadline Expired:</span>
+                    <span class="text-rose-200/90 ml-1.5"><%= gradingStatus.message %> Grades and feedback are in read-only mode.</span>
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-black uppercase tracking-wider">
+                Read-Only Mode
+            </span>
+        </div>
+    <% } %>
 
     <!-- Slide-over Guidelines & Blueprint Drawer (Right) -->
     <div id="guidelinesDrawer" class="fixed inset-y-0 right-0 w-[420px] max-w-[90vw] bg-slate-900 text-white z-50 shadow-2xl border-l border-slate-800 flex flex-col transform translate-x-full transition-transform duration-300 ease-in-out">
@@ -521,15 +552,20 @@
                 
                 <div class="flex items-center gap-2">
                     <!-- Save Score (Current) -->
-                    <button type="button" onclick="saveCurrentGrade(false)" id="saveCurrentBtn" class="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-black shadow-sm transition flex items-center gap-1.5" title="Save Grade (Ctrl+S)">
-                        <i class="fas fa-floppy-disk text-slate-500"></i>
-                        <span>Save</span>
+                    <% const isGradingLocked = (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed); %>
+                    <button type="button" onclick="<%= isGradingLocked ? '' : 'saveCurrentGrade(false)' %>" id="saveCurrentBtn" 
+                        class="px-4 py-2.5 <%= isGradingLocked ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-sm' %> border rounded-xl text-xs font-black transition flex items-center gap-1.5" 
+                        title="<%= isGradingLocked ? 'Grading Locked: Quarter deadline passed' : 'Save Grade (Ctrl+S)' %>" <%= isGradingLocked ? 'disabled' : '' %>>
+                        <i class="fas <%= isGradingLocked ? 'fa-lock' : 'fa-floppy-disk text-slate-500' %>"></i>
+                        <span><%= isGradingLocked ? 'Grading Locked' : 'Save' %></span>
                     </button>
 
                     <!-- Save & Advance -->
-                    <button type="button" onclick="saveCurrentGrade(true)" id="saveAdvanceBtn" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-200 transition flex items-center gap-2" title="Save Grade and Move to Next Student (Enter)">
-                        <span>Save &amp; Advance</span>
-                        <i class="fas fa-arrow-right text-[10px]"></i>
+                    <button type="button" onclick="<%= isGradingLocked ? '' : 'saveCurrentGrade(true)' %>" id="saveAdvanceBtn" 
+                        class="px-5 py-2.5 <%= isGradingLocked ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200' %> rounded-xl text-xs font-black transition flex items-center gap-2" 
+                        title="<%= isGradingLocked ? 'Grading Locked: Quarter deadline passed' : 'Save Grade and Move to Next Student (Enter)' %>" <%= isGradingLocked ? 'disabled' : '' %>>
+                        <span><%= isGradingLocked ? 'Locked' : 'Save & Advance' %></span>
+                        <i class="fas <%= isGradingLocked ? 'fa-lock' : 'fa-arrow-right' %> text-[10px]"></i>
                     </button>
                 </div>
             </div>

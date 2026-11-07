@@ -24,6 +24,7 @@ const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const levelProgressionService = require('../services/levelProgressionService');
 const forumExpService = require('../services/forumExpService');
 const topicScheduleService = require('../services/topicScheduleService');
+const academicHelper = require('../utils/academicHelper');
 const { SIMULATIONS_REGISTRY } = require('../services/simulationQuizService');
 
 const simTitleMap = {};
@@ -1170,9 +1171,17 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
             [classId]
         );
 
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        if (quarters && quarters.length > 0) {
+            quarters.forEach(q => {
+                q.gradingStatus = academicHelper.isQuarterGradingOpen(activeSY, q.quarter_number);
+            });
+        }
+
         const notifications = await getTeacherNotifications(db, teacherId);
         res.render('teacher/class-view', {
             user: req.user,
+            activeSY,
             classInfo: {
                 class_name: classData[0].class_name,
                 class_id: Number(classId),
@@ -1182,7 +1191,7 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                 enrollment_end: classData[0].enrollment_end
             },
             subject: classData[0],
-            schoolYear: { sy_range: classData[0].sy_range },
+            schoolYear: { sy_range: (activeSY && activeSY.sy_range) || classData[0].sy_range },
             students: students || [],
             quarters: quarters || [],
             scores: scores || [],
@@ -9896,8 +9905,18 @@ router.get('/reports', isTeacher, async (req, res) => {
         };
 
         const notifications = await getTeacherNotifications(db, teacherId);
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const quarterStatuses = {
+            1: academicHelper.isQuarterGradingOpen(activeSY, 1),
+            2: academicHelper.isQuarterGradingOpen(activeSY, 2),
+            3: academicHelper.isQuarterGradingOpen(activeSY, 3),
+            4: academicHelper.isQuarterGradingOpen(activeSY, 4)
+        };
+
         res.render('teacher/reports', {
             user: req.user,
+            activeSY,
+            quarterStatuses,
             classes,
             selectedClassId: req.query.class_id === 'all' ? 'all' : (selectedClassId || ''),
             stats,
@@ -16100,9 +16119,16 @@ router.get(['/grading-workspace/:aid', '/grading/workspace/:aid'], isTeacher, as
             });
         }
 
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId: req.params.aid });
+        const gradingStatus = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
+
         res.render('teacher/grading_workspace', {
             user: req.user,
-            assessment: assessments[0]
+            assessment: assessments[0],
+            activeSY,
+            quarterNumber: qInfo.quarterNumber,
+            gradingStatus
         });
     } catch (err) {
         console.error('[GET /teacher/grading-workspace/:aid]', err);
@@ -16123,6 +16149,14 @@ router.get('/api/grading/:aid/submissions', isTeacher, async (req, res) => {
             JOIN quarters q ON t.quarter_id = q.quarter_id 
             WHERE a.assessment_id = ?
         `, [aid]);
+
+        if (!asmt) {
+            return res.status(404).json({ success: false, error: 'Assessment not found' });
+        }
+
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId: aid });
+        const gradingStatus = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
 
         if (!asmt) {
             return res.status(404).json({ success: false, error: 'Assessment not found' });
@@ -16332,7 +16366,13 @@ router.get('/api/grading/:aid/submissions', isTeacher, async (req, res) => {
         }
 
         // Students who did not submit are NOT included, as requested
-        res.json({ success: true, submissions: compiledList, assessment: asmt });
+        res.json({
+            success: true,
+            submissions: compiledList,
+            assessment: asmt,
+            gradingStatus,
+            quarterNumber: qInfo.quarterNumber
+        });
     } catch (err) {
         console.error('[GET /teacher/api/grading/:aid/submissions]', err);
         res.status(500).json({ success: false, error: err.message });
@@ -16348,6 +16388,18 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
         const filename = req.file.filename;
         const duration = parseInt(req.body.duration) || 0;
         const { student_id, assessment_id } = req.body;
+
+        // Check quarter grading deadline
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId, scoreId });
+        const gradingCheck = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
+        if (!gradingCheck.isAllowed) {
+            return res.status(403).json({
+                success: false,
+                error: `Grading Locked: ${gradingCheck.message}`,
+                gradingStatus: gradingCheck
+            });
+        }
 
         if (scoreId === 'new' || scoreId === '0' || !scoreId) {
             if (student_id && assessment_id) {
@@ -16465,6 +16517,18 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
         if (!targetStudentId && group_id) {
             const [[firstMem]] = await db.query(`SELECT student_id FROM group_members WHERE group_id = ? ORDER BY student_id ASC LIMIT 1`, [group_id]);
             if (firstMem) targetStudentId = firstMem.student_id;
+        }
+
+        // Check quarter grading deadline
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId, scoreId });
+        const gradingCheck = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
+        if (!gradingCheck.isAllowed) {
+            return res.status(403).json({
+                success: false,
+                error: `Grading Locked: ${gradingCheck.message}`,
+                gradingStatus: gradingCheck
+            });
         }
 
         if (scoreId === 'new' || scoreId === '0' || !scoreId) {
@@ -16808,6 +16872,19 @@ router.post('/api/assessment/:aid/batch-message', isTeacher, async (req, res) =>
 router.post('/api/assessment/:aid/batch-zero', isTeacher, async (req, res) => {
     try {
         const aid = req.params.aid;
+
+        // Check quarter grading deadline
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId: aid });
+        const gradingCheck = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
+        if (!gradingCheck.isAllowed) {
+            return res.status(403).json({
+                success: false,
+                error: `Grading Locked: ${gradingCheck.message}`,
+                gradingStatus: gradingCheck
+            });
+        }
+
         const [[asmt]] = await db.query(`SELECT total_items FROM assessments WHERE assessment_id = ?`, [aid]);
         const totalItems = asmt ? asmt.total_items : 10;
 
