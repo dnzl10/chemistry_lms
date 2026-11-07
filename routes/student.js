@@ -162,6 +162,8 @@ router.get('/dashboard', async (req, res) => {
     const studentId = req.user.user_id;
 
     try {
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = currentSY ? currentSY.sy_id : null;
 
         const [
             [announcements],
@@ -183,11 +185,13 @@ router.get('/dashboard', async (req, res) => {
                 LEFT JOIN classes c ON a.class_id = c.class_id
                 WHERE a.scope = 'global'
                    OR a.class_id IN (
-                       SELECT class_id FROM class_students WHERE student_id = ?
+                       SELECT cs.class_id FROM class_students cs
+                       JOIN classes c2 ON cs.class_id = c2.class_id
+                       WHERE cs.student_id = ? AND (? IS NULL OR c2.sy_id = ?)
                    )
                 ORDER BY a.is_critical DESC, a.is_priority DESC, a.created_at DESC
                 LIMIT 5
-            `, [studentId]),
+            `, [studentId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT DISTINCT
@@ -214,7 +218,7 @@ router.get('/dashboard', async (req, res) => {
                 LEFT JOIN topics t ON a.topic_id = t.topic_id
                 JOIN quarters q ON COALESCE(a.quarter_id, t.quarter_id) = q.quarter_id
                 JOIN subjects s ON q.subject_id = s.subject_id
-                JOIN classes c ON s.subject_id = c.subject_id
+                JOIN classes c ON s.subject_id = c.subject_id AND (? IS NULL OR c.sy_id = ?)
                 JOIN class_students cs ON c.class_id = cs.class_id AND cs.student_id = ?
                 WHERE a.is_unlocked = 1
                   AND (t.is_locked = 0 OR t.is_locked IS NULL)
@@ -254,7 +258,7 @@ router.get('/dashboard', async (req, res) => {
                   )
                 ORDER BY a.due_date ASC
                 LIMIT 50
-            `, [studentId]),
+            `, [currentSyId, currentSyId, studentId]),
 
             db.query(`
                 SELECT a.*, s.subject_name 
@@ -270,6 +274,11 @@ router.get('/dashboard', async (req, res) => {
                     s.subject_name,
                     s.subject_code,
                     s.subject_image,
+                    c.class_id,
+                    c.class_name,
+                    c.sy_id,
+                    sy.sy_range,
+                    sy.status AS sy_status,
                     COALESCE(MAX(sp.progress_percent), 0) AS progress_percent,
                     MAX(sp.last_accessed) AS last_accessed
                 FROM class_students cs
@@ -280,21 +289,21 @@ router.get('/dashboard', async (req, res) => {
                 LEFT JOIN student_progress sp 
                        ON sp.subject_id = s.subject_id 
                        AND sp.student_id = cs.student_id
-                WHERE cs.student_id = ?
-                GROUP BY s.subject_id, s.subject_name, s.subject_code, s.subject_image
+                WHERE cs.student_id = ? AND (? IS NULL OR c.sy_id = ?)
+                GROUP BY s.subject_id, s.subject_name, s.subject_code, s.subject_image, c.class_id, c.class_name, c.sy_id, sy.sy_range, sy.status
                 ORDER BY last_accessed DESC, s.subject_name ASC
-            `, [studentId]),
+            `, [studentId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT DISTINCT ce.* 
                 FROM calendar_events ce
-                LEFT JOIN classes c ON ce.subject_id = c.subject_id
+                LEFT JOIN classes c ON ce.subject_id = c.subject_id AND (? IS NULL OR c.sy_id = ?)
                 LEFT JOIN class_students cs ON c.class_id = cs.class_id
                 WHERE (ce.teacher_id = ? OR cs.student_id = ?)
                   AND MONTH(ce.event_date) = MONTH(CURRENT_DATE())
                   AND YEAR(ce.event_date) = YEAR(CURRENT_DATE())
                 ORDER BY ce.event_date ASC
-            `, [studentId, studentId]),
+            `, [currentSyId, currentSyId, studentId, studentId]),
 
             db.query(`
                 SELECT 
@@ -302,12 +311,12 @@ router.get('/dashboard', async (req, res) => {
                     a.assessment_name
                 FROM assessments a
                 JOIN quarters q ON a.quarter_id = q.quarter_id
-                JOIN classes c ON q.subject_id = c.subject_id
+                JOIN classes c ON q.subject_id = c.subject_id AND (? IS NULL OR c.sy_id = ?)
                 JOIN class_students cs ON c.class_id = cs.class_id
                 WHERE cs.student_id = ?
                   AND a.due_date IS NOT NULL
                   AND a.is_unlocked = 1
-            `, [studentId]),
+            `, [currentSyId, currentSyId, studentId]),
 
             db.query(`
                 SELECT 
@@ -315,11 +324,11 @@ router.get('/dashboard', async (req, res) => {
                     s.subject_code
                 FROM forum_topics ft
                 JOIN subjects s ON ft.subject_id = s.subject_id
-                JOIN classes c ON s.subject_id = c.subject_id
+                JOIN classes c ON s.subject_id = c.subject_id AND (? IS NULL OR c.sy_id = ?)
                 JOIN class_students cs ON c.class_id = cs.class_id
                 WHERE cs.student_id = ?
                 LIMIT 20 OFFSET 0
-            `, [studentId]),
+            `, [currentSyId, currentSyId, studentId]),
 
             db.query(`
                 SELECT 
@@ -471,6 +480,33 @@ router.get('/dashboard', async (req, res) => {
             `, [studentId, studentId, studentId, studentId, studentId, studentId, studentId, studentId]),
         ]);
 
+        // Fetch archived past school year subjects for academic history drawer
+        const [archivedSubjects] = currentSyId ? await db.query(`
+            SELECT 
+                s.subject_id,
+                s.subject_name,
+                s.subject_code,
+                s.subject_image,
+                c.class_id,
+                c.class_name,
+                c.sy_id,
+                sy.sy_range,
+                sy.status AS sy_status,
+                COALESCE(MAX(sp.progress_percent), 0) AS progress_percent,
+                MAX(sp.last_accessed) AS last_accessed
+            FROM class_students cs
+            JOIN classes c ON cs.class_id = c.class_id
+            JOIN subjects s ON c.subject_id = s.subject_id
+            LEFT JOIN users t ON c.teacher_id = t.user_id
+            JOIN school_years sy ON c.sy_id = sy.sy_id
+            LEFT JOIN student_progress sp 
+                   ON sp.subject_id = s.subject_id 
+                   AND sp.student_id = cs.student_id
+            WHERE cs.student_id = ? AND c.sy_id <> ?
+            GROUP BY s.subject_id, s.subject_name, s.subject_code, s.subject_image, c.class_id, c.class_name, c.sy_id, sy.sy_range, sy.status
+            ORDER BY sy.sy_range DESC, s.subject_name ASC
+        `, [studentId, currentSyId]) : [[]];
+
         const [[currentUser]] = await db.query(
             'SELECT flagged_assessment_id FROM users WHERE user_id = ?',
             [studentId]
@@ -512,6 +548,8 @@ router.get('/dashboard', async (req, res) => {
         // Render dashboard
         res.render('dashboard-student', {
             user: req.user,
+            currentSY,
+            archivedSubjects: archivedSubjects ?? [],
             announcements: announcements ?? [],
             upcomingTasks: upcomingTasks ?? [],
             timeline: timeline ?? [],
@@ -1448,17 +1486,21 @@ router.get('/home', async (req, res) => {
     const studentId = req.user.user_id;
 
     try {
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const activeSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = activeSY ? activeSY.sy_id : null;
 
-        // Kunin ang subjects na HINDI pa naka-enroll ang student (base sa student_progress)
+        // Kunin ang subjects na HINDI pa naka-enroll ang student para sa CURRENT school year
         const [rawSubjects] = await db.query(`
             SELECT s.*, u.first_name, u.last_name, u.profile_pic,
-                   c.class_id, c.class_name, c.max_capacity, c.enrolled_count
+                   c.class_id, c.class_name, c.max_capacity, c.enrolled_count, c.sy_id
             FROM subjects s
-            LEFT JOIN classes c ON s.subject_id = c.subject_id ${activeSY ? 'AND (c.sy_id = ' + Number(activeSY.sy_id) + ' OR c.sy_id IS NULL)' : ''}
+            LEFT JOIN classes c ON s.subject_id = c.subject_id ${currentSyId ? 'AND c.sy_id = ' + Number(currentSyId) : ''}
             LEFT JOIN users u ON c.teacher_id = u.user_id
             WHERE s.subject_id NOT IN (
-                SELECT subject_id FROM student_progress WHERE student_id = ?
+                SELECT c2.subject_id 
+                FROM class_students cs2 
+                JOIN classes c2 ON cs2.class_id = c2.class_id 
+                WHERE cs2.student_id = ? ${currentSyId ? 'AND c2.sy_id = ' + Number(currentSyId) : ''}
             )
             ORDER BY s.semester ASC, s.subject_id ASC
         `, [studentId]);
@@ -1476,7 +1518,7 @@ router.get('/home', async (req, res) => {
 
         const subjects = Array.from(subjectMap.values());
 
-        res.render('home-student', { user: req.user, subjects, activeSY });
+        res.render('home-student', { user: req.user, subjects, activeSY, currentSY: activeSY });
     } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
@@ -1490,14 +1532,15 @@ router.post('/enroll', async (req, res) => {
     const student_id = req.user.user_id; // Passport.js req.user
 
     try {
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const activeSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = activeSY ? activeSY.sy_id : null;
 
-        // 1. I-verify ang Code at kunin ang Course at Class details
+        // 1. I-verify ang Code at kunin ang Course at Class details para sa CURRENT school year
         const [subjectData] = await db.query(`
             SELECT s.enrollment_code, s.semester, s.subject_name,
-                   c.class_id, c.max_capacity, c.enrolled_count 
+                   c.class_id, c.max_capacity, c.enrolled_count, c.sy_id 
             FROM subjects s
-            LEFT JOIN classes c ON s.subject_id = c.subject_id ${activeSY ? 'AND (c.sy_id = ' + Number(activeSY.sy_id) + ' OR c.sy_id IS NULL)' : ''}
+            LEFT JOIN classes c ON s.subject_id = c.subject_id ${currentSyId ? 'AND c.sy_id = ' + Number(currentSyId) : ''}
             WHERE s.subject_id = ?
             ORDER BY c.class_id DESC
             LIMIT 1
@@ -1529,22 +1572,31 @@ router.post('/enroll', async (req, res) => {
             return res.send("<script>alert('Section is currently full (maximum capacity reached). Please contact your instructor.'); window.location='/home';</script>");
         }
 
-        // 2. I-check kung enrolled na (safety check)
-        const [existing] = await db.query(
-            "SELECT * FROM student_progress WHERE student_id = ? AND subject_id = ?",
-            [student_id, subject_id]
-        );
+        // 2. I-check kung enrolled na sa subject na ito para sa CURRENT school year
+        const [existing] = await db.query(`
+            SELECT cs.class_id 
+            FROM class_students cs
+            JOIN classes c ON cs.class_id = c.class_id
+            WHERE cs.student_id = ? AND c.subject_id = ? ${currentSyId ? 'AND c.sy_id = ' + Number(currentSyId) : ''}
+        `, [student_id, subject_id]);
 
         if (existing.length > 0) {
-            return res.send("<script>alert('Enrolled ka na rito!'); window.location='/dashboard';</script>");
+            return res.send("<script>alert('Enrolled ka na rito sa kasalukuyang taon!'); window.location='/dashboard';</script>");
         }
 
         // 3. TRANSACTION: Mag-insert sa dalawang table nang sabay
         // Para siguradong lalabas sa Dashboard (class_students) at may progress tracking (student_progress)
-        await db.query("INSERT INTO student_progress (student_id, subject_id, progress_percent) VALUES (?, ?, 0)", [student_id, subject_id]);
+        const [existingProgress] = await db.query(
+            "SELECT * FROM student_progress WHERE student_id = ? AND subject_id = ?",
+            [student_id, subject_id]
+        );
+        if (existingProgress.length === 0) {
+            await db.query("INSERT INTO student_progress (student_id, subject_id, progress_percent) VALUES (?, ?, 0)", [student_id, subject_id]);
+        }
         
         if (class_id) {
-            await db.query("INSERT INTO class_students (class_id, student_id) VALUES (?, ?)", [class_id, student_id]);
+            const syId = currentSyId || (course.sy_id || null);
+            await db.query("INSERT INTO class_students (class_id, student_id, sy_id) VALUES (?, ?, ?)", [class_id, student_id, syId]);
             // Increment enrolled_count
             await db.query("UPDATE classes SET enrolled_count = COALESCE(enrolled_count, 0) + 1 WHERE class_id = ?", [class_id]);
 
