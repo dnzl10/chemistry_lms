@@ -5155,18 +5155,13 @@ Enrollment Key: <%= subject.enrollment_code || 'N/A' %></div>
                                 <span id="unsavedAttendanceSummaryBadge">Modified records pending save</span>
                             </div>
                         </div>
-                        <div class="modal-footer justify-between bg-slate-50/70 gap-2 flex-wrap">
-                            <button type="button" onclick="closeUnsavedAttendanceModal()" class="sort-btn px-3.5 py-2 font-bold text-slate-600 hover:bg-slate-100">
-                                <i class="fas fa-arrow-left text-xs mr-1"></i> Stay &amp; Review
+                        <div class="modal-footer bg-slate-50/70" style="display:flex;align-items:center;justify-content:center;gap:12px">
+                            <button type="button" onclick="confirmDiscardUnsavedAttendance()" class="sort-btn px-5 py-2.5 font-bold" style="background:#fff1f2;border-color:#fecdd3;color:#be123c">
+                                <i class="fas fa-trash-can text-xs mr-1.5"></i> Discard Changes
                             </button>
-                            <div class="flex items-center gap-2">
-                                <button type="button" onclick="confirmDiscardUnsavedAttendance()" class="sort-btn px-3.5 py-2 font-bold" style="background:#fff1f2;border-color:#fecdd3;color:#be123c">
-                                    <i class="fas fa-trash-can text-xs mr-1"></i> Discard Changes
-                                </button>
-                                <button type="button" id="unsavedAttSaveAndContinueBtn" onclick="confirmSaveAndContinueAttendance()" class="sort-btn active px-4 py-2 font-bold shadow-sm" style="background:#4f46e5;border-color:#4338ca;color:white">
-                                    <i class="fas fa-save text-xs mr-1.5"></i> Save &amp; Continue
-                                </button>
-                            </div>
+                            <button type="button" id="unsavedAttSaveAndContinueBtn" onclick="confirmSaveAndContinueAttendance()" class="sort-btn active px-5 py-2.5 font-bold shadow-sm" style="background:#4f46e5;border-color:#4338ca;color:white">
+                                <i class="fas fa-save text-xs mr-1.5"></i> Save &amp; Continue
+                            </button>
                         </div>
                     </div>
                 </div>
