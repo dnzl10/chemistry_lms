@@ -280,6 +280,9 @@ router.get('/dashboard', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
 
     try {
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = currentSY ? currentSY.sy_id : null;
+
         const [
             [classes],
             [statsResult],
@@ -299,16 +302,16 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 SELECT c.*, s.subject_name, s.subject_code, s.subject_image,
                 (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id) as student_count
                 FROM classes c JOIN subjects s ON c.subject_id = s.subject_id
-                WHERE c.teacher_id = ?`, [teacherId]),
+                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)`, [teacherId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT 
-                    (SELECT COUNT(DISTINCT student_id) FROM class_students cs JOIN classes c ON cs.class_id = c.class_id WHERE c.teacher_id = ?) as totalStudents,
+                    (SELECT COUNT(DISTINCT cs.student_id) FROM class_students cs JOIN classes c ON cs.class_id = c.class_id WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)) as totalStudents,
                     (SELECT COUNT(*) FROM elementa_game_sessions egs 
                      JOIN class_students cs ON (egs.student_id_p1 = cs.student_id OR egs.student_id_p2 = cs.student_id)
                      JOIN classes c ON cs.class_id = c.class_id 
-                     WHERE c.teacher_id = ?) as totalAttempts`,
-                [teacherId, teacherId]),
+                     WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)) as totalAttempts`,
+                [teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT * FROM (
@@ -358,7 +361,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     JOIN topics t ON a.topic_id = t.topic_id
                     JOIN quarters q ON t.quarter_id = q.quarter_id
                     JOIN subjects s ON q.subject_id = s.subject_id
-                    JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ?
+                    JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                     JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id
                     LEFT JOIN elementa_game_sessions egs ON (
                         egs.assessment_id = ss.assessment_id 
@@ -421,13 +424,13 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                         SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
                         FROM class_students cs2
                         JOIN classes c2 ON cs2.class_id = c2.class_id
-                        WHERE c2.teacher_id = ?
+                        WHERE c2.teacher_id = ? AND (? IS NULL OR c2.sy_id = ?)
                         GROUP BY cs2.student_id, c2.subject_id
                     ) fallback_p1 ON fallback_p1.student_id = u1.user_id
                         AND (q.subject_id IS NULL OR fallback_p1.subject_id = q.subject_id)
                     JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_p1.class_id)
                     JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
-                    WHERE c.teacher_id = ?
+                    WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                       AND (egs.play_mode = 'Versus' OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0))
 
                     UNION ALL
@@ -475,13 +478,13 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                         SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
                         FROM class_students cs2
                         JOIN classes c2 ON cs2.class_id = c2.class_id
-                        WHERE c2.teacher_id = ?
+                        WHERE c2.teacher_id = ? AND (? IS NULL OR c2.sy_id = ?)
                         GROUP BY cs2.student_id, c2.subject_id
                     ) fallback_fp ON fallback_fp.student_id = u.user_id
                         AND (q.subject_id IS NULL OR fallback_fp.subject_id = q.subject_id)
                     JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_fp.class_id)
                     JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
-                    WHERE c.teacher_id = ?
+                    WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                       AND (egs.student_id_p2 IS NULL OR egs.student_id_p2 = 0)
                       AND (egs.assessment_id IS NULL OR NOT EXISTS (
                           SELECT 1 FROM student_scores ss2 
@@ -490,7 +493,13 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                       ))
                 ) AS consolidated_feed
                 ORDER BY submitted_at DESC, score_id DESC
-                LIMIT 10`, [teacherId, teacherId, teacherId, teacherId, teacherId]),
+                LIMIT 10`, [
+                    teacherId, currentSyId, currentSyId,
+                    teacherId, currentSyId, currentSyId,
+                    teacherId, currentSyId, currentSyId,
+                    teacherId, currentSyId, currentSyId,
+                    teacherId, currentSyId, currentSyId
+                ]),
 
             db.query(`
                 SELECT ft.*, t.topic_name, q.subject_id
@@ -514,10 +523,10 @@ router.get('/dashboard', isTeacher, async (req, res) => {
             JOIN topics t ON a.topic_id = t.topic_id 
             JOIN quarters q ON t.quarter_id = q.quarter_id
             JOIN classes c ON q.subject_id = c.subject_id
-            WHERE c.teacher_id = ? AND a.due_date >= CURDATE()
+            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND a.due_date >= CURDATE()
             ORDER BY a.due_date ASC
             LIMIT 10
-        `, [teacherId]),
+        `, [teacherId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT u.first_name, u.last_name, u.profile_pic, sp.progress_percent, s.subject_name, s.subject_id
@@ -525,8 +534,8 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 JOIN users u ON sp.student_id = u.user_id
                 JOIN subjects s ON sp.subject_id = s.subject_id
                 JOIN classes c ON s.subject_id = c.subject_id
-                WHERE c.teacher_id = ? AND sp.progress_percent < 50 
-                GROUP BY u.user_id, s.subject_id`, [teacherId]),
+                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND sp.progress_percent < 50 
+                GROUP BY u.user_id, s.subject_id`, [teacherId, currentSyId, currentSyId]),
 
             db.query(`SELECT * FROM announcements WHERE teacher_id = ? ORDER BY created_at DESC LIMIT 3`, [teacherId]),
 
@@ -544,8 +553,8 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 FROM users u
                 JOIN class_students cs ON u.user_id = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ? AND u.role = 'Student'
-                GROUP BY u.user_id ORDER BY total_points DESC LIMIT 5`, [teacherId]),
+                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND u.role = 'Student'
+                GROUP BY u.user_id ORDER BY total_points DESC LIMIT 5`, [teacherId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT ROUND(AVG(eca.is_correct) * 100, 1) as avg_accuracy
@@ -554,7 +563,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
                 JOIN class_students cs ON (egs.student_id_p1 = cs.student_id OR egs.student_id_p2 = cs.student_id)
                 JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ?`, [teacherId]),
+                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)`, [teacherId, currentSyId, currentSyId]),
 
             /* NEW: Subject Assessment Completion Stats for bar chart */
             db.query(`
@@ -575,9 +584,9 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 LEFT JOIN topics t ON q.quarter_id = t.quarter_id
                 LEFT JOIN assessments a ON t.topic_id = a.topic_id
                 LEFT JOIN elementa_student_grades esg ON (a.assessment_id = esg.assessment_id AND esg.student_id = cs.student_id)
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                 GROUP BY s.subject_id, s.subject_name, s.subject_code
-                ORDER BY completion_percent ASC`, [teacherId]),
+                ORDER BY completion_percent ASC`, [teacherId, currentSyId, currentSyId]),
 
             /* Weekly Performance Trends for Performance Overview line chart */
             db.query(`
@@ -598,7 +607,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     JOIN topics t ON a.topic_id = t.topic_id
                     JOIN quarters q ON t.quarter_id = q.quarter_id
                     JOIN subjects s ON q.subject_id = s.subject_id
-                    JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ?
+                    JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                     JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id
                     WHERE ss.score_obtained IS NOT NULL AND ss.total_items > 0
 
@@ -613,10 +622,10 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
                     JOIN class_students cs ON (egs.student_id_p1 = cs.student_id OR egs.student_id_p2 = cs.student_id)
                     JOIN classes c ON cs.class_id = c.class_id
-                    WHERE c.teacher_id = ?
+                    WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                 ) all_attempts
                 GROUP BY weekday_idx, day_name
-                ORDER BY weekday_idx ASC`, [teacherId, teacherId]),
+                ORDER BY weekday_idx ASC`, [teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
         ]);
 
         // Build Weekly Trends 7-day data (Mon=0, Tue=1, ..., Sun=6)
@@ -641,6 +650,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
 
         res.render('teacher/dashboard', {
             user: req.user,
+            currentSY,
             classes,
             stats: { ...statsResult[0], avgAccuracy: performanceStats[0]?.avg_accuracy || 0 },
             recentScores,
@@ -877,7 +887,7 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
         const teacherId = req.user.user_id;
 
         const [classData] = await db.execute(`
-            SELECT c.*, s.*, sy.sy_range
+            SELECT c.*, s.*, sy.sy_range, sy.status AS sy_status, sy.is_active AS sy_is_active
             FROM classes c
             JOIN subjects s ON c.subject_id = s.subject_id
             JOIN school_years sy ON c.sy_id = sy.sy_id
@@ -1171,17 +1181,30 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
             [classId]
         );
 
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const isHistoricalSY = !currentSY || (classData[0].sy_id !== currentSY.sy_id);
+
         if (quarters && quarters.length > 0) {
             quarters.forEach(q => {
-                q.gradingStatus = academicHelper.isQuarterGradingOpen(activeSY, q.quarter_number);
+                if (isHistoricalSY) {
+                    q.gradingStatus = {
+                        isOpen: false,
+                        status: 'LOCKED',
+                        deadline: null,
+                        message: 'Archived Academic Year: Grade modifications locked.'
+                    };
+                } else {
+                    q.gradingStatus = academicHelper.isQuarterGradingOpen(currentSY, q.quarter_number);
+                }
             });
         }
 
         const notifications = await getTeacherNotifications(db, teacherId);
         res.render('teacher/class-view', {
             user: req.user,
-            activeSY,
+            activeSY: currentSY,
+            currentSY,
+            isHistoricalSY,
             classInfo: {
                 class_name: classData[0].class_name,
                 class_id: Number(classId),
@@ -1191,7 +1214,12 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                 enrollment_end: classData[0].enrollment_end
             },
             subject: classData[0],
-            schoolYear: { sy_range: (activeSY && activeSY.sy_range) || classData[0].sy_range },
+            schoolYear: {
+                sy_id: classData[0].sy_id,
+                sy_range: classData[0].sy_range,
+                status: classData[0].sy_status,
+                is_active: classData[0].sy_is_active
+            },
             students: students || [],
             quarters: quarters || [],
             scores: scores || [],
@@ -5072,11 +5100,12 @@ router.get('/classes', isTeacher, async (req, res) => {
     console.log(`[GET] /teacher/classes — user: ${req.user?.user_id}`);
     try {
         const teacherId = req.user.user_id;
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
 
         const [schoolYears] = await db.execute(
-            `SELECT sy_id, sy_range, is_active
+            `SELECT sy_id, sy_range, sy_code, status, is_active
              FROM school_years
-             ORDER BY sy_id DESC`
+             ORDER BY is_active DESC, sy_range DESC`
         );
 
         const [classes] = await db.execute(`
@@ -5086,6 +5115,7 @@ router.get('/classes', isTeacher, async (req, res) => {
                 c.subject_id,
                 c.sy_id,
                 sy.sy_range,
+                sy.status     AS sy_status,
                 sy.is_active  AS sy_is_active,
                 s.subject_name,
                 s.subject_code,
@@ -5104,7 +5134,7 @@ router.get('/classes', isTeacher, async (req, res) => {
             WHERE c.teacher_id = ?
             GROUP BY
                 c.class_id, c.class_name, c.subject_id, c.sy_id,
-                sy.sy_range, sy.is_active,
+                sy.sy_range, sy.status, sy.is_active,
                 s.subject_name, s.subject_code, s.subject_image,
                 s.semester, s.enrollment_code
             ORDER BY sy.is_active DESC, sy.sy_id DESC, c.class_name ASC`,
@@ -5116,6 +5146,7 @@ router.get('/classes', isTeacher, async (req, res) => {
         const notifications = await getTeacherNotifications(db, teacherId);
         res.render('teacher/class_list', {
             user: req.user,
+            currentSY,
             classes: classes || [],
             schoolYears: schoolYears || [],
             notifications,
@@ -9505,20 +9536,25 @@ router.get('/reports', isTeacher, async (req, res) => {
     let selectedClassId = req.query.class_id;
 
     try {
-        // Fetch teacher's classes for the filter dropdown (with subject metadata and quarters)
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+
+        // Fetch teacher's classes for the filter dropdown (with subject metadata, quarters, and school year)
         const [classes] = await db.execute(`
             SELECT c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester,
+                   c.sy_id, sy.sy_range, sy.status AS sy_status, sy.is_active AS sy_is_active,
                    COALESCE(GROUP_CONCAT(q.quarter_number ORDER BY q.quarter_number), '1,2') as quarters
             FROM classes c
             JOIN subjects s ON c.subject_id = s.subject_id
+            LEFT JOIN school_years sy ON c.sy_id = sy.sy_id
             LEFT JOIN quarters q ON s.subject_id = q.subject_id
             WHERE c.teacher_id = ?
-            GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester
-            ORDER BY c.class_id ASC, c.class_name ASC`, [teacherId]);
+            GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester, c.sy_id, sy.sy_range, sy.status, sy.is_active
+            ORDER BY sy.is_active DESC, c.class_id ASC, c.class_name ASC`, [teacherId]);
 
-        // Default to teacher's primary active class if no class is explicitly specified in query
+        // Default to teacher's primary active class in the CURRENT school year if no class is explicitly specified
         if (!selectedClassId && classes.length > 0) {
-            selectedClassId = String(classes[0].class_id);
+            const currentSYClass = currentSY ? classes.find(c => c.sy_id === currentSY.sy_id) : null;
+            selectedClassId = currentSYClass ? String(currentSYClass.class_id) : String(classes[0].class_id);
         } else if (selectedClassId === 'all') {
             selectedClassId = null; // triggers overview across all classes for DB queries
         }
@@ -9905,7 +9941,7 @@ router.get('/reports', isTeacher, async (req, res) => {
         };
 
         const notifications = await getTeacherNotifications(db, teacherId);
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const activeSY = currentSY || (await academicHelper.getActiveSchoolYear(db));
         const quarterStatuses = {
             1: academicHelper.isQuarterGradingOpen(activeSY, 1),
             2: academicHelper.isQuarterGradingOpen(activeSY, 2),
@@ -9916,6 +9952,7 @@ router.get('/reports', isTeacher, async (req, res) => {
         res.render('teacher/reports', {
             user: req.user,
             activeSY,
+            currentSY: activeSY,
             quarterStatuses,
             classes,
             selectedClassId: req.query.class_id === 'all' ? 'all' : (selectedClassId || ''),

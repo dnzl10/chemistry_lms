@@ -592,8 +592,8 @@
                                         </div>
                                         <div>
                                             <div class="flex items-center gap-2">
-                                                <h2 class="text-sm md:text-base font-extrabold text-white">Active Academic Year: <%= activeSY.sy_range %></h2>
-                                                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold uppercase"><%= activeSY.status || 'Active' %></span>
+                                                <h2 class="text-sm md:text-base font-extrabold text-white">Current Academic Year: <%= activeSY.sy_range %></h2>
+                                                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold uppercase"><%= activeSY.status || 'Current' %></span>
                                             </div>
                                             <p class="text-[11px] text-slate-300">DepEd 2-Semester &times; 2-Quarter Framework &bull; Instructor Quarterly Grade Encoding Deadlines</p>
                                         </div>
@@ -661,7 +661,7 @@
                                         <% classes.forEach(c=> { %>
                                             <option value="<%= c.class_id %>" data-subject="<%= c.subject_id %>"
                                                 <%=String(c.class_id)===String(selectedClassId) ? 'selected' : '' %>>
-                                                <%= c.class_name %> — <%= c.subject_name %>
+                                                <%= c.class_name %> — <%= c.subject_name %> <%= c.sy_range ? '(' + c.sy_range + ')' : '' %> <%= (c.sy_status === 'Current' || c.sy_is_active) ? '[Current]' : '[Archive]' %>
                                             </option>
                                             <% }) %>
                                                 <option value="all" <%=selectedClassId==='all' ? 'selected' : '' %>>—

@@ -403,9 +403,9 @@
                     </div>
                     <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
                         <p class="text-3xl font-black text-emerald-600">
-                            <%= schoolYears.filter(function(sy){ return sy.is_active; }).length > 0 ? schoolYears.filter(function(sy){ return sy.is_active; })[0].sy_range : 'N/A' %>
+                            <%= (typeof currentSY !== 'undefined' && currentSY) ? currentSY.sy_range : (schoolYears.filter(function(sy){ return sy.status === 'Current' || sy.is_active; })[0]?.sy_range || 'N/A') %>
                         </p>
-                        <p class="text-xs font-semibold text-slate-400 mt-1">Active School Year</p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Current School Year</p>
                     </div>
                     <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
                         <p class="text-3xl font-black text-amber-500">
@@ -435,10 +435,10 @@
                             <div class="flex gap-1 flex-wrap" id="syFilterGroup">
                                 <button class="sy-btn active" data-sy="" onclick="filterClasses(this)">All Years</button>
                                 <% schoolYears.forEach(function(sy){ %>
-                                <button class="sy-btn <%= sy.is_active ? 'active' : '' %>"
+                                <button class="sy-btn <%= (sy.status === 'Current' || sy.is_active) ? 'active' : '' %>"
                                         data-sy="<%= sy.sy_id %>"
                                         onclick="filterClasses(this)">
-                                    <%= sy.sy_range %><% if(sy.is_active){ %> <span style="font-size:8px">●</span><% } %>
+                                    <%= sy.sy_range %><% if (sy.status === 'Current' || sy.is_active) { %> <span style="font-size:9px" class="text-emerald-500 font-bold">● Current</span><% } else if (sy.status === 'Draft') { %> <span style="font-size:8px" class="text-sky-500">(Draft)</span><% } else { %> <span style="font-size:8px" class="text-slate-400">(Archive)</span><% } %>
                                 </button>
                                 <% }); %>
                             </div>
@@ -503,10 +503,19 @@
                                     <div class="class-card-banner-overlay"></div>
                                     
                                     <!-- Overlay text -->
-                                    <div style="position:absolute;bottom:8px;left:12px;right:12px">
+                                    <div style="position:absolute;bottom:8px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:center">
                                         <p style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:.06em">
                                             <%= cls.sy_range %> · <%= semLabel %>
                                         </p>
+                                        <% if (typeof currentSY !== 'undefined' && currentSY && cls.sy_id !== currentSY.sy_id) { %>
+                                        <span class="text-[9px] font-black uppercase tracking-wider bg-slate-900/80 text-slate-300 border border-slate-600/50 px-1.5 py-0.5 rounded">
+                                            Archive
+                                        </span>
+                                        <% } else if (cls.sy_is_active || (typeof currentSY !== 'undefined' && currentSY && cls.sy_id === currentSY.sy_id)) { %>
+                                        <span class="text-[9px] font-black uppercase tracking-wider bg-emerald-500/80 text-white px-1.5 py-0.5 rounded">
+                                            Current
+                                        </span>
+                                        <% } %>
                                     </div>
                                 </div>
 
