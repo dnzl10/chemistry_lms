@@ -321,7 +321,7 @@
                             <div class="flex items-center justify-between mb-1">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                                    <span class="text-xs font-black text-emerald-700 uppercase tracking-wider">Active</span>
+                                    <span class="text-xs font-black text-emerald-700 uppercase tracking-wider">Current</span>
                                     <% if (activeSY.sy_code) { %>
                                     <span class="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md uppercase"><%= activeSY.sy_code %></span>
                                     <% } %>
@@ -353,12 +353,12 @@
                         <% schoolYears.forEach(function(sy) { %>
                             <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50">
                                 <div class="flex items-center gap-2">
-                                    <% if (sy.is_active) { %>
-                                    <span class="badge badge-active">Active</span>
+                                    <% if (sy.status === 'Current' || sy.is_active) { %>
+                                    <span class="badge badge-active flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Current</span>
                                     <% } else if (sy.status === 'Draft') { %>
-                                    <span class="badge" style="background:#e0f2fe;color:#0369a1;">Draft</span>
+                                    <span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;">Draft</span>
                                     <% } else { %>
-                                    <span class="badge badge-inactive">Archived</span>
+                                    <span class="badge badge-inactive">Archive</span>
                                     <% } %>
                                     <span class="text-sm font-bold text-slate-700"><%= sy.sy_range %></span>
                                     <% if (sy.sy_code) { %><span class="text-[10px] font-mono text-indigo-500 font-bold">(<%= sy.sy_code %>)</span><% } %>
@@ -747,17 +747,17 @@
 
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">School Year Status *</label>
-                        <select id="addSYStatus" name="status" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <select id="addSYStatus" name="status" onchange="syncAddSYStatus(this.value)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 bg-white">
                             <option value="Draft" selected>Draft (Preparation Mode / Inactive)</option>
-                            <option value="Active">Active (Official Running School Year)</option>
-                            <option value="Archived">Archived (Historical / Read-Only)</option>
+                            <option value="Current">Current (Official Running School Year)</option>
+                            <option value="Archive">Archive (Historical / Closed)</option>
                         </select>
-                        <p class="text-[11px] text-slate-400 mt-1">Select Draft to prepare curriculum without affecting live students</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Selecting Current automatically activates this school year across all portals</p>
                     </div>
 
                     <div class="flex items-center pt-5">
                         <label class="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition w-full">
-                            <input type="checkbox" id="addSYIsActive" name="is_active" value="1" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                            <input type="checkbox" id="addSYIsActive" name="is_active" value="1" onchange="syncAddSYActive(this.checked)" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
                             <div>
                                 <span class="text-xs font-bold text-slate-800 block">Set as Active School Year</span>
                                 <span class="text-[10px] text-slate-500">Makes this the current live academic context across the portal</span>
@@ -1021,7 +1021,7 @@
                             <option value="">-- No Rollover (Start Completely Fresh) --</option>
                             <% if (typeof pastSchoolYears !== 'undefined') { %>
                             <% pastSchoolYears.forEach(function(sy) { %>
-                                <option value="<%= sy.sy_id %>"><%= sy.sy_range %> <% if (sy.sy_code) { %>(<%= sy.sy_code %>)<% } %> <% if (sy.is_active) { %>[Current Active]<% } %></option>
+                                <option value="<%= sy.sy_id %>"><%= sy.sy_range %> <% if (sy.sy_code) { %>(<%= sy.sy_code %>)<% } %> <% if (sy.status === 'Current' || sy.is_active) { %>[Current Active]<% } else if (sy.status === 'Draft') { %>[Draft]<% } else { %>[Archive]<% } %></option>
                             <% }) %>
                             <% } %>
                         </select>
@@ -1184,15 +1184,15 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Status</label>
-                        <select id="editSYStatus" name="status" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-white">
+                        <select id="editSYStatus" name="status" onchange="syncEditSYStatus(this.value)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-white">
                             <option value="Draft">Draft (Preparation / Inactive)</option>
-                            <option value="Active">Active (Official Running School Year)</option>
-                            <option value="Archived">Archived (Historical / Read-Only)</option>
+                            <option value="Current">Current (Official Running School Year)</option>
+                            <option value="Archive">Archive (Historical / Closed)</option>
                         </select>
                     </div>
                     <div class="flex items-center pt-5">
                         <label class="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition w-full">
-                            <input type="checkbox" id="editSYIsActive" name="is_active" value="1" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                            <input type="checkbox" id="editSYIsActive" name="is_active" value="1" onchange="syncEditSYActive(this.checked)" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
                             <div>
                                 <span class="text-xs font-bold text-slate-800 block">Is Active School Year</span>
                                 <span class="text-[10px] text-slate-500">Toggles active status across the platform</span>
@@ -1331,12 +1331,12 @@
             <% pastSchoolYears.forEach(function(sy) { %>
             <div class="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-xs">
                 <div class="flex items-center gap-2">
-                    <% if (sy.is_active) { %>
-                    <span class="badge badge-active">Active</span>
+                    <% if (sy.status === 'Current' || sy.is_active) { %>
+                    <span class="badge badge-active flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Current</span>
                     <% } else if (sy.status === 'Draft') { %>
-                    <span class="badge" style="background:#e0f2fe;color:#0369a1;">Draft</span>
+                    <span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;">Draft</span>
                     <% } else { %>
-                    <span class="badge badge-inactive">Archived</span>
+                    <span class="badge badge-inactive">Archive</span>
                     <% } %>
                     <span class="text-sm font-bold text-slate-700"><%= sy.sy_range %></span>
                     <% if (sy.sy_code) { %><span class="text-[10px] font-mono text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded"><%= sy.sy_code %></span><% } %>
@@ -2122,14 +2122,59 @@ async function onSourceSYChange(sourceId) {
     }
 }
 
+// ─── School Year Status & Active Dynamic Auto-Sync ─────────────────────────
+function syncAddSYStatus(statusVal) {
+    const activeCb = document.getElementById('addSYIsActive');
+    if (!activeCb) return;
+    if (statusVal === 'Current') {
+        activeCb.checked = true;
+    } else {
+        activeCb.checked = false;
+    }
+}
+
+function syncAddSYActive(isChecked) {
+    const statusSelect = document.getElementById('addSYStatus');
+    if (!statusSelect) return;
+    if (isChecked) {
+        statusSelect.value = 'Current';
+    } else if (statusSelect.value === 'Current') {
+        statusSelect.value = 'Draft';
+    }
+}
+
+function syncEditSYStatus(statusVal) {
+    const activeCb = document.getElementById('editSYIsActive');
+    if (!activeCb) return;
+    if (statusVal === 'Current') {
+        activeCb.checked = true;
+    } else {
+        activeCb.checked = false;
+    }
+}
+
+function syncEditSYActive(isChecked) {
+    const statusSelect = document.getElementById('editSYStatus');
+    if (!statusSelect) return;
+    if (isChecked) {
+        statusSelect.value = 'Current';
+    } else if (statusSelect.value === 'Current') {
+        statusSelect.value = 'Draft';
+    }
+}
+
 async function submitAddSY(e) {
     e.preventDefault();
     const form = document.getElementById('addSYForm');
     const fd   = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
 
-    // Checkbox normalization
+    // Checkbox normalization & canonical status
+    payload.status = document.getElementById('addSYStatus').value;
     payload.is_active = document.getElementById('addSYIsActive').checked ? 1 : 0;
+    if (payload.status === 'Current') payload.is_active = 1;
+    if (payload.is_active === 1) payload.status = 'Current';
+
     payload.enforce_prerequisite = document.getElementById('addEnforcePrereq').checked ? 1 : 0;
     payload.rollover_materials = document.getElementById('addRolloverMaterials').checked ? 1 : 0;
     payload.rollover_assessments = document.getElementById('addRolloverAssessments').checked ? 1 : 0;
@@ -2165,8 +2210,13 @@ async function openEditSY(sy) {
             const data = result.schoolYear;
             document.getElementById('editSYRange').value = data.sy_range || '';
             document.getElementById('editSYCode').value  = data.sy_code || '';
-            document.getElementById('editSYStatus').value = data.status || 'Draft';
-            document.getElementById('editSYIsActive').checked = !!data.is_active;
+            
+            // Canonical status resolution: Current, Draft, Archive
+            let resolvedStatus = data.status || 'Draft';
+            if (resolvedStatus === 'Active' || data.is_active) resolvedStatus = 'Current';
+            if (resolvedStatus === 'Archived') resolvedStatus = 'Archive';
+            document.getElementById('editSYStatus').value = resolvedStatus;
+            document.getElementById('editSYIsActive').checked = (resolvedStatus === 'Current' || !!data.is_active);
 
             const formatDate = d => d ? new Date(d).toISOString().split('T')[0] : '';
             const formatDateTime = d => {
@@ -2217,7 +2267,11 @@ async function submitEditSY(e) {
     const fd   = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
 
+    payload.status = document.getElementById('editSYStatus').value;
     payload.is_active = document.getElementById('editSYIsActive').checked ? 1 : 0;
+    if (payload.status === 'Current') payload.is_active = 1;
+    if (payload.is_active === 1) payload.status = 'Current';
+
     payload.enforce_prerequisite = document.getElementById('editEnforcePrereq').checked ? 1 : 0;
 
     const data = await apiPost(`/admin/am/school-years/${syId}`, payload);
@@ -2233,14 +2287,14 @@ async function submitEditSY(e) {
 function confirmActivateSY(syId, syRange) {
     showConfirm({
         icon:'fa-toggle-on', iconBg:'bg-emerald-100', iconColor:'text-emerald-600',
-        title:`Activate ${syRange}?`,
-        desc:'This will set this school year as the portal-wide active context and archive previous active years. All classes and records remain intact.',
-        btnLabel:'Yes, Activate', btnColor:'bg-emerald-600',
+        title:`Set ${syRange} as Current School Year?`,
+        desc:'This will set this school year as the portal-wide Current context and archive previous active years. All classes and records remain intact.',
+        btnLabel:'Yes, Make Current', btnColor:'bg-emerald-600',
         onConfirm: async () => {
             const data = await apiPost(`/admin/am/school-years/${syId}/activate`, {});
             closeModal('modalConfirm');
             if (data.success) {
-                showToast('School year activated!', 'success');
+                showToast('School year activated as Current!', 'success');
                 refreshAdminContent({ message: 'Activating school year...' });
             }
             else showToast(data.message || 'Failed.', 'error');
@@ -2356,8 +2410,10 @@ function validateSYInput(input) {
 
         // If future year, suggest Draft status
         const statusSelect = document.getElementById('addSYStatus');
+        const activeCb = document.getElementById('addSYIsActive');
         if (start > currentYear && statusSelect) {
             statusSelect.value = 'Draft';
+            if (activeCb) activeCb.checked = false;
             errorEl.textContent = `ℹ️ Upcoming School Year: Pre-configured in Draft mode.`;
             errorEl.style.color = '#0284c7';
             errorEl.classList.remove('hidden');

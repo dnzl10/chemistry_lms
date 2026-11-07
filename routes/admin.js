@@ -2448,7 +2448,7 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
 
         // ── Active school year with class/enroll counts ───────────────────────
         let activeSY = null;
-        const activeSYRow = allSchoolYears.find(sy => sy.is_active);
+        const activeSYRow = allSchoolYears.find(sy => sy.status === 'Current' || sy.is_active);
         if (activeSYRow) {
             const [[classCountRow]]  = await db.query(
                 `SELECT COUNT(*) AS cnt FROM classes WHERE sy_id = ?`, [activeSYRow.sy_id]
@@ -2602,13 +2602,13 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
             return res.json({ success: false, message: `School year "${cleanRange}" already exists.` });
         }
 
-        // 3. Determine active state & status
-        const activeFlag = (is_active === 1 || is_active === true || is_active === '1' || status === 'Active') ? 1 : 0;
-        const finalStatus = activeFlag === 1 ? 'Active' : (['Draft', 'Active', 'Archived'].includes(status) ? status : 'Draft');
+        // 3. Determine active state & status (canonical: Current, Draft, Archive)
+        const activeFlag = (is_active === 1 || is_active === true || is_active === '1' || status === 'Current' || status === 'Active') ? 1 : 0;
+        const finalStatus = activeFlag === 1 ? 'Current' : academicHelper.normalizeSchoolYearStatus(status, 0);
 
-        // Atomically deactivate others if this SY is active
+        // Atomically deactivate others if this SY is active/Current
         if (activeFlag === 1) {
-            await db.query(`UPDATE school_years SET is_active = 0, status = 'Archived' WHERE is_active = 1`);
+            await db.query(`UPDATE school_years SET is_active = 0, status = 'Archive' WHERE is_active = 1 OR status = 'Current'`);
         }
 
         // 4. Insert row
@@ -2833,17 +2833,17 @@ router.post('/am/school-years/:id', requireAdmin, async (req, res) => {
             return res.json({ success: false, message: `School year "${cleanRange}" already exists.` });
         }
 
-        // Check active / status transition
+        // Check active / status transition (canonical: Current, Draft, Archive)
         let activeFlag = sy.is_active;
-        let finalStatus = status || sy.status;
-        if (is_active !== undefined) {
-            activeFlag = (is_active === 1 || is_active === true || is_active === '1' || status === 'Active') ? 1 : 0;
-            finalStatus = activeFlag === 1 ? 'Active' : finalStatus;
+        let finalStatus = academicHelper.normalizeSchoolYearStatus(status || sy.status, activeFlag);
+        if (is_active !== undefined || status !== undefined) {
+            activeFlag = (is_active === 1 || is_active === true || is_active === '1' || status === 'Current' || status === 'Active') ? 1 : 0;
+            finalStatus = activeFlag === 1 ? 'Current' : academicHelper.normalizeSchoolYearStatus(status || sy.status, 0);
         }
 
         if (activeFlag === 1 && !sy.is_active) {
-            // Atomically archive other active years
-            await db.query(`UPDATE school_years SET is_active = 0, status = 'Archived' WHERE sy_id <> ? AND is_active = 1`, [syId]);
+            // Atomically archive other active/Current years
+            await db.query(`UPDATE school_years SET is_active = 0, status = 'Archive' WHERE sy_id <> ? AND (is_active = 1 OR status = 'Current')`, [syId]);
         }
 
         await db.query(`
@@ -2922,7 +2922,7 @@ router.post('/am/school-years/:id', requireAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/school-years/:id/activate
-// Set a school year as the active one (atomically deactivates & archives all others).
+// Set a school year as the Current active one (atomically sets others to Archive while preserving Drafts).
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/school-years/:id/activate', requireAdmin, async (req, res) => {
     try {
@@ -2934,15 +2934,15 @@ router.post('/am/school-years/:id/activate', requireAdmin, async (req, res) => {
         );
         if (!sy) return res.json({ success: false, message: 'School year not found.' });
 
-        // Deactivate & Archive all others
-        await db.query(`UPDATE school_years SET is_active = 0, status = 'Archived' WHERE is_active = 1`);
-        // Activate target
-        await db.query(`UPDATE school_years SET is_active = 1, status = 'Active' WHERE sy_id = ?`, [syId]);
+        // Deactivate & Archive all others (preserve Draft status for unlaunched future years)
+        await db.query(`UPDATE school_years SET is_active = 0, status = IF(status = 'Draft', 'Draft', 'Archive') WHERE sy_id <> ?`, [syId]);
+        // Activate target as Current
+        await db.query(`UPDATE school_years SET is_active = 1, status = 'Current' WHERE sy_id = ?`, [syId]);
 
         await logActivity(req.user.user_id, 'Admin', 'ACTIVATE_SCHOOL_YEAR',
-            `Activated school year: ${sy.sy_range} (${sy.sy_code || 'SY'})`);
+            `Activated school year as Current: ${sy.sy_range} (${sy.sy_code || 'SY'})`);
 
-        return res.json({ success: true, message: `School year ${sy.sy_range} is now active.` });
+        return res.json({ success: true, message: `School year ${sy.sy_range} is now Current (Active).` });
 
     } catch (err) {
         console.error('[AM Activate SY Error]', err);
@@ -2952,35 +2952,34 @@ router.post('/am/school-years/:id/activate', requireAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/school-years/:id/status
-// Set school year status: 'Draft' | 'Active' | 'Archived'
+// Set school year status: 'Draft' | 'Current' | 'Archive'
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/school-years/:id/status', requireAdmin, async (req, res) => {
     try {
         const syId = parseInt(req.params.id, 10);
         const { status } = req.body;
         if (isNaN(syId)) return res.json({ success: false, message: 'Invalid school year ID.' });
-        if (!['Draft', 'Active', 'Archived'].includes(status)) {
-            return res.json({ success: false, message: 'Invalid status. Must be Draft, Active, or Archived.' });
-        }
+        
+        const canonicalStatus = academicHelper.normalizeSchoolYearStatus(status, 0);
 
         const [[sy]] = await db.query(`SELECT sy_id, sy_range, is_active FROM school_years WHERE sy_id = ?`, [syId]);
         if (!sy) return res.json({ success: false, message: 'School year not found.' });
 
-        if (status === 'Active') {
-            await db.query(`UPDATE school_years SET is_active = 0, status = 'Archived' WHERE is_active = 1`);
-            await db.query(`UPDATE school_years SET is_active = 1, status = 'Active' WHERE sy_id = ?`, [syId]);
+        if (canonicalStatus === 'Current' || status === 'Active') {
+            await db.query(`UPDATE school_years SET is_active = 0, status = IF(status = 'Draft', 'Draft', 'Archive') WHERE sy_id <> ?`, [syId]);
+            await db.query(`UPDATE school_years SET is_active = 1, status = 'Current' WHERE sy_id = ?`, [syId]);
         } else {
-            // Cannot un-activate active SY to Draft/Archived without activating another first
-            if (sy.is_active && status !== 'Active') {
-                return res.json({ success: false, message: 'Cannot deactivate the currently active school year directly. Activate another school year first.' });
+            // Cannot un-activate active SY to Draft/Archive without setting another to Current first
+            if (sy.is_active && canonicalStatus !== 'Current') {
+                return res.json({ success: false, message: 'Cannot deactivate the currently running school year directly. Set another school year to Current first.' });
             }
-            await db.query(`UPDATE school_years SET status = ?, is_active = 0 WHERE sy_id = ?`, [status, syId]);
+            await db.query(`UPDATE school_years SET status = ?, is_active = 0 WHERE sy_id = ?`, [canonicalStatus, syId]);
         }
 
         await logActivity(req.user.user_id, 'Admin', 'CHANGE_SY_STATUS',
-            `Changed status of school year ID ${syId} (${sy.sy_range}) to ${status}`);
+            `Changed status of school year ID ${syId} (${sy.sy_range}) to ${canonicalStatus}`);
 
-        return res.json({ success: true, message: `Status updated to ${status}.` });
+        return res.json({ success: true, message: `Status updated to ${canonicalStatus}.` });
     } catch (err) {
         console.error('[AM Change SY Status Error]', err);
         return res.json({ success: false, message: err.message });
