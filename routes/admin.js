@@ -2939,7 +2939,9 @@ router.get('/am/subjects/:id/quarters', requireAdmin, async (req, res) => {
         // Attach topics (with schedule & materials) to each quarter
         for (const q of quarters) {
             const [topics] = await db.query(
-                `SELECT topic_id, quarter_id, topic_name, topic_description, topic_objectives, video_url, is_locked, auto_unlock_at, auto_lock_at
+                `SELECT topic_id, quarter_id, topic_name, topic_description, topic_objectives, video_url, is_locked,
+                        DATE_FORMAT(auto_unlock_at, '%Y-%m-%d %H:%i:%s') AS auto_unlock_at,
+                        DATE_FORMAT(auto_lock_at, '%Y-%m-%d %H:%i:%s') AS auto_lock_at
                  FROM topics WHERE quarter_id = ? ORDER BY topic_id ASC`,
                 [q.quarter_id]
             );
@@ -3235,15 +3237,12 @@ router.post('/am/quarters/:id/topics', requireAdmin, async (req, res) => {
         topic_objectives = topic_objectives.trim();
         video_url = video_url.trim();
 
-        const isLockedVal = (is_locked !== undefined && is_locked !== null && is_locked !== '')
-            ? ((Number(is_locked) === 1 || is_locked === true || is_locked === '1') ? 1 : 0)
-            : 1;
-        const autoUnlockVal = normalizeAdminScheduleDateTime(auto_unlock_at);
-        const autoLockVal = normalizeAdminScheduleDateTime(auto_lock_at);
-
-        if (autoUnlockVal && autoLockVal && new Date(autoLockVal) <= new Date(autoUnlockVal)) {
-            return res.json({ success: false, message: 'Auto-lock date/time must be later than the auto-unlock date/time.' });
-        }
+        const sched = topicScheduleService.prepareTopicSchedulePayload({
+            is_locked,
+            auto_unlock_at,
+            auto_lock_at,
+            fallbackLocked: 1
+        });
 
         const [[q]] = await db.query(`SELECT quarter_id FROM quarters WHERE quarter_id = ?`, [quarterId]);
         if (!q) return res.json({ success: false, message: 'Quarter not found.' });
@@ -3251,15 +3250,19 @@ router.post('/am/quarters/:id/topics', requireAdmin, async (req, res) => {
         const [result] = await db.query(
             `INSERT INTO topics (quarter_id, topic_name, topic_description, topic_objectives, video_url, is_locked, auto_unlock_at, auto_lock_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [quarterId, topic_name, topic_description, topic_objectives, video_url, isLockedVal, autoUnlockVal, autoLockVal]
+            [quarterId, topic_name, topic_description, topic_objectives, video_url, sched.is_locked, sched.auto_unlock_at, sched.auto_lock_at]
         );
-
-        await topicScheduleService.evaluateNow();
 
         await logActivity(req.user.user_id, 'Admin', 'CREATE_TOPIC',
             `Added topic "${topic_name}" to quarter ID ${quarterId}`);
 
-        return res.json({ success: true, topic_id: result.insertId });
+        return res.json({
+            success: true,
+            topic_id: result.insertId,
+            is_locked: sched.is_locked,
+            auto_unlock_at: sched.auto_unlock_at,
+            auto_lock_at: sched.auto_lock_at
+        });
 
     } catch (err) {
         console.error('[AM Create Topic Error]', err);
@@ -3294,39 +3297,39 @@ router.post('/am/topics/:id', requireAdmin, async (req, res) => {
         video_url = video_url.trim();
 
         const [[t]] = await db.query(
-            `SELECT topic_id, is_locked, auto_unlock_at, auto_lock_at FROM topics WHERE topic_id = ?`,
+            `SELECT topic_id, is_locked,
+                    DATE_FORMAT(auto_unlock_at, '%Y-%m-%d %H:%i:%s') AS auto_unlock_at,
+                    DATE_FORMAT(auto_lock_at, '%Y-%m-%d %H:%i:%s') AS auto_lock_at
+             FROM topics WHERE topic_id = ?`,
             [topicId]
         );
         if (!t) return res.json({ success: false, message: 'Topic not found.' });
 
-        const isLockedVal = (is_locked !== undefined && is_locked !== null && is_locked !== '')
-            ? ((Number(is_locked) === 1 || is_locked === true || is_locked === '1') ? 1 : 0)
-            : Number(t.is_locked);
-        const autoUnlockVal = (auto_unlock_at !== undefined)
-            ? normalizeAdminScheduleDateTime(auto_unlock_at)
-            : t.auto_unlock_at;
-        const autoLockVal = (auto_lock_at !== undefined)
-            ? normalizeAdminScheduleDateTime(auto_lock_at)
-            : t.auto_lock_at;
-
-        if (autoUnlockVal && autoLockVal && new Date(autoLockVal) <= new Date(autoUnlockVal)) {
-            return res.json({ success: false, message: 'Auto-lock date/time must be later than the auto-unlock date/time.' });
-        }
+        const sched = topicScheduleService.prepareTopicSchedulePayload({
+            is_locked: is_locked !== undefined ? is_locked : t.is_locked,
+            auto_unlock_at: auto_unlock_at !== undefined ? auto_unlock_at : t.auto_unlock_at,
+            auto_lock_at: auto_lock_at !== undefined ? auto_lock_at : t.auto_lock_at,
+            fallbackLocked: Number(t.is_locked)
+        });
 
         await db.query(
             `UPDATE topics
              SET topic_name = ?, topic_description = ?, topic_objectives = ?, video_url = ?,
                  is_locked = ?, auto_unlock_at = ?, auto_lock_at = ?
              WHERE topic_id = ?`,
-            [topic_name, topic_description, topic_objectives, video_url, isLockedVal, autoUnlockVal, autoLockVal, topicId]
+            [topic_name, topic_description, topic_objectives, video_url, sched.is_locked, sched.auto_unlock_at, sched.auto_lock_at, topicId]
         );
-
-        await topicScheduleService.evaluateNow();
 
         await logActivity(req.user.user_id, 'Admin', 'EDIT_TOPIC',
             `Updated topic ID ${topicId}: "${topic_name}"`);
 
-        return res.json({ success: true, topic_id: topicId });
+        return res.json({
+            success: true,
+            topic_id: topicId,
+            is_locked: sched.is_locked,
+            auto_unlock_at: sched.auto_unlock_at,
+            auto_lock_at: sched.auto_lock_at
+        });
 
     } catch (err) {
         console.error('[AM Edit Topic Error]', err);
@@ -3358,21 +3361,22 @@ router.post('/am/topics/:id/toggle-lock', requireAdmin, async (req, res) => {
         );
         if (!t) return res.json({ success: false, message: 'Topic not found.' });
 
+        const nowManila = topicScheduleService.getManilaDateTimeString();
         if (isLocked === 0) {
             await db.query(
                 `UPDATE topics
                  SET is_locked = 0,
-                     auto_unlock_at = CASE WHEN auto_unlock_at IS NOT NULL AND auto_unlock_at <= NOW() THEN NULL ELSE auto_unlock_at END
+                     auto_unlock_at = CASE WHEN auto_unlock_at IS NOT NULL AND DATE_FORMAT(auto_unlock_at, '%Y-%m-%d %H:%i:%s') <= ? THEN NULL ELSE auto_unlock_at END
                  WHERE topic_id = ?`,
-                [topicId]
+                [nowManila, topicId]
             );
         } else {
             await db.query(
                 `UPDATE topics
                  SET is_locked = 1,
-                     auto_lock_at = CASE WHEN auto_lock_at IS NOT NULL AND auto_lock_at <= NOW() THEN NULL ELSE auto_lock_at END
+                     auto_lock_at = CASE WHEN auto_lock_at IS NOT NULL AND DATE_FORMAT(auto_lock_at, '%Y-%m-%d %H:%i:%s') <= ? THEN NULL ELSE auto_lock_at END
                  WHERE topic_id = ?`,
-                [topicId]
+                [nowManila, topicId]
             );
         }
 

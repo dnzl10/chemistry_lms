@@ -1628,7 +1628,11 @@ async function loadQuarters() {
                     ${(q.topics || []).length === 0
                         ? `<p class="text-xs text-slate-400 text-center py-3">No topics. Add one above.</p>`
                         : (q.topics || []).map(t => `
-                            <div class="topic-row flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 gap-2">
+                            <div class="topic-row flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 gap-2"
+                                data-topic-id="${t.topic_id}"
+                                data-is-locked="${t.is_locked ? '1' : '0'}"
+                                data-auto-unlock-at="${t.auto_unlock_at || ''}"
+                                data-auto-lock-at="${t.auto_lock_at || ''}">
                                 <div class="flex items-center gap-2.5 flex-wrap min-w-0">
                                     <span class="badge ${t.is_locked ? 'badge-locked' : 'badge-unlocked'} text-[9px]">${t.is_locked ? '🔒' : '🔓'}</span>
                                     <span class="text-sm font-bold text-slate-700 break-words">${escapeHtml(t.topic_name)}</span>

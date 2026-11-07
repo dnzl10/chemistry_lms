@@ -1880,6 +1880,26 @@ router.get('/subject/:subjectId/assessment/:assessmentId', (req, res) => {
     return res.redirect(`/subjects/open/${subjectId}?tab=assessments&assessment_id=${assessmentId}#asgn-card-${assessmentId}`);
 });
 
+// POST /api/topics/evaluate-schedule - Instant evaluation endpoint for due topic schedules
+router.post('/api/topics/evaluate-schedule', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    try {
+        const result = await topicScheduleService.evaluateNow();
+        return res.json({
+            success: true,
+            unlocked: result.unlocked || 0,
+            locked: result.locked || 0,
+            unlockedTopics: result.unlockedTopics || [],
+            lockedTopics: result.lockedTopics || [],
+            serverTimeManila: topicScheduleService.getManilaDateTimeString()
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // GET /subjects/open/:id - View specific subject details
 router.get('/subjects/open/:id', async (req, res) => {
     if (!req.isAuthenticated()) return res.redirect('/login');
@@ -1921,9 +1941,13 @@ router.get('/subjects/open/:id', async (req, res) => {
 
         // 3. GET TOPICS
         const [topicsRaw] = await db.query(`
-            SELECT * FROM topics WHERE quarter_id IN (
+            SELECT topic_id, quarter_id, topic_name, topic_description, topic_objectives, video_url, is_locked,
+                   DATE_FORMAT(auto_unlock_at, '%Y-%m-%d %H:%i:%s') AS auto_unlock_at,
+                   DATE_FORMAT(auto_lock_at, '%Y-%m-%d %H:%i:%s') AS auto_lock_at
+            FROM topics WHERE quarter_id IN (
                 SELECT quarter_id FROM quarters WHERE subject_id = ?
             )
+            ORDER BY topic_id ASC
         `, [subjectId]);
 
         // 4. GET MATERIALS

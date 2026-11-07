@@ -890,7 +890,9 @@
 
                         <%# ── Quarter Accordion Button ── %>
                         <% 
-                            const unlockedTopics = (quarter.topics || []).filter(t => t && !(t.is_locked === 1 || t.is_locked === '1' || t.is_locked === true || Number(t.is_locked) === 1));
+                            const allTopics = (quarter.topics || []).filter(Boolean);
+                            const unlockedTopics = allTopics.filter(t => !(t.is_locked === 1 || t.is_locked === '1' || t.is_locked === true || Number(t.is_locked) === 1));
+                            const lockedTopicsCount = allTopics.length - unlockedTopics.length;
                         %>
                         <button
                             id="qbtn-<%= quarter.quarter_id %>"
@@ -901,9 +903,13 @@
                             <div class="q-number-badge"><%= quarter.quarter_number %></div>
                             <div class="text-left">
                                 <h4 class="font-black text-slate-800 text-base tracking-tight">Quarter <%= quarter.quarter_number %></h4>
-                                <p class="text-xs text-indigo-400 font-bold uppercase tracking-widest mt-0.5">
-                                <i class="fas fa-book-open mr-1"></i>
-                                <%= unlockedTopics.length %> <%= unlockedTopics.length === 1 ? 'Topic' : 'Topics' %> Available
+                                <p class="text-xs text-indigo-400 font-bold uppercase tracking-widest mt-0.5 flex items-center gap-2 flex-wrap">
+                                <span><i class="fas fa-book-open mr-1"></i><%= allTopics.length %> <%= allTopics.length === 1 ? 'Topic' : 'Topics' %></span>
+                                <% if (lockedTopicsCount > 0) { %>
+                                <span class="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full normal-case tracking-normal">
+                                    <%= unlockedTopics.length %> Unlocked &bull; <%= lockedTopicsCount %> Restricted
+                                </span>
+                                <% } %>
                                 </p>
                             </div>
                             </div>
@@ -922,13 +928,18 @@
                             class="quarter-panel <%= qIndex === 0 ? '' : 'hidden' %> border-t border-indigo-50 p-6 space-y-5"
                             style="background: #fafafa;">
 
-                            <% if (unlockedTopics.length > 0) { %>
-                            <% unlockedTopics.forEach((topic, topicIndex) => {
+                            <% if (allTopics.length > 0) { %>
+                            <% allTopics.forEach((topic, topicIndex) => {
                                 const tabId = `tab-${quarter.quarter_id}-${topic.topic_id || topicIndex}`;
+                                const topicIsLocked = (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1);
                             %>
 
-                            <div class="topic-card-item bg-white rounded-2xl border border-slate-100 overflow-hidden transition-all"
+                            <div class="topic-card-item bg-white rounded-2xl border <%= topicIsLocked ? 'border-amber-200/90' : 'border-slate-100' %> overflow-hidden transition-all"
                                 id="topic-<%= topic.topic_id %>"
+                                data-topic-id="<%= topic.topic_id %>"
+                                data-is-locked="<%= topicIsLocked ? '1' : '0' %>"
+                                data-auto-unlock-at="<%= topic.auto_unlock_at || '' %>"
+                                data-auto-lock-at="<%= topic.auto_lock_at || '' %>"
                                 data-tab-id="<%= tabId %>"
                                 style="box-shadow: 0 1px 8px rgba(99,102,241,0.06);">
 
@@ -940,19 +951,36 @@
                                         <div class="flex w-full items-center flex-wrap gap-2">
                                             <div class="topic-accent"></div>
                                             <h5 class="text-base font-black text-slate-800 flex-1 break-words"><%= topic.topic_name %></h5>
-                                            <% if (topic.auto_lock_at && !(topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1)) { %>
-                                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;font-size:11px;font-weight:700;padding:3px 9px;border-radius:9999px;" title="This topic is scheduled to lock automatically">
-                                                <i class="fas fa-hourglass-end" style="font-size:10px;"></i> Locks <%= new Date(topic.auto_lock_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                                            <% if (topic.auto_unlock_at && topicIsLocked) { %>
+                                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-size:11px;font-weight:700;padding:3px 9px;border-radius:9999px;" title="This topic is scheduled to unlock automatically">
+                                                <i class="fas fa-clock" style="font-size:10px;"></i> Unlocks <%= new Date(String(topic.auto_unlock_at).replace(' ', 'T')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
                                             </span>
                                             <% } %>
-                                            <% if(topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1) { %>
-                                            <span class="topic-lock-badge cursor-pointer" onclick="openLockedNoticeModal('This topic or assessment is currently locked by your instructor.', 'Topic Locked')" title="Click for details"><i class="fas fa-lock"></i> Locked</span>
+                                            <% if (topic.auto_lock_at && !topicIsLocked) { %>
+                                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;font-size:11px;font-weight:700;padding:3px 9px;border-radius:9999px;" title="This topic is scheduled to lock automatically">
+                                                <i class="fas fa-hourglass-end" style="font-size:10px;"></i> Locks <%= new Date(String(topic.auto_lock_at).replace(' ', 'T')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                                            </span>
+                                            <% } %>
+                                            <% if(topicIsLocked) { %>
+                                            <span class="topic-lock-badge cursor-pointer" onclick="openLockedNoticeModal('This topic is currently locked by your instructor. Assessments, Assignments, and Forums are restricted, but unlocked Learning Materials (Links &amp; Resources) remain accessible for study.', 'Topic Restricted')" title="Click for details"><i class="fas fa-lock"></i> Locked</span>
                                             <% } else { %>
                                             <span style="display:inline-flex;align-items:center;gap:4px;background:#d1fae5;color:#065f46;font-size:12px;font-weight:800;padding:3px 10px;border-radius:9999px;">
                                                 <i class="fas fa-unlock" style="font-size:12px;"></i> Unlocked
                                             </span>
                                             <% } %>
                                         </div>
+                                        <% if (topicIsLocked) { %>
+                                        <div class="w-full mt-2 p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-900">
+                                            <i class="fas fa-shield-halved text-amber-600 mt-0.5 flex-shrink-0"></i>
+                                            <div class="leading-relaxed">
+                                                <span class="font-extrabold">Topic Activities Restricted:</span>
+                                                Assessments, Assignments, and Forums are locked while this topic is locked. You can still access unlocked
+                                                <button type="button" onclick="switchTab('<%= tabId %>', 'links')" class="font-extrabold text-amber-800 underline hover:text-amber-950 cursor-pointer">Links</button>
+                                                and
+                                                <button type="button" onclick="switchTab('<%= tabId %>', 'resources')" class="font-extrabold text-amber-800 underline hover:text-amber-950 cursor-pointer">Resources</button>.
+                                            </div>
+                                        </div>
+                                        <% } %>
                                         <% if (topic.topic_description) { %>
                                             <p class="text-sm text-slate-500 pl-4 mt-1 text-justify break-words whitespace-pre-line" style="text-align: justify;"><%= topic.topic_description %></p>
                                         <% } %>
@@ -1656,7 +1684,7 @@
                                         <% linkMaterials.forEach((mat, linkIdx) => {
                                             const rawPath = mat.file_path_or_url || '';
                                             const realUrl = rawPath.replace(/^\/material_uploads\//, '');
-                                            const isLocked = (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1) || (mat.is_locked === 1 || mat.is_locked === '1' || mat.is_locked === true || Number(mat.is_locked) === 1);
+                                            const isLocked = (mat.is_locked === 1 || mat.is_locked === '1' || mat.is_locked === true || Number(mat.is_locked) === 1);
 
                                             let domain = '';
                                             let domainIcon = 'fa-link';
@@ -1725,7 +1753,7 @@
                                     <% if (fileMaterials.length > 0) { %>
                                     <div class="space-y-3">
                                         <% fileMaterials.forEach((mat, matIdx) => {
-                                            const matLocked = (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1) || (mat.is_locked === 1 || mat.is_locked === '1' || mat.is_locked === true || Number(mat.is_locked) === 1);
+                                            const matLocked = (mat.is_locked === 1 || mat.is_locked === '1' || mat.is_locked === true || Number(mat.is_locked) === 1);
                                             const matViewed = mat.is_interacted;
 
                                             const rawPath = mat.file_path_or_url || '';
@@ -5211,6 +5239,83 @@
             const m = document.getElementById('studentAttendanceModal');
             if (m) m.classList.add('hidden');
         }
+
+        /* ====================================================================
+           1-SECOND REAL-TIME TOPIC SCHEDULE WATCHER (STUDENT VIEW)
+           ==================================================================== */
+        (function() {
+            const CURRENT_SUBJECT_ID = Number('<%= subject ? subject.subject_id : 0 %>');
+            let isCheckingSchedule = false;
+            let tickCounter = 0;
+
+            function parseManilaScheduleMs(rawStr) {
+                if (!rawStr) return NaN;
+                let s = String(rawStr).trim().replace(' ', 'T');
+                if (!s) return NaN;
+                s = s.replace(/(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/i, '');
+                if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) s += ':00';
+                return new Date(s + '+08:00').getTime();
+            }
+
+            async function evaluateStudentTopicSchedule(forceReloadIfChanged) {
+                if (isCheckingSchedule) return;
+                isCheckingSchedule = true;
+                try {
+                    const res = await fetch('/api/topics/evaluate-schedule', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (data && data.success) {
+                        const changedTopics = [
+                            ...(data.unlockedTopics || []),
+                            ...(data.lockedTopics || [])
+                        ];
+                        const affectsThisSubject = changedTopics.some(t => Number(t.subject_id) === CURRENT_SUBJECT_ID);
+                        if (affectsThisSubject || (forceReloadIfChanged && ((data.unlocked || 0) > 0 || (data.locked || 0) > 0))) {
+                            window.location.reload();
+                        }
+                    }
+                } catch (_) {
+                } finally {
+                    isCheckingSchedule = false;
+                }
+            }
+
+            setInterval(() => {
+                tickCounter++;
+                const nowMs = Date.now();
+                let dueOnDom = false;
+
+                const topicCards = document.querySelectorAll('.topic-card-item[data-topic-id]');
+                topicCards.forEach(card => {
+                    const unlockRaw = card.getAttribute('data-auto-unlock-at') || '';
+                    const lockRaw = card.getAttribute('data-auto-lock-at') || '';
+                    const isLocked = card.getAttribute('data-is-locked') === '1';
+
+                    if (unlockRaw && isLocked) {
+                        const uMs = parseManilaScheduleMs(unlockRaw);
+                        if (!isNaN(uMs) && nowMs >= uMs) {
+                            dueOnDom = true;
+                            card.setAttribute('data-auto-unlock-at', '');
+                        }
+                    }
+                    if (lockRaw && !isLocked) {
+                        const lMs = parseManilaScheduleMs(lockRaw);
+                        if (!isNaN(lMs) && nowMs >= lMs) {
+                            dueOnDom = true;
+                            card.setAttribute('data-auto-lock-at', '');
+                        }
+                    }
+                });
+
+                if (dueOnDom) {
+                    evaluateStudentTopicSchedule(true);
+                } else if (tickCounter % 5 === 0) {
+                    evaluateStudentTopicSchedule(false);
+                }
+            }, 1000);
+        })();
     </script>
 </body>
 </html>

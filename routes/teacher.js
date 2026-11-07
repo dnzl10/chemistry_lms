@@ -974,7 +974,10 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
 
         for (const q of quarters) {
             const [topics] = await db.execute(
-                `SELECT * FROM topics WHERE quarter_id = ? ORDER BY topic_id ASC`,
+                `SELECT topic_id, quarter_id, topic_name, topic_description, topic_objectives, video_url, is_locked,
+                        DATE_FORMAT(auto_unlock_at, '%Y-%m-%d %H:%i:%s') AS auto_unlock_at,
+                        DATE_FORMAT(auto_lock_at, '%Y-%m-%d %H:%i:%s') AS auto_lock_at
+                 FROM topics WHERE quarter_id = ? ORDER BY topic_id ASC`,
                 [q.quarter_id]
             );
             for (const t of topics) {
@@ -1415,21 +1418,22 @@ router.patch('/api/topic/:tid/lock', isTeacher, async (req, res) => {
         const { is_locked } = req.body;
         if (is_locked === undefined) throw new Error('is_locked missing');
         const lockVal = (Number(is_locked) === 1 || is_locked === true || is_locked === '1') ? 1 : 0;
+        const nowManila = topicScheduleService.getManilaDateTimeString();
         if (lockVal === 0) {
             await db.execute(
                 `UPDATE topics
                  SET is_locked = 0,
-                     auto_unlock_at = CASE WHEN auto_unlock_at IS NOT NULL AND auto_unlock_at <= NOW() THEN NULL ELSE auto_unlock_at END
+                     auto_unlock_at = CASE WHEN auto_unlock_at IS NOT NULL AND DATE_FORMAT(auto_unlock_at, '%Y-%m-%d %H:%i:%s') <= ? THEN NULL ELSE auto_unlock_at END
                  WHERE topic_id = ?`,
-                [req.params.tid]
+                [nowManila, req.params.tid]
             );
         } else {
             await db.execute(
                 `UPDATE topics
                  SET is_locked = 1,
-                     auto_lock_at = CASE WHEN auto_lock_at IS NOT NULL AND auto_lock_at <= NOW() THEN NULL ELSE auto_lock_at END
+                     auto_lock_at = CASE WHEN auto_lock_at IS NOT NULL AND DATE_FORMAT(auto_lock_at, '%Y-%m-%d %H:%i:%s') <= ? THEN NULL ELSE auto_lock_at END
                  WHERE topic_id = ?`,
-                [req.params.tid]
+                [nowManila, req.params.tid]
             );
         }
         res.json({ success: true, is_locked: lockVal });
@@ -1571,15 +1575,12 @@ router.post('/api/topic', isTeacher, async (req, res) => {
         if (!topic_objectives || !String(topic_objectives).trim()) throw new Error('topic_objectives missing');
         if (!video_url || !String(video_url).trim()) throw new Error('video_url missing');
 
-        const isLockedVal = (is_locked !== undefined && is_locked !== null && is_locked !== '')
-            ? ((Number(is_locked) === 1 || is_locked === true || is_locked === '1') ? 1 : 0)
-            : 1;
-        const autoUnlockVal = normalizeScheduleDateTime(auto_unlock_at);
-        const autoLockVal = normalizeScheduleDateTime(auto_lock_at);
-
-        if (autoUnlockVal && autoLockVal && new Date(autoLockVal) <= new Date(autoUnlockVal)) {
-            throw new Error('Auto-lock date/time must be later than the auto-unlock date/time.');
-        }
+        const sched = topicScheduleService.prepareTopicSchedulePayload({
+            is_locked,
+            auto_unlock_at,
+            auto_lock_at,
+            fallbackLocked: 1
+        });
 
         const [result] = await db.execute(
             `INSERT INTO topics (quarter_id, topic_name, topic_description, topic_objectives, video_url, is_locked, auto_unlock_at, auto_lock_at)
@@ -1590,15 +1591,19 @@ router.post('/api/topic', isTeacher, async (req, res) => {
                 String(topic_description).trim(),
                 String(topic_objectives).trim(),
                 String(video_url).trim(),
-                isLockedVal,
-                autoUnlockVal,
-                autoLockVal
+                sched.is_locked,
+                sched.auto_unlock_at,
+                sched.auto_lock_at
             ]
         );
 
-        await topicScheduleService.evaluateNow();
-
-        res.json({ success: true, topic_id: result.insertId });
+        res.json({
+            success: true,
+            topic_id: result.insertId,
+            is_locked: sched.is_locked,
+            auto_unlock_at: sched.auto_unlock_at,
+            auto_lock_at: sched.auto_lock_at
+        });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -1611,25 +1616,20 @@ router.put('/api/topic/:tid', isTeacher, async (req, res) => {
         if (!video_url || !String(video_url).trim()) throw new Error('video_url missing');
 
         const [[existing]] = await db.query(
-            `SELECT topic_id, is_locked, auto_unlock_at, auto_lock_at FROM topics WHERE topic_id = ?`,
+            `SELECT topic_id, is_locked,
+                    DATE_FORMAT(auto_unlock_at, '%Y-%m-%d %H:%i:%s') AS auto_unlock_at,
+                    DATE_FORMAT(auto_lock_at, '%Y-%m-%d %H:%i:%s') AS auto_lock_at
+             FROM topics WHERE topic_id = ?`,
             [req.params.tid]
         );
         if (!existing) return res.status(404).json({ success: false, error: 'Topic not found' });
 
-        const isLockedVal = (is_locked !== undefined && is_locked !== null && is_locked !== '')
-            ? ((Number(is_locked) === 1 || is_locked === true || is_locked === '1') ? 1 : 0)
-            : Number(existing.is_locked);
-
-        const autoUnlockVal = (auto_unlock_at !== undefined)
-            ? normalizeScheduleDateTime(auto_unlock_at)
-            : existing.auto_unlock_at;
-        const autoLockVal = (auto_lock_at !== undefined)
-            ? normalizeScheduleDateTime(auto_lock_at)
-            : existing.auto_lock_at;
-
-        if (autoUnlockVal && autoLockVal && new Date(autoLockVal) <= new Date(autoUnlockVal)) {
-            throw new Error('Auto-lock date/time must be later than the auto-unlock date/time.');
-        }
+        const sched = topicScheduleService.prepareTopicSchedulePayload({
+            is_locked: is_locked !== undefined ? is_locked : existing.is_locked,
+            auto_unlock_at: auto_unlock_at !== undefined ? auto_unlock_at : existing.auto_unlock_at,
+            auto_lock_at: auto_lock_at !== undefined ? auto_lock_at : existing.auto_lock_at,
+            fallbackLocked: Number(existing.is_locked)
+        });
 
         await db.execute(
             `UPDATE topics
@@ -1641,16 +1641,20 @@ router.put('/api/topic/:tid', isTeacher, async (req, res) => {
                 String(topic_description).trim(),
                 String(topic_objectives).trim(),
                 String(video_url).trim(),
-                isLockedVal,
-                autoUnlockVal,
-                autoLockVal,
+                sched.is_locked,
+                sched.auto_unlock_at,
+                sched.auto_lock_at,
                 req.params.tid
             ]
         );
 
-        await topicScheduleService.evaluateNow();
-
-        res.json({ success: true, topic_id: Number(req.params.tid) });
+        res.json({
+            success: true,
+            topic_id: Number(req.params.tid),
+            is_locked: sched.is_locked,
+            auto_unlock_at: sched.auto_unlock_at,
+            auto_lock_at: sched.auto_lock_at
+        });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

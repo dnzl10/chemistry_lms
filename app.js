@@ -1,3 +1,4 @@
+process.env.TZ = process.env.TZ || 'Asia/Manila';
 require('dotenv').config();
 const express = require('express');
 const db = require('./db'); // Ito 'yung ginawa nating db.js kanina
@@ -1174,7 +1175,7 @@ app.listen(PORT, '0.0.0.0', () => {
     }
     try {
         const topicScheduleService = require('./services/topicScheduleService');
-        topicScheduleService.start(60000);
+        topicScheduleService.start(5000);
     } catch (topicSchedErr) {
         console.error('[Topic Schedule Service Init Error]', topicSchedErr.message);
     }
