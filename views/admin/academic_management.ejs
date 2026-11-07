@@ -317,13 +317,31 @@
                             </button>
                         </div>
                         <% if (activeSY) { %>
-                        <div class="sy-card-active rounded-xl p-4 mb-3">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
-                                <span class="text-xs font-black text-green-700 uppercase tracking-wider">Active</span>
+                        <div class="sy-card-active rounded-xl p-4 mb-3 border border-emerald-200 bg-gradient-to-br from-emerald-50/70 to-white shadow-sm">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                                    <span class="text-xs font-black text-emerald-700 uppercase tracking-wider">Active</span>
+                                    <% if (activeSY.sy_code) { %>
+                                    <span class="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md uppercase"><%= activeSY.sy_code %></span>
+                                    <% } %>
+                                </div>
+                                <span class="text-[11px] font-bold text-slate-500">
+                                    <% if (activeSY.start_date && activeSY.end_date) { %>
+                                    <%= new Date(activeSY.start_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) %> – <%= new Date(activeSY.end_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) %>
+                                    <% } %>
+                                </span>
                             </div>
-                            <p class="text-2xl font-black text-green-800"><%= activeSY.sy_range %></p>
-                            <p class="text-xs text-green-600 mt-1"><%= activeSY.classCount %> class(es) · <%= activeSY.enrolledCount %> enrolled</p>
+                            <p class="text-2xl font-black text-slate-800 mt-1"><%= activeSY.sy_range %></p>
+                            <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-2">
+                                <span><i class="fas fa-chalkboard text-emerald-600 mr-1"></i><%= activeSY.classCount %> class(es)</span>
+                                <span>•</span>
+                                <span><i class="fas fa-user-graduate text-emerald-600 mr-1"></i><%= activeSY.enrolledCount %> enrolled</span>
+                                <% if (activeSY.enforce_prerequisite) { %>
+                                <span>•</span>
+                                <span class="text-emerald-700 font-bold" title="Prerequisite Enforced for Chem 2"><i class="fas fa-shield-alt mr-1"></i>Chem 1 &ge; <%= activeSY.passing_threshold %>% Req</span>
+                                <% } %>
+                            </div>
                         </div>
                         <% } else { %>
                         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-3 text-center">
@@ -337,10 +355,13 @@
                                 <div class="flex items-center gap-2">
                                     <% if (sy.is_active) { %>
                                     <span class="badge badge-active">Active</span>
+                                    <% } else if (sy.status === 'Draft') { %>
+                                    <span class="badge" style="background:#e0f2fe;color:#0369a1;">Draft</span>
                                     <% } else { %>
-                                    <span class="badge badge-inactive">Inactive</span>
+                                    <span class="badge badge-inactive">Archived</span>
                                     <% } %>
                                     <span class="text-sm font-bold text-slate-700"><%= sy.sy_range %></span>
+                                    <% if (sy.sy_code) { %><span class="text-[10px] font-mono text-indigo-500 font-bold">(<%= sy.sy_code %>)</span><% } %>
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <% if (!sy.is_active) { %>
@@ -637,81 +658,665 @@
      MODALS
 ═══════════════════════════════════════════════ -->
 
-<!-- ADD SCHOOL YEAR -->
+<!-- ADD SCHOOL YEAR (4-SECTION COMPREHENSIVE MODAL) -->
 <div id="modalAddSY" class="modal-overlay">
-    <div class="modal-box modal-box-sm p-0">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div><h3 class="font-black text-indigo-900 text-lg">Add School Year</h3></div>
-            <button onclick="closeModal('modalAddSY')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="addSYForm" onsubmit="submitAddSY(event)" class="p-6 space-y-4">
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">SY Range *</label>
-                <input type="text" id="addSYInput" name="sy_range" required
-                    placeholder="e.g. <%= new Date().getFullYear() %>-<%= new Date().getFullYear() + 1 %>"
-                    maxlength="9" pattern="\d{4}-\d{4}"
-                    oninput="validateSYInput(this)"
-                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
-                <p class="text-[10px] text-slate-400 mt-1">
-                    Format: YYYY-YYYY · Numbers only · Only current year's SY is allowed
-                    (<%= new Date().getFullYear() %>-<%= new Date().getFullYear() + 1 %>)
-                </p>
-                <p id="addSYError" class="text-[11px] text-rose-500 font-bold mt-1 hidden"></p>
+    <div class="modal-box max-w-4xl w-full p-0 flex flex-col max-h-[92vh] overflow-hidden rounded-3xl shadow-2xl">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-900 to-slate-900 text-white shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-emerald-400 text-lg">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-white text-lg leading-tight">Add School Year</h3>
+                    <p class="text-xs text-indigo-200">Institutional timeline, semestral quarters, enrollment windows &amp; rollover</p>
+                </div>
             </div>
-            <div class="flex justify-end gap-3 pt-2">
-                <button type="button" onclick="closeModal('modalAddSY')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Add</button>
+            <button onclick="closeModal('modalAddSY')" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-rose-500/80 text-white/80 hover:text-white transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- 4-Step Tab Navigation Bar -->
+        <div class="bg-slate-50 border-b border-slate-200 px-6 py-2.5 flex items-center justify-between gap-2 overflow-x-auto shrink-0">
+            <button type="button" onclick="switchAddSYTab(1)" id="tabAddBtn1" class="add-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition text-indigo-700 bg-white shadow-sm border border-slate-200">
+                <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">1</span>
+                <span>General Details</span>
+            </button>
+            <i class="fas fa-chevron-right text-slate-300 text-[10px]"></i>
+            <button type="button" onclick="switchAddSYTab(2)" id="tabAddBtn2" class="add-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition text-slate-500 hover:text-slate-800">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]">2</span>
+                <span>Timeline (2 Sem × 2 Qtr)</span>
+            </button>
+            <i class="fas fa-chevron-right text-slate-300 text-[10px]"></i>
+            <button type="button" onclick="switchAddSYTab(3)" id="tabAddBtn3" class="add-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition text-slate-500 hover:text-slate-800">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]">3</span>
+                <span>Enrollment &amp; Prerequisite</span>
+            </button>
+            <i class="fas fa-chevron-right text-slate-300 text-[10px]"></i>
+            <button type="button" onclick="switchAddSYTab(4)" id="tabAddBtn4" class="add-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition text-slate-500 hover:text-slate-800">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]">4</span>
+                <span>Content Rollover</span>
+            </button>
+        </div>
+
+        <!-- Form Body (Scrollable) -->
+        <form id="addSYForm" onsubmit="submitAddSY(event)" class="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+            
+            <!-- ═════════ TAB 1: GENERAL DETAILS ═════════ -->
+            <div id="tabAddPane1" class="add-sy-pane space-y-5">
+                <div class="bg-indigo-50/60 rounded-2xl p-4 border border-indigo-100 flex items-start gap-3">
+                    <i class="fas fa-info-circle text-indigo-600 mt-0.5 text-base"></i>
+                    <div class="text-xs text-indigo-950 leading-relaxed">
+                        <span class="font-bold">Institutional School Year Context:</span> Set the overall academic year label, valid date range, and deployment status. You can configure upcoming school years in advance as a <span class="font-bold text-sky-700">Draft</span> without disrupting the currently active academic term.
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Academic Year Range *</label>
+                        <input type="text" id="addSYInput" name="sy_range" required
+                            placeholder="e.g. <%= new Date().getFullYear() %>-<%= new Date().getFullYear() + 1 %>"
+                            maxlength="9" pattern="\d{4}-\d{4}"
+                            oninput="validateSYInput(this)"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <p class="text-[11px] text-slate-400 mt-1">Format: YYYY-YYYY · e.g., 2026-2027</p>
+                        <p id="addSYError" class="text-[11px] text-rose-500 font-bold mt-1 hidden"></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Academic Year Code / Label</label>
+                        <input type="text" id="addSYCode" name="sy_code" placeholder="e.g. SY26-27" maxlength="20"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <p class="text-[11px] text-slate-400 mt-1">Short identifier used in transcript tags &amp; cards</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Overall Opening Date</label>
+                        <input type="date" id="addSYStartDate" name="start_date"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <p class="text-[11px] text-slate-400 mt-1">Official start of the academic year (e.g. Aug 24)</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Overall Closing Date</label>
+                        <input type="date" id="addSYEndDate" name="end_date"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <p class="text-[11px] text-slate-400 mt-1">Official end of the academic year (e.g. May 28)</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">School Year Status *</label>
+                        <select id="addSYStatus" name="status" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 bg-white">
+                            <option value="Draft" selected>Draft (Preparation Mode / Inactive)</option>
+                            <option value="Active">Active (Official Running School Year)</option>
+                            <option value="Archived">Archived (Historical / Read-Only)</option>
+                        </select>
+                        <p class="text-[11px] text-slate-400 mt-1">Select Draft to prepare curriculum without affecting live students</p>
+                    </div>
+
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition w-full">
+                            <input type="checkbox" id="addSYIsActive" name="is_active" value="1" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Set as Active School Year</span>
+                                <span class="text-[10px] text-slate-500">Makes this the current live academic context across the portal</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═════════ TAB 2: SEMESTRAL & QUARTERLY TIMELINE ═════════ -->
+            <div id="tabAddPane2" class="add-sy-pane space-y-6 hidden">
+                <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/80 flex items-start gap-3">
+                    <i class="fas fa-stream text-amber-600 mt-0.5 text-base"></i>
+                    <div class="text-xs text-amber-950 leading-relaxed">
+                        <span class="font-bold">Preset Institutional Structure:</span> The curriculum framework is permanently structured into <span class="font-bold">2 Semesters</span> with <span class="font-bold">2 Quarters</span> each (Sem 1: Chemistry 1, Q1 &amp; Q2; Sem 2: Chemistry 2, Q3 &amp; Q4). Encode the period dates and instructor grade encoding deadlines below.
+                    </div>
+                </div>
+
+                <!-- 1st Semester Section -->
+                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs font-black">S1</span>
+                            <h4 class="text-sm font-black text-indigo-900">1st Semester (Chemistry 1)</h4>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-100 px-2.5 py-0.5 rounded-full">Subject: Chemistry 1</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Semester 1 Start Date</label>
+                            <input type="date" id="addSem1Start" name="sem1_start_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Semester 1 End Date</label>
+                            <input type="date" id="addSem1End" name="sem1_end_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                    </div>
+
+                    <!-- Q1 & Q2 Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <!-- Quarter 1 -->
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-black text-slate-800"><i class="fas fa-bookmark text-indigo-500 mr-1.5"></i>Quarter 1 Range</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Q1 Start</label>
+                                    <input type="date" id="addQ1Start" name="q1_start_date" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Q1 End</label>
+                                    <input type="date" id="addQ1End" name="q1_end_date" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-rose-600 mb-1 uppercase tracking-wide flex items-center gap-1">
+                                    <i class="fas fa-lock"></i> Q1 Grade Encoding Deadline
+                                </label>
+                                <input type="datetime-local" id="addQ1Deadline" name="q1_grade_deadline" class="w-full px-2.5 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40 focus:ring-rose-500">
+                                <p class="text-[9px] text-slate-400 mt-0.5">Instructors locked out from grade changes after cutoff</p>
+                            </div>
+                        </div>
+
+                        <!-- Quarter 2 -->
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-black text-slate-800"><i class="fas fa-bookmark text-indigo-500 mr-1.5"></i>Quarter 2 Range</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Q2 Start</label>
+                                    <input type="date" id="addQ2Start" name="q2_start_date" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Q2 End</label>
+                                    <input type="date" id="addQ2End" name="q2_end_date" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-rose-600 mb-1 uppercase tracking-wide flex items-center gap-1">
+                                    <i class="fas fa-lock"></i> Q2 Grade Encoding Deadline
+                                </label>
+                                <input type="datetime-local" id="addQ2Deadline" name="q2_grade_deadline" class="w-full px-2.5 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40 focus:ring-rose-500">
+                                <p class="text-[9px] text-slate-400 mt-0.5">Instructors locked out from grade changes after cutoff</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2nd Semester Section -->
+                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-black">S2</span>
+                            <h4 class="text-sm font-black text-emerald-900">2nd Semester (Chemistry 2)</h4>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-100 px-2.5 py-0.5 rounded-full">Subject: Chemistry 2</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Semester 2 Start Date</label>
+                            <input type="date" id="addSem2Start" name="sem2_start_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Semester 2 End Date</label>
+                            <input type="date" id="addSem2End" name="sem2_end_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                    </div>
+
+                    <!-- Q3 & Q4 Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <!-- Quarter 3 -->
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-black text-slate-800"><i class="fas fa-bookmark text-emerald-500 mr-1.5"></i>Quarter 3 Range</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Q3 Start</label>
+                                    <input type="date" id="addQ3Start" name="q3_start_date" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Q3 End</label>
+                                    <input type="date" id="addQ3End" name="q3_end_date" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-rose-600 mb-1 uppercase tracking-wide flex items-center gap-1">
+                                    <i class="fas fa-lock"></i> Q3 Grade Encoding Deadline
+                                </label>
+                                <input type="datetime-local" id="addQ3Deadline" name="q3_grade_deadline" class="w-full px-2.5 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40 focus:ring-rose-500">
+                                <p class="text-[9px] text-slate-400 mt-0.5">Instructors locked out from grade changes after cutoff</p>
+                            </div>
+                        </div>
+
+                        <!-- Quarter 4 -->
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-black text-slate-800"><i class="fas fa-bookmark text-emerald-500 mr-1.5"></i>Quarter 4 Range</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Q4 Start</label>
+                                    <input type="date" id="addQ4Start" name="q4_start_date" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Q4 End</label>
+                                    <input type="date" id="addQ4End" name="q4_end_date" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-rose-600 mb-1 uppercase tracking-wide flex items-center gap-1">
+                                    <i class="fas fa-lock"></i> Q4 Grade Encoding Deadline
+                                </label>
+                                <input type="datetime-local" id="addQ4Deadline" name="q4_grade_deadline" class="w-full px-2.5 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40 focus:ring-rose-500">
+                                <p class="text-[9px] text-slate-400 mt-0.5">Instructors locked out from grade changes after cutoff</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═════════ TAB 3: ENROLLMENT & ACCESS CONTROLS ═════════ -->
+            <div id="tabAddPane3" class="add-sy-pane space-y-6 hidden">
+                <div class="bg-cyan-50/70 rounded-2xl p-4 border border-cyan-200/80 flex items-start gap-3">
+                    <i class="fas fa-user-lock text-cyan-600 mt-0.5 text-base"></i>
+                    <div class="text-xs text-cyan-950 leading-relaxed">
+                        <span class="font-bold">Overall Semestral Enrollment Windows:</span> Control student access centrally at the institutional level rather than class-by-class. Configure opening and closing dates for Sem 1 and Sem 2, and enforce automated Chemistry 1 prerequisite validation for Chemistry 2.
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Sem 1 Window -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="text-xs font-black text-indigo-900 flex items-center gap-2">
+                            <i class="fas fa-door-open text-indigo-600"></i> 1st Semester Enrollment Window
+                        </h4>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Enrollment Opens</label>
+                            <input type="datetime-local" id="addSem1EnrollStart" name="sem1_enrollment_start" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Enrollment Closes</label>
+                            <input type="datetime-local" id="addSem1EnrollEnd" name="sem1_enrollment_end" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                    </div>
+
+                    <!-- Sem 2 Window -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="text-xs font-black text-emerald-900 flex items-center gap-2">
+                            <i class="fas fa-door-open text-emerald-600"></i> 2nd Semester Enrollment Window
+                        </h4>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Enrollment Opens</label>
+                            <input type="datetime-local" id="addSem2EnrollStart" name="sem2_enrollment_start" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Enrollment Closes</label>
+                            <input type="datetime-local" id="addSem2EnrollEnd" name="sem2_enrollment_end" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prerequisite Enforcement Section -->
+                <div class="bg-white rounded-2xl p-5 border border-slate-200 space-y-4 shadow-sm">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-shield-halved text-indigo-600 text-lg"></i>
+                            <div>
+                                <h4 class="text-sm font-black text-slate-800">Automated Prerequisite Gate</h4>
+                                <p class="text-[11px] text-slate-400">Guarantees students have completed Chemistry 1 before taking Chemistry 2</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="flex items-start gap-3 cursor-pointer p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/40 hover:bg-indigo-50 transition">
+                            <input type="checkbox" id="addEnforcePrereq" name="enforce_prerequisite" value="1" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                            <div>
+                                <span class="text-xs font-black text-indigo-950 block">Require passing mark in Chemistry 1 before Chemistry 2 enrollment</span>
+                                <span class="text-[11px] text-indigo-700/80 leading-snug block mt-0.5">
+                                    When checked, the system automatically blocks students from self-enrolling in Chemistry 2 if they have a failing or incomplete standing in Chemistry 1.
+                                </span>
+                            </div>
+                        </label>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wide">Grade Passing Threshold (%)</label>
+                                <input type="number" id="addPassingThreshold" name="passing_threshold" min="50" max="100" step="0.5" value="75.00"
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-indigo-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500">
+                                <p class="text-[10px] text-slate-400 mt-1">Default is 75% per DepEd SHS academic standards</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center">
+                                <div>
+                                    <span class="font-bold text-slate-700 block mb-0.5">Prerequisite Validation Formula:</span>
+                                    <span>Composite average of LMS Coursework (70%) + Simulation Lab Mastery (30%).</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═════════ TAB 4: CONTENT ROLLOVER & RETENTION ═════════ -->
+            <div id="tabAddPane4" class="add-sy-pane space-y-6 hidden">
+                <div class="bg-emerald-50/70 rounded-2xl p-4 border border-emerald-200/80 flex items-start gap-3">
+                    <i class="fas fa-sync text-emerald-600 mt-0.5 text-base"></i>
+                    <div class="text-xs text-emerald-950 leading-relaxed">
+                        <span class="font-bold">Resource Reusability &amp; Clean Cohort Slates:</span> Retain lecture materials, modules, and references without instructors having to re-upload files, while ensuring all student submissions, quiz attempts, and forum threads start clean for the incoming batch.
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Source Academic Year (Preceding Cohort)</label>
+                        <select id="addSourceSY" name="source_sy_id" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500">
+                            <option value="">-- No Rollover (Start Completely Fresh) --</option>
+                            <% if (typeof pastSchoolYears !== 'undefined') { %>
+                            <% pastSchoolYears.forEach(function(sy) { %>
+                                <option value="<%= sy.sy_id %>"><%= sy.sy_range %> <% if (sy.sy_code) { %>(<%= sy.sy_code %>)<% } %> <% if (sy.is_active) { %>[Current Active]<% } %></option>
+                            <% }) %>
+                            <% } %>
+                        </select>
+                        <p class="text-[11px] text-slate-400 mt-1">Select the preceding academic year from which to pull course syllabus content</p>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                        <h4 class="text-xs font-black text-slate-700 uppercase tracking-wider mb-2">Content Retention Controls</h4>
+
+                        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition">
+                            <input type="checkbox" id="addRolloverMaterials" name="rollover_materials" value="1" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 mt-0.5">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Retain Learning Materials / Handouts <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.2 rounded-full ml-1">Recommended</span></span>
+                                <span class="text-[11px] text-slate-500 leading-snug block">Keeps lecture slides, module files, reading PDFs, and reference links accessible for Chemistry 1 &amp; 2.</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition">
+                            <input type="checkbox" id="addRolloverAssessments" name="rollover_assessments" value="1" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Retain Assessments &amp; Quizzes <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.2 rounded-full ml-1">Disabled by default</span></span>
+                                <span class="text-[11px] text-slate-500 leading-snug block">Kept unchecked to exclude previous exams, student submissions, and scores so assessment rosters remain clean.</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition">
+                            <input type="checkbox" id="addRolloverQB" name="rollover_question_bank" value="1" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Retain Question Bank as Drafts <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.2 rounded-full ml-1">Optional</span></span>
+                                <span class="text-[11px] text-slate-500 leading-snug block">Copies questions into internal question banks so instructors can easily pull items when building new quizzes.</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition">
+                            <input type="checkbox" id="addRolloverAnnouncements" name="rollover_announcements" value="1" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Retain Announcements &amp; Forum Threads <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.2 rounded-full ml-1">Disabled by default</span></span>
+                                <span class="text-[11px] text-slate-500 leading-snug block">Ensures dated, cohort-specific announcements and student discussions are not carried over into the new school year.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Default Rollover Visibility</label>
+                        <select id="addRolloverVisibility" name="default_rollover_visibility" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500">
+                            <option value="visible" selected>Visible immediately to enrolled students</option>
+                            <option value="hidden">Set to Hidden / Draft status first (Require instructor review)</option>
+                        </select>
+                        <p class="text-[11px] text-slate-400 mt-1">Hidden status allows instructors to curate and adjust materials before publishing to the new cohort</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer Controls -->
+            <div class="flex items-center justify-between pt-5 border-t border-slate-200 shrink-0">
+                <div class="text-xs font-bold text-slate-400" id="addSYStepIndicator">Step 1 of 4</div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeModal('modalAddSY')" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                    <button type="button" id="btnAddSYPrev" onclick="prevAddSYTab()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition hidden">
+                        <i class="fas fa-arrow-left mr-1"></i> Back
+                    </button>
+                    <button type="button" id="btnAddSYNext" onclick="nextAddSYTab()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm">
+                        Next <i class="fas fa-arrow-right ml-1"></i>
+                    </button>
+                    <button type="submit" id="btnAddSYSubmit" class="px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90 text-white text-xs font-bold transition shadow-md hidden">
+                        <i class="fas fa-check-circle mr-1.5"></i> Create School Year
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
-<!-- EDIT SCHOOL YEAR -->
+<!-- EDIT SCHOOL YEAR (COMPREHENSIVE 4-TAB MODAL) -->
 <div id="modalEditSY" class="modal-overlay">
-    <div class="modal-box modal-box-sm p-0">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div><h3 class="font-black text-indigo-900 text-lg">Edit School Year</h3></div>
-            <button onclick="closeModal('modalEditSY')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="editSYForm" onsubmit="submitEditSY(event)" class="p-6 space-y-4">
-            <input type="hidden" id="editSYId">
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">SY Range *</label>
-                <input type="text" id="editSYRange" name="sy_range" required maxlength="9"
-                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+    <div class="modal-box max-w-4xl w-full p-0 flex flex-col max-h-[92vh] overflow-hidden rounded-3xl shadow-2xl">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-900 to-slate-900 text-white shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-cyan-400 text-lg">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-white text-lg leading-tight" id="editSYModalTitle">Edit School Year</h3>
+                    <p class="text-xs text-indigo-200" id="editSYModalSubtitle">Update institutional timeline, quarterly dates, and prerequisite policies</p>
+                </div>
             </div>
-            <div class="flex justify-end gap-3 pt-2">
-                <button type="button" onclick="closeModal('modalEditSY')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-save mr-1"></i> Save</button>
+            <button onclick="closeModal('modalEditSY')" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-rose-500/80 text-white/80 hover:text-white transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- 3-Step Tab Navigation Bar for Editing -->
+        <div class="bg-slate-50 border-b border-slate-200 px-6 py-2.5 flex items-center justify-between gap-2 overflow-x-auto shrink-0">
+            <button type="button" onclick="switchEditSYTab(1)" id="tabEditBtn1" class="edit-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition text-indigo-700 bg-white shadow-sm border border-slate-200">
+                <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">1</span>
+                <span>General Details</span>
+            </button>
+            <i class="fas fa-chevron-right text-slate-300 text-[10px]"></i>
+            <button type="button" onclick="switchEditSYTab(2)" id="tabEditBtn2" class="edit-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition text-slate-500 hover:text-slate-800">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]">2</span>
+                <span>Timeline (2 Sem × 2 Qtr)</span>
+            </button>
+            <i class="fas fa-chevron-right text-slate-300 text-[10px]"></i>
+            <button type="button" onclick="switchEditSYTab(3)" id="tabEditBtn3" class="edit-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition text-slate-500 hover:text-slate-800">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]">3</span>
+                <span>Enrollment &amp; Prerequisite</span>
+            </button>
+        </div>
+
+        <!-- Form Body -->
+        <form id="editSYForm" onsubmit="submitEditSY(event)" class="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+            <input type="hidden" id="editSYId" name="sy_id">
+
+            <!-- TAB 1: EDIT GENERAL DETAILS -->
+            <div id="tabEditPane1" class="edit-sy-pane space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">SY Range *</label>
+                        <input type="text" id="editSYRange" name="sy_range" required maxlength="9" pattern="\d{4}-\d{4}"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-indigo-500 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Academic Year Code</label>
+                        <input type="text" id="editSYCode" name="sy_code" maxlength="20"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-indigo-500 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Opening Date</label>
+                        <input type="date" id="editSYStartDate" name="start_date"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Closing Date</label>
+                        <input type="date" id="editSYEndDate" name="end_date"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Status</label>
+                        <select id="editSYStatus" name="status" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-white">
+                            <option value="Draft">Draft (Preparation / Inactive)</option>
+                            <option value="Active">Active (Official Running School Year)</option>
+                            <option value="Archived">Archived (Historical / Read-Only)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition w-full">
+                            <input type="checkbox" id="editSYIsActive" name="is_active" value="1" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Is Active School Year</span>
+                                <span class="text-[10px] text-slate-500">Toggles active status across the platform</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: EDIT TIMELINE -->
+            <div id="tabEditPane2" class="edit-sy-pane space-y-6 hidden">
+                <!-- Sem 1 -->
+                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
+                    <h4 class="text-xs font-black text-indigo-900 uppercase">1st Semester (Chemistry 1) Dates</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Start Date</label>
+                            <input type="date" id="editSem1Start" name="sem1_start_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">End Date</label>
+                            <input type="date" id="editSem1End" name="sem1_end_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-slate-800 block">Quarter 1</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="date" id="editQ1Start" name="q1_start_date" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
+                                <input type="date" id="editQ1End" name="q1_end_date" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
+                            </div>
+                            <label class="block text-[10px] font-bold text-rose-600 uppercase">Grade Encoding Deadline</label>
+                            <input type="datetime-local" id="editQ1Deadline" name="q1_grade_deadline" class="w-full px-2 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40">
+                        </div>
+                        <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-slate-800 block">Quarter 2</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="date" id="editQ2Start" name="q2_start_date" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
+                                <input type="date" id="editQ2End" name="q2_end_date" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
+                            </div>
+                            <label class="block text-[10px] font-bold text-rose-600 uppercase">Grade Encoding Deadline</label>
+                            <input type="datetime-local" id="editQ2Deadline" name="q2_grade_deadline" class="w-full px-2 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sem 2 -->
+                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
+                    <h4 class="text-xs font-black text-emerald-900 uppercase">2nd Semester (Chemistry 2) Dates</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Start Date</label>
+                            <input type="date" id="editSem2Start" name="sem2_start_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">End Date</label>
+                            <input type="date" id="editSem2End" name="sem2_end_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-slate-800 block">Quarter 3</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="date" id="editQ3Start" name="q3_start_date" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
+                                <input type="date" id="editQ3End" name="q3_end_date" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
+                            </div>
+                            <label class="block text-[10px] font-bold text-rose-600 uppercase">Grade Encoding Deadline</label>
+                            <input type="datetime-local" id="editQ3Deadline" name="q3_grade_deadline" class="w-full px-2 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40">
+                        </div>
+                        <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-slate-800 block">Quarter 4</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="date" id="editQ4Start" name="q4_start_date" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
+                                <input type="date" id="editQ4End" name="q4_end_date" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs">
+                            </div>
+                            <label class="block text-[10px] font-bold text-rose-600 uppercase">Grade Encoding Deadline</label>
+                            <input type="datetime-local" id="editQ4Deadline" name="q4_grade_deadline" class="w-full px-2 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: EDIT ENROLLMENT & ACCESS -->
+            <div id="tabEditPane3" class="edit-sy-pane space-y-5 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <span class="text-xs font-black text-indigo-900 block">1st Sem Enrollment Window</span>
+                        <input type="datetime-local" id="editSem1EnrollStart" name="sem1_enrollment_start" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        <input type="datetime-local" id="editSem1EnrollEnd" name="sem1_enrollment_end" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <span class="text-xs font-black text-emerald-900 block">2nd Sem Enrollment Window</span>
+                        <input type="datetime-local" id="editSem2EnrollStart" name="sem2_enrollment_start" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                        <input type="datetime-local" id="editSem2EnrollEnd" name="sem2_enrollment_end" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="editEnforcePrereq" name="enforce_prerequisite" value="1" class="w-4 h-4 rounded text-indigo-600 border-slate-300">
+                        <span class="text-xs font-bold text-slate-800">Enforce Chemistry 1 passing prerequisite for Chemistry 2</span>
+                    </label>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1 uppercase">Passing Threshold (%)</label>
+                        <input type="number" id="editPassingThreshold" name="passing_threshold" min="50" max="100" step="0.5"
+                            class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-indigo-900 bg-slate-50">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-end gap-3 pt-5 border-t border-slate-200 shrink-0">
+                <button type="button" onclick="closeModal('modalEditSY')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:opacity-90 text-white text-xs font-bold transition shadow-md">
+                    <i class="fas fa-save mr-1.5"></i> Save Changes
+                </button>
             </div>
         </form>
     </div>
 </div>
-
 
 <!-- ALL / PAST SCHOOL YEARS MODAL -->
 <div id="modalAllSY" class="modal-overlay">
-    <div class="modal-box modal-box-sm p-0">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+    <div class="modal-box max-w-lg w-full p-0 overflow-hidden rounded-2xl shadow-xl">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-white">
             <div>
                 <h3 class="font-black text-indigo-900 text-lg">All School Years</h3>
-                <p class="text-xs text-slate-400 mt-0.5">Sorted from latest to oldest</p>
+                <p class="text-xs text-slate-400 mt-0.5">Full institutional archive sorted latest to oldest</p>
             </div>
             <button onclick="closeModal('modalAllSY')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="p-6 space-y-2 max-h-[60vh] overflow-y-auto">
+        <div class="p-6 space-y-2.5 max-h-[60vh] overflow-y-auto bg-slate-50">
             <% if (typeof pastSchoolYears !== 'undefined') { %>
             <% pastSchoolYears.forEach(function(sy) { %>
-            <div class="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50">
+            <div class="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-xs">
                 <div class="flex items-center gap-2">
                     <% if (sy.is_active) { %>
                     <span class="badge badge-active">Active</span>
+                    <% } else if (sy.status === 'Draft') { %>
+                    <span class="badge" style="background:#e0f2fe;color:#0369a1;">Draft</span>
                     <% } else { %>
-                    <span class="badge badge-inactive">Inactive</span>
+                    <span class="badge badge-inactive">Archived</span>
                     <% } %>
                     <span class="text-sm font-bold text-slate-700"><%= sy.sy_range %></span>
+                    <% if (sy.sy_code) { %><span class="text-[10px] font-mono text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded"><%= sy.sy_code %></span><% } %>
                     <span class="text-[10px] text-slate-400">
                         Added <%= new Date(sy.created_at).toLocaleDateString('en-PH', {year:'numeric', month:'short', day:'numeric'}) %>
                     </span>
@@ -919,24 +1524,25 @@
         <div class="p-6 overflow-y-auto grow space-y-8 bg-slate-50">
             <!-- Settings Section -->
             <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-                <h2 class="text-lg font-bold text-slate-800 mb-4"><i class="fas fa-sliders-h text-indigo-500 mr-2"></i>Enrollment Settings</h2>
-                <form id="frmEnrollSettingsAdmin" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-sliders-h text-indigo-500 mr-2"></i>Class Roster Capacity</h2>
+                    <span class="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+                        <i class="fas fa-calendar-check mr-1"></i>Centralized SY Enrollment Timeline
+                    </span>
+                </div>
+                <div class="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 leading-relaxed flex items-center gap-2.5">
+                    <i class="fas fa-info-circle text-indigo-500 text-sm shrink-0"></i>
+                    <span>Enrollment dates are governed centrally per Semester under <strong>Academic Management > School Year Timeline</strong>. Use class settings below to control student section seat capacity and invitation whitelists.</span>
+                </div>
+                <form id="frmEnrollSettingsAdmin" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="hidden" id="config_class_id">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Start Date</label>
-                        <input type="datetime-local" id="config_start" name="enrollment_start" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">End Date</label>
-                        <input type="datetime-local" id="config_end" name="enrollment_end" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Max Capacity</label>
-                        <input type="number" id="config_cap" name="max_capacity" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500" placeholder="No limit">
+                        <label class="block text-xs font-bold text-slate-700 mb-1 uppercase">Max Student Capacity</label>
+                        <input type="number" id="config_cap" name="max_capacity" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500" placeholder="No limit (leave blank)">
                         <p class="text-[10px] text-slate-400 mt-1" id="config_enrolled_txt">Current enrolled: 0</p>
                     </div>
-                    <div class="md:col-span-3 flex justify-end mt-2">
-                        <button type="button" onclick="saveEnrollSettingsAdmin()" class="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition"><i class="fas fa-save mr-2"></i> Save Settings</button>
+                    <div class="flex items-end justify-end">
+                        <button type="button" onclick="saveEnrollSettingsAdmin()" class="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition shadow-sm"><i class="fas fa-save mr-2"></i> Save Capacity</button>
                     </div>
                 </form>
             </div>
@@ -1410,41 +2016,176 @@ async function apiDelete(url) {
     return res.json();
 }
 
-// ─── School Year ──────────────────────────────────────────────────────────────
-async function submitAddSY(e) {
-    e.preventDefault();
-    const fd   = new FormData(document.getElementById('addSYForm'));
-    const data = await apiPost('/admin/am/school-years', { sy_range: fd.get('sy_range') });
-    if (data.success) {
-        showToast('School year added!', 'success');
-        closeModal('modalAddSY');
-        refreshAdminContent({ message: 'Updating school years...' });
+// ─── School Year (Comprehensive Modal Management) ─────────────────────────
+let currentAddSYTab = 1;
+function switchAddSYTab(tabNum) {
+    currentAddSYTab = tabNum;
+    for (let i = 1; i <= 4; i++) {
+        const pane = document.getElementById(`tabAddPane${i}`);
+        const btn  = document.getElementById(`tabAddBtn${i}`);
+        if (pane) pane.classList.toggle('hidden', i !== tabNum);
+        if (btn) {
+            if (i === tabNum) {
+                btn.className = 'add-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition text-indigo-700 bg-white shadow-sm border border-slate-200';
+                btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]';
+            } else {
+                btn.className = 'add-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition text-slate-500 hover:text-slate-800';
+                btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]';
+            }
+        }
     }
-    else showToast(data.message || 'Failed.', 'error');
+
+    const indicator = document.getElementById('addSYStepIndicator');
+    if (indicator) indicator.textContent = `Step ${tabNum} of 4`;
+
+    const prevBtn   = document.getElementById('btnAddSYPrev');
+    const nextBtn   = document.getElementById('btnAddSYNext');
+    const submitBtn = document.getElementById('btnAddSYSubmit');
+
+    if (prevBtn)   prevBtn.classList.toggle('hidden', tabNum === 1);
+    if (nextBtn)   nextBtn.classList.toggle('hidden', tabNum === 4);
+    if (submitBtn) submitBtn.classList.toggle('hidden', tabNum !== 4);
 }
 
-function openEditSY(sy) {
-    document.getElementById('editSYId').value    = sy.sy_id;
-    document.getElementById('editSYRange').value = sy.sy_range;
-    openModal('modalEditSY');
+function nextAddSYTab() {
+    if (currentAddSYTab < 4) switchAddSYTab(currentAddSYTab + 1);
 }
+function prevAddSYTab() {
+    if (currentAddSYTab > 1) switchAddSYTab(currentAddSYTab - 1);
+}
+
+let currentEditSYTab = 1;
+function switchEditSYTab(tabNum) {
+    currentEditSYTab = tabNum;
+    for (let i = 1; i <= 3; i++) {
+        const pane = document.getElementById(`tabEditPane${i}`);
+        const btn  = document.getElementById(`tabEditBtn${i}`);
+        if (pane) pane.classList.toggle('hidden', i !== tabNum);
+        if (btn) {
+            if (i === tabNum) {
+                btn.className = 'edit-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition text-indigo-700 bg-white shadow-sm border border-slate-200';
+                btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]';
+            } else {
+                btn.className = 'edit-sy-tab-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition text-slate-500 hover:text-slate-800';
+                btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]';
+            }
+        }
+    }
+}
+
+async function submitAddSY(e) {
+    e.preventDefault();
+    const form = document.getElementById('addSYForm');
+    const fd   = new FormData(form);
+    const payload = Object.fromEntries(fd.entries());
+
+    // Checkbox normalization
+    payload.is_active = document.getElementById('addSYIsActive').checked ? 1 : 0;
+    payload.enforce_prerequisite = document.getElementById('addEnforcePrereq').checked ? 1 : 0;
+    payload.rollover_materials = document.getElementById('addRolloverMaterials').checked ? 1 : 0;
+    payload.rollover_assessments = document.getElementById('addRolloverAssessments').checked ? 1 : 0;
+    payload.rollover_question_bank = document.getElementById('addRolloverQB').checked ? 1 : 0;
+    payload.rollover_announcements = document.getElementById('addRolloverAnnouncements').checked ? 1 : 0;
+
+    const data = await apiPost('/admin/am/school-years', payload);
+    if (data.success) {
+        showToast(data.message || 'School year created successfully!', 'success');
+        closeModal('modalAddSY');
+        form.reset();
+        switchAddSYTab(1);
+        refreshAdminContent({ message: 'Updating academic management...' });
+    } else {
+        showToast(data.message || 'Failed to create school year.', 'error');
+    }
+}
+
+async function openEditSY(sy) {
+    const syId = sy.sy_id;
+    document.getElementById('editSYId').value = syId;
+    document.getElementById('editSYModalTitle').textContent = `Edit School Year: ${sy.sy_range}`;
+
+    // Reset edit tab to 1
+    switchEditSYTab(1);
+    openModal('modalEditSY');
+
+    // Fetch full record to populate all date fields
+    try {
+        const res = await fetch(`/admin/am/school-years/${syId}`);
+        const result = await res.json();
+        if (result.success && result.schoolYear) {
+            const data = result.schoolYear;
+            document.getElementById('editSYRange').value = data.sy_range || '';
+            document.getElementById('editSYCode').value  = data.sy_code || '';
+            document.getElementById('editSYStatus').value = data.status || 'Draft';
+            document.getElementById('editSYIsActive').checked = !!data.is_active;
+
+            const formatDate = d => d ? new Date(d).toISOString().split('T')[0] : '';
+            const formatDateTime = d => {
+                if (!d) return '';
+                const dt = new Date(d);
+                const pad = n => String(n).padStart(2, '0');
+                return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+            };
+
+            document.getElementById('editSYStartDate').value = formatDate(data.start_date);
+            document.getElementById('editSYEndDate').value   = formatDate(data.end_date);
+
+            document.getElementById('editSem1Start').value = formatDate(data.sem1_start_date);
+            document.getElementById('editSem1End').value   = formatDate(data.sem1_end_date);
+            document.getElementById('editQ1Start').value    = formatDate(data.q1_start_date);
+            document.getElementById('editQ1End').value      = formatDate(data.q1_end_date);
+            document.getElementById('editQ1Deadline').value = formatDateTime(data.q1_grade_deadline);
+            document.getElementById('editQ2Start').value    = formatDate(data.q2_start_date);
+            document.getElementById('editQ2End').value      = formatDate(data.q2_end_date);
+            document.getElementById('editQ2Deadline').value = formatDateTime(data.q2_grade_deadline);
+
+            document.getElementById('editSem2Start').value = formatDate(data.sem2_start_date);
+            document.getElementById('editSem2End').value   = formatDate(data.sem2_end_date);
+            document.getElementById('editQ3Start').value    = formatDate(data.q3_start_date);
+            document.getElementById('editQ3End').value      = formatDate(data.q3_end_date);
+            document.getElementById('editQ3Deadline').value = formatDateTime(data.q3_grade_deadline);
+            document.getElementById('editQ4Start').value    = formatDate(data.q4_start_date);
+            document.getElementById('editQ4End').value      = formatDate(data.q4_end_date);
+            document.getElementById('editQ4Deadline').value = formatDateTime(data.q4_grade_deadline);
+
+            document.getElementById('editSem1EnrollStart').value = formatDateTime(data.sem1_enrollment_start);
+            document.getElementById('editSem1EnrollEnd').value   = formatDateTime(data.sem1_enrollment_end);
+            document.getElementById('editSem2EnrollStart').value = formatDateTime(data.sem2_enrollment_start);
+            document.getElementById('editSem2EnrollEnd').value   = formatDateTime(data.sem2_enrollment_end);
+
+            document.getElementById('editEnforcePrereq').checked = (Number(data.enforce_prerequisite) === 1);
+            document.getElementById('editPassingThreshold').value = data.passing_threshold || 75.00;
+        }
+    } catch (err) {
+        console.error('Failed to load SY details:', err);
+    }
+}
+
 async function submitEditSY(e) {
     e.preventDefault();
-    const id   = document.getElementById('editSYId').value;
-    const data = await apiPost(`/admin/am/school-years/${id}`, { sy_range: document.getElementById('editSYRange').value });
+    const syId = document.getElementById('editSYId').value;
+    const form = document.getElementById('editSYForm');
+    const fd   = new FormData(form);
+    const payload = Object.fromEntries(fd.entries());
+
+    payload.is_active = document.getElementById('editSYIsActive').checked ? 1 : 0;
+    payload.enforce_prerequisite = document.getElementById('editEnforcePrereq').checked ? 1 : 0;
+
+    const data = await apiPost(`/admin/am/school-years/${syId}`, payload);
     if (data.success) {
-        showToast('School year updated!', 'success');
+        showToast(data.message || 'School year updated successfully!', 'success');
         closeModal('modalEditSY');
-        refreshAdminContent({ message: 'Updating school years...' });
+        refreshAdminContent({ message: 'Updating academic management...' });
+    } else {
+        showToast(data.message || 'Failed to update school year.', 'error');
     }
-    else showToast(data.message || 'Failed.', 'error');
 }
 
 function confirmActivateSY(syId, syRange) {
     showConfirm({
         icon:'fa-toggle-on', iconBg:'bg-emerald-100', iconColor:'text-emerald-600',
         title:`Activate ${syRange}?`,
-        desc:'This will deactivate the current active school year. All classes and enrollments remain intact.',
+        desc:'This will set this school year as the portal-wide active context and archive previous active years. All classes and records remain intact.',
         btnLabel:'Yes, Activate', btnColor:'bg-emerald-600',
         onConfirm: async () => {
             const data = await apiPost(`/admin/am/school-years/${syId}/activate`, {});
@@ -1476,25 +2217,25 @@ function confirmDeleteSY(syId, syRange) {
     });
 }
 
-// ─── SY Input Validator (client-side preview) ─────────────────────────────
+// ─── SY Input Validator & Smart Auto-Fill ─────────────────────────────────
 function validateSYInput(input) {
     const errorEl = document.getElementById('addSYError');
     const val     = input.value.trim();
     const currentYear = new Date().getFullYear();
 
-    // Clear if empty
     if (!val) { errorEl.classList.add('hidden'); errorEl.textContent = ''; return; }
 
-    // Block non-numeric characters (allow only digits and dash)
     if (/[^0-9\-]/.test(val)) {
-        errorEl.textContent = '⛔ Letters and special characters are not allowed. Numbers only.';
+        errorEl.textContent = '⛔ Letters and special characters are not allowed in Range. Numbers only.';
         errorEl.classList.remove('hidden'); return;
     }
 
-    // Once full length, do deep checks
     if (val.length === 9) {
         const match = val.match(/^(\d{4})-(\d{4})$/);
-        if (!match) { errorEl.textContent = '⛔ Format must be YYYY-YYYY (e.g. 2026-2027).'; errorEl.classList.remove('hidden'); return; }
+        if (!match) {
+            errorEl.textContent = '⛔ Format must be YYYY-YYYY (e.g. 2026-2027).';
+            errorEl.classList.remove('hidden'); return;
+        }
 
         const start = parseInt(match[1]);
         const end   = parseInt(match[2]);
@@ -1503,17 +2244,78 @@ function validateSYInput(input) {
             errorEl.textContent = `⛔ End year must be exactly one year after start year.`;
             errorEl.classList.remove('hidden'); return;
         }
-        if (start < currentYear) {
-            errorEl.textContent = `⛔ "${val}" is a past school year. You cannot add past SYs.`;
-            errorEl.classList.remove('hidden'); return;
-        }
-        if (start > currentYear) {
-            errorEl.textContent = `⛔ You can only add the current SY: ${currentYear}-${currentYear + 1}.`;
-            errorEl.classList.remove('hidden'); return;
+
+        // Auto-suggest code if empty
+        const codeInput = document.getElementById('addSYCode');
+        if (codeInput && !codeInput.value) {
+            codeInput.value = `SY${String(start).slice(2)}-${String(end).slice(2)}`;
         }
 
-        // All good
-        errorEl.textContent = `✅ Valid school year!`;
+        // Auto-suggest standard Philippine academic calendar dates if empty
+        const startInput = document.getElementById('addSYStartDate');
+        const endInput   = document.getElementById('addSYEndDate');
+        if (startInput && !startInput.value) startInput.value = `${start}-08-24`;
+        if (endInput   && !endInput.value)   endInput.value   = `${end}-05-28`;
+
+        const s1Start = document.getElementById('addSem1Start');
+        const s1End   = document.getElementById('addSem1End');
+        if (s1Start && !s1Start.value) s1Start.value = `${start}-08-24`;
+        if (s1End   && !s1End.value)   s1End.value   = `${start}-12-18`;
+
+        const q1Start = document.getElementById('addQ1Start');
+        const q1End   = document.getElementById('addQ1End');
+        const q1Dead  = document.getElementById('addQ1Deadline');
+        if (q1Start && !q1Start.value) q1Start.value = `${start}-08-24`;
+        if (q1End   && !q1End.value)   q1End.value   = `${start}-10-23`;
+        if (q1Dead  && !q1Dead.value)  q1Dead.value  = `${start}-10-30T23:59`;
+
+        const q2Start = document.getElementById('addQ2Start');
+        const q2End   = document.getElementById('addQ2End');
+        const q2Dead  = document.getElementById('addQ2Deadline');
+        if (q2Start && !q2Start.value) q2Start.value = `${start}-10-26`;
+        if (q2End   && !q2End.value)   q2End.value   = `${start}-12-18`;
+        if (q2Dead  && !q2Dead.value)  q2Dead.value  = `${end}-01-08T23:59`;
+
+        const s2Start = document.getElementById('addSem2Start');
+        const s2End   = document.getElementById('addSem2End');
+        if (s2Start && !s2Start.value) s2Start.value = `${end}-01-11`;
+        if (s2End   && !s2End.value)   s2End.value   = `${end}-05-28`;
+
+        const q3Start = document.getElementById('addQ3Start');
+        const q3End   = document.getElementById('addQ3End');
+        const q3Dead  = document.getElementById('addQ3Deadline');
+        if (q3Start && !q3Start.value) q3Start.value = `${end}-01-11`;
+        if (q3End   && !q3End.value)   q3End.value   = `${end}-03-19`;
+        if (q3Dead  && !q3Dead.value)  q3Dead.value  = `${end}-03-26T23:59`;
+
+        const q4Start = document.getElementById('addQ4Start');
+        const q4End   = document.getElementById('addQ4End');
+        const q4Dead  = document.getElementById('addQ4Deadline');
+        if (q4Start && !q4Start.value) q4Start.value = `${end}-03-22`;
+        if (q4End   && !q4End.value)   q4End.value   = `${end}-05-28`;
+        if (q4Dead  && !q4Dead.value)  q4Dead.value  = `${end}-06-04T23:59`;
+
+        const s1EnrollStart = document.getElementById('addSem1EnrollStart');
+        const s1EnrollEnd   = document.getElementById('addSem1EnrollEnd');
+        if (s1EnrollStart && !s1EnrollStart.value) s1EnrollStart.value = `${start}-08-01T08:00`;
+        if (s1EnrollEnd   && !s1EnrollEnd.value)   s1EnrollEnd.value   = `${start}-09-15T23:59`;
+
+        const s2EnrollStart = document.getElementById('addSem2EnrollStart');
+        const s2EnrollEnd   = document.getElementById('addSem2EnrollEnd');
+        if (s2EnrollStart && !s2EnrollStart.value) s2EnrollStart.value = `${end}-01-04T08:00`;
+        if (s2EnrollEnd   && !s2EnrollEnd.value)   s2EnrollEnd.value   = `${end}-01-29T23:59`;
+
+        // If future year, suggest Draft status
+        const statusSelect = document.getElementById('addSYStatus');
+        if (start > currentYear && statusSelect) {
+            statusSelect.value = 'Draft';
+            errorEl.textContent = `ℹ️ Upcoming School Year: Pre-configured in Draft mode.`;
+            errorEl.style.color = '#0284c7';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+
+        errorEl.textContent = `✅ Valid school year range! Timeline auto-suggested.`;
         errorEl.classList.remove('hidden');
         errorEl.style.color = '#16a34a';
         return;
@@ -2385,8 +3187,10 @@ async function openClassConfigModal(classId, className) {
             
             // Populate Settings
             const set = data.settings;
-            document.getElementById('config_start').value = set.enrollment_start ? new Date(set.enrollment_start).toISOString().slice(0, 16) : '';
-            document.getElementById('config_end').value   = set.enrollment_end ? new Date(set.enrollment_end).toISOString().slice(0, 16) : '';
+            const startEl = document.getElementById('config_start');
+            const endEl   = document.getElementById('config_end');
+            if (startEl) startEl.value = set.enrollment_start ? new Date(set.enrollment_start).toISOString().slice(0, 16) : '';
+            if (endEl)   endEl.value   = set.enrollment_end ? new Date(set.enrollment_end).toISOString().slice(0, 16) : '';
             document.getElementById('config_cap').value   = set.max_capacity !== null ? set.max_capacity : '';
             document.getElementById('config_cap').min     = set.enrolled_count || 0;
             document.getElementById('config_enrolled_txt').textContent = `Current enrolled: ${set.enrolled_count || 0}`;
@@ -2423,13 +3227,13 @@ async function openClassConfigModal(classId, className) {
 
 async function saveEnrollSettingsAdmin() {
     const classId = document.getElementById('config_class_id').value;
-    const start = document.getElementById('config_start').value;
-    const end = document.getElementById('config_end').value;
+    const startEl = document.getElementById('config_start');
+    const endEl   = document.getElementById('config_end');
     const cap = document.getElementById('config_cap').value;
 
     const res = await apiPost(`/admin/am/classes/${classId}/settings`, {
-        enrollment_start: start,
-        enrollment_end: end,
+        enrollment_start: startEl ? startEl.value : null,
+        enrollment_end: endEl ? endEl.value : null,
         max_capacity: cap
     });
     
