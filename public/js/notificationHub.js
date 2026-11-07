@@ -13,6 +13,7 @@
     const NotificationHub = {
         state: {
             unreadCount: 0,
+            unreadMessagesCount: 0,
             notifications: [],
             isLoading: false,
             pollTimer: null
@@ -112,19 +113,23 @@
                 if (!res.ok) return;
                 const data = await res.json();
                 if (data.success && typeof data.unreadCount === 'number') {
-                    // Play non-intrusive sound effect if unread count increases (respects Focus Mode)
-                    if (data.unreadCount > this.state.unreadCount && window.SoundManager) {
+                    const newNotifCount = data.unreadCount;
+                    const newMsgCount = typeof data.unreadMessagesCount === 'number' ? data.unreadMessagesCount : this.state.unreadMessagesCount;
+
+                    // Play non-intrusive sound effect if unread notification or message count increases
+                    if ((newNotifCount > this.state.unreadCount || newMsgCount > this.state.unreadMessagesCount) && window.SoundManager) {
                         try { window.SoundManager.playSound(); } catch (sndErr) { /* ignore sound error */ }
                     }
-                    this.state.unreadCount = data.unreadCount;
-                    this.renderBadgeUI(data.unreadCount);
+                    this.state.unreadCount = newNotifCount;
+                    this.state.unreadMessagesCount = newMsgCount;
+                    this.renderBadgeUI(newNotifCount, newMsgCount);
                 }
             } catch (err) {
                 // Silently absorb background network errors
             }
         },
 
-        renderBadgeUI: function(count) {
+        renderBadgeUI: function(count, msgCount) {
             // 1. Admin badges
             const notifDot = document.getElementById('notifDot');
             const notifCount = document.getElementById('notifCount');
@@ -139,21 +144,28 @@
                 }
             }
 
-            // 2. Student badges (typically .notif-badge container)
-            const studentBadges = document.querySelectorAll('.notif-badge, [data-notif-badge]');
-            studentBadges.forEach(badge => {
+            // 2. Student & Teacher Notification badges (.notif-badge, [data-notif-badge])
+            const notifBadges = document.querySelectorAll('.notif-badge, [data-notif-badge]');
+            notifBadges.forEach(badge => {
+                let textEl = badge.querySelector('.notif-badge-count');
+                if (!textEl) {
+                    badge.className = 'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-black leading-none rounded-full border-2 border-white shadow-sm flex items-center justify-center notif-badge hidden';
+                    badge.removeAttribute('style');
+                    badge.innerHTML = '<span class="notif-badge-count">0</span>';
+                    textEl = badge.querySelector('.notif-badge-count');
+                }
                 if (count > 0) {
+                    textEl.textContent = count > 99 ? '99+' : count;
                     badge.classList.remove('hidden');
                     badge.style.display = 'flex';
-                    const textEl = badge.querySelector('.notif-badge-count');
-                    if (textEl) textEl.textContent = count > 9 ? '9+' : count;
                 } else {
+                    textEl.textContent = '0';
                     badge.classList.add('hidden');
                     badge.style.display = 'none';
                 }
             });
 
-            // 3. Teacher badges
+            // 3. Dedicated Teacher badge selectors (if any)
             const teacherBadges = document.querySelectorAll('[data-teacher-badge], #teacherNotifCount');
             teacherBadges.forEach(badge => {
                 if (count > 0) {
@@ -164,7 +176,39 @@
                 }
             });
 
-            // 4. Update panel subtitle if open
+            // 4. Student & Teacher Messages badges (.msg-badge, [data-msg-badge] inside #messagesBtn)
+            if (typeof msgCount === 'number') {
+                const msgBtns = document.querySelectorAll('#messagesBtn');
+                msgBtns.forEach(btn => {
+                    if (!btn.querySelector('.msg-badge, [data-msg-badge]')) {
+                        const span = document.createElement('span');
+                        span.className = 'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-black leading-none rounded-full border-2 border-white shadow-sm flex items-center justify-center msg-badge hidden';
+                        span.setAttribute('aria-hidden', 'true');
+                        span.innerHTML = '<span class="msg-badge-count">0</span>';
+                        btn.appendChild(span);
+                    }
+                });
+
+                const msgBadges = document.querySelectorAll('.msg-badge, [data-msg-badge]');
+                msgBadges.forEach(badge => {
+                    let textEl = badge.querySelector('.msg-badge-count');
+                    if (!textEl) {
+                        badge.innerHTML = '<span class="msg-badge-count">0</span>';
+                        textEl = badge.querySelector('.msg-badge-count');
+                    }
+                    if (msgCount > 0) {
+                        textEl.textContent = msgCount > 99 ? '99+' : msgCount;
+                        badge.classList.remove('hidden');
+                        badge.style.display = 'flex';
+                    } else {
+                        textEl.textContent = '0';
+                        badge.classList.add('hidden');
+                        badge.style.display = 'none';
+                    }
+                });
+            }
+
+            // 5. Update panel subtitle if open
             const subtitle = document.getElementById('notifSubtitle');
             if (subtitle) {
                 subtitle.textContent = count > 0 ? `${count} unread update${count !== 1 ? 's' : ''}` : 'All caught up';
@@ -173,12 +217,12 @@
 
         startPolling: function() {
             if (this.state.pollTimer) clearInterval(this.state.pollTimer);
-            // Polling every 60s when document is visible
+            // Polling every 15s when document is visible
             this.state.pollTimer = setInterval(() => {
                 if (!document.hidden) {
                     this.updateBadge();
                 }
-            }, 60000);
+            }, 15000);
         },
 
         /**
@@ -201,8 +245,12 @@
                 if (!res.ok) throw new Error('Network error');
                 const data = await res.json();
                 this.state.notifications = data.notifications || [];
+                this.state.unreadCount = data.unreadCount || 0;
+                if (typeof data.unreadMessagesCount === 'number') {
+                    this.state.unreadMessagesCount = data.unreadMessagesCount;
+                }
                 this.renderNotificationList(containerId, this.state.notifications, isDarkTheme);
-                this.renderBadgeUI(data.unreadCount || 0);
+                this.renderBadgeUI(this.state.unreadCount, this.state.unreadMessagesCount);
             } catch (err) {
                 list.innerHTML = `
                     <div class="py-12 text-center text-rose-500 px-4">
@@ -338,7 +386,7 @@
                 });
                 if (res.ok) {
                     this.state.unreadCount = 0;
-                    this.renderBadgeUI(0);
+                    this.renderBadgeUI(0, this.state.unreadMessagesCount);
                     // Reload container to clear unread highlights
                     if (containerId) {
                         this.loadNotifications(containerId, isDarkTheme);

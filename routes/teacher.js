@@ -4657,6 +4657,7 @@ router.get('/api/messaging/thread/:partnerId', isTeacher, async (req, res) => {
                  WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`,
                 [partnerId, teacherId]
             );
+            await notificationService.markSenderMessageNotificationsRead({ userId: teacherId, senderId: partnerId });
         }
 
         const [partnerRows] = await db.query(`
@@ -4744,6 +4745,7 @@ router.get('/api/messaging/poll', isTeacher, async (req, res) => {
                  WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`,
                 [partnerId, teacherId]
             );
+            await notificationService.markSenderMessageNotificationsRead({ userId: teacherId, senderId: partnerId });
         }
 
         res.json({ success: true, messages: newMessages });
@@ -4767,6 +4769,7 @@ router.post('/api/messaging/read', isTeacher, async (req, res) => {
              WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`,
             [partnerId, teacherId]
         );
+        await notificationService.markSenderMessageNotificationsRead({ userId: teacherId, senderId: partnerId });
         res.json({ success: true });
     } catch (err) {
         console.error('[POST /teacher/api/messaging/read Error]', err);
@@ -4799,6 +4802,7 @@ router.get('/api/messages/:studentId', isTeacher, async (req, res) => {
                  WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`,
                 [studentId, teacherId]
             );
+            await notificationService.markSenderMessageNotificationsRead({ userId: teacherId, senderId: studentId });
         }
 
         res.json({ messages });

@@ -574,6 +574,9 @@
             <!-- Messages Navigation Button (Entry point to message-student view) -->
             <a href="/messages" id="messagesBtn" aria-label="Open messages and conversations" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500 text-slate-700 hover:text-indigo-600 flex items-center justify-center">
                 <i class="far fa-comment-dots text-xl"></i>
+                <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-black leading-none rounded-full border-2 border-white shadow-sm flex items-center justify-center msg-badge hidden" aria-hidden="true">
+                    <span class="msg-badge-count">0</span>
+                </span>
                 <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
                     Messages
                 </span>
@@ -582,9 +585,8 @@
             <!-- Notification Button with keyboard-accessible tooltip -->
             <button type="button" onclick="toggleNotifications()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
                 <i class="far fa-bell text-xl text-slate-700"></i>
-                <span class="absolute top-2 right-2 flex h-2.5 w-2.5 notif-badge hidden" aria-hidden="true">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
+                <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-black leading-none rounded-full border-2 border-white shadow-sm flex items-center justify-center notif-badge hidden" aria-hidden="true">
+                    <span class="notif-badge-count">0</span>
                 </span>
                 <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
                     Notifications

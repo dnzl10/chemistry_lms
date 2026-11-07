@@ -539,13 +539,17 @@ class NotificationService {
             const total = countResult[0]?.total || 0;
 
             // Fast unread count scoped to role
-            const unreadCount = await this.getUnreadCount({ userId: uid, role });
+            const [unreadCount, unreadMessagesCount] = await Promise.all([
+                this.getUnreadCount({ userId: uid, role }),
+                this.getUnreadMessagesCount({ userId: uid, role })
+            ]);
 
             return {
                 success: true,
                 notifications: items,
                 total,
                 unreadCount,
+                unreadMessagesCount,
                 page: p,
                 limit: lim,
                 totalPages: Math.ceil(total / lim) || 1
@@ -589,6 +593,75 @@ class NotificationService {
         } catch (err) {
             console.error('[NotificationService.getUnreadCount Error]', err);
             return 0;
+        }
+    }
+
+    /**
+     * Get count of unread direct messages for navbar message badges.
+     */
+    async getUnreadMessagesCount(arg1, arg2 = null) {
+        try {
+            const uid = parseInt(typeof arg1 === 'object' && arg1 !== null ? arg1.userId : arg1, 10);
+            const role = (typeof arg1 === 'object' && arg1 !== null) ? (arg1.role || null) : arg2;
+            if (isNaN(uid)) return 0;
+
+            if (role === 'Student') {
+                const [rows] = await db.query(`
+                    SELECT COUNT(*) AS unread_messages
+                    FROM private_messages pm
+                    JOIN users partner ON partner.user_id = pm.sender_id
+                    WHERE pm.receiver_id = ? AND pm.is_read = 0
+                      AND (
+                          EXISTS (
+                              SELECT 1
+                              FROM class_students cs_me
+                              JOIN class_students cs_peer ON cs_me.class_id = cs_peer.class_id
+                              WHERE cs_me.student_id = ? AND cs_peer.student_id = pm.sender_id
+                          )
+                          OR EXISTS (
+                              SELECT 1
+                              FROM class_students cs
+                              JOIN classes c ON cs.class_id = c.class_id
+                              WHERE cs.student_id = ? AND c.teacher_id = pm.sender_id
+                          )
+                      )
+                `, [uid, uid, uid]);
+                return rows[0]?.unread_messages || 0;
+            } else {
+                const [rows] = await db.query(`
+                    SELECT COUNT(*) AS unread_messages
+                    FROM private_messages pm
+                    JOIN users partner ON partner.user_id = pm.sender_id
+                    WHERE pm.receiver_id = ? AND pm.is_read = 0
+                `, [uid]);
+                return rows[0]?.unread_messages || 0;
+            }
+        } catch (err) {
+            console.error('[NotificationService.getUnreadMessagesCount Error]', err);
+            return 0;
+        }
+    }
+
+    /**
+     * Mark unread direct-message notifications from a specific sender as read
+     * when the recipient opens that sender's conversation thread.
+     */
+    async markSenderMessageNotificationsRead({ userId, senderId }) {
+        try {
+            const uid = parseInt(userId, 10);
+            const sid = parseInt(senderId, 10);
+            if (isNaN(uid) || isNaN(sid)) return;
+
+            await db.query(`
+                UPDATE notifications
+                SET is_read = 1, read_at = NOW()
+                WHERE user_id = ?
+                  AND actor_id = ?
+                  AND is_read = 0
+                  AND (category = 'social' OR event_type IN ('direct_message_received', 'direct_message_attachment'))
+            `, [uid, sid]);
+        } catch (err) {
+            console.error('[NotificationService.markSenderMessageNotificationsRead Error]', err);
         }
     }
 

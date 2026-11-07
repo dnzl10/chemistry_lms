@@ -1086,6 +1086,7 @@ async function handleGetThreadMessages(req, res) {
                  WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`,
                 [otherId, myId]
             );
+            await notificationService.markSenderMessageNotificationsRead({ userId: myId, senderId: otherId });
         }
 
         res.json(messages);
@@ -1337,6 +1338,7 @@ router.get('/api/student/messaging/poll', async (req, res) => {
                  WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`,
                 [partnerId, myId]
             );
+            await notificationService.markSenderMessageNotificationsRead({ userId: myId, senderId: partnerId });
         }
 
         res.json({ success: true, messages: newMessages });
@@ -1360,6 +1362,7 @@ router.post('/api/student/messaging/read', async (req, res) => {
              WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`,
             [partnerId, myId]
         );
+        await notificationService.markSenderMessageNotificationsRead({ userId: myId, senderId: partnerId });
         res.json({ success: true });
     } catch (err) {
         console.error('[MARK READ]', err);

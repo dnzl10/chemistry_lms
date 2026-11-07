@@ -60,7 +60,7 @@ router.get('/', async (req, res) => {
 
 /**
  * GET /api/notifications/unread-count
- * Lightweight, fast endpoint for updating navbar bell badges.
+ * Lightweight, fast endpoint for updating navbar bell and message badges.
  */
 router.get('/unread-count', async (req, res) => {
     try {
@@ -69,11 +69,14 @@ router.get('/unread-count', async (req, res) => {
         if (role === 'Teacher') {
             await notificationService.syncTeacherProactiveAlerts(userId);
         }
-        const count = await notificationService.getUnreadCount({ userId, role });
-        res.json({ success: true, unreadCount: count });
+        const [count, unreadMessagesCount] = await Promise.all([
+            notificationService.getUnreadCount({ userId, role }),
+            notificationService.getUnreadMessagesCount({ userId, role })
+        ]);
+        res.json({ success: true, unreadCount: count, unreadMessagesCount });
     } catch (err) {
         console.error('[GET /api/notifications/unread-count Error]', err);
-        res.status(500).json({ success: false, unreadCount: 0 });
+        res.status(500).json({ success: false, unreadCount: 0, unreadMessagesCount: 0 });
     }
 });
 

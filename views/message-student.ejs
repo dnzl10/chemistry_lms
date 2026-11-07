@@ -79,8 +79,11 @@
                     <i class="fas fa-arrow-left text-lg text-slate-600 group-hover:text-indigo-950 group-hover:-translate-x-0.5 transition-all"></i>
                 </button>
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center border border-cyan-500/20 shadow-xs">
+                    <div class="relative w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center border border-cyan-500/20 shadow-xs">
                         <i class="far fa-comment-dots text-lg"></i>
+                        <span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-black leading-none rounded-full border-2 border-white shadow-sm flex items-center justify-center msg-badge hidden" aria-hidden="true">
+                            <span class="msg-badge-count">0</span>
+                        </span>
                     </div>
                     <div>
                         <h1 class="text-lg md:text-xl font-black text-indigo-950 uppercase tracking-tight">
@@ -94,6 +97,17 @@
             </div>
 
             <div class="flex items-center gap-3 md:gap-6">
+                <!-- Notification Bell Button -->
+                <button type="button" onclick="toggleNotifications()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
+                    <i class="far fa-bell text-xl text-slate-700"></i>
+                    <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-black leading-none rounded-full border-2 border-white shadow-sm flex items-center justify-center notif-badge hidden" aria-hidden="true">
+                        <span class="notif-badge-count">0</span>
+                    </span>
+                    <span class="absolute top-12 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 group-focus-visible:scale-100 transition-all bg-slate-800 text-white text-xs px-2.5 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-50">
+                        Notifications
+                    </span>
+                </button>
+
                 <!-- User Profile Summary -->
                 <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
                     <div class="text-right hidden sm:block">
@@ -446,8 +460,51 @@
         </div>
     </div>
 
+    <!-- Notification Drawer -->
+    <div id="notification-overlay" onclick="toggleNotifications()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden transition-opacity duration-300 opacity-0"></div>
+    <aside id="notification-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-blue-600 text-white">
+            <h2 class="text-lg font-bold flex items-center gap-2">
+                <i class="far fa-bell"></i> Notifications
+            </h2>
+            <div class="flex items-center gap-2">
+                <button onclick="NotificationHub.markAllRead('notification-list')" title="Mark all as read" class="hover:bg-blue-700 text-blue-100 hover:text-white p-2 rounded-lg transition text-xs font-bold flex items-center gap-1">
+                    <i class="fas fa-check-double"></i> Mark all read
+                </button>
+                <button onclick="toggleNotifications()" class="hover:bg-blue-700 p-2 rounded-lg transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        <div id="notification-list" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+            <div class="text-center py-20 text-slate-400">
+                <p class="text-sm font-bold">Loading updates...</p>
+            </div>
+        </div>
+    </aside>
+
     <!-- Notification Hub -->
     <script src="/js/notificationHub.js"></script>
+    <script>
+        function toggleNotifications() {
+            const drawer = document.getElementById('notification-drawer');
+            const overlay = document.getElementById('notification-overlay');
+            if (!drawer || !overlay) return;
+            const isOpen = !drawer.classList.contains('translate-x-full');
+            if (isOpen) {
+                drawer.classList.add('translate-x-full');
+                overlay.classList.remove('opacity-100');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            } else {
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.add('opacity-100'), 10);
+                drawer.classList.remove('translate-x-full');
+                if (window.NotificationHub) {
+                    NotificationHub.loadNotifications('notification-list', false);
+                }
+            }
+        }
+    </script>
 
     <!-- Client-Side Messaging Engine & Controller -->
     <script>
@@ -893,6 +950,9 @@
                 if (convo && convo.unread > 0) {
                     convo.unread = 0;
                     if (activeTab === 'conversations') renderConversations();
+                }
+                if (window.NotificationHub) {
+                    window.NotificationHub.updateBadge();
                 }
 
                 const badge = document.getElementById('newMessagesBadge');
