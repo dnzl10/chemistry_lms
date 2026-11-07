@@ -2583,8 +2583,6 @@ async function loadClasses() {
 
 function openAddClass() {
     document.getElementById('addClassForm').reset();
-    const sySel = document.getElementById('addClassSY');
-    if (sySel && sySel.value) loadTermsForClassModal(sySel.value);
     delete document.getElementById('addClassForm').dataset.editId;
     document.getElementById('addClassSubjectId').value = activeDrillSubjectId;
     document.getElementById('modalAddClassTitle').textContent = 'Add Class';
@@ -3606,171 +3604,6 @@ async function submitBulkEnroll() {
 function downloadAcademicTemplate(type) {
     window.location.href = `/admin/am/bulk-template?type=${type}`;
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// PHASE 4: ACADEMIC TERMS & EXTENDED SCHOOL YEAR CLIENT HELPERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function toggleSummerOption(structure) {
-    const summerBox = document.getElementById('addSYSummerContainer');
-    if (!summerBox) return;
-    if (structure === 'semestral') {
-        summerBox.classList.remove('hidden');
-    } else {
-        summerBox.classList.add('hidden');
-        const chk = document.getElementById('addSYIncludeSummer');
-        if (chk) chk.checked = false;
-    }
-}
-
-async function openManageTermsModal(syId, syRange) {
-    document.getElementById('manageTermsModalTitle').textContent = `Academic Terms (${syRange})`;
-    document.getElementById('manageTermsModalSubtitle').textContent = 'Loading term calendar and grading permissions...';
-    openModal('modalManageTerms');
-    await loadManageTerms(syId);
-}
-
-async function loadManageTerms(syId) {
-    const container = document.getElementById('manageTermsContainer');
-    container.innerHTML = '<div class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-xs">Loading terms...</p></div>';
-
-    try {
-        const res = await fetch(`/admin/am/school-years/${syId}/terms`);
-        const data = await res.json();
-        if (!data.success || !data.terms || data.terms.length === 0) {
-            container.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">No terms provisioned for this school year yet.</div>';
-            return;
-        }
-
-        container.innerHTML = data.terms.map(t => {
-            const isLocked = t.status === 'grading_locked';
-            const isArchived = t.status === 'archived';
-            const isActive = !!t.is_active;
-
-            let badgeHtml = '';
-            if (isActive) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">Active Term</span> ';
-            if (isLocked) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200"><i class="fas fa-lock mr-1"></i>Grading Locked</span>';
-            else if (isArchived) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-300">Archived</span>';
-            else badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">Grading Open</span>';
-
-            return `
-                <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs hover:border-slate-300 transition">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <h4 class="font-black text-slate-800 text-base">${t.term_name}</h4>
-                                <span class="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${t.term_code}</span>
-                                ${badgeHtml}
-                            </div>
-                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
-                                <span><i class="far fa-calendar-alt text-slate-400 mr-1"></i>${t.start_date || 'TBD'} to ${t.end_date || 'TBD'}</span>
-                                ${t.enrollment_start ? `<span><i class="fas fa-door-open text-slate-400 mr-1"></i>Enrollment: ${t.enrollment_start} to ${t.enrollment_end || 'TBD'}</span>` : ''}
-                                ${t.grading_deadline ? `<span class="text-rose-600 font-medium"><i class="fas fa-hourglass-end mr-1"></i>Grade Cutoff: ${t.grading_deadline}</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            ${!isActive ? `
-                            <button type="button" onclick="activateTerm(${t.term_id}, ${t.sy_id})"
-                                class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs font-bold transition">
-                                <i class="fas fa-star mr-1"></i> Set Active
-                            </button>` : ''}
-
-                            ${isLocked ? `
-                            <button type="button" onclick="toggleTermStatus(${t.term_id}, 'open', ${t.sy_id})"
-                                class="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition">
-                                <i class="fas fa-lock-open mr-1"></i> Unlock Grades
-                            </button>` : `
-                            <button type="button" onclick="toggleTermStatus(${t.term_id}, 'grading_locked', ${t.sy_id})"
-                                class="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition">
-                                <i class="fas fa-lock mr-1"></i> Close Grades
-                            </button>`}
-
-                            <button type="button" onclick="openEditTermDatesModal(${JSON.stringify(t).replace(/"/g, '&quot;')})"
-                                class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition">
-                                <i class="fas fa-clock mr-1"></i> Edit Dates
-                            </button>
-                        </div>
-                    </div>
-                </div>`;
-        }).join('');
-
-    } catch (err) {
-        container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load terms: ${err.message}</p>`;
-    }
-}
-
-async function toggleTermStatus(termId, newStatus, syId) {
-    const data = await apiPost(`/admin/am/terms/${termId}/status`, { status: newStatus });
-    if (data.success) {
-        showToast(newStatus === 'grading_locked' ? 'Term grades locked!' : 'Term grades unlocked!', 'success');
-        await loadManageTerms(syId);
-    } else {
-        showToast(data.message || 'Failed to update term status.', 'error');
-    }
-}
-
-async function activateTerm(termId, syId) {
-    const data = await apiPost(`/admin/am/terms/${termId}/activate`, {});
-    if (data.success) {
-        showToast('Active term updated!', 'success');
-        await loadManageTerms(syId);
-        refreshAdminContent({ message: 'Updating term view...' });
-    } else {
-        showToast(data.message || 'Failed to activate term.', 'error');
-    }
-}
-
-function openEditTermDatesModal(term) {
-    document.getElementById('editTermId').value = term.term_id;
-    document.getElementById('editTermSyId').value = term.sy_id;
-    document.getElementById('termDatesTitle').textContent = `Deadlines: ${term.term_name}`;
-    document.getElementById('termStartDate').value = term.start_date || '';
-    document.getElementById('termEndDate').value = term.end_date || '';
-    document.getElementById('termEnrollStart').value = (term.enrollment_start || '').replace(' ', 'T');
-    document.getElementById('termEnrollEnd').value = (term.enrollment_end || '').replace(' ', 'T');
-    document.getElementById('termAddDrop').value = (term.add_drop_deadline || '').replace(' ', 'T');
-    document.getElementById('termGradingDeadline').value = (term.grading_deadline || '').replace(' ', 'T');
-    openModal('modalTermDates');
-}
-
-async function submitTermDates(e) {
-    e.preventDefault();
-    const termId = document.getElementById('editTermId').value;
-    const syId = document.getElementById('editTermSyId').value;
-    const fd = new FormData(document.getElementById('termDatesForm'));
-
-    const payload = {
-        start_date: fd.get('start_date') || null,
-        end_date: fd.get('end_date') || null,
-        enrollment_start: fd.get('enrollment_start') ? fd.get('enrollment_start').replace('T', ' ') : null,
-        enrollment_end: fd.get('enrollment_end') ? fd.get('enrollment_end').replace('T', ' ') : null,
-        add_drop_deadline: fd.get('add_drop_deadline') ? fd.get('add_drop_deadline').replace('T', ' ') : null,
-        grading_deadline: fd.get('grading_deadline') ? fd.get('grading_deadline').replace('T', ' ') : null,
-    };
-
-    const data = await apiPost(`/admin/am/terms/${termId}/dates`, payload);
-    if (data.success) {
-        showToast('Term dates and deadlines saved!', 'success');
-        closeModal('modalTermDates');
-        await loadManageTerms(syId);
-    } else {
-        showToast(data.message || 'Failed to save dates.', 'error');
-    }
-}
-
-async function loadTermsForClassModal(syId) {
-    const sel = document.getElementById('addClassTerm');
-    if (!sel || !syId) return;
-    try {
-        const res = await fetch(`/admin/am/school-years/${syId}/terms`);
-        const data = await res.json();
-        if (data.success && data.terms) {
-            sel.innerHTML = '<option value="">— Active / Default Term —</option>' +
-                data.terms.map(t => `<option value="${t.term_id}" ${t.is_active ? 'selected' : ''}>${t.term_name} (${t.term_code})</option>`).join('');
-        }
-    } catch (_) {}
-}
-
 </script>
 <!-- ═══════════════════════════════════════════════════════
      NOTIFICATION PANEL — Reusable across all admin pages
@@ -4099,3 +3932,167 @@ async function loadTermsForClassModal(syId) {
 
 </body>
 </html>
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 4: ACADEMIC TERMS & EXTENDED SCHOOL YEAR CLIENT HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function toggleSummerOption(structure) {
+    const summerBox = document.getElementById('addSYSummerContainer');
+    if (!summerBox) return;
+    if (structure === 'semestral') {
+        summerBox.classList.remove('hidden');
+    } else {
+        summerBox.classList.add('hidden');
+        const chk = document.getElementById('addSYIncludeSummer');
+        if (chk) chk.checked = false;
+    }
+}
+
+async function openManageTermsModal(syId, syRange) {
+    document.getElementById('manageTermsModalTitle').textContent = `Academic Terms (${syRange})`;
+    document.getElementById('manageTermsModalSubtitle').textContent = 'Loading term calendar and grading permissions...';
+    openModal('modalManageTerms');
+    await loadManageTerms(syId);
+}
+
+async function loadManageTerms(syId) {
+    const container = document.getElementById('manageTermsContainer');
+    container.innerHTML = '<div class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-xs">Loading terms...</p></div>';
+
+    try {
+        const res = await fetch(`/admin/am/school-years/${syId}/terms`);
+        const data = await res.json();
+        if (!data.success || !data.terms || data.terms.length === 0) {
+            container.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">No terms provisioned for this school year yet.</div>';
+            return;
+        }
+
+        container.innerHTML = data.terms.map(t => {
+            const isLocked = t.status === 'grading_locked';
+            const isArchived = t.status === 'archived';
+            const isActive = !!t.is_active;
+
+            let badgeHtml = '';
+            if (isActive) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">Active Term</span> ';
+            if (isLocked) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200"><i class="fas fa-lock mr-1"></i>Grading Locked</span>';
+            else if (isArchived) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-300">Archived</span>';
+            else badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">Grading Open</span>';
+
+            return `
+                <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs hover:border-slate-300 transition">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h4 class="font-black text-slate-800 text-base">${t.term_name}</h4>
+                                <span class="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${t.term_code}</span>
+                                ${badgeHtml}
+                            </div>
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
+                                <span><i class="far fa-calendar-alt text-slate-400 mr-1"></i>${t.start_date || 'TBD'} to ${t.end_date || 'TBD'}</span>
+                                ${t.enrollment_start ? `<span><i class="fas fa-door-open text-slate-400 mr-1"></i>Enrollment: ${t.enrollment_start} to ${t.enrollment_end || 'TBD'}</span>` : ''}
+                                ${t.grading_deadline ? `<span class="text-rose-600 font-medium"><i class="fas fa-hourglass-end mr-1"></i>Grade Cutoff: ${t.grading_deadline}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            ${!isActive ? `
+                            <button type="button" onclick="activateTerm(${t.term_id}, ${t.sy_id})"
+                                class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs font-bold transition">
+                                <i class="fas fa-star mr-1"></i> Set Active
+                            </button>` : ''}
+
+                            ${isLocked ? `
+                            <button type="button" onclick="toggleTermStatus(${t.term_id}, 'open', ${t.sy_id})"
+                                class="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition">
+                                <i class="fas fa-lock-open mr-1"></i> Unlock Grades
+                            </button>` : `
+                            <button type="button" onclick="toggleTermStatus(${t.term_id}, 'grading_locked', ${t.sy_id})"
+                                class="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition">
+                                <i class="fas fa-lock mr-1"></i> Close Grades
+                            </button>`}
+
+                            <button type="button" onclick="openEditTermDatesModal(${JSON.stringify(t).replace(/"/g, '&quot;')})"
+                                class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition">
+                                <i class="fas fa-clock mr-1"></i> Edit Dates
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+
+    } catch (err) {
+        container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load terms: ${err.message}</p>`;
+    }
+}
+
+async function toggleTermStatus(termId, newStatus, syId) {
+    const data = await apiPost(`/admin/am/terms/${termId}/status`, { status: newStatus });
+    if (data.success) {
+        showToast(newStatus === 'grading_locked' ? 'Term grades locked!' : 'Term grades unlocked!', 'success');
+        await loadManageTerms(syId);
+    } else {
+        showToast(data.message || 'Failed to update term status.', 'error');
+    }
+}
+
+async function activateTerm(termId, syId) {
+    const data = await apiPost(`/admin/am/terms/${termId}/activate`, {});
+    if (data.success) {
+        showToast('Active term updated!', 'success');
+        await loadManageTerms(syId);
+        refreshAdminContent({ message: 'Updating term view...' });
+    } else {
+        showToast(data.message || 'Failed to activate term.', 'error');
+    }
+}
+
+function openEditTermDatesModal(term) {
+    document.getElementById('editTermId').value = term.term_id;
+    document.getElementById('editTermSyId').value = term.sy_id;
+    document.getElementById('termDatesTitle').textContent = `Deadlines: ${term.term_name}`;
+    document.getElementById('termStartDate').value = term.start_date || '';
+    document.getElementById('termEndDate').value = term.end_date || '';
+    document.getElementById('termEnrollStart').value = (term.enrollment_start || '').replace(' ', 'T');
+    document.getElementById('termEnrollEnd').value = (term.enrollment_end || '').replace(' ', 'T');
+    document.getElementById('termAddDrop').value = (term.add_drop_deadline || '').replace(' ', 'T');
+    document.getElementById('termGradingDeadline').value = (term.grading_deadline || '').replace(' ', 'T');
+    openModal('modalTermDates');
+}
+
+async function submitTermDates(e) {
+    e.preventDefault();
+    const termId = document.getElementById('editTermId').value;
+    const syId = document.getElementById('editTermSyId').value;
+    const fd = new FormData(document.getElementById('termDatesForm'));
+
+    const payload = {
+        start_date: fd.get('start_date') || null,
+        end_date: fd.get('end_date') || null,
+        enrollment_start: fd.get('enrollment_start') ? fd.get('enrollment_start').replace('T', ' ') : null,
+        enrollment_end: fd.get('enrollment_end') ? fd.get('enrollment_end').replace('T', ' ') : null,
+        add_drop_deadline: fd.get('add_drop_deadline') ? fd.get('add_drop_deadline').replace('T', ' ') : null,
+        grading_deadline: fd.get('grading_deadline') ? fd.get('grading_deadline').replace('T', ' ') : null,
+    };
+
+    const data = await apiPost(`/admin/am/terms/${termId}/dates`, payload);
+    if (data.success) {
+        showToast('Term dates and deadlines saved!', 'success');
+        closeModal('modalTermDates');
+        await loadManageTerms(syId);
+    } else {
+        showToast(data.message || 'Failed to save dates.', 'error');
+    }
+}
+
+async function loadTermsForClassModal(syId) {
+    const sel = document.getElementById('addClassTerm');
+    if (!sel || !syId) return;
+    try {
+        const res = await fetch(`/admin/am/school-years/${syId}/terms`);
+        const data = await res.json();
+        if (data.success && data.terms) {
+            sel.innerHTML = '<option value="">— Active / Default Term —</option>' +
+                data.terms.map(t => `<option value="${t.term_id}" ${t.is_active ? 'selected' : ''}>${t.term_name} (${t.term_code})</option>`).join('');
+        }
+    } catch (_) {}
+}
