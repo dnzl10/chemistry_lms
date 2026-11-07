@@ -182,8 +182,9 @@ class CloudStorageEngine {
     async _ensureVaultFolder(shard) {
         if (shard.vaultFolderId) return shard.vaultFolderId;
         const token = await this._getAccessToken(shard);
+        const folderName = process.env.GDRIVE_VAULT_FOLDER || (process.env.APP_ENV === 'staging' ? 'Elementa_LMS_Cloud_Vault_Staging' : 'Elementa_LMS_Cloud_Vault');
 
-        const q = encodeURIComponent("name = 'Elementa_LMS_Cloud_Vault' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+        const q = encodeURIComponent(`name = '${folderName.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
         const searchResp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -203,7 +204,7 @@ class CloudStorageEngine {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                name: 'Elementa_LMS_Cloud_Vault',
+                name: folderName,
                 mimeType: 'application/vnd.google-apps.folder'
             })
         });
@@ -602,14 +603,21 @@ class CloudStorageEngine {
                 [normalizedDir, filename]
             );
             if (rows.length > 0 && this.isEnabled()) {
-                const record = rows[0];
-                const shard = this.shards.find(s => s.id === record.cloud_provider) || this.shards[0];
-                if (shard) {
-                    const token = await this._getAccessToken(shard);
-                    await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(record.cloud_file_id)}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` }
-                    }).catch(() => { });
+                // Safety guard: in Staging, never physically delete files from Google Drive unless explicitly overridden,
+                // so cloned cloud_file_registry rows pointing to Production Drive files are 100% protected.
+                const isStaging = (process.env.APP_ENV || '').toLowerCase() === 'staging';
+                if (!isStaging || process.env.STAGING_ALLOW_DRIVE_DELETE === 'true') {
+                    const record = rows[0];
+                    const shard = this.shards.find(s => s.id === record.cloud_provider) || this.shards[0];
+                    if (shard) {
+                        const token = await this._getAccessToken(shard);
+                        await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(record.cloud_file_id)}`, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bearer ${token}` }
+                        }).catch(() => { });
+                    }
+                } else {
+                    console.log(`[CloudStorage Staging Guard] Skipped physical Drive deletion for ${normalizedDir}/${filename}`);
                 }
             }
             await db.query(

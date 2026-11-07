@@ -178,6 +178,49 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Staging Environment Indicator Middleware:
+// Automatically identifies when running on the Staging / Preview environment and injects a non-intrusive
+// visual indicator on rendered HTML pages so testers never confuse Staging with Live Production.
+app.use((req, res, next) => {
+    const host = (req.hostname || req.headers.host || '').toLowerCase();
+    const isStaging =
+        (process.env.APP_ENV || '').toLowerCase() === 'staging' ||
+        host.includes('-staging.') ||
+        host.startsWith('staging.');
+
+    res.locals.isStaging = isStaging;
+    res.locals.appEnv = isStaging ? 'staging' : (process.env.APP_ENV || process.env.NODE_ENV || 'development');
+
+    if (isStaging) {
+        const origRender = res.render.bind(res);
+        res.render = function (view, options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            origRender(view, options, (err, html) => {
+                if (typeof callback === 'function') {
+                    return callback(err, html);
+                }
+                if (err) {
+                    return req.next ? req.next(err) : res.status(500).send(err.message);
+                }
+                if (typeof html === 'string' && html.includes('</body>') && !html.includes('id="elementa-staging-banner"')) {
+                    const bannerHtml = `
+<div id="elementa-staging-banner" style="position:fixed;bottom:12px;left:12px;z-index:999999;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;padding:6px 14px;border-radius:999px;font-family:system-ui,-apple-system,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.3px;box-shadow:0 4px 14px rgba(0,0,0,0.35);display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.25);pointer-events:auto;">
+  <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fde047;box-shadow:0 0 6px #fde047;"></span>
+  <span>STAGING PREVIEW (${process.env.DB_NAME || 'Test DB'})</span>
+  <button onclick="this.parentElement.remove()" title="Dismiss for this page" style="background:transparent;border:none;color:rgba(255,255,255,0.85);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 4px;">&times;</button>
+</div>`;
+                    html = html.replace('</body>', bannerHtml + '\n</body>');
+                }
+                res.send(html);
+            });
+        };
+    }
+    next();
+});
+
 // Pag-save ng user info sa session
 passport.serializeUser((user, done) => done(null, user.user_id));
 passport.deserializeUser(async (obj, done) => {
