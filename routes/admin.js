@@ -23,6 +23,7 @@ const {
 const ExcelJS = require('exceljs');
 const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const topicScheduleService = require('../services/topicScheduleService');
+const academicHelper = require('../utils/academicHelper');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MIDDLEWARE
@@ -2439,15 +2440,15 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
     try {
         // ── All school years ──────────────────────────────────────────────────
         const [allSchoolYears] = await db.query(
-            `SELECT sy_id, sy_range, is_active, created_at FROM school_years ORDER BY sy_range DESC`
+            `SELECT * FROM school_years ORDER BY is_active DESC, sy_range DESC`
         );
         // Show only 2 latest in the card; all go to the "past SY" modal
-        const schoolYears    = allSchoolYears.slice(0, 2);
-        const pastSchoolYears = allSchoolYears; // all, sorted latest-to-oldest
+        const schoolYears     = allSchoolYears.slice(0, 2);
+        const pastSchoolYears = allSchoolYears; // all, sorted active first then latest-to-oldest
 
         // ── Active school year with class/enroll counts ───────────────────────
         let activeSY = null;
-        const activeSYRow = schoolYears.find(sy => sy.is_active);
+        const activeSYRow = allSchoolYears.find(sy => sy.is_active);
         if (activeSYRow) {
             const [[classCountRow]]  = await db.query(
                 `SELECT COUNT(*) AS cnt FROM classes WHERE sy_id = ?`, [activeSYRow.sy_id]
@@ -2457,8 +2458,8 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
             );
             activeSY = {
                 ...activeSYRow,
-                classCount   : classCountRow.cnt,
-                enrolledCount: enrollCountRow.cnt,
+                classCount   : classCountRow ? classCountRow.cnt : 0,
+                enrolledCount: enrollCountRow ? enrollCountRow.cnt : 0,
             };
         }
 
@@ -2512,57 +2513,172 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SCHOOL YEARS
+// SCHOOL YEARS (COMPREHENSIVE ARCHITECTURE)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GET /admin/am/school-years/:id
+// Returns full school year record as JSON.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/am/school-years/:id', requireAdmin, async (req, res) => {
+    try {
+        const syId = parseInt(req.params.id, 10);
+        if (isNaN(syId)) return res.json({ success: false, message: 'Invalid school year ID.' });
+
+        const [[sy]] = await db.query(`SELECT * FROM school_years WHERE sy_id = ?`, [syId]);
+        if (!sy) return res.json({ success: false, message: 'School year not found.' });
+
+        return res.json({ success: true, schoolYear: sy });
+    } catch (err) {
+        console.error('[AM Get SY Error]', err);
+        return res.json({ success: false, message: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/school-years
-// Create a new school year.
-// Body: { sy_range }
-// Returns: { success: true } | { success: false, message }
+// Create a new school year with 4 full sections.
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/school-years', requireAdmin, async (req, res) => {
     try {
-        const { sy_range } = req.body;
+        const {
+            sy_range,
+            sy_code,
+            start_date,
+            end_date,
+            status = 'Draft',
+            is_active,
 
-        if (!sy_range || !sy_range.trim())
-            return res.json({ success: false, message: 'SY range is required.' });
+            // Section 2: Semestral & Quarterly Timeline
+            sem1_start_date,
+            sem1_end_date,
+            q1_start_date,
+            q1_end_date,
+            q1_grade_deadline,
+            q2_start_date,
+            q2_end_date,
+            q2_grade_deadline,
+
+            sem2_start_date,
+            sem2_end_date,
+            q3_start_date,
+            q3_end_date,
+            q3_grade_deadline,
+            q4_start_date,
+            q4_end_date,
+            q4_grade_deadline,
+
+            // Section 3: Enrollment & Access Controls
+            sem1_enrollment_start,
+            sem1_enrollment_end,
+            sem2_enrollment_start,
+            sem2_enrollment_end,
+            enforce_prerequisite = 1,
+            passing_threshold = 75.00,
+
+            // Section 4: Content Rollover & Retention
+            source_sy_id,
+            rollover_materials = 1,
+            rollover_assessments = 0,
+            rollover_question_bank = 0,
+            rollover_announcements = 0,
+            default_rollover_visibility = 'visible'
+        } = req.body;
+
+        // 1. Validate Timeline & Formats
+        const validation = academicHelper.validateSchoolYearTimeline(req.body);
+        if (!validation.valid) {
+            return res.json({ success: false, message: validation.message });
+        }
 
         const cleanRange = sy_range.trim();
+        const cleanCode  = sy_code ? sy_code.trim() : `SY${cleanRange.slice(2, 4)}-${cleanRange.slice(7, 9)}`;
 
-        // Must be strictly YYYY-YYYY digits only — no letters or other characters
-        if (!/^\d{4}-\d{4}$/.test(cleanRange))
-            return res.json({ success: false, message: 'Format must be YYYY-YYYY using numbers only (e.g. 2025-2026). Letters are not accepted.' });
-
-        const [startYear, endYear] = cleanRange.split('-').map(Number);
-
-        // End year must be exactly start year + 1
-        if (endYear !== startYear + 1)
-            return res.json({ success: false, message: `Invalid range: "${cleanRange}". The second year must be exactly one year after the first (e.g. 2026-2027).` });
-
-        const currentYear = new Date().getFullYear();
-
-        // Cannot add a school year that is fully in the past
-        if (startYear < currentYear)
-            return res.json({ success: false, message: `"${cleanRange}" is a past school year and can no longer be added.` });
-
-        // Cannot add a future school year — only the current year's SY is allowed
-        if (startYear > currentYear)
-            return res.json({ success: false, message: `"${cleanRange}" is too far in advance. You can only add the current school year (${currentYear}-${currentYear + 1}).` });
-
-        // Check duplicate
+        // 2. Check duplicate
         const [[existing]] = await db.query(
             `SELECT sy_id FROM school_years WHERE sy_range = ?`, [cleanRange]
         );
-        if (existing)
+        if (existing) {
             return res.json({ success: false, message: `School year "${cleanRange}" already exists.` });
+        }
 
-        await db.query(`INSERT INTO school_years (sy_range, is_active) VALUES (?, 0)`, [cleanRange]);
+        // 3. Determine active state & status
+        const activeFlag = (is_active === 1 || is_active === true || is_active === '1' || status === 'Active') ? 1 : 0;
+        const finalStatus = activeFlag === 1 ? 'Active' : (['Draft', 'Active', 'Archived'].includes(status) ? status : 'Draft');
+
+        // Atomically deactivate others if this SY is active
+        if (activeFlag === 1) {
+            await db.query(`UPDATE school_years SET is_active = 0, status = 'Archived' WHERE is_active = 1`);
+        }
+
+        // 4. Insert row
+        const [insertResult] = await db.query(`
+            INSERT INTO school_years (
+                sy_range, sy_code, start_date, end_date, status, is_active,
+                sem1_start_date, sem1_end_date, sem1_enrollment_start, sem1_enrollment_end,
+                q1_start_date, q1_end_date, q1_grade_deadline,
+                q2_start_date, q2_end_date, q2_grade_deadline,
+                sem2_start_date, sem2_end_date, sem2_enrollment_start, sem2_enrollment_end,
+                q3_start_date, q3_end_date, q3_grade_deadline,
+                q4_start_date, q4_end_date, q4_grade_deadline,
+                enforce_prerequisite, passing_threshold,
+                source_sy_id, rollover_materials, rollover_assessments,
+                rollover_question_bank, rollover_announcements, default_rollover_visibility
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?,
+                ?, ?, ?,
+                ?, ?, ?
+            )
+        `, [
+            cleanRange,
+            cleanCode,
+            start_date || null,
+            end_date || null,
+            finalStatus,
+            activeFlag,
+            sem1_start_date || null,
+            sem1_end_date || null,
+            sem1_enrollment_start || null,
+            sem1_enrollment_end || null,
+            q1_start_date || null,
+            q1_end_date || null,
+            q1_grade_deadline || null,
+            q2_start_date || null,
+            q2_end_date || null,
+            q2_grade_deadline || null,
+            sem2_start_date || null,
+            sem2_end_date || null,
+            sem2_enrollment_start || null,
+            sem2_enrollment_end || null,
+            q3_start_date || null,
+            q3_end_date || null,
+            q3_grade_deadline || null,
+            q4_start_date || null,
+            q4_end_date || null,
+            q4_grade_deadline || null,
+            Number(enforce_prerequisite) === 1 ? 1 : 0,
+            Number(passing_threshold) || 75.00,
+            source_sy_id ? parseInt(source_sy_id, 10) : null,
+            Number(rollover_materials) === 1 ? 1 : 0,
+            Number(rollover_assessments) === 1 ? 1 : 0,
+            Number(rollover_question_bank) === 1 ? 1 : 0,
+            Number(rollover_announcements) === 1 ? 1 : 0,
+            default_rollover_visibility === 'hidden' ? 'hidden' : 'visible'
+        ]);
+
+        const newSyId = insertResult.insertId;
 
         await logActivity(req.user.user_id, 'Admin', 'CREATE_SCHOOL_YEAR',
-            `Created school year: ${cleanRange}`);
+            `Created school year: ${cleanRange} (${cleanCode}) [Status: ${finalStatus}]`);
 
-        return res.json({ success: true });
+        return res.json({ success: true, sy_id: newSyId, message: `School year ${cleanRange} created successfully!` });
 
     } catch (err) {
         console.error('[AM Create SY Error]', err);
@@ -2572,44 +2688,147 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/school-years/:id
-// Edit an existing school year's range.
-// Body: { sy_range }
-// Returns: { success: true } | { success: false, message }
+// Edit an existing school year's comprehensive parameters.
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/school-years/:id', requireAdmin, async (req, res) => {
     try {
-        const syId      = parseInt(req.params.id, 10);
-        const { sy_range } = req.body;
+        const syId = parseInt(req.params.id, 10);
+        if (isNaN(syId)) return res.json({ success: false, message: 'Invalid school year ID.' });
 
-        if (isNaN(syId))                        return res.json({ success: false, message: 'Invalid school year ID.' });
-        if (!sy_range || !sy_range.trim())      return res.json({ success: false, message: 'SY range is required.' });
-
-        const cleanRange = sy_range.trim();
-
-        if (!/^\d{4}-\d{4}$/.test(cleanRange))
-            return res.json({ success: false, message: 'Format must be YYYY-YYYY using numbers only (e.g. 2025-2026).' });
-
-        const [startYear, endYear] = cleanRange.split('-').map(Number);
-        if (endYear !== startYear + 1)
-            return res.json({ success: false, message: `Invalid range: end year must be exactly start year + 1.` });
-
-        // Ensure the SY actually exists
-        const [[sy]] = await db.query(`SELECT sy_id FROM school_years WHERE sy_id = ?`, [syId]);
+        const [[sy]] = await db.query(`SELECT * FROM school_years WHERE sy_id = ?`, [syId]);
         if (!sy) return res.json({ success: false, message: 'School year not found.' });
 
-        // Check conflict with another record
+        const {
+            sy_range,
+            sy_code,
+            start_date,
+            end_date,
+            status,
+            is_active,
+
+            sem1_start_date,
+            sem1_end_date,
+            q1_start_date,
+            q1_end_date,
+            q1_grade_deadline,
+            q2_start_date,
+            q2_end_date,
+            q2_grade_deadline,
+
+            sem2_start_date,
+            sem2_end_date,
+            q3_start_date,
+            q3_end_date,
+            q3_grade_deadline,
+            q4_start_date,
+            q4_end_date,
+            q4_grade_deadline,
+
+            sem1_enrollment_start,
+            sem1_enrollment_end,
+            sem2_enrollment_start,
+            sem2_enrollment_end,
+            enforce_prerequisite,
+            passing_threshold
+        } = req.body;
+
+        // Timeline validation
+        const validation = academicHelper.validateSchoolYearTimeline(req.body);
+        if (!validation.valid) {
+            return res.json({ success: false, message: validation.message });
+        }
+
+        const cleanRange = sy_range.trim();
+        const cleanCode  = sy_code ? sy_code.trim() : (sy.sy_code || `SY${cleanRange.slice(2, 4)}-${cleanRange.slice(7, 9)}`);
+
+        // Check duplicate range with another record
         const [[conflict]] = await db.query(
             `SELECT sy_id FROM school_years WHERE sy_range = ? AND sy_id <> ?`, [cleanRange, syId]
         );
-        if (conflict)
+        if (conflict) {
             return res.json({ success: false, message: `School year "${cleanRange}" already exists.` });
+        }
 
-        await db.query(`UPDATE school_years SET sy_range = ? WHERE sy_id = ?`, [cleanRange, syId]);
+        // Check active / status transition
+        let activeFlag = sy.is_active;
+        let finalStatus = status || sy.status;
+        if (is_active !== undefined) {
+            activeFlag = (is_active === 1 || is_active === true || is_active === '1' || status === 'Active') ? 1 : 0;
+            finalStatus = activeFlag === 1 ? 'Active' : finalStatus;
+        }
+
+        if (activeFlag === 1 && !sy.is_active) {
+            // Atomically archive other active years
+            await db.query(`UPDATE school_years SET is_active = 0, status = 'Archived' WHERE sy_id <> ? AND is_active = 1`, [syId]);
+        }
+
+        await db.query(`
+            UPDATE school_years SET
+                sy_range = ?,
+                sy_code = ?,
+                start_date = ?,
+                end_date = ?,
+                status = ?,
+                is_active = ?,
+                sem1_start_date = ?,
+                sem1_end_date = ?,
+                sem1_enrollment_start = ?,
+                sem1_enrollment_end = ?,
+                q1_start_date = ?,
+                q1_end_date = ?,
+                q1_grade_deadline = ?,
+                q2_start_date = ?,
+                q2_end_date = ?,
+                q2_grade_deadline = ?,
+                sem2_start_date = ?,
+                sem2_end_date = ?,
+                sem2_enrollment_start = ?,
+                sem2_enrollment_end = ?,
+                q3_start_date = ?,
+                q3_end_date = ?,
+                q3_grade_deadline = ?,
+                q4_start_date = ?,
+                q4_end_date = ?,
+                q4_grade_deadline = ?,
+                enforce_prerequisite = ?,
+                passing_threshold = ?
+            WHERE sy_id = ?
+        `, [
+            cleanRange,
+            cleanCode,
+            start_date || null,
+            end_date || null,
+            finalStatus,
+            activeFlag,
+            sem1_start_date || null,
+            sem1_end_date || null,
+            sem1_enrollment_start || null,
+            sem1_enrollment_end || null,
+            q1_start_date || null,
+            q1_end_date || null,
+            q1_grade_deadline || null,
+            q2_start_date || null,
+            q2_end_date || null,
+            q2_grade_deadline || null,
+            sem2_start_date || null,
+            sem2_end_date || null,
+            sem2_enrollment_start || null,
+            sem2_enrollment_end || null,
+            q3_start_date || null,
+            q3_end_date || null,
+            q3_grade_deadline || null,
+            q4_start_date || null,
+            q4_end_date || null,
+            q4_grade_deadline || null,
+            enforce_prerequisite !== undefined ? (Number(enforce_prerequisite) === 1 ? 1 : 0) : sy.enforce_prerequisite,
+            passing_threshold !== undefined ? (Number(passing_threshold) || 75.00) : sy.passing_threshold,
+            syId
+        ]);
 
         await logActivity(req.user.user_id, 'Admin', 'EDIT_SCHOOL_YEAR',
-            `Updated school year ID ${syId} → ${cleanRange}`);
+            `Updated school year ID ${syId} → ${cleanRange} (${cleanCode}) [Status: ${finalStatus}]`);
 
-        return res.json({ success: true });
+        return res.json({ success: true, message: `School year ${cleanRange} updated successfully!` });
 
     } catch (err) {
         console.error('[AM Edit SY Error]', err);
@@ -2619,8 +2838,7 @@ router.post('/am/school-years/:id', requireAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/school-years/:id/activate
-// Set a school year as the active one (deactivates all others).
-// Returns: { success: true } | { success: false, message }
+// Set a school year as the active one (atomically deactivates & archives all others).
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/school-years/:id/activate', requireAdmin, async (req, res) => {
     try {
@@ -2628,18 +2846,19 @@ router.post('/am/school-years/:id/activate', requireAdmin, async (req, res) => {
         if (isNaN(syId)) return res.json({ success: false, message: 'Invalid school year ID.' });
 
         const [[sy]] = await db.query(
-            `SELECT sy_id, sy_range FROM school_years WHERE sy_id = ?`, [syId]
+            `SELECT sy_id, sy_range, sy_code FROM school_years WHERE sy_id = ?`, [syId]
         );
         if (!sy) return res.json({ success: false, message: 'School year not found.' });
 
-        // Deactivate all, then activate the target
-        await db.query(`UPDATE school_years SET is_active = 0`);
-        await db.query(`UPDATE school_years SET is_active = 1 WHERE sy_id = ?`, [syId]);
+        // Deactivate & Archive all others
+        await db.query(`UPDATE school_years SET is_active = 0, status = 'Archived' WHERE is_active = 1`);
+        // Activate target
+        await db.query(`UPDATE school_years SET is_active = 1, status = 'Active' WHERE sy_id = ?`, [syId]);
 
         await logActivity(req.user.user_id, 'Admin', 'ACTIVATE_SCHOOL_YEAR',
-            `Activated school year: ${sy.sy_range}`);
+            `Activated school year: ${sy.sy_range} (${sy.sy_code || 'SY'})`);
 
-        return res.json({ success: true });
+        return res.json({ success: true, message: `School year ${sy.sy_range} is now active.` });
 
     } catch (err) {
         console.error('[AM Activate SY Error]', err);
@@ -2648,9 +2867,45 @@ router.post('/am/school-years/:id/activate', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/am/school-years/:id/status
+// Set school year status: 'Draft' | 'Active' | 'Archived'
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/am/school-years/:id/status', requireAdmin, async (req, res) => {
+    try {
+        const syId = parseInt(req.params.id, 10);
+        const { status } = req.body;
+        if (isNaN(syId)) return res.json({ success: false, message: 'Invalid school year ID.' });
+        if (!['Draft', 'Active', 'Archived'].includes(status)) {
+            return res.json({ success: false, message: 'Invalid status. Must be Draft, Active, or Archived.' });
+        }
+
+        const [[sy]] = await db.query(`SELECT sy_id, sy_range, is_active FROM school_years WHERE sy_id = ?`, [syId]);
+        if (!sy) return res.json({ success: false, message: 'School year not found.' });
+
+        if (status === 'Active') {
+            await db.query(`UPDATE school_years SET is_active = 0, status = 'Archived' WHERE is_active = 1`);
+            await db.query(`UPDATE school_years SET is_active = 1, status = 'Active' WHERE sy_id = ?`, [syId]);
+        } else {
+            // Cannot un-activate active SY to Draft/Archived without activating another first
+            if (sy.is_active && status !== 'Active') {
+                return res.json({ success: false, message: 'Cannot deactivate the currently active school year directly. Activate another school year first.' });
+            }
+            await db.query(`UPDATE school_years SET status = ?, is_active = 0 WHERE sy_id = ?`, [status, syId]);
+        }
+
+        await logActivity(req.user.user_id, 'Admin', 'CHANGE_SY_STATUS',
+            `Changed status of school year ID ${syId} (${sy.sy_range}) to ${status}`);
+
+        return res.json({ success: true, message: `Status updated to ${status}.` });
+    } catch (err) {
+        console.error('[AM Change SY Status Error]', err);
+        return res.json({ success: false, message: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // DELETE /admin/am/school-years/:id
 // Delete a school year and all linked classes/enrollments.
-// Returns: { success: true } | { success: false, message }
 // ─────────────────────────────────────────────────────────────────────────────
 router.delete('/am/school-years/:id', requireAdmin, async (req, res) => {
     try {

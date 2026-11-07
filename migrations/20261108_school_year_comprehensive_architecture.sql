@@ -46,3 +46,4 @@ ALTER TABLE `school_years`
   ADD COLUMN IF NOT EXISTS `rollover_question_bank` TINYINT(1) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `rollover_announcements` TINYINT(1) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `default_rollover_visibility` ENUM('visible', 'hidden') NOT NULL DEFAULT 'visible';
+
