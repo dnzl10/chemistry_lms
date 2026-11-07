@@ -15,3 +15,4 @@ SET `status` = 'Archived'
 WHERE `status` = 'Archive';
 
 SET FOREIGN_KEY_CHECKS = 1;
+
