@@ -317,49 +317,13 @@
                             </button>
                         </div>
                         <% if (activeSY) { %>
-                        <div class="sy-card-active rounded-xl p-4 mb-3 border border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-teal-50/50 shadow-xs">
-                            <div class="flex items-center justify-between mb-1.5">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
-                                    <span class="text-xs font-black text-green-700 uppercase tracking-wider">Active</span>
-                                </div>
-                                <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                    <%= (activeSY.term_structure || 'quarterly').toUpperCase() %>
-                                </span>
+                        <div class="sy-card-active rounded-xl p-4 mb-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
+                                <span class="text-xs font-black text-green-700 uppercase tracking-wider">Active</span>
                             </div>
-                            <div class="flex items-baseline gap-2">
-                                <p class="text-2xl font-black text-green-900"><%= activeSY.sy_range %></p>
-                                <% if (activeSY.sy_code) { %>
-                                <span class="text-xs font-mono font-bold text-emerald-700 bg-white/80 px-2 py-0.5 rounded-md border border-emerald-200"><%= activeSY.sy_code %></span>
-                                <% } %>
-                            </div>
-                            <p class="text-xs text-green-700 mt-1 font-medium"><%= activeSY.classCount %> class(es) · <%= activeSY.enrolledCount %> enrolled</p>
-
-                            <!-- Terms overview inside Active SY card -->
-                            <% if (activeSY.terms && activeSY.terms.length > 0) { %>
-                            <div class="mt-3 pt-3 border-t border-emerald-200/70">
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Academic Terms</span>
-                                    <button type="button" onclick="openManageTermsModal(<%= activeSY.sy_id %>, '<%= activeSY.sy_range %>')"
-                                        class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1">
-                                        <i class="fas fa-sliders-h"></i> Manage Terms
-                                    </button>
-                                </div>
-                                <div class="flex flex-wrap gap-1.5">
-                                    <% activeSY.terms.forEach(function(t) { %>
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold <%= t.is_active ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-slate-700 border border-slate-200' %>">
-                                            <% if (t.is_active) { %><i class="fas fa-check-circle text-[10px]"></i><% } %>
-                                            <%= t.term_name %>
-                                            <% if (t.status === 'grading_locked') { %>
-                                                <i class="fas fa-lock text-[10px] text-amber-300 ml-0.5" title="Grading locked"></i>
-                                            <% } else if (t.status === 'archived') { %>
-                                                <i class="fas fa-archive text-[10px] text-slate-400 ml-0.5" title="Archived"></i>
-                                            <% } %>
-                                        </span>
-                                    <% }) %>
-                                </div>
-                            </div>
-                            <% } %>
+                            <p class="text-2xl font-black text-green-800"><%= activeSY.sy_range %></p>
+                            <p class="text-xs text-green-600 mt-1"><%= activeSY.classCount %> class(es) · <%= activeSY.enrolledCount %> enrolled</p>
                         </div>
                         <% } else { %>
                         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-3 text-center">
@@ -675,97 +639,28 @@
 
 <!-- ADD SCHOOL YEAR -->
 <div id="modalAddSY" class="modal-overlay">
-    <div class="modal-box max-w-xl p-0">
+    <div class="modal-box modal-box-sm p-0">
         <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div>
-                <h3 class="font-black text-indigo-900 text-lg">Add School Year</h3>
-                <p class="text-xs text-slate-400 mt-0.5">Configure institutional calendar and term grading structure</p>
-            </div>
+            <div><h3 class="font-black text-indigo-900 text-lg">Add School Year</h3></div>
             <button onclick="closeModal('modalAddSY')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
         </div>
         <form id="addSYForm" onsubmit="submitAddSY(event)" class="p-6 space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">SY Range *</label>
-                    <input type="text" id="addSYInput" name="sy_range" required
-                        placeholder="e.g. <%= new Date().getFullYear() %>-<%= new Date().getFullYear() + 1 %>"
-                        maxlength="9" pattern="\d{4}-\d{4}"
-                        oninput="validateSYInput(this)"
-                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
-                    <p class="text-[10px] text-slate-400 mt-1">Format: YYYY-YYYY (e.g. 2026-2027)</p>
-                    <p id="addSYError" class="text-[11px] text-rose-500 font-bold mt-1 hidden"></p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Short Code / Short Name</label>
-                    <input type="text" id="addSYCode" name="sy_code" placeholder="e.g. SY26-27 or AY2026-2027" maxlength="20"
-                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
-                    <p class="text-[10px] text-slate-400 mt-1">Auto-generated if left blank</p>
-                </div>
-            </div>
-
-            <!-- Term / Grading Period Structure -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Term / Grading Period Structure *</label>
-                <div class="grid grid-cols-1 gap-2.5">
-                    <!-- Quarterly -->
-                    <label class="relative flex items-start p-3 rounded-xl border border-slate-200 hover:border-indigo-400 cursor-pointer bg-white transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/40">
-                        <input type="radio" name="term_structure" value="quarterly" checked onchange="toggleSummerOption(this.value)" class="mt-1 text-indigo-600 focus:ring-indigo-500">
-                        <div class="ml-3">
-                            <span class="block text-xs font-bold text-slate-800">Quarterly (K–12)</span>
-                            <span class="block text-[11px] text-slate-500">Continuous annual course shell partitioned into 4 quarters (Q1 through Q4). No mid-year re-enrollment.</span>
-                        </div>
-                    </label>
-
-                    <!-- Semestral -->
-                    <label class="relative flex items-start p-3 rounded-xl border border-slate-200 hover:border-indigo-400 cursor-pointer bg-white transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/40">
-                        <input type="radio" name="term_structure" value="semestral" onchange="toggleSummerOption(this.value)" class="mt-1 text-indigo-600 focus:ring-indigo-500">
-                        <div class="ml-3">
-                            <span class="block text-xs font-bold text-slate-800">Semestral</span>
-                            <span class="block text-[11px] text-slate-500">Two 18-week semesters (1st Sem & 2nd Sem) with Midterm and Final evaluation sub-periods. Separate enrollment cycle per semester.</span>
-                        </div>
-                    </label>
-
-                    <!-- Trimester -->
-                    <label class="relative flex items-start p-3 rounded-xl border border-slate-200 hover:border-indigo-400 cursor-pointer bg-white transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/40">
-                        <input type="radio" name="term_structure" value="trimester" onchange="toggleSummerOption(this.value)" class="mt-1 text-indigo-600 focus:ring-indigo-500">
-                        <div class="ml-3">
-                            <span class="block text-xs font-bold text-slate-800">Trimester</span>
-                            <span class="block text-[11px] text-slate-500">Three equal terms (1st, 2nd, 3rd Trim) per year. Accelerated course delivery completing full syllabus per trimester.</span>
-                        </div>
-                    </label>
-                </div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">SY Range *</label>
+                <input type="text" id="addSYInput" name="sy_range" required
+                    placeholder="e.g. <%= new Date().getFullYear() %>-<%= new Date().getFullYear() + 1 %>"
+                    maxlength="9" pattern="\d{4}-\d{4}"
+                    oninput="validateSYInput(this)"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Format: YYYY-YYYY · Numbers only · Only current year's SY is allowed
+                    (<%= new Date().getFullYear() %>-<%= new Date().getFullYear() + 1 %>)
+                </p>
+                <p id="addSYError" class="text-[11px] text-rose-500 font-bold mt-1 hidden"></p>
             </div>
-
-            <!-- Optional Summer / Midyear Checkbox (Semestral only) -->
-            <div id="addSYSummerContainer" class="hidden p-3 rounded-xl bg-amber-50/70 border border-amber-200">
-                <label class="flex items-center gap-2 text-xs font-bold text-amber-900 cursor-pointer">
-                    <input type="checkbox" id="addSYIncludeSummer" name="include_summer" value="1" class="rounded text-amber-600 focus:ring-amber-500">
-                    <span>Include Summer / Midyear Term (Optional 6-week accelerated term)</span>
-                </label>
-            </div>
-
-            <!-- Calendar Dates (Optional) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Start Date</label>
-                    <input type="date" name="start_date" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">End Date</label>
-                    <input type="date" name="end_date" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                </div>
-            </div>
-
-            <!-- Notes -->
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Description / Memos</label>
-                <textarea name="description" rows="2" placeholder="Optional notes, curricular memos, or cohort specifications..."
-                    class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
-            </div>
-
-            <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeModal('modalAddSY')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Add School Year</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Add</button>
             </div>
         </form>
     </div>
@@ -773,71 +668,26 @@
 
 <!-- EDIT SCHOOL YEAR -->
 <div id="modalEditSY" class="modal-overlay">
-    <div class="modal-box max-w-lg p-0">
+    <div class="modal-box modal-box-sm p-0">
         <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div>
-                <h3 class="font-black text-indigo-900 text-lg">Edit School Year</h3>
-                <p class="text-xs text-slate-400 mt-0.5">Update school year metadata and active status</p>
-            </div>
+            <div><h3 class="font-black text-indigo-900 text-lg">Edit School Year</h3></div>
             <button onclick="closeModal('modalEditSY')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
         </div>
         <form id="editSYForm" onsubmit="submitEditSY(event)" class="p-6 space-y-4">
             <input type="hidden" id="editSYId">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">SY Range *</label>
-                    <input type="text" id="editSYRange" name="sy_range" required maxlength="9"
-                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Short Code</label>
-                    <input type="text" id="editSYCode" name="sy_code" maxlength="20"
-                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Term Structure</label>
-                    <select id="editSYStructure" name="term_structure" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
-                        <option value="quarterly">Quarterly (K–12)</option>
-                        <option value="semestral">Semestral</option>
-                        <option value="trimester">Trimester</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Lifecycle Status</label>
-                    <select id="editSYStatus" name="status" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
-                        <option value="active">Active / Current</option>
-                        <option value="draft">Draft / Planning</option>
-                        <option value="archived">Archived (Read-Only)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Start Date</label>
-                    <input type="date" id="editSYStartDate" name="start_date" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">End Date</label>
-                    <input type="date" id="editSYEndDate" name="end_date" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                </div>
-            </div>
-
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Description / Memos</label>
-                <textarea id="editSYDesc" name="description" rows="2" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">SY Range *</label>
+                <input type="text" id="editSYRange" name="sy_range" required maxlength="9"
+                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
             </div>
-
-            <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeModal('modalEditSY')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-save mr-1"></i> Save Changes</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-save mr-1"></i> Save</button>
             </div>
         </form>
     </div>
 </div>
+
 
 <!-- ALL / PAST SCHOOL YEARS MODAL -->
 <div id="modalAllSY" class="modal-overlay">
@@ -892,93 +742,6 @@
             <% }) %>
             <% } %>
         </div>
-    </div>
-</div>
-
-
-<!-- MANAGE TERMS & DEADLINES MODAL -->
-<div id="modalManageTerms" class="modal-overlay">
-    <div class="modal-box modal-box-lg p-0">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div>
-                <h3 class="font-black text-indigo-900 text-lg flex items-center gap-2">
-                    <i class="fas fa-calendar-week text-indigo-500"></i>
-                    <span id="manageTermsModalTitle">Academic Terms Management</span>
-                </h3>
-                <p class="text-xs text-slate-400 mt-0.5" id="manageTermsModalSubtitle">Manage enrollment windows, grading locks, and term active states</p>
-            </div>
-            <button onclick="closeModal('modalManageTerms')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="p-6">
-            <div id="manageTermsContainer" class="space-y-3">
-                <div class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-xs">Loading terms...</p></div>
-            </div>
-        </div>
-        <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-            <button type="button" onclick="closeModal('modalManageTerms')" class="px-5 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-100 transition">Close</button>
-        </div>
-    </div>
-</div>
-
-<!-- EDIT TERM CALENDAR & DEADLINES MODAL -->
-<div id="modalTermDates" class="modal-overlay">
-    <div class="modal-box max-w-lg p-0">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div>
-                <h3 class="font-black text-indigo-900 text-base flex items-center gap-2">
-                    <i class="fas fa-clock text-indigo-500"></i>
-                    <span id="termDatesTitle">Edit Term Deadlines</span>
-                </h3>
-                <p class="text-xs text-slate-400 mt-0.5">Configure official calendar dates and instructor grade locking</p>
-            </div>
-            <button onclick="closeModal('modalTermDates')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="termDatesForm" onsubmit="submitTermDates(event)" class="p-6 space-y-4">
-            <input type="hidden" id="editTermId">
-            <input type="hidden" id="editTermSyId">
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Term Start Date</label>
-                    <input type="date" id="termStartDate" name="start_date" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Term End Date</label>
-                    <input type="date" id="termEndDate" name="end_date" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Enrollment Opens</label>
-                    <input type="datetime-local" id="termEnrollStart" name="enrollment_start" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Enrollment Closes</label>
-                    <input type="datetime-local" id="termEnrollEnd" name="enrollment_end" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider">Add/Drop Deadline</label>
-                    <input type="datetime-local" id="termAddDrop" name="add_drop_deadline" class="search-input w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
-                    <p class="text-[10px] text-slate-400 mt-1">Self-dropping blocked after this</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wider text-rose-600">Grading Lock Cutoff</label>
-                    <input type="datetime-local" id="termGradingDeadline" name="grading_deadline" class="search-input w-full px-3 py-2 rounded-xl border border-rose-200 text-sm bg-white">
-                    <p class="text-[10px] text-rose-500 font-bold mt-1">Hard cutoff for instructor grade encoding</p>
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button type="button" onclick="closeModal('modalTermDates')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-save mr-1"></i> Save Deadlines</button>
-            </div>
-        </form>
     </div>
 </div>
 
@@ -1246,26 +1009,13 @@
                     </select>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">School Year *</label>
-                    <select name="sy_id" id="addClassSY" onchange="loadTermsForClassModal(this.value)" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
-                        <% schoolYears.forEach(function(sy) { %>
-                        <option value="<%= sy.sy_id %>" <%= sy.is_active ? 'selected' : '' %>><%= sy.sy_range %> <%= sy.is_active ? '(Active)' : '' %></option>
-                        <% }) %>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Academic Term</label>
-                    <select name="term_id" id="addClassTerm" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
-                        <option value="">— Active / Default Term —</option>
-                        <% if (activeSY && activeSY.terms) { %>
-                            <% activeSY.terms.forEach(function(t) { %>
-                            <option value="<%= t.term_id %>" <%= t.is_active ? 'selected' : '' %>><%= t.term_name %> (<%= t.term_code %>)</option>
-                            <% }) %>
-                        <% } %>
-                    </select>
-                </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">School Year *</label>
+                <select name="sy_id" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                    <% schoolYears.forEach(function(sy) { %>
+                    <option value="<%= sy.sy_id %>" <%= sy.is_active ? 'selected' : '' %>><%= sy.sy_range %> <%= sy.is_active ? '(Active)' : '' %></option>
+                    <% }) %>
+                </select>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeModal('modalAddClass')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
@@ -1664,15 +1414,7 @@ async function apiDelete(url) {
 async function submitAddSY(e) {
     e.preventDefault();
     const fd   = new FormData(document.getElementById('addSYForm'));
-    const data = await apiPost('/admin/am/school-years', {
-        sy_range:       fd.get('sy_range'),
-        sy_code:        fd.get('sy_code'),
-        term_structure: fd.get('term_structure') || 'quarterly',
-        start_date:     fd.get('start_date') || null,
-        end_date:       fd.get('end_date') || null,
-        description:    fd.get('description') || null,
-        include_summer: document.getElementById('addSYIncludeSummer') ? document.getElementById('addSYIncludeSummer').checked : false
-    });
+    const data = await apiPost('/admin/am/school-years', { sy_range: fd.get('sy_range') });
     if (data.success) {
         showToast('School year added!', 'success');
         closeModal('modalAddSY');
@@ -1682,29 +1424,14 @@ async function submitAddSY(e) {
 }
 
 function openEditSY(sy) {
-    document.getElementById('editSYId').value        = sy.sy_id;
-    document.getElementById('editSYRange').value     = sy.sy_range;
-    if (document.getElementById('editSYCode'))      document.getElementById('editSYCode').value = sy.sy_code || '';
-    if (document.getElementById('editSYStructure')) document.getElementById('editSYStructure').value = sy.term_structure || 'quarterly';
-    if (document.getElementById('editSYStatus'))    document.getElementById('editSYStatus').value = sy.status || 'active';
-    if (document.getElementById('editSYStartDate')) document.getElementById('editSYStartDate').value = sy.start_date || '';
-    if (document.getElementById('editSYEndDate'))   document.getElementById('editSYEndDate').value = sy.end_date || '';
-    if (document.getElementById('editSYDesc'))      document.getElementById('editSYDesc').value = sy.description || '';
+    document.getElementById('editSYId').value    = sy.sy_id;
+    document.getElementById('editSYRange').value = sy.sy_range;
     openModal('modalEditSY');
 }
 async function submitEditSY(e) {
     e.preventDefault();
     const id   = document.getElementById('editSYId').value;
-    const fd = new FormData(document.getElementById('editSYForm'));
-    const data = await apiPost(`/admin/am/school-years/${id}`, {
-        sy_range:       fd.get('sy_range'),
-        sy_code:        fd.get('sy_code'),
-        term_structure: fd.get('term_structure') || 'quarterly',
-        status:         fd.get('status') || 'active',
-        start_date:     fd.get('start_date') || null,
-        end_date:       fd.get('end_date') || null,
-        description:    fd.get('description') || null
-    });
+    const data = await apiPost(`/admin/am/school-years/${id}`, { sy_range: document.getElementById('editSYRange').value });
     if (data.success) {
         showToast('School year updated!', 'success');
         closeModal('modalEditSY');
@@ -2560,7 +2287,7 @@ async function loadClasses() {
                         </div>
                         <div class="flex-1 min-w-0">
                             <p class="font-bold text-slate-800 text-sm">${c.class_name}</p>
-                            <p class="text-[11px] text-slate-400">${c.teacher_name || 'No teacher assigned'} · ${c.sy_range || '—'} ${c.term_code ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 ml-1.5">${c.term_name || c.term_code}</span>` : ''}</p>
+                            <p class="text-[11px] text-slate-400">${c.teacher_name || 'No teacher assigned'} · ${c.sy_range || '—'}</p>
                         </div>
                         <span class="badge badge-active text-xs" id="class-count-badge-${c.class_id}">${c.student_count || 0} students</span>
                         <div class="flex items-center gap-1" onclick="event.stopPropagation()">
@@ -2600,7 +2327,6 @@ async function submitAddClass(e) {
         class_name: fd.get('class_name'),
         teacher_id: fd.get('teacher_id'),
         sy_id:      fd.get('sy_id'),
-        term_id:    fd.get('term_id') || null,
         subject_id: activeDrillSubjectId
     };
 
@@ -2622,7 +2348,6 @@ function editClassModal(c) {
     document.querySelector('#addClassForm [name="class_name"]').value  = c.class_name;
     document.querySelector('#addClassForm [name="teacher_id"]').value  = c.teacher_id || '';
     document.querySelector('#addClassForm [name="sy_id"]').value       = c.sy_id || '';
-    if (document.getElementById('addClassTerm')) document.getElementById('addClassTerm').value = c.term_id || '';
     document.getElementById('addClassForm').dataset.editId = c.class_id;
     document.getElementById('modalAddClassTitle').textContent = 'Edit Class';
     document.querySelector('#addClassForm button[type="submit"]').innerHTML = '<i class="fas fa-save mr-1"></i> Update Class';
@@ -3932,167 +3657,3 @@ function downloadAcademicTemplate(type) {
 
 </body>
 </html>
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// PHASE 4: ACADEMIC TERMS & EXTENDED SCHOOL YEAR CLIENT HELPERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function toggleSummerOption(structure) {
-    const summerBox = document.getElementById('addSYSummerContainer');
-    if (!summerBox) return;
-    if (structure === 'semestral') {
-        summerBox.classList.remove('hidden');
-    } else {
-        summerBox.classList.add('hidden');
-        const chk = document.getElementById('addSYIncludeSummer');
-        if (chk) chk.checked = false;
-    }
-}
-
-async function openManageTermsModal(syId, syRange) {
-    document.getElementById('manageTermsModalTitle').textContent = `Academic Terms (${syRange})`;
-    document.getElementById('manageTermsModalSubtitle').textContent = 'Loading term calendar and grading permissions...';
-    openModal('modalManageTerms');
-    await loadManageTerms(syId);
-}
-
-async function loadManageTerms(syId) {
-    const container = document.getElementById('manageTermsContainer');
-    container.innerHTML = '<div class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-xs">Loading terms...</p></div>';
-
-    try {
-        const res = await fetch(`/admin/am/school-years/${syId}/terms`);
-        const data = await res.json();
-        if (!data.success || !data.terms || data.terms.length === 0) {
-            container.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">No terms provisioned for this school year yet.</div>';
-            return;
-        }
-
-        container.innerHTML = data.terms.map(t => {
-            const isLocked = t.status === 'grading_locked';
-            const isArchived = t.status === 'archived';
-            const isActive = !!t.is_active;
-
-            let badgeHtml = '';
-            if (isActive) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">Active Term</span> ';
-            if (isLocked) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200"><i class="fas fa-lock mr-1"></i>Grading Locked</span>';
-            else if (isArchived) badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-300">Archived</span>';
-            else badgeHtml += '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">Grading Open</span>';
-
-            return `
-                <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs hover:border-slate-300 transition">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <h4 class="font-black text-slate-800 text-base">${t.term_name}</h4>
-                                <span class="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${t.term_code}</span>
-                                ${badgeHtml}
-                            </div>
-                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
-                                <span><i class="far fa-calendar-alt text-slate-400 mr-1"></i>${t.start_date || 'TBD'} to ${t.end_date || 'TBD'}</span>
-                                ${t.enrollment_start ? `<span><i class="fas fa-door-open text-slate-400 mr-1"></i>Enrollment: ${t.enrollment_start} to ${t.enrollment_end || 'TBD'}</span>` : ''}
-                                ${t.grading_deadline ? `<span class="text-rose-600 font-medium"><i class="fas fa-hourglass-end mr-1"></i>Grade Cutoff: ${t.grading_deadline}</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            ${!isActive ? `
-                            <button type="button" onclick="activateTerm(${t.term_id}, ${t.sy_id})"
-                                class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs font-bold transition">
-                                <i class="fas fa-star mr-1"></i> Set Active
-                            </button>` : ''}
-
-                            ${isLocked ? `
-                            <button type="button" onclick="toggleTermStatus(${t.term_id}, 'open', ${t.sy_id})"
-                                class="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition">
-                                <i class="fas fa-lock-open mr-1"></i> Unlock Grades
-                            </button>` : `
-                            <button type="button" onclick="toggleTermStatus(${t.term_id}, 'grading_locked', ${t.sy_id})"
-                                class="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition">
-                                <i class="fas fa-lock mr-1"></i> Close Grades
-                            </button>`}
-
-                            <button type="button" onclick="openEditTermDatesModal(${JSON.stringify(t).replace(/"/g, '&quot;')})"
-                                class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition">
-                                <i class="fas fa-clock mr-1"></i> Edit Dates
-                            </button>
-                        </div>
-                    </div>
-                </div>`;
-        }).join('');
-
-    } catch (err) {
-        container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load terms: ${err.message}</p>`;
-    }
-}
-
-async function toggleTermStatus(termId, newStatus, syId) {
-    const data = await apiPost(`/admin/am/terms/${termId}/status`, { status: newStatus });
-    if (data.success) {
-        showToast(newStatus === 'grading_locked' ? 'Term grades locked!' : 'Term grades unlocked!', 'success');
-        await loadManageTerms(syId);
-    } else {
-        showToast(data.message || 'Failed to update term status.', 'error');
-    }
-}
-
-async function activateTerm(termId, syId) {
-    const data = await apiPost(`/admin/am/terms/${termId}/activate`, {});
-    if (data.success) {
-        showToast('Active term updated!', 'success');
-        await loadManageTerms(syId);
-        refreshAdminContent({ message: 'Updating term view...' });
-    } else {
-        showToast(data.message || 'Failed to activate term.', 'error');
-    }
-}
-
-function openEditTermDatesModal(term) {
-    document.getElementById('editTermId').value = term.term_id;
-    document.getElementById('editTermSyId').value = term.sy_id;
-    document.getElementById('termDatesTitle').textContent = `Deadlines: ${term.term_name}`;
-    document.getElementById('termStartDate').value = term.start_date || '';
-    document.getElementById('termEndDate').value = term.end_date || '';
-    document.getElementById('termEnrollStart').value = (term.enrollment_start || '').replace(' ', 'T');
-    document.getElementById('termEnrollEnd').value = (term.enrollment_end || '').replace(' ', 'T');
-    document.getElementById('termAddDrop').value = (term.add_drop_deadline || '').replace(' ', 'T');
-    document.getElementById('termGradingDeadline').value = (term.grading_deadline || '').replace(' ', 'T');
-    openModal('modalTermDates');
-}
-
-async function submitTermDates(e) {
-    e.preventDefault();
-    const termId = document.getElementById('editTermId').value;
-    const syId = document.getElementById('editTermSyId').value;
-    const fd = new FormData(document.getElementById('termDatesForm'));
-
-    const payload = {
-        start_date: fd.get('start_date') || null,
-        end_date: fd.get('end_date') || null,
-        enrollment_start: fd.get('enrollment_start') ? fd.get('enrollment_start').replace('T', ' ') : null,
-        enrollment_end: fd.get('enrollment_end') ? fd.get('enrollment_end').replace('T', ' ') : null,
-        add_drop_deadline: fd.get('add_drop_deadline') ? fd.get('add_drop_deadline').replace('T', ' ') : null,
-        grading_deadline: fd.get('grading_deadline') ? fd.get('grading_deadline').replace('T', ' ') : null,
-    };
-
-    const data = await apiPost(`/admin/am/terms/${termId}/dates`, payload);
-    if (data.success) {
-        showToast('Term dates and deadlines saved!', 'success');
-        closeModal('modalTermDates');
-        await loadManageTerms(syId);
-    } else {
-        showToast(data.message || 'Failed to save dates.', 'error');
-    }
-}
-
-async function loadTermsForClassModal(syId) {
-    const sel = document.getElementById('addClassTerm');
-    if (!sel || !syId) return;
-    try {
-        const res = await fetch(`/admin/am/school-years/${syId}/terms`);
-        const data = await res.json();
-        if (data.success && data.terms) {
-            sel.innerHTML = '<option value="">— Active / Default Term —</option>' +
-                data.terms.map(t => `<option value="${t.term_id}" ${t.is_active ? 'selected' : ''}>${t.term_name} (${t.term_code})</option>`).join('');
-        }
-    } catch (_) {}
-}

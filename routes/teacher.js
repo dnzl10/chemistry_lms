@@ -25,7 +25,6 @@ const levelProgressionService = require('../services/levelProgressionService');
 const forumExpService = require('../services/forumExpService');
 const topicScheduleService = require('../services/topicScheduleService');
 const { SIMULATIONS_REGISTRY } = require('../services/simulationQuizService');
-const termHelper = require('../utils/termHelper');
 
 const simTitleMap = {};
 if (Array.isArray(SIMULATIONS_REGISTRY)) {
@@ -9497,18 +9496,15 @@ router.get('/reports', isTeacher, async (req, res) => {
     let selectedClassId = req.query.class_id;
 
     try {
-        // Fetch teacher's classes for the filter dropdown (with subject metadata, term structure, and quarters)
+        // Fetch teacher's classes for the filter dropdown (with subject metadata and quarters)
         const [classes] = await db.execute(`
             SELECT c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester,
-                   sy.term_structure, sy.sy_range, at.term_name, at.term_code,
                    COALESCE(GROUP_CONCAT(q.quarter_number ORDER BY q.quarter_number), '1,2') as quarters
             FROM classes c
             JOIN subjects s ON c.subject_id = s.subject_id
-            LEFT JOIN school_years sy ON c.sy_id = sy.sy_id
-            LEFT JOIN academic_terms at ON c.term_id = at.term_id
             LEFT JOIN quarters q ON s.subject_id = q.subject_id
             WHERE c.teacher_id = ?
-            GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester, sy.term_structure, sy.sy_range, at.term_name, at.term_code
+            GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester
             ORDER BY c.class_id ASC, c.class_name ASC`, [teacherId]);
 
         // Default to teacher's primary active class if no class is explicitly specified in query
@@ -9918,7 +9914,6 @@ router.get('/reports', isTeacher, async (req, res) => {
             heatmap,
             seqErrors,
             notifications,
-            termHelper,
         });
 
     } catch (err) {
@@ -16354,31 +16349,6 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
         const duration = parseInt(req.body.duration) || 0;
         const { student_id, assessment_id } = req.body;
 
-        // Check Term Grading Lock Guardrail
-        let resolvedAidForAudio = assessment_id ? parseInt(assessment_id, 10) : null;
-        if (!resolvedAidForAudio && scoreId && scoreId !== 'new' && scoreId !== '0') {
-            const [[scRow]] = await db.query(`SELECT assessment_id FROM student_scores WHERE score_id = ?`, [scoreId]);
-            if (scRow) resolvedAidForAudio = scRow.assessment_id;
-        }
-        if (resolvedAidForAudio) {
-            const [[termCheck]] = await db.query(`
-                SELECT at.term_id, at.term_name, at.status, at.grading_deadline
-                FROM assessments a
-                JOIN quarters q ON q.quarter_id = a.quarter_id
-                LEFT JOIN classes c ON c.subject_id = q.subject_id
-                LEFT JOIN academic_terms at ON at.term_id = c.term_id
-                WHERE a.assessment_id = ?
-                LIMIT 1
-            `, [resolvedAidForAudio]);
-
-            if (termCheck) {
-                const guard = termHelper.isGradingAllowed(termCheck);
-                if (!guard.isAllowed) {
-                    return res.status(403).json({ success: false, error: guard.reason, term_status: termCheck.status });
-                }
-            }
-        }
-
         if (scoreId === 'new' || scoreId === '0' || !scoreId) {
             if (student_id && assessment_id) {
                 const [existing] = await db.query(
@@ -16490,31 +16460,6 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
     try {
         let scoreId = req.params.scoreId;
         const { score, feedback, rubric_scores, student_id, assessment_id, group_id, is_group_submission } = req.body;
-
-        // Check Term Grading Lock Guardrail
-        let resolvedAid = assessment_id ? parseInt(assessment_id, 10) : null;
-        if (!resolvedAid && scoreId && scoreId !== 'new' && scoreId !== '0') {
-            const [[scRow]] = await db.query(`SELECT assessment_id FROM student_scores WHERE score_id = ?`, [scoreId]);
-            if (scRow) resolvedAid = scRow.assessment_id;
-        }
-        if (resolvedAid) {
-            const [[termCheck]] = await db.query(`
-                SELECT at.term_id, at.term_name, at.status, at.grading_deadline
-                FROM assessments a
-                JOIN quarters q ON q.quarter_id = a.quarter_id
-                LEFT JOIN classes c ON c.subject_id = q.subject_id
-                LEFT JOIN academic_terms at ON at.term_id = c.term_id
-                WHERE a.assessment_id = ?
-                LIMIT 1
-            `, [resolvedAid]);
-
-            if (termCheck) {
-                const guard = termHelper.isGradingAllowed(termCheck);
-                if (!guard.isAllowed) {
-                    return res.status(403).json({ success: false, error: guard.reason, term_status: termCheck.status });
-                }
-            }
-        }
 
         let targetStudentId = student_id;
         if (!targetStudentId && group_id) {

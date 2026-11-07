@@ -2335,9 +2335,6 @@
             class_name: c.class_name,
             subject_name: c.subject_name,
             semester: c.semester,
-            term_structure: c.term_structure || 'quarterly',
-            term_name: c.term_name || '',
-            term_code: c.term_code || '',
             quarters: (c.quarters || '1,2').split(',').map(Number)
         };
         return acc;
@@ -2877,15 +2874,6 @@
             /* ── Class-to-Subject & Quarters Registry ── */
             const CLASS_METADATA_MAP = _initialReportsData.classMetadataMap || {};
 
-            function getDynamicPeriodLabel(q, structure) {
-                if (structure === 'semestral' || structure === 'trimester') {
-                    if (Number(q) === 1) return 'Midterm Period';
-                    if (Number(q) === 2) return 'Final Period';
-                    return 'Period ' + q;
-                }
-                return 'Quarter ' + q;
-            }
-
             function updateRcQuarterFilterOptions(activeClassId) {
                 const sel = document.getElementById('rcQuarterFilter');
                 if (!sel) return;
@@ -2909,9 +2897,8 @@
                     const allLabel = `All Quarters (${quartersText}${semText ? ' — ' + semText : ''})`;
                     sel.appendChild(new Option(allLabel, ''));
 
-                    const termStruct = clsMeta?.term_structure || 'quarterly';
                     quarters.forEach(q => {
-                        sel.appendChild(new Option(getDynamicPeriodLabel(q, termStruct), String(q)));
+                        sel.appendChild(new Option(`Quarter ${q}`, String(q)));
                     });
                 }
 
@@ -2944,9 +2931,8 @@
                     const allLabel = `All Quarters (${quartersText}${semText ? ' — ' + semText : ''})`;
                     sel.appendChild(new Option(allLabel, ''));
 
-                    const termStructGb = clsMeta?.term_structure || 'quarterly';
                     quarters.forEach(q => {
-                        sel.appendChild(new Option(getDynamicPeriodLabel(q, termStructGb), String(q)));
+                        sel.appendChild(new Option(`Quarter ${q}`, String(q)));
                     });
                 }
 

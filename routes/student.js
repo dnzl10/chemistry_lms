@@ -12,7 +12,6 @@ const levelProgressionService = require('../services/levelProgressionService');
 const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const forumExpService = require('../services/forumExpService');
 const topicScheduleService = require('../services/topicScheduleService');
-const termHelper = require('../utils/termHelper');
 const forumStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         const forumDir = path.join(__dirname, '../files');
@@ -1473,14 +1472,12 @@ router.post('/enroll', async (req, res) => {
     const student_id = req.user.user_id; // Passport.js gamit mo kaya req.user dapat
 
     try {
-        // 1. Verify Code, Class ID, and Academic Term Window
+        // 1. I-verify ang Code at kunin ang Class ID
+        // Ginagamit natin ang JOIN para makuha ang class_id na naka-link sa subject na iyon
         const [subjectData] = await db.query(`
-            SELECT s.enrollment_code, c.class_id, c.sy_id, c.term_id, c.max_capacity,
-                   c.enrollment_start, c.enrollment_end, c.enrolled_count,
-                   at.status AS term_status, at.enrollment_start AS term_enroll_start, at.enrollment_end AS term_enroll_end
+            SELECT s.enrollment_code, c.class_id 
             FROM subjects s
             JOIN classes c ON s.subject_id = c.subject_id
-            LEFT JOIN academic_terms at ON at.term_id = c.term_id
             WHERE s.subject_id = ?
         `, [subject_id]);
 
@@ -1488,25 +1485,7 @@ router.post('/enroll', async (req, res) => {
             return res.send("<script>alert('Maling Enrollment Code!'); window.location='/home';</script>");
         }
 
-        const clsRow = subjectData[0];
-        const class_id = clsRow.class_id;
-
-        // Check Term & Section Enrollment Window
-        const termSettings = {
-            status: clsRow.term_status,
-            enrollment_start: clsRow.term_enroll_start,
-            enrollment_end: clsRow.term_enroll_end
-        };
-        const classSettings = {
-            enrollment_start: clsRow.enrollment_start,
-            enrollment_end: clsRow.enrollment_end,
-            max_capacity: clsRow.max_capacity,
-            enrolled_count: clsRow.enrolled_count
-        };
-        const enrollGate = termHelper.isEnrollmentOpen(termSettings, classSettings);
-        if (!enrollGate.isOpen) {
-            return res.send(`<script>alert('${enrollGate.reason.replace(/'/g, "\\'")}'); window.location='/home';</script>`);
-        }
+        const class_id = subjectData[0].class_id;
 
         // 2. I-check kung enrolled na (safety check)
         const [existing] = await db.query(
@@ -1521,8 +1500,7 @@ router.post('/enroll', async (req, res) => {
         // 3. TRANSACTION: Mag-insert sa dalawang table nang sabay
         // Para siguradong lalabas sa Dashboard (class_students) at may progress tracking (student_progress)
         await db.query("INSERT INTO student_progress (student_id, subject_id, progress_percent) VALUES (?, ?, 0)", [student_id, subject_id]);
-        await db.query("INSERT INTO class_students (class_id, student_id, sy_id) VALUES (?, ?, ?)", [class_id, student_id, clsRow.sy_id]);
-        await db.query("UPDATE classes SET enrolled_count = enrolled_count + 1 WHERE class_id = ?", [class_id]);
+        await db.query("INSERT INTO class_students (class_id, student_id) VALUES (?, ?)", [class_id, student_id]);
 
         // T-24: Notify Teacher of new student enrollment
         try {
