@@ -6718,8 +6718,8 @@ function validatePoolShortage() {
     const count = (currentTopicPool && currentTopicPool.count !== undefined) ? currentTopicPool.count : 0;
 
     if (count === 0) {
-        notice.className = 'text-[11px] mt-1.5 p-2 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 flex items-start gap-1.5 transition-all';
-        notice.innerHTML = `<i class="fas fa-info-circle mt-0.5 text-slate-500"></i><span>Loading question pool information...</span>`;
+        notice.className = 'text-[11px] mt-1.5 p-2.5 rounded-lg bg-rose-50 border border-rose-300 text-rose-800 flex items-start gap-2 shadow-sm transition-all';
+        notice.innerHTML = `<i class="fas fa-exclamation-triangle mt-0.5 text-rose-600 text-sm flex-shrink-0"></i><div><strong>No Approved Questions:</strong> No verified questions currently exist for Level ${currentTopicPool.level_number || '1'}. Please approve questions in the Question Bank before students take this assessment.</div>`;
         return;
     }
 

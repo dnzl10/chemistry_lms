@@ -5100,35 +5100,14 @@ router.get('/am/bulk-template', requireAdmin, (req, res) => {
 //  GAMING & Q-BANK COMMAND CENTER — ALL ROUTES (UPDATED)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const LEVEL_MACHINES = {
-    1: { name: "Chemical Mixing Station", id: 1, topic: "Scientific Measurement" },
-    2: { name: "Atom Builder", id: 2, topic: "Quantum Theory" },
-    3: { name: "Isotope Modifier", id: 3, topic: "Isotopes" },
-    4: { name: "Atomic Balance Machine", id: 4, topic: "Atomic Mass" },
-    5: { name: "Compound Assembly", id: 5, topic: "Percentage Composition" },
-    6: { name: "Compound Naming Machine", id: 6, topic: "Chemical Nomenclature" },
-    7: { name: "Bond Mixing Laboratory", id: 7, topic: "Chemical Bonds & Properties" },
-    8: { name: "Molecular Mixing Laboratory", id: 8, topic: "Intermolecular Forces" },
-    9: { name: "Organic Reaction Laboratory", id: 9, topic: "Organic Compounds" },
-    10: { name: "Reaction Chamber", id: 10, topic: "Types of Chemical Reactions" },
-    11: { name: "Mole Distribution Machine", id: 11, topic: "Mole Concept" },
-    12: { name: "Reaction Balancer", id: 12, topic: "Law of Conservation of Mass & Stoichiometry" }
-};
-
-const LEVEL_TOPIC_MAP = {
-    1: 3,
-    2: 4,
-    3: 5,
-    4: 11,
-    5: 12,
-    6: 13,
-    7: 14,
-    8: 1,
-    9: 2,
-    10: 8,
-    11: 9,
-    12: 10
-};
+const {
+    LEVEL_MACHINES,
+    TOPIC_LEVEL_MAP,
+    LEVEL_TOPIC_MAP,
+    resolveLevelFromTopicName,
+    resolveLevelForTopicId,
+    resolveTopicIdForLevel
+} = require('../utils/elementaTopicLevelHelper');
 
 const VALID_INPUT_MODES    = ['Standard', 'Periodic_Single', 'Periodic_Sequence', 'Numeric'];
 const VALID_MECHANIC_TYPES = [
@@ -5384,10 +5363,7 @@ router.get('/gqb/topics/:topic_id/questions-pool', requireAdmin, async (req, res
         const topicId = parseInt(req.params.topic_id, 10);
         if (isNaN(topicId)) return res.json({ success: false, message: 'Invalid topic ID.' });
 
-        const TOPIC_LEVEL_MAP = {
-            3: 1, 4: 2, 5: 3, 11: 4, 12: 5, 13: 6, 14: 7, 1: 8, 2: 9, 8: 10, 9: 11, 10: 12
-        };
-        const levelNumber = TOPIC_LEVEL_MAP[topicId] || null;
+        const levelNumber = await resolveLevelForTopicId(db, topicId);
 
         const [questions] = await db.query(`
             SELECT question_id, question_code, level_number, topic, machine_name,
@@ -5653,12 +5629,12 @@ async function _upsertElementaQuestion(req, qId) {
         return { success: false, message: 'Target answer / solution is required.' };
     }
 
-    const actualLevel = parseInt(level_number, 10) || (topic_id ? LEVEL_TOPIC_MAP[topic_id] : 1) || 1;
+    const actualLevel = parseInt(level_number, 10) || (topic_id ? await resolveLevelForTopicId(db, topic_id) : 1) || 1;
     const machineInfo = LEVEL_MACHINES[actualLevel] || { name: machine_name || 'Chemistry Station', id: actualLevel, topic: 'Chemistry' };
     const actualMachineName = machine_name || machineInfo.name;
     const actualMachineId = parseInt(machine_id, 10) || machineInfo.id;
     const actualTopic = machineInfo.topic;
-    const actualTopicId = topic_id ? parseInt(topic_id, 10) : (LEVEL_TOPIC_MAP[actualLevel] || null);
+    const actualTopicId = topic_id ? parseInt(topic_id, 10) : (await resolveTopicIdForLevel(db, actualLevel));
 
     // Auto-generate question code if missing
     const qCode = question_code && question_code.trim() !== ''

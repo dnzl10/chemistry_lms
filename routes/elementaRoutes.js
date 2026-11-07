@@ -189,35 +189,12 @@ router.post('/proctor-event', verifyCabinetSignature, async (req, res) => {
 // ===================================================================
 // TOPIC TO DISTRICT LEVEL MAPPING (12 Topics to 12 Districts)
 // ===================================================================
-const TOPIC_TO_LEVEL = {
-    3: 1,   // Scientific Measurement
-    4: 2,   // Quantum Theory
-    5: 3,   // Isotopes
-    11: 4,  // Atomic Mass
-    12: 5,  // Percentage Composition
-    13: 6,  // Chemical Nomenclature
-    14: 7,  // Chemical Bonds & Properties
-    1: 8,   // Intermolecular Forces
-    2: 9,   // Organic Compounds
-    8: 10,  // Types of Chemical Reactions
-    9: 11,  // The Mole Concept
-    10: 12  // Conservation of Mass & Stoichiometry
-};
-
-const LEVEL_TO_TOPIC = {
-    1: 3,
-    2: 4,
-    3: 5,
-    4: 11,
-    5: 12,
-    6: 13,
-    7: 14,
-    8: 1,
-    9: 2,
-    10: 8,
-    11: 9,
-    12: 10
-};
+const {
+    LEVEL_MACHINES,
+    TOPIC_LEVEL_MAP: TOPIC_TO_LEVEL,
+    LEVEL_TOPIC_MAP: LEVEL_TO_TOPIC,
+    resolveLevelFromTopicName
+} = require('../utils/elementaTopicLevelHelper');
 
 // ===================================================================
 // ASSESSMENT TICKET VALIDATION (1-Hour One-Time Access Ticket)
@@ -449,7 +426,7 @@ router.get('/topic-locks', async (req, res) => {
 
         topics.forEach(t => {
             topicLocks[t.topic_id] = Boolean(t.is_locked);
-            const levelNum = TOPIC_TO_LEVEL[t.topic_id];
+            const levelNum = resolveLevelFromTopicName(t.topic_name) || TOPIC_TO_LEVEL[t.topic_id];
             if (levelNum) {
                 levelLocks[levelNum] = Boolean(t.is_locked);
             }

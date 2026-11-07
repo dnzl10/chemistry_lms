@@ -1828,33 +1828,28 @@ router.delete('/api/material/:mid', isTeacher, async (req, res) => {
 // ============================================================
 // ASSESSMENTS — POST / PUT / DELETE
 // ============================================================
-const TOPIC_LEVEL_MAP = {
-    3: 1,   // Scientific measurement
-    4: 2,   // The Quantum Theory
-    5: 3,   // Isotopes
-    11: 4,  // Atomic mass
-    12: 5,  // Percentage composition
-    13: 6,  // Chemical nomenclature
-    14: 7,  // Chemical bonds
-    1: 8,   // Intermolecular forces
-    2: 9,   // Organic compounds
-    8: 10,  // Types of chemical reactions
-    9: 11,  // The Mole Concept
-    10: 12  // The Law of Conservation of Mass
-};
+const {
+    LEVEL_MACHINES,
+    TOPIC_LEVEL_MAP,
+    LEVEL_TOPIC_MAP,
+    resolveLevelFromTopicName,
+    resolveLevelForTopicId,
+    resolveTopicIdForLevel
+} = require('../utils/elementaTopicLevelHelper');
 
 // GET available Elementa questions pool for a topic (with question shortage detection)
 router.get('/api/topic-questions-pool/:topic_id', isTeacher, async (req, res) => {
     try {
         const topicId = parseInt(req.params.topic_id, 10);
-        const levelNumber = TOPIC_LEVEL_MAP[topicId] || 1;
+        const levelNumber = await resolveLevelForTopicId(db, topicId);
         const [questions] = await db.query(
             `SELECT question_id, question_code, level_number, topic, machine_name,
                     prompt, answer_text, time_limit_s, points
              FROM elementa_questions
-             WHERE level_number = ? AND is_active = 1 AND verification_status = 'Approved'
+             WHERE (topic_id = ? OR (level_number IS NOT NULL AND level_number = ?))
+               AND is_active = 1 AND verification_status = 'Approved'
              ORDER BY display_order ASC, question_id ASC`,
-            [levelNumber]
+            [topicId, levelNumber]
         );
         res.json({
             success: true,
@@ -5901,37 +5896,8 @@ async function getMaterialContext(material) {
 
 
 // ════════════════════════════════════════════════════════════════════════════
-// ELEMENTA ARCADE LEVEL MACHINES & TOPIC MAPPING
+// ELEMENTA ARCADE LEVEL MACHINES & TOPIC MAPPING (Imported from helper)
 // ════════════════════════════════════════════════════════════════════════════
-const LEVEL_MACHINES = {
-    1: { name: "Chemical Mixing Station", id: 1, topic: "Scientific Measurement" },
-    2: { name: "Atom Builder", id: 2, topic: "Quantum Theory" },
-    3: { name: "Isotope Modifier", id: 3, topic: "Isotopes" },
-    4: { name: "Atomic Balance Machine", id: 4, topic: "Atomic Mass" },
-    5: { name: "Compound Assembly", id: 5, topic: "Percentage Composition" },
-    6: { name: "Compound Naming Machine", id: 6, topic: "Chemical Nomenclature" },
-    7: { name: "Bond Mixing Laboratory", id: 7, topic: "Chemical Bonds & Properties" },
-    8: { name: "Molecular Mixing Laboratory", id: 8, topic: "Intermolecular Forces" },
-    9: { name: "Organic Reaction Laboratory", id: 9, topic: "Organic Compounds" },
-    10: { name: "Reaction Chamber", id: 10, topic: "Types of Chemical Reactions" },
-    11: { name: "Mole Distribution Machine", id: 11, topic: "Mole Concept" },
-    12: { name: "Reaction Balancer", id: 12, topic: "Law of Conservation of Mass & Stoichiometry" }
-};
-
-const LEVEL_TOPIC_MAP = {
-    1: 3,
-    2: 4,
-    3: 5,
-    4: 11,
-    5: 12,
-    6: 13,
-    7: 14,
-    8: 1,
-    9: 2,
-    10: 8,
-    11: 9,
-    12: 10
-};
 
 // ════════════════════════════════════════════════════════════════════════════
 // GET /teacher/question-bank — ELEMENTA QUESTION BANK

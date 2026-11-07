@@ -1856,6 +1856,18 @@ function renderModalTopicPoolStatus() {
     const healthBadge = document.getElementById('asmPoolHealthBadge');
     if (!healthBadge) return;
 
+    const topicEl = document.getElementById('asmModalTopic');
+    const topicSelected = topicEl && topicEl.value;
+
+    if (!topicSelected) {
+        healthBadge.innerHTML = `
+            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs flex items-center gap-2">
+                <i class="fas fa-info-circle text-sky-500"></i>
+                <span>Please select a curriculum topic above to inspect verified arcade questions.</span>
+            </div>`;
+        return;
+    }
+
     const count = _modalTopicPoolData.count || 0;
     const requestedItems = parseInt(document.getElementById('asmModalItems').value, 10) || 10;
 
