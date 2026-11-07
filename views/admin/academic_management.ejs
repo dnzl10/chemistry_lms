@@ -903,102 +903,8 @@
     </div>
 </div>
 
-<!-- ADD TOPIC -->
-<div id="modalAddTopic" class="modal-overlay">
-    <div class="modal-box p-0 max-w-xl">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div><h3 class="font-black text-indigo-900 text-lg">Add Topic</h3></div>
-            <button onclick="closeModal('modalAddTopic')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="addTopicForm" onsubmit="submitAddTopic(event)" class="p-6 space-y-4">
-            <input type="hidden" id="addTopicQuarterId">
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Topic Name *</label>
-                <input type="text" name="topic_name" required placeholder="e.g. Atomic Structure"
-                    class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Topic Description *</label>
-                <textarea name="topic_description" required rows="2" placeholder="Brief description..." class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Objectives *</label>
-                <textarea name="topic_objectives" required rows="2" placeholder="List objectives here..." class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Video URL *</label>
-                <div class="relative">
-                    <input type="url" id="addTopicVideo" name="video_url" required placeholder="e.g. https://www.youtube.com/watch?v=... or embed URL"
-                        oninput="handleTopicVideoPreview('add')" onchange="handleTopicVideoPreview('add')"
-                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white pr-9">
-                    <button type="button" id="addTopicVideoClearBtn" onclick="clearTopicVideoPreview('add')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm hidden" title="Clear URL">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                </div>
-                <p class="text-[11px] text-slate-400 mt-1">Supports YouTube (watch, embed, share, shorts), Vimeo, or direct MP4 video URLs.</p>
-                <div id="addTopicVideoPreviewContainer" class="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 overflow-hidden transition-all hidden">
-                    <div class="flex items-center justify-between pb-2 px-1 text-xs font-bold text-slate-600">
-                        <span class="flex items-center gap-1.5 text-indigo-600"><i class="fas fa-play-circle"></i> Video Preview</span>
-                        <span id="addTopicVideoBadge" class="text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1"><i class="fas fa-check-circle"></i> Valid URL</span>
-                    </div>
-                    <div class="w-full aspect-video rounded-lg overflow-hidden bg-slate-900 shadow-inner flex items-center justify-center border border-slate-200" id="addTopicVideoFrameWrapper"></div>
-                </div>
-            </div>
-            <div class="flex justify-end gap-3 pt-2">
-                <button type="button" onclick="closeModal('modalAddTopic')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-plus mr-1"></i> Add Topic</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- EDIT TOPIC -->
-<div id="modalEditTopic" class="modal-overlay">
-    <div class="modal-box p-0 max-w-xl">
-        <div class="flex items-center justify-between p-6 border-b border-slate-100">
-            <div><h3 class="font-black text-indigo-900 text-lg">Edit Topic</h3></div>
-            <button onclick="closeModal('modalEditTopic')" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="editTopicForm" onsubmit="submitEditTopic(event)" class="p-6 space-y-4">
-            <input type="hidden" id="editTopicId">
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Topic Name *</label>
-                <input type="text" id="editTopicName" name="topic_name" required class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Topic Description *</label>
-                <textarea id="editTopicDesc" name="topic_description" required rows="2" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Objectives *</label>
-                <textarea id="editTopicObj" name="topic_objectives" required rows="2" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"></textarea>
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Video URL *</label>
-                <div class="relative">
-                    <input type="url" id="editTopicVideo" name="video_url" required
-                        oninput="handleTopicVideoPreview('edit')" onchange="handleTopicVideoPreview('edit')"
-                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white pr-9">
-                    <button type="button" id="editTopicVideoClearBtn" onclick="clearTopicVideoPreview('edit')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm hidden" title="Clear URL">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                </div>
-                <p class="text-[11px] text-slate-400 mt-1">Supports YouTube (watch, embed, share, shorts), Vimeo, or direct MP4 video URLs.</p>
-                <div id="editTopicVideoPreviewContainer" class="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 overflow-hidden transition-all hidden">
-                    <div class="flex items-center justify-between pb-2 px-1 text-xs font-bold text-slate-600">
-                        <span class="flex items-center gap-1.5 text-indigo-600"><i class="fas fa-play-circle"></i> Video Preview</span>
-                        <span id="editTopicVideoBadge" class="text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1"><i class="fas fa-check-circle"></i> Valid URL</span>
-                    </div>
-                    <div class="w-full aspect-video rounded-lg overflow-hidden bg-slate-900 shadow-inner flex items-center justify-center border border-slate-200" id="editTopicVideoFrameWrapper"></div>
-                </div>
-            </div>
-            <div class="flex justify-end gap-3 pt-2">
-                <button type="button" onclick="closeModal('modalEditTopic')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-bold hover:opacity-90 transition shadow-md"><i class="fas fa-save mr-1"></i> Save</button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- UNIFIED ADD / EDIT TOPIC MODAL (Shared with Teacher) -->
+<%- include('../partials/unified-topic-modal', { roleContext: 'Admin' }) %>
 
 <!-- ENROLLMENT CONFIG MODAL -->
 <div id="modalClassConfig" class="modal-overlay">
@@ -1722,17 +1628,29 @@ async function loadQuarters() {
                     ${(q.topics || []).length === 0
                         ? `<p class="text-xs text-slate-400 text-center py-3">No topics. Add one above.</p>`
                         : (q.topics || []).map(t => `
-                            <div class="topic-row flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
-                                <div class="flex items-center gap-3">
+                            <div class="topic-row flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 gap-2">
+                                <div class="flex items-center gap-2.5 flex-wrap min-w-0">
                                     <span class="badge ${t.is_locked ? 'badge-locked' : 'badge-unlocked'} text-[9px]">${t.is_locked ? '🔒' : '🔓'}</span>
-                                    <span class="text-sm font-bold text-slate-700">${t.topic_name}</span>
-
+                                    <span class="text-sm font-bold text-slate-700 break-words">${escapeHtml(t.topic_name)}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                                        <i class="fas fa-folder-open mr-0.5"></i>${(t.materials || []).length} ${(t.materials || []).length === 1 ? 'Material' : 'Materials'}
+                                    </span>
+                                    ${t.auto_unlock_at ? `
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title="Scheduled Auto-Unlock">
+                                            <i class="fas fa-clock mr-0.5"></i>Unlocks: ${new Date(t.auto_unlock_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    ` : ''}
+                                    ${t.auto_lock_at ? `
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200" title="Scheduled Auto-Lock">
+                                            <i class="fas fa-hourglass-end mr-0.5"></i>Locks: ${new Date(t.auto_lock_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    ` : ''}
                                 </div>
-                                <div class="flex items-center gap-1">
+                                <div class="flex items-center gap-1 flex-shrink-0">
                                     <button class="btn-icon ${t.is_locked ? 'btn-unlock' : 'btn-lock'}" onclick="toggleTopicLock(${t.topic_id}, ${t.is_locked})">
                                         <i class="fas ${t.is_locked ? 'fa-lock-open' : 'fa-lock'}"></i>
                                     </button>
-                                    <button class="btn-icon btn-edit" onclick="openEditTopicModal(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+                                    <button class="btn-icon btn-edit" onclick="openEditTopicModal(${JSON.stringify({ ...t, quarter_id: q.quarter_id }).replace(/"/g, '&quot;')})">
                                         <i class="fas fa-pen"></i>
                                     </button>
                                     <button class="btn-icon btn-delete" onclick="confirmDeleteTopic(${t.topic_id}, '${t.topic_name.replace(/'/g,"\\'")}')">
@@ -1817,8 +1735,9 @@ function renderQuarterTopicsCards() {
                     <label class="block text-xs font-bold text-slate-700 mb-1">
                         Topic Name <span class="text-rose-500">*</span>
                     </label>
-                    <input type="text" class="q-topic-name w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none font-medium text-slate-800" 
-                        placeholder="e.g. Atomic Structure & Chemical Bonds" value="${escapeHtml(t.topic_name)}" required>
+                    <textarea rows="1" class="q-topic-name topic-autofit-field w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none font-medium text-slate-800"
+                        data-min-height="42" data-max-height="140" oninput="autoResizeTopicField(this)" style="resize:none; overflow-y:hidden; min-height:42px;"
+                        placeholder="e.g. Atomic Structure & Chemical Bonds" required>${escapeHtml(t.topic_name)}</textarea>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1826,15 +1745,17 @@ function renderQuarterTopicsCards() {
                         <label class="block text-xs font-bold text-slate-700 mb-1">
                             Topic Description <span class="text-rose-500">*</span>
                         </label>
-                        <textarea rows="2" class="q-topic-desc w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none text-slate-800" 
+                        <textarea rows="3" class="q-topic-desc topic-autofit-field w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none text-slate-800"
+                            data-min-height="72" data-max-height="260" oninput="autoResizeTopicField(this)" style="resize:none; overflow-y:hidden; min-height:72px;"
                             placeholder="Brief summary of concepts covered..." required>${escapeHtml(t.topic_description)}</textarea>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">
-                            Learning Objectives <span class="text-rose-500">*</span>
+                            Learning Objectives (1 per line for bullets) <span class="text-rose-500">*</span>
                         </label>
-                        <textarea rows="2" class="q-topic-obj w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none text-slate-800" 
-                            placeholder="Key competencies and takeaways..." required>${escapeHtml(t.topic_objectives)}</textarea>
+                        <textarea rows="3" class="q-topic-obj topic-autofit-field w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none text-slate-800"
+                            data-min-height="72" data-max-height="260" oninput="autoResizeTopicField(this)" style="resize:none; overflow-y:hidden; min-height:72px;"
+                            placeholder="• Explain atomic models&#10;• Identify subatomic particles..." required>${escapeHtml(t.topic_objectives)}</textarea>
                     </div>
                 </div>
 
@@ -2271,38 +2192,30 @@ function clearTopicVideoPreview(prefix) {
 }
 
 function openAddTopic(quarterId) {
-    document.getElementById('addTopicQuarterId').value = quarterId;
-    const form = document.getElementById('addTopicForm');
-    if (form) form.reset();
-    clearTopicVideoPreview('add');
-    openModal('modalAddTopic');
-}
-async function submitAddTopic(e) {
-    e.preventDefault();
-    const qId  = document.getElementById('addTopicQuarterId').value;
-    const fd   = new FormData(document.getElementById('addTopicForm'));
-    const data = await apiPost(`/admin/am/quarters/${qId}/topics`, { topic_name: fd.get('topic_name'), topic_description: fd.get('topic_description'), topic_objectives: fd.get('topic_objectives'), video_url: fd.get('video_url') });
-    if (data.success) { showToast('Topic added!', 'success'); closeModal('modalAddTopic'); loadQuarters(); }
-    else showToast(data.message || 'Failed.', 'error');
+    openTopicModal(null, quarterId, '', '', '', '', {
+        is_locked: 1,
+        auto_unlock_at: null,
+        auto_lock_at: null,
+        materials: []
+    });
 }
 
 function openEditTopicModal(t) {
     if (typeof t === 'string') t = JSON.parse(t);
-    document.getElementById('editTopicId').value    = t.topic_id;
-    document.getElementById('editTopicName').value  = t.topic_name || '';
-    document.getElementById('editTopicDesc').value = t.topic_description || '';
-    document.getElementById('editTopicObj').value = t.topic_objectives || '';
-    document.getElementById('editTopicVideo').value = t.video_url || '';
-    handleTopicVideoPreview('edit');
-    openModal('modalEditTopic');
-}
-async function submitEditTopic(e) {
-    e.preventDefault();
-    const id   = document.getElementById('editTopicId').value;
-    const fd   = new FormData(document.getElementById('editTopicForm'));
-    const data = await apiPost(`/admin/am/topics/${id}`, { topic_name: fd.get('topic_name'), topic_description: fd.get('topic_description'), topic_objectives: fd.get('topic_objectives'), video_url: fd.get('video_url') });
-    if (data.success) { showToast('Topic updated!', 'success'); closeModal('modalEditTopic'); loadQuarters(); }
-    else showToast(data.message || 'Failed.', 'error');
+    openTopicModal(
+        t.topic_id,
+        t.quarter_id,
+        t.topic_name || '',
+        t.topic_description || '',
+        t.topic_objectives || '',
+        t.video_url || '',
+        {
+            is_locked: t.is_locked,
+            auto_unlock_at: t.auto_unlock_at,
+            auto_lock_at: t.auto_lock_at,
+            materials: t.materials || []
+        }
+    );
 }
 
 async function toggleTopicLock(topicId, isLocked) {

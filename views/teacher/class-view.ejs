@@ -1945,7 +1945,22 @@ Enrollment Key: <%= subject.enrollment_code || 'N/A' %></div>
 
                                                 <!-- Topic name -->
                                                 <div class="min-w-0">
-                                                    <p class="font-semibold text-slate-700 text-base truncate"><%= topic.topic_name %></p>
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <p class="font-semibold text-slate-700 text-base truncate"><%= topic.topic_name %></p>
+                                                        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                                                            <i class="fas fa-folder-open text-[10px] mr-0.5"></i><%= (topic.materials || []).length %> <%= (topic.materials || []).length === 1 ? 'Material' : 'Materials' %>
+                                                        </span>
+                                                        <% if (topic.auto_unlock_at) { %>
+                                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title="Scheduled Auto-Unlock">
+                                                                <i class="fas fa-clock text-[10px] mr-0.5"></i>Unlocks: <%= new Date(topic.auto_unlock_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                                                            </span>
+                                                        <% } %>
+                                                        <% if (topic.auto_lock_at) { %>
+                                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200" title="Scheduled Auto-Lock">
+                                                                <i class="fas fa-hourglass-end text-[10px] mr-0.5"></i>Locks: <%= new Date(topic.auto_lock_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                                                            </span>
+                                                        <% } %>
+                                                    </div>
                                                     <p class="text-sm text-slate-400 truncate mt-1">
                                                         <%= topic.topic_description || '' %>
                                                         <% if (tLocked) { %><span class="ml-2 text-orange-500 font-semibold"><i class="fas fa-lock text-sm"></i> Locked</span><% } %>
@@ -1961,7 +1976,18 @@ Enrollment Key: <%= subject.enrollment_code || 'N/A' %></div>
                                                     topic_name: topic.topic_name || '',
                                                     topic_description: topic.topic_description || '',
                                                     topic_objectives: topic.topic_objectives || '',
-                                                    video_url: topic.video_url || ''
+                                                    video_url: topic.video_url || '',
+                                                    is_locked: (topic.is_locked == 1) ? 1 : 0,
+                                                    auto_unlock_at: topic.auto_unlock_at || null,
+                                                    auto_lock_at: topic.auto_lock_at || null,
+                                                    materials: (topic.materials || []).map(m => ({
+                                                        material_id: m.material_id,
+                                                        topic_id: m.topic_id,
+                                                        title: m.title,
+                                                        material_type: m.material_type,
+                                                        file_path_or_url: m.file_path_or_url,
+                                                        is_locked: (m.is_locked == 1) ? 1 : 0
+                                                    }))
                                                 }) %></script>
                                                 <button class="icon-btn" title="Edit topic"
                                                         onclick="editTopicById(<%= topic.topic_id %>)">
@@ -3819,134 +3845,8 @@ Enrollment Key: <%= subject.enrollment_code || 'N/A' %></div>
                 <!-- Toast -->
                 <div id="cm-toast"></div>
 
-                <!-- ======= TOPIC MODAL ======= -->
-                <div class="modal-backdrop" id="topicModal">
-                    <div class="modal-card" style="max-width:540px; width:95vw; max-height:90vh; display:flex; flex-direction:column;">
-                        <div class="modal-header">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
-                                    <i class="fas fa-tag text-violet-600 text-base"></i>
-                                </div>
-                                <h3 class="font-bold text-slate-800 text-base" id="topicModalTitle">Add Topic</h3>
-                            </div>
-                            <button type="button" onclick="handleTopicModalClose()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 cursor-pointer">
-                                <i class="fas fa-times text-base"></i>
-                            </button>
-                        </div>
-                        <form id="topicForm" onsubmit="submitTopicForm(event)" style="display:flex; flex-direction:column; min-height:0; flex:1;">
-                            <input type="hidden" id="topicId" name="topic_id">
-                            <input type="hidden" id="topicQuarterId" name="quarter_id">
-                            <div class="modal-body" style="overflow-y:auto; flex:1;">
-                                <div>
-                                    <label class="form-label">Topic Name <span class="text-rose-500">*</span></label>
-                                    <textarea id="topicName" name="topic_name" class="form-input topic-autofit-field" placeholder="e.g. Chemical Bonding" required rows="1" oninput="autoResizeTopicField(this)" style="resize:none; overflow-y:hidden; min-height:40px; line-height:1.45;"></textarea>
-                                </div>
-                                <div>
-                                    <label class="form-label">Topic Description <span class="text-rose-500">*</span></label>
-                                    <textarea id="topicDesc" name="topic_description" class="form-input topic-autofit-field" required rows="2" placeholder="Brief description..." oninput="autoResizeTopicField(this)" style="resize:none; overflow-y:hidden; min-height:64px; line-height:1.45;"></textarea>
-                                </div>
-                                <div>
-                                    <label class="form-label">Objectives <span class="text-rose-500">*</span></label>
-                                    <textarea id="topicObj" name="topic_objectives" class="form-input topic-autofit-field" required rows="2" placeholder="List objectives..." oninput="autoResizeTopicField(this)" style="resize:none; overflow-y:hidden; min-height:64px; line-height:1.45;"></textarea>
-                                </div>
-                                <div>
-                                    <label class="form-label">Video URL <span class="text-rose-500">*</span></label>
-                                    <textarea id="topicVideoUrl" name="video_url" class="form-input topic-autofit-field" placeholder="e.g. https://www.youtube.com/embed/..." required rows="1" oninput="autoResizeTopicField(this)" style="resize:none; overflow-y:hidden; min-height:40px; line-height:1.45; word-break:break-all;"></textarea>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" onclick="handleTopicModalClose()" class="sort-btn cursor-pointer">Cancel</button>
-                                <button type="submit" id="topicSaveBtn" class="sort-btn active cursor-pointer" style="background:#4f46e5;border-color:#4338ca;color:white">
-                                    <i class="fas fa-save text-sm"></i> <span id="topicSaveBtnText">Save Topic</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- ======= TOPIC DISCARD CONFIRMATION MODAL ======= -->
-                <div class="modal-backdrop" id="topicDiscardConfirmModal" style="z-index: 250;">
-                    <div class="modal-card" style="max-width:440px; width:92vw;">
-                        <div class="modal-header">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
-                                    <i class="fas fa-triangle-exclamation text-base"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-slate-800 text-base">Discard Unsaved Changes?</h3>
-                                    <p class="text-[11px] text-slate-400">Unsaved changes will be lost</p>
-                                </div>
-                            </div>
-                            <button type="button" onclick="closeModal('topicDiscardConfirmModal')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 transition cursor-pointer">
-                                <i class="fas fa-times text-base"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body py-4">
-                            <p class="text-sm text-slate-600 leading-relaxed">
-                                You have unsaved changes in this topic. Are you sure you want to discard your changes and close?
-                            </p>
-                        </div>
-                        <div class="modal-footer bg-slate-50 flex items-center justify-end gap-2">
-                            <button type="button" onclick="closeModal('topicDiscardConfirmModal')" class="sort-btn cursor-pointer">
-                                Keep Editing
-                            </button>
-                            <button type="button" onclick="confirmDiscardTopicChanges()" class="sort-btn cursor-pointer" style="background:#e11d48;border-color:#be123c;color:white">
-                                <i class="fas fa-trash-can text-sm"></i> Discard & Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ======= TOPIC SAVE CONFIRMATION MODAL ======= -->
-                <div class="modal-backdrop" id="topicSaveConfirmModal" style="z-index: 250;">
-                    <div class="modal-card" style="max-width:460px; width:92vw;">
-                        <div class="modal-header">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
-                                    <i class="fas fa-circle-question text-base"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-slate-800 text-base" id="topicSaveConfirmTitle">Confirm Topic</h3>
-                                    <p class="text-[11px] text-slate-400" id="topicSaveConfirmSubtitle">Please review before saving</p>
-                                </div>
-                            </div>
-                            <button type="button" onclick="closeModal('topicSaveConfirmModal')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 transition cursor-pointer">
-                                <i class="fas fa-times text-base"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body py-4 space-y-3">
-                            <p class="text-sm text-slate-600 leading-relaxed" id="topicSaveConfirmMsg">
-                                Are you sure you want to finalize and save this topic?
-                            </p>
-                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
-                                <div>
-                                    <span class="text-slate-400 font-medium">Topic Name:</span>
-                                    <div class="font-bold text-slate-800 mt-0.5 break-words" id="topicConfirmName"></div>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 font-medium">Description:</span>
-                                    <div class="text-slate-700 mt-0.5 line-clamp-2 break-words" id="topicConfirmDesc"></div>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 font-medium">Objectives:</span>
-                                    <div class="text-slate-700 mt-0.5 line-clamp-2 break-words" id="topicConfirmObj"></div>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 font-medium">Video URL:</span>
-                                    <div class="text-indigo-600 mt-0.5 truncate font-mono text-[11px]" id="topicConfirmVideo"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer bg-slate-50 flex items-center justify-end gap-2">
-                            <button type="button" onclick="closeModal('topicSaveConfirmModal')" class="sort-btn cursor-pointer">
-                                Keep Editing
-                            </button>
-                            <button type="button" id="topicExecuteSaveBtn" onclick="confirmExecuteTopicSave()" class="sort-btn active cursor-pointer" style="background:#4f46e5;border-color:#4338ca;color:white">
-                                <i class="fas fa-check text-sm"></i> <span id="topicExecuteSaveBtnText">Yes, Save Topic</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <!-- ======= UNIFIED TOPIC MODAL (Shared with Admin) ======= -->
+                <%- include('../partials/unified-topic-modal', { roleContext: 'Teacher' }) %>
 
                 <!-- ======= MATERIAL MODAL ======= -->
                 <div class="modal-backdrop" id="materialModal">
@@ -5765,9 +5665,21 @@ async function toggleTopicLock(tid, currentLocked) {
         if (!res.ok) throw new Error();
 
         const btn = document.getElementById('tlock-' + tid);
-        btn.className = 'lock-btn ' + (newVal ? 'locked' : 'unlocked');
-        btn.querySelector('i').className = 'fas fa-' + (newVal ? 'lock' : 'lock-open') + ' text-xs';
-        btn.title = newVal ? 'Unlock topic' : 'Lock topic';
+        if (btn) {
+            btn.className = 'lock-btn ' + (newVal ? 'locked' : 'unlocked');
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = 'fas fa-' + (newVal ? 'lock' : 'lock-open') + ' text-xs';
+            btn.title = newVal ? 'Unlock topic' : 'Lock topic';
+            btn.setAttribute('onclick', `toggleTopicLock(${tid}, ${newVal})`);
+        }
+        const dataEl = document.getElementById('topic-data-' + tid);
+        if (dataEl) {
+            try {
+                const parsed = JSON.parse(dataEl.textContent);
+                parsed.is_locked = newVal;
+                dataEl.textContent = JSON.stringify(parsed);
+            } catch (_) {}
+        }
         cmToast('Topic ' + (newVal ? 'locked' : 'unlocked') + '.', 'success');
     } catch(e) {
         cmToast('Failed to update topic lock.', 'error');
@@ -6642,7 +6554,12 @@ function editTopicById(topicId) {
     if (!el) return;
     try {
         const d = JSON.parse(el.textContent);
-        openTopicModal(d.topic_id, d.quarter_id, d.topic_name, d.topic_description, d.topic_objectives, d.video_url);
+        openTopicModal(d.topic_id, d.quarter_id, d.topic_name, d.topic_description, d.topic_objectives, d.video_url, {
+            is_locked: d.is_locked,
+            auto_unlock_at: d.auto_unlock_at,
+            auto_lock_at: d.auto_lock_at,
+            materials: d.materials
+        });
     } catch(err) {
         console.error('Error parsing topic data:', err);
     }
@@ -6658,80 +6575,6 @@ function deleteTopicById(topicId) {
         } catch(e) {}
     }
     confirmDelete('topic', topicId, name);
-}
-
-let topicInitialState = null;
-
-function autoResizeTopicField(el) {
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
-}
-
-function autoResizeAllTopicFields() {
-    const fields = document.querySelectorAll('#topicModal .topic-autofit-field');
-    fields.forEach(field => {
-        field.style.height = 'auto';
-        field.style.height = field.scrollHeight + 'px';
-    });
-}
-
-function hasUnsavedTopicChanges() {
-    if (!topicInitialState) return false;
-    const currentName  = (document.getElementById('topicName')?.value || '').trim();
-    const currentDesc  = (document.getElementById('topicDesc')?.value || '').trim();
-    const currentObj   = (document.getElementById('topicObj')?.value || '').trim();
-    const currentVideo = (document.getElementById('topicVideoUrl')?.value || '').trim();
-
-    if (currentName !== topicInitialState.name) return true;
-    if (currentDesc !== topicInitialState.desc) return true;
-    if (currentObj !== topicInitialState.obj) return true;
-    if (currentVideo !== topicInitialState.video) return true;
-
-    return false;
-}
-
-function handleTopicModalClose() {
-    if (hasUnsavedTopicChanges()) {
-        openModal('topicDiscardConfirmModal');
-    } else {
-        closeModal('topicModal');
-        topicInitialState = null;
-    }
-}
-
-function confirmDiscardTopicChanges() {
-    closeModal('topicDiscardConfirmModal');
-    closeModal('topicModal');
-    topicInitialState = null;
-}
-
-function openTopicModal(topicId, quarterId, name, description, objectives, videoUrl) {
-    const isEdit = !!topicId;
-    document.getElementById('topicModalTitle').textContent = isEdit ? 'Edit Topic' : 'Add Topic';
-    const saveBtnTextEl = document.getElementById('topicSaveBtnText');
-    if (saveBtnTextEl) {
-        saveBtnTextEl.textContent = isEdit ? 'Save Changes' : 'Save Topic';
-    }
-
-    document.getElementById('topicId').value        = topicId || '';
-    document.getElementById('topicQuarterId').value = quarterId || '';
-    document.getElementById('topicName').value      = name  || '';
-    if (document.getElementById('topicDesc')) document.getElementById('topicDesc').value = description || '';
-    if (document.getElementById('topicObj')) document.getElementById('topicObj').value = objectives || '';
-    if (document.getElementById('topicVideoUrl')) document.getElementById('topicVideoUrl').value = videoUrl || '';
-
-    topicInitialState = {
-        topicId: topicId || '',
-        quarterId: quarterId || '',
-        name: (name || '').trim(),
-        desc: (description || '').trim(),
-        obj: (objectives || '').trim(),
-        video: (videoUrl || '').trim()
-    };
-
-    openModal('topicModal');
-    setTimeout(autoResizeAllTopicFields, 30);
 }
 
 function openMaterialModal(matId, topicId, title, type, url, isLocked) {
@@ -7586,113 +7429,9 @@ function openForumModal(fid, topicId, subjectId, title, content) {
 
 /* ================================================================
    FORM SUBMITS  (POST/PATCH to your Express routes)
+   Note: submitTopicForm & confirmExecuteTopicSave are provided by
+   views/partials/unified-topic-modal.ejs
    ================================================================ */
-
-let pendingTopicPayload = null;
-
-function submitTopicForm(e) {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const id = fd.get('topic_id');
-    const isEdit = !!id;
-
-    const topicName = (fd.get('topic_name') || '').trim();
-    const topicDesc = (fd.get('topic_description') || '').trim();
-    const topicObj = (fd.get('topic_objectives') || '').trim();
-    const videoUrl = (fd.get('video_url') || '').trim();
-
-    if (!topicName) {
-        cmToast('Topic name is required.', 'error');
-        document.getElementById('topicName')?.focus();
-        return;
-    }
-    if (!topicDesc) {
-        cmToast('Topic description is required.', 'error');
-        document.getElementById('topicDesc')?.focus();
-        return;
-    }
-    if (!topicObj) {
-        cmToast('Objectives are required.', 'error');
-        document.getElementById('topicObj')?.focus();
-        return;
-    }
-    if (!videoUrl) {
-        cmToast('Video URL is required.', 'error');
-        document.getElementById('topicVideoUrl')?.focus();
-        return;
-    }
-
-    pendingTopicPayload = {
-        id: id,
-        url: id ? '/teacher/api/topic/' + id : '/teacher/api/topic',
-        method: id ? 'PUT' : 'POST',
-        body: {
-            quarter_id: fd.get('quarter_id'),
-            topic_name: topicName,
-            topic_description: topicDesc,
-            topic_objectives: topicObj,
-            video_url: videoUrl
-        }
-    };
-
-    const titleEl = document.getElementById('topicSaveConfirmTitle');
-    const subTitleEl = document.getElementById('topicSaveConfirmSubtitle');
-    const msgEl = document.getElementById('topicSaveConfirmMsg');
-    const executeBtnText = document.getElementById('topicExecuteSaveBtnText');
-
-    if (titleEl) titleEl.textContent = isEdit ? 'Confirm Topic Changes' : 'Confirm New Topic';
-    if (subTitleEl) subTitleEl.textContent = isEdit ? 'Please review your updates before saving' : 'Please review topic details before adding';
-    if (msgEl) msgEl.textContent = isEdit ? 'Are you sure you want to finalize and save these changes?' : 'Are you sure you want to add this topic?';
-    if (executeBtnText) executeBtnText.textContent = isEdit ? 'Yes, Save Changes' : 'Yes, Add Topic';
-
-    const confirmNameEl = document.getElementById('topicConfirmName');
-    const confirmDescEl = document.getElementById('topicConfirmDesc');
-    const confirmObjEl = document.getElementById('topicConfirmObj');
-    const confirmVideoEl = document.getElementById('topicConfirmVideo');
-
-    if (confirmNameEl) confirmNameEl.textContent = topicName;
-    if (confirmDescEl) confirmDescEl.textContent = topicDesc;
-    if (confirmObjEl) confirmObjEl.textContent = topicObj;
-    if (confirmVideoEl) confirmVideoEl.textContent = videoUrl;
-
-    openModal('topicSaveConfirmModal');
-}
-
-async function confirmExecuteTopicSave() {
-    if (!pendingTopicPayload) return;
-
-    const btn = document.getElementById('topicExecuteSaveBtn');
-    const origHtml = btn ? btn.innerHTML : '';
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin text-sm"></i> Saving...';
-    }
-
-    try {
-        const res = await fetch(pendingTopicPayload.url, {
-            method: pendingTopicPayload.method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(pendingTopicPayload.body)
-        });
-        if (!res.ok) throw new Error();
-
-        const savedQuarterId = pendingTopicPayload.body?.quarter_id;
-        closeModal('topicSaveConfirmModal');
-        closeModal('topicModal');
-        topicInitialState = null;
-        pendingTopicPayload = null;
-
-        cmToast('Topic saved successfully!', 'success');
-        await refreshClassViewContent({ ensureQuarterOpen: savedQuarterId });
-    } catch(err) {
-        cmToast('Failed to save topic. Please try again.', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-        }
-    }
-}
 
 let pendingMaterialSavePayload = null;
 

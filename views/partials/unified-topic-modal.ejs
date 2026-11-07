@@ -1,0 +1,1677 @@
+<!-- ============================================================================
+     views/partials/unified-topic-modal.ejs
+     Unified Responsive Add/Edit Topic Modal for Teacher & Admin
+     Features:
+     1. Responsive modal shell & dynamic auto-expanding fields (ResizeObserver)
+     2. Interactive multi-line Bullet Objectives Builder
+     3. Live Video URL Embed Preview (YouTube, Vimeo, Direct Video)
+     4. Embedded Learning Materials Queue & Existing Materials Manager
+     5. Manual Lock/Unlock + Automatic Unlock/Lock Scheduling
+     6. Unsaved Changes Guard & Responsive Save Confirmation Modal
+     ============================================================================ -->
+
+<style>
+    .utm-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(4px);
+        z-index: 220;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+    }
+    .utm-backdrop.open {
+        display: flex !important;
+    }
+    .utm-card {
+        background: #ffffff;
+        border-radius: 20px;
+        width: min(96vw, 760px);
+        max-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.28);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        animation: utmSlideUp 0.18s ease-out;
+    }
+    @keyframes utmSlideUp {
+        from { opacity: 0; transform: translateY(10px) scale(0.99); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .utm-header {
+        padding: 16px 22px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(90deg, #f8fafc 0%, #eef2ff 100%);
+        flex-shrink: 0;
+    }
+    .utm-body {
+        padding: 20px 22px;
+        overflow-y: auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+    .utm-footer {
+        padding: 14px 22px;
+        border-top: 1px solid #f1f5f9;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+    }
+    .utm-section-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 14px 16px;
+        background: #ffffff;
+    }
+    .utm-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        font-weight: 800;
+        color: #334155;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 6px;
+    }
+    .utm-input {
+        width: 100%;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 10px 13px;
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: #1e293b;
+        background: #f8fafc;
+        transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+        outline: none;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .utm-input:focus {
+        background: #ffffff;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    }
+    .utm-obj-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        transition: border-color 0.15s, background-color 0.15s;
+    }
+    .utm-obj-row:focus-within {
+        border-color: #6366f1;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    .utm-obj-bullet {
+        width: 22px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #4f46e5;
+        font-weight: 900;
+        font-size: 16px;
+        flex-shrink: 0;
+        user-select: none;
+    }
+    .utm-obj-textarea {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 13px;
+        line-height: 1.48;
+        color: #1e293b;
+        padding: 4px 2px;
+        resize: none;
+        outline: none;
+        min-height: 28px;
+        max-height: 220px;
+        overflow-y: hidden;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .utm-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 9px 16px;
+        border-radius: 11px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+    }
+    .utm-btn:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+    .utm-btn-primary {
+        background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+        border-color: #4338ca;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.22);
+    }
+    .utm-btn-primary:hover {
+        opacity: 0.94;
+        color: #ffffff;
+        background: linear-gradient(135deg, #4338ca 0%, #0891b2 100%);
+    }
+    .utm-btn-danger {
+        background: #e11d48;
+        border-color: #be123c;
+        color: #ffffff;
+    }
+    .utm-btn-danger:hover {
+        background: #be123c;
+        color: #ffffff;
+    }
+    @media (max-width: 640px) {
+        .utm-header, .utm-body, .utm-footer {
+            padding-left: 14px;
+            padding-right: 14px;
+        }
+        .utm-card {
+            width: 98vw;
+            max-height: 95vh;
+            border-radius: 16px;
+        }
+    }
+</style>
+
+<!-- ======= UNIFIED ADD / EDIT TOPIC MODAL ======= -->
+<div class="modal-backdrop modal-overlay utm-backdrop" id="topicModal">
+    <div class="utm-card">
+        <!-- Sticky Modal Header -->
+        <div class="utm-header">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-600 flex-shrink-0 shadow-2xs">
+                    <i class="fas fa-layer-group text-base" id="topicModalHeaderIcon"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="font-black text-slate-800 text-base sm:text-lg truncate" id="topicModalTitle">Add Topic</h3>
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200" id="topicModalRoleBadge">
+                            <%= typeof roleContext !== 'undefined' ? roleContext : 'Curriculum' %>
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 truncate" id="topicModalSubtitle">Configure topic details, bullet objectives, learning materials, and access schedule</p>
+                </div>
+            </div>
+            <button type="button" onclick="handleTopicModalClose()" class="w-8 h-8 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 flex items-center justify-center text-slate-400 hover:text-rose-600 transition cursor-pointer flex-shrink-0" title="Close">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Scrollable Form Body -->
+        <form id="topicForm" onsubmit="submitTopicForm(event)" style="display:flex; flex-direction:column; min-height:0; flex:1;">
+            <input type="hidden" id="topicId" name="topic_id">
+            <input type="hidden" id="topicQuarterId" name="quarter_id">
+
+            <div class="utm-body" id="topicModalScrollBody">
+                <!-- 1. TOPIC NAME & DESCRIPTION -->
+                <div class="utm-section-box space-y-4">
+                    <div>
+                        <div class="utm-label">
+                            <span><i class="fas fa-tag text-indigo-500 mr-1.5"></i>Topic Name <span class="text-rose-500">*</span></span>
+                            <span class="text-[11px] font-semibold text-slate-400 normal-case" id="topicNameCount">0 chars</span>
+                        </div>
+                        <textarea id="topicName" name="topic_name" class="utm-input topic-autofit-field"
+                            placeholder="e.g. Chemical Bonding & Molecular Geometry" required rows="1"
+                            data-min-height="42" data-max-height="140"
+                            oninput="autoResizeTopicField(this); updateTopicCharCounts();"
+                            style="resize:none; overflow-y:hidden; min-height:42px;"></textarea>
+                    </div>
+
+                    <div>
+                        <div class="utm-label">
+                            <span><i class="fas fa-align-left text-indigo-500 mr-1.5"></i>Topic Description <span class="text-rose-500">*</span></span>
+                            <span class="text-[11px] font-semibold text-slate-400 normal-case" id="topicDescCount">0 words • 0 chars</span>
+                        </div>
+                        <textarea id="topicDesc" name="topic_description" class="utm-input topic-autofit-field"
+                            placeholder="Provide a comprehensive overview of the concepts, real-world applications, and scope of this topic..."
+                            required rows="3" data-min-height="84" data-max-height="320"
+                            oninput="autoResizeTopicField(this); updateTopicCharCounts();"
+                            style="resize:none; overflow-y:hidden; min-height:84px;"></textarea>
+                    </div>
+                </div>
+
+                <!-- 2. INTERACTIVE BULLET OBJECTIVES BUILDER -->
+                <div class="utm-section-box" style="background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                        <div>
+                            <div class="utm-label mb-0">
+                                <span><i class="fas fa-list-ul text-indigo-600 mr-1.5"></i>Learning Objectives (Displayed as Bullets) <span class="text-rose-500">*</span></span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5">
+                                Each item below is displayed as a bullet point on the student's subject page. Press <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-slate-100 border border-slate-300 rounded">Enter</kbd> to add a new bullet, or paste multiple lines at once.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="topicObjCountBadge" class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">1 Objective</span>
+                            <button type="button" onclick="addTopicObjectiveRow('', true)" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer">
+                                <i class="fas fa-plus text-[10px]"></i> Add Bullet
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Bullet Rows Container -->
+                    <div id="topicObjectivesList" class="space-y-2 mt-2.5"></div>
+
+                    <!-- Hidden serialized textarea for backward-compatible form submission -->
+                    <textarea id="topicObj" name="topic_objectives" class="hidden" required></textarea>
+                </div>
+
+                <!-- 3. VIDEO LESSON URL & LIVE PREVIEW -->
+                <div class="utm-section-box">
+                    <div class="utm-label">
+                        <span><i class="fas fa-circle-play text-indigo-500 mr-1.5"></i>Video Lesson URL <span class="text-rose-500">*</span></span>
+                        <span class="text-[11px] font-semibold text-slate-400 normal-case">YouTube, Vimeo, or direct .mp4</span>
+                    </div>
+                    <div class="relative">
+                        <textarea id="topicVideoUrl" name="video_url" class="utm-input topic-autofit-field pr-9"
+                            placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                            required rows="1" data-min-height="42" data-max-height="110"
+                            oninput="autoResizeTopicField(this); handleUnifiedTopicVideoPreview();"
+                            onchange="handleUnifiedTopicVideoPreview();"
+                            style="resize:none; overflow-y:hidden; min-height:42px; word-break:break-all;"></textarea>
+                        <button type="button" id="topicVideoClearBtn" onclick="clearUnifiedTopicVideoPreview()"
+                            class="absolute right-2.5 top-2.5 text-slate-400 hover:text-rose-500 text-sm hidden cursor-pointer" title="Clear Video URL">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+
+                    <div id="topicVideoPreviewContainer" class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2.5 overflow-hidden transition-all hidden">
+                        <div class="flex items-center justify-between pb-2 px-1 text-xs font-bold text-slate-600">
+                            <span class="flex items-center gap-1.5 text-indigo-600"><i class="fas fa-tv"></i> Live Video Preview</span>
+                            <span id="topicVideoBadge" class="text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1">
+                                <i class="fas fa-check-circle"></i> Valid URL
+                            </span>
+                        </div>
+                        <div class="w-full aspect-video rounded-lg overflow-hidden bg-slate-900 shadow-inner flex items-center justify-center border border-slate-200" id="topicVideoFrameWrapper"></div>
+                    </div>
+                </div>
+
+                <!-- 4. EMBEDDED LEARNING MATERIALS SECTION -->
+                <div class="utm-section-box" style="border-color:#99f6e4; background:linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%);">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                        <div>
+                            <div class="utm-label mb-0" style="color:#0f766e;">
+                                <span><i class="fas fa-folder-open text-teal-600 mr-1.5"></i>Topic Learning Materials <span class="text-rose-500" id="utmMatRequiredStar">*</span></span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5">
+                                Attach lecture notes, PDFs, slides, videos, or reference links so this topic is never empty for students.
+                            </p>
+                        </div>
+                        <span id="utmMaterialsTotalBadge" class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                            0 Materials
+                        </span>
+                    </div>
+
+                    <!-- Existing Materials (Shown in Edit Mode) -->
+                    <div id="utmExistingMaterialsWrap" class="hidden mb-3">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>Attached Materials (<span id="utmExistingMatCount">0</span>)</span>
+                            <span class="text-[10px] font-normal text-slate-400">Toggle lock or remove</span>
+                        </div>
+                        <div id="utmExistingMaterialsList" class="space-y-1.5 max-h-52 overflow-y-auto pr-1"></div>
+                    </div>
+
+                    <!-- Add / Queue New Materials Switcher -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-3 space-y-3">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                <i class="fas fa-plus-circle text-teal-600"></i> Add Learning Material(s) to Topic
+                            </span>
+                            <div class="inline-flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                                <button type="button" id="utmMatTabFileBtn" onclick="switchUtmMaterialMode('file')"
+                                    class="px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer bg-white text-indigo-600 shadow-2xs">
+                                    <i class="fas fa-cloud-arrow-up mr-1"></i> Upload File(s)
+                                </button>
+                                <button type="button" id="utmMatTabUrlBtn" onclick="switchUtmMaterialMode('url')"
+                                    class="px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer text-slate-600 hover:text-slate-800">
+                                    <i class="fas fa-link mr-1"></i> Add Web Link / URL
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Mode A: File Upload Dropzone -->
+                        <div id="utmMatFilePane">
+                            <div id="utmMatDropzone"
+                                 onclick="document.getElementById('utmMaterialFileInput').click()"
+                                 ondragover="handleUtmMatDragOver(event)"
+                                 ondragleave="handleUtmMatDragLeave(event)"
+                                 ondrop="handleUtmMatDrop(event)"
+                                 class="border-2 border-dashed border-teal-300 hover:border-indigo-400 rounded-xl p-4 text-center cursor-pointer transition bg-teal-50/40 hover:bg-indigo-50/30">
+                                <div class="w-9 h-9 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mx-auto mb-1.5 text-base">
+                                    <i class="fas fa-file-arrow-up"></i>
+                                </div>
+                                <p class="text-xs font-bold text-slate-700">Click to select files or drag & drop here</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Supports PDF, Word (.doc/.docx), PPT (.ppt/.pptx), Images, or Video (.mp4/.webm) • Max 50MB/file</p>
+                            </div>
+                            <input type="file" id="utmMaterialFileInput" class="hidden" multiple
+                                   accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.webm,.ogg,.mkv,.jpg,.jpeg,.png,.webp,.gif"
+                                   onchange="onUtmMaterialFilesSelected(this)">
+                        </div>
+
+                        <!-- Mode B: Add Link / URL Sub-Form -->
+                        <div id="utmMatUrlPane" class="hidden space-y-2.5">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Resource Title</label>
+                                    <input type="text" id="utmLinkTitleInput" class="utm-input py-2 text-xs" placeholder="e.g. PhET Interactive Periodic Table">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Material Type</label>
+                                    <select id="utmLinkTypeInput" class="utm-input py-2 text-xs">
+                                        <option value="link">Web Link / URL</option>
+                                        <option value="video">External Video Link</option>
+                                        <option value="pdf">External PDF Link</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="url" id="utmLinkUrlInput" class="utm-input py-2 text-xs flex-1" placeholder="https://...">
+                                <button type="button" onclick="addUtmUrlMaterialToQueue()" class="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer flex-shrink-0">
+                                    <i class="fas fa-plus"></i> Queue Link
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Queued New Materials Staging List -->
+                        <div id="utmQueuedMaterialsWrap" class="hidden pt-2 border-t border-slate-100">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[11px] font-extrabold text-indigo-700 uppercase tracking-wider">
+                                    <i class="fas fa-layer-group mr-1"></i>Queued to Upload on Save (<span id="utmQueuedMatCount">0</span>)
+                                </span>
+                                <button type="button" onclick="clearUtmMaterialQueue()" class="text-[11px] font-bold text-rose-500 hover:underline cursor-pointer">
+                                    Clear Queue
+                                </button>
+                            </div>
+                            <div id="utmQueuedMaterialsList" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. TOPIC ACCESS & AUTOMATIC LOCK / UNLOCK SCHEDULING -->
+                <div class="utm-section-box" style="border-color:#c7d2fe; background:linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                        <div>
+                            <div class="utm-label mb-0" style="color:#3730a3;">
+                                <span><i class="fas fa-user-lock text-indigo-600 mr-1.5"></i>Topic Access & Automatic Unlock / Lock</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5">
+                                Control whether students can access this topic right now, or schedule automatic unlock and lock dates.
+                            </p>
+                        </div>
+
+                        <!-- Manual Lock / Unlock Segmented Switch -->
+                        <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            <input type="hidden" id="topicIsLockedInput" name="is_locked" value="1">
+                            <button type="button" id="utmLockStateLockedBtn" onclick="setUtmTopicLockState(1)"
+                                class="px-3 py-1.5 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer bg-amber-500 text-white shadow-2xs">
+                                <i class="fas fa-lock"></i> Locked
+                            </button>
+                            <button type="button" id="utmLockStateUnlockedBtn" onclick="setUtmTopicLockState(0)"
+                                class="px-3 py-1.5 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-800">
+                                <i class="fas fa-lock-open"></i> Unlocked
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Auto-Unlock and Auto-Lock Date/Time Pickers -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-indigo-100">
+                        <div class="bg-white p-3 rounded-xl border border-slate-200">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
+                                    <i class="fas fa-clock"></i> Auto-Unlock At
+                                </label>
+                                <button type="button" onclick="clearUtmScheduleField('topicAutoUnlockAt')" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 cursor-pointer">
+                                    Clear
+                                </button>
+                            </div>
+                            <input type="datetime-local" id="topicAutoUnlockAt" name="auto_unlock_at"
+                                onchange="updateUtmScheduleSummary()"
+                                class="utm-input py-2 text-xs bg-slate-50">
+                            <p class="text-[10px] text-slate-400 mt-1">Automatically unlocks topic for students at this date & time.</p>
+                        </div>
+
+                        <div class="bg-white p-3 rounded-xl border border-slate-200">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-[11px] font-extrabold text-rose-700 uppercase tracking-wider flex items-center gap-1">
+                                    <i class="fas fa-hourglass-end"></i> Auto-Lock At
+                                </label>
+                                <button type="button" onclick="clearUtmScheduleField('topicAutoLockAt')" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 cursor-pointer">
+                                    Clear
+                                </button>
+                            </div>
+                            <input type="datetime-local" id="topicAutoLockAt" name="auto_lock_at"
+                                onchange="updateUtmScheduleSummary()"
+                                class="utm-input py-2 text-xs bg-slate-50">
+                            <p class="text-[10px] text-slate-400 mt-1">Automatically locks topic when this deadline is reached.</p>
+                        </div>
+                    </div>
+
+                    <!-- Live Schedule Status Banner -->
+                    <div id="utmScheduleSummaryBanner" class="mt-2.5 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-semibold flex items-center gap-2 hidden">
+                        <i class="fas fa-calendar-check text-indigo-600 flex-shrink-0"></i>
+                        <span id="utmScheduleSummaryText" class="break-words"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sticky Modal Footer -->
+            <div class="utm-footer">
+                <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
+                    <i class="fas fa-shield-halved text-indigo-500"></i>
+                    <span>All fields auto-expand dynamically to fit long content</span>
+                </div>
+                <div class="flex items-center gap-2 ml-auto">
+                    <button type="button" onclick="handleTopicModalClose()" class="utm-btn">Cancel</button>
+                    <button type="submit" id="topicSaveBtn" class="utm-btn utm-btn-primary">
+                        <i class="fas fa-save text-xs"></i> <span id="topicSaveBtnText">Save Topic</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ======= TOPIC DISCARD CONFIRMATION MODAL ======= -->
+<div class="modal-backdrop modal-overlay utm-backdrop" id="topicDiscardConfirmModal" style="z-index: 260;">
+    <div class="utm-card" style="max-width:440px;">
+        <div class="utm-header">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                    <i class="fas fa-triangle-exclamation text-base"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-base">Discard Unsaved Changes?</h3>
+                    <p class="text-[11px] text-slate-400">Your unsaved edits and queued materials will be lost</p>
+                </div>
+            </div>
+            <button type="button" onclick="utmCloseModal('topicDiscardConfirmModal')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 transition cursor-pointer">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="utm-body py-4">
+            <p class="text-sm text-slate-600 leading-relaxed">
+                You have unsaved changes in this topic modal. Are you sure you want to discard your changes and close?
+            </p>
+        </div>
+        <div class="utm-footer justify-end">
+            <button type="button" onclick="utmCloseModal('topicDiscardConfirmModal')" class="utm-btn">
+                Keep Editing
+            </button>
+            <button type="button" onclick="confirmDiscardTopicChanges()" class="utm-btn utm-btn-danger">
+                <i class="fas fa-trash-can text-xs"></i> Discard & Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ======= TOPIC SAVE CONFIRMATION MODAL ======= -->
+<div class="modal-backdrop modal-overlay utm-backdrop" id="topicSaveConfirmModal" style="z-index: 260;">
+    <div class="utm-card" style="max-width:540px;">
+        <div class="utm-header">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <i class="fas fa-circle-check text-base"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-base" id="topicSaveConfirmTitle">Confirm Topic</h3>
+                    <p class="text-[11px] text-slate-400" id="topicSaveConfirmSubtitle">Please review details before saving</p>
+                </div>
+            </div>
+            <button type="button" onclick="utmCloseModal('topicSaveConfirmModal')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 transition cursor-pointer">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="utm-body py-4 space-y-3" style="max-height: 70vh;">
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed" id="topicSaveConfirmMsg">
+                Are you sure you want to finalize and save this topic?
+            </p>
+            <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2.5">
+                <div>
+                    <span class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Topic Name</span>
+                    <div class="font-extrabold text-slate-800 mt-0.5 break-words text-sm" id="topicConfirmName"></div>
+                </div>
+                <div>
+                    <span class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Description</span>
+                    <div class="text-slate-700 mt-0.5 max-h-28 overflow-y-auto break-words whitespace-pre-line pr-1" id="topicConfirmDesc"></div>
+                </div>
+                <div>
+                    <span class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Objectives (Student Bullet View)</span>
+                    <ul class="list-disc pl-5 text-slate-700 mt-1 space-y-1 max-h-32 overflow-y-auto pr-1 break-words" id="topicConfirmObjList"></ul>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200">
+                    <div>
+                        <span class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Learning Materials</span>
+                        <div class="font-bold text-teal-700 mt-0.5" id="topicConfirmMaterials"></div>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Access & Schedule</span>
+                        <div class="font-bold text-indigo-700 mt-0.5 break-words" id="topicConfirmSchedule"></div>
+                    </div>
+                </div>
+                <div class="pt-1 border-t border-slate-200">
+                    <span class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Video URL</span>
+                    <div class="text-indigo-600 mt-0.5 break-all font-mono text-[11px]" id="topicConfirmVideo"></div>
+                </div>
+            </div>
+
+            <!-- Upload Progress Bar (Shown while uploading queued files) -->
+            <div id="utmSaveUploadProgressWrap" class="hidden p-3 rounded-xl bg-indigo-50 border border-indigo-200 space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-bold text-indigo-800">
+                    <span id="utmSaveUploadProgressLabel"><i class="fas fa-spinner fa-spin mr-1"></i>Uploading learning materials...</span>
+                    <span id="utmSaveUploadProgressPct">0%</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-indigo-100 overflow-hidden">
+                    <div id="utmSaveUploadProgressBar" class="h-full bg-gradient-to-r from-indigo-600 to-teal-500 transition-all duration-150" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="utm-footer justify-end">
+            <button type="button" id="topicCancelConfirmBtn" onclick="utmCloseModal('topicSaveConfirmModal')" class="utm-btn">
+                Keep Editing
+            </button>
+            <button type="button" id="topicExecuteSaveBtn" onclick="confirmExecuteTopicSave()" class="utm-btn utm-btn-primary">
+                <i class="fas fa-check text-xs"></i> <span id="topicExecuteSaveBtnText">Yes, Save Topic</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ============================================================================
+   UNIFIED TOPIC MODAL CONTROLLER (Shared by Teacher & Admin)
+   ============================================================================ */
+(function() {
+    if (window.__UNIFIED_TOPIC_MODAL_LOADED__) return;
+    window.__UNIFIED_TOPIC_MODAL_LOADED__ = true;
+
+    window.UTM_ROLE_CONTEXT = '<%= typeof roleContext !== "undefined" ? roleContext : "Teacher" %>';
+    window.topicInitialState = null;
+    window.pendingTopicPayload = null;
+    window.utmExistingMaterials = [];
+    window.utmQueuedMaterials = [];
+    window.utmCurrentMaterialMode = 'file';
+
+    /* ── Toast & Modal Bridge Helpers ── */
+    window.utmToast = function(msg, type = 'success') {
+        if (typeof window.cmToast === 'function') {
+            window.cmToast(msg, type);
+        } else if (typeof window.showToast === 'function') {
+            window.showToast(msg, type);
+        } else {
+            alert(msg);
+        }
+    };
+
+    window.utmOpenModal = function(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add('open');
+        if (typeof window.openModal === 'function') {
+            try { window.openModal(id); } catch (_) {}
+        }
+    };
+
+    window.utmCloseModal = function(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('open');
+        if (typeof window.closeModal === 'function') {
+            try { window.closeModal(id); } catch (_) {}
+        }
+    };
+
+    window.utmEscapeHtml = function(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+
+    /* ── 1. Responsive & Dynamic Auto-Resizing Fields Engine ── */
+    window.autoResizeTopicField = function(el) {
+        if (!el) return;
+        const minH = parseInt(el.getAttribute('data-min-height') || '36', 10);
+        const maxH = parseInt(el.getAttribute('data-max-height') || '320', 10);
+        el.style.height = 'auto';
+        const targetH = Math.max(minH, el.scrollHeight);
+        if (targetH > maxH) {
+            el.style.height = maxH + 'px';
+            el.style.overflowY = 'auto';
+        } else {
+            el.style.height = targetH + 'px';
+            el.style.overflowY = 'hidden';
+        }
+    };
+
+    window.autoResizeAllTopicFields = function() {
+        const fields = document.querySelectorAll('#topicModal .topic-autofit-field');
+        fields.forEach(field => window.autoResizeTopicField(field));
+    };
+
+    window.updateTopicCharCounts = function() {
+        const nameVal = (document.getElementById('topicName')?.value || '');
+        const descVal = (document.getElementById('topicDesc')?.value || '');
+        const nameCountEl = document.getElementById('topicNameCount');
+        const descCountEl = document.getElementById('topicDescCount');
+
+        if (nameCountEl) {
+            nameCountEl.textContent = `${nameVal.length} chars`;
+        }
+        if (descCountEl) {
+            const words = descVal.trim() ? descVal.trim().split(/\s+/).length : 0;
+            descCountEl.textContent = `${words} word${words === 1 ? '' : 's'} • ${descVal.length} chars`;
+        }
+    };
+
+    // Observe modal body size changes so wrapping textareas adjust on viewport resize
+    if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => {
+            const modalEl = document.getElementById('topicModal');
+            if (modalEl && modalEl.classList.contains('open')) {
+                window.autoResizeAllTopicFields();
+            }
+        });
+        window.addEventListener('DOMContentLoaded', () => {
+            const scrollBody = document.getElementById('topicModalScrollBody');
+            if (scrollBody) ro.observe(scrollBody);
+        });
+    }
+    window.addEventListener('resize', () => {
+        const modalEl = document.getElementById('topicModal');
+        if (modalEl && modalEl.classList.contains('open')) {
+            window.autoResizeAllTopicFields();
+        }
+    });
+
+    /* ── 2. Interactive Bullet Objectives Builder ── */
+    window.parseRawObjectivesToArray = function(rawText) {
+        if (!rawText || !String(rawText).trim()) return [];
+        const text = String(rawText).trim();
+
+        // First split by newlines
+        let lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+        // If single line contains multiple inline bullets (e.g. "• Obj 1 • Obj 2" or "1. Obj 1 2. Obj 2")
+        if (lines.length === 1) {
+            const inlineSplit = lines[0]
+                .split(/(?:^|\s+)(?:\d+[\.\)]|[•\*])(?:\s+)/)
+                .map(s => s.trim())
+                .filter(Boolean);
+            if (inlineSplit.length > 1) {
+                lines = inlineSplit;
+            }
+        }
+
+        return lines
+            .map(line => line.replace(/^(?:\d+[\.\)]|[-•\*])\s*/, '').trim())
+            .filter(Boolean);
+    };
+
+    window.syncObjectivesHiddenField = function() {
+        const inputs = Array.from(document.querySelectorAll('#topicObjectivesList .utm-obj-textarea'));
+        const values = inputs.map(el => el.value.replace(/\r?\n/g, ' ').trim()).filter(Boolean);
+        const hiddenEl = document.getElementById('topicObj');
+        if (hiddenEl) {
+            hiddenEl.value = values.map(v => `• ${v}`).join('\n');
+        }
+        const badgeEl = document.getElementById('topicObjCountBadge');
+        if (badgeEl) {
+            const count = values.length;
+            badgeEl.textContent = `${count} Objective${count === 1 ? '' : 's'}`;
+        }
+        return values;
+    };
+
+    window.renderTopicObjectiveRows = function(items) {
+        const container = document.getElementById('topicObjectivesList');
+        if (!container) return;
+        const list = (Array.isArray(items) && items.length > 0) ? items : [''];
+        container.innerHTML = '';
+        list.forEach((val) => {
+            window.addTopicObjectiveRow(val, false);
+        });
+        window.syncObjectivesHiddenField();
+        setTimeout(window.autoResizeAllTopicFields, 20);
+    };
+
+    window.addTopicObjectiveRow = function(initialText = '', focusNew = true, insertAfterRow = null) {
+        const container = document.getElementById('topicObjectivesList');
+        if (!container) return null;
+
+        const row = document.createElement('div');
+        row.className = 'utm-obj-row';
+
+        const bullet = document.createElement('div');
+        bullet.className = 'utm-obj-bullet';
+        bullet.textContent = '•';
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'utm-obj-textarea topic-autofit-field';
+        textarea.rows = 1;
+        textarea.setAttribute('data-min-height', '28');
+        textarea.setAttribute('data-max-height', '220');
+        textarea.placeholder = 'Enter a specific learning objective (e.g. Explain how ionic and covalent bonds form)...';
+        textarea.value = initialText || '';
+
+        textarea.addEventListener('input', function() {
+            window.autoResizeTopicField(this);
+            window.syncObjectivesHiddenField();
+        });
+
+        textarea.addEventListener('keydown', function(ev) {
+            if (ev.key === 'Enter' && !ev.shiftKey) {
+                ev.preventDefault();
+                window.addTopicObjectiveRow('', true, row);
+            } else if (ev.key === 'Backspace' && !this.value.trim()) {
+                const allRows = container.querySelectorAll('.utm-obj-row');
+                if (allRows.length > 1) {
+                    ev.preventDefault();
+                    const prevRow = row.previousElementSibling || row.nextElementSibling;
+                    row.remove();
+                    window.syncObjectivesHiddenField();
+                    if (prevRow) {
+                        const prevInput = prevRow.querySelector('.utm-obj-textarea');
+                        if (prevInput) {
+                            prevInput.focus();
+                            prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+                        }
+                    }
+                }
+            }
+        });
+
+        // Smart multi-line paste: split pasted lines into individual bullet rows
+        textarea.addEventListener('paste', function(ev) {
+            const clipText = (ev.clipboardData || window.clipboardData)?.getData('text') || '';
+            if (clipText && /\r?\n/.test(clipText.trim())) {
+                const parsedItems = window.parseRawObjectivesToArray(clipText);
+                if (parsedItems.length > 1) {
+                    ev.preventDefault();
+                    if (!this.value.trim()) {
+                        this.value = parsedItems[0];
+                        window.autoResizeTopicField(this);
+                    } else {
+                        this.value = (this.value + ' ' + parsedItems[0]).trim();
+                        window.autoResizeTopicField(this);
+                    }
+                    let anchor = row;
+                    for (let i = 1; i < parsedItems.length; i++) {
+                        anchor = window.addTopicObjectiveRow(parsedItems[i], i === parsedItems.length - 1, anchor);
+                    }
+                    window.syncObjectivesHiddenField();
+                }
+            }
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition flex-shrink-0 cursor-pointer';
+        delBtn.title = 'Remove objective';
+        delBtn.innerHTML = '<i class="fas fa-times text-xs"></i>';
+        delBtn.onclick = function() {
+            const allRows = container.querySelectorAll('.utm-obj-row');
+            if (allRows.length <= 1) {
+                textarea.value = '';
+                window.autoResizeTopicField(textarea);
+                window.syncObjectivesHiddenField();
+                textarea.focus();
+                return;
+            }
+            row.remove();
+            window.syncObjectivesHiddenField();
+        };
+
+        row.appendChild(bullet);
+        row.appendChild(textarea);
+        row.appendChild(delBtn);
+
+        if (insertAfterRow && insertAfterRow.parentNode === container) {
+            insertAfterRow.insertAdjacentElement('afterend', row);
+        } else {
+            container.appendChild(row);
+        }
+
+        window.autoResizeTopicField(textarea);
+        window.syncObjectivesHiddenField();
+
+        if (focusNew) {
+            setTimeout(() => textarea.focus(), 10);
+        }
+        return row;
+    };
+
+    /* ── 3. Video URL Embed Parser & Live Preview ── */
+    window.parseUnifiedVideoEmbedInfo = function(rawUrl) {
+        if (!rawUrl || !rawUrl.trim()) return null;
+        rawUrl = rawUrl.trim();
+
+        const ytMatch = rawUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/i);
+        if (ytMatch && ytMatch[1]) {
+            return {
+                type: 'iframe',
+                src: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?rel=0`,
+                platform: 'YouTube',
+                rawUrl
+            };
+        }
+
+        const vimeoMatch = rawUrl.match(/(?:vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/[^\/]*\/videos\/|album\/\d+\/video\/|video\/|)(\d+))/i);
+        if (vimeoMatch && vimeoMatch[1]) {
+            return {
+                type: 'iframe',
+                src: `https://player.vimeo.com/video/${vimeoMatch[1]}`,
+                platform: 'Vimeo',
+                rawUrl
+            };
+        }
+
+        if (/\.(mp4|webm|ogg)($|\?)/i.test(rawUrl)) {
+            return {
+                type: 'video',
+                src: rawUrl,
+                platform: 'Direct Video',
+                rawUrl
+            };
+        }
+
+        if (/^https?:\/\//i.test(rawUrl)) {
+            return {
+                type: 'generic',
+                src: rawUrl,
+                platform: 'External Video',
+                rawUrl
+            };
+        }
+
+        return null;
+    };
+
+    window.handleUnifiedTopicVideoPreview = function() {
+        const input = document.getElementById('topicVideoUrl');
+        const container = document.getElementById('topicVideoPreviewContainer');
+        const wrapper = document.getElementById('topicVideoFrameWrapper');
+        const clearBtn = document.getElementById('topicVideoClearBtn');
+        const badge = document.getElementById('topicVideoBadge');
+        if (!input || !container || !wrapper) return;
+
+        const val = input.value.trim();
+        if (clearBtn) {
+            clearBtn.classList.toggle('hidden', !val);
+        }
+
+        if (!val) {
+            container.classList.add('hidden');
+            wrapper.innerHTML = '';
+            return;
+        }
+
+        const info = window.parseUnifiedVideoEmbedInfo(val);
+        container.classList.remove('hidden');
+
+        if (!info) {
+            if (badge) {
+                badge.className = 'text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 font-semibold flex items-center gap-1';
+                badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Invalid URL';
+            }
+            wrapper.innerHTML = `
+                <div class="text-center p-4 text-slate-400">
+                    <i class="fas fa-video-slash text-2xl text-slate-300 mb-1 block"></i>
+                    <p class="text-xs font-semibold text-slate-500">Unrecognized video URL</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Please provide a valid YouTube, Vimeo, or direct video (.mp4) link.</p>
+                </div>
+            `;
+            return;
+        }
+
+        if (badge) {
+            badge.className = 'text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold flex items-center gap-1';
+            badge.innerHTML = `<i class="fas fa-check-circle"></i> ${info.platform} Ready`;
+        }
+
+        if (info.type === 'iframe') {
+            wrapper.innerHTML = `
+                <iframe src="${info.src}" class="w-full h-full border-0 rounded-lg"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+            `;
+        } else if (info.type === 'video') {
+            wrapper.innerHTML = `
+                <video src="${info.src}" controls class="w-full h-full object-contain rounded-lg bg-black">
+                    Your browser does not support the video tag.
+                </video>
+            `;
+        } else {
+            wrapper.innerHTML = `
+                <iframe src="${info.src}" class="w-full h-full border-0 rounded-lg" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+            `;
+        }
+    };
+
+    window.clearUnifiedTopicVideoPreview = function() {
+        const input = document.getElementById('topicVideoUrl');
+        if (input) {
+            input.value = '';
+            window.autoResizeTopicField(input);
+        }
+        window.handleUnifiedTopicVideoPreview();
+    };
+
+    /* ── 4. Embedded Learning Materials Manager (Existing + Queued) ── */
+    const UTM_MAT_ICONS = {
+        pdf: 'fa-file-pdf text-rose-500',
+        word: 'fa-file-word text-blue-600',
+        presentation: 'fa-file-powerpoint text-orange-500',
+        video: 'fa-file-video text-purple-600',
+        img: 'fa-file-image text-emerald-600',
+        link: 'fa-link text-indigo-600'
+    };
+
+    window.detectMaterialTypeFromFile = function(fileName) {
+        const ext = (fileName.split('.').pop() || '').toLowerCase();
+        if (ext === 'pdf') return 'pdf';
+        if (['doc', 'docx'].includes(ext)) return 'word';
+        if (['ppt', 'pptx'].includes(ext)) return 'presentation';
+        if (['mp4', 'webm', 'ogg', 'mkv', 'mov', 'avi'].includes(ext)) return 'video';
+        if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext)) return 'img';
+        return 'pdf';
+    };
+
+    window.updateUtmMaterialsBadges = function() {
+        const existingCount = window.utmExistingMaterials.length;
+        const queuedCount = window.utmQueuedMaterials.length;
+        const total = existingCount + queuedCount;
+        const totalBadge = document.getElementById('utmMaterialsTotalBadge');
+        if (totalBadge) {
+            totalBadge.textContent = `${total} Material${total === 1 ? '' : 's'}${queuedCount > 0 ? ` (${queuedCount} new)` : ''}`;
+            totalBadge.className = total > 0
+                ? 'text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200'
+                : 'text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+        }
+    };
+
+    window.renderUtmExistingMaterials = function() {
+        const wrap = document.getElementById('utmExistingMaterialsWrap');
+        const listEl = document.getElementById('utmExistingMaterialsList');
+        const countEl = document.getElementById('utmExistingMatCount');
+        if (!wrap || !listEl) return;
+
+        if (!window.utmExistingMaterials || window.utmExistingMaterials.length === 0) {
+            wrap.classList.add('hidden');
+            listEl.innerHTML = '';
+            window.updateUtmMaterialsBadges();
+            return;
+        }
+
+        wrap.classList.remove('hidden');
+        if (countEl) countEl.textContent = String(window.utmExistingMaterials.length);
+
+        listEl.innerHTML = window.utmExistingMaterials.map((m) => {
+            const isLocked = Number(m.is_locked) === 1;
+            const iconCls = UTM_MAT_ICONS[m.material_type] || 'fa-file text-slate-500';
+            const rawPath = m.file_path_or_url || '';
+            const href = (rawPath.startsWith('http://') || rawPath.startsWith('https://'))
+                ? rawPath
+                : `/material_uploads/${rawPath.replace(/^\/?material_uploads\//, '')}`;
+
+            return `
+                <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0">
+                            <i class="fas ${iconCls} text-sm"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-bold text-slate-800 break-words leading-snug">${window.utmEscapeHtml(m.title)}</p>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] font-bold uppercase text-slate-400">${window.utmEscapeHtml(m.material_type || 'file')}</span>
+                                <a href="${window.utmEscapeHtml(href)}" target="_blank" class="text-[11px] font-semibold text-indigo-600 hover:underline">
+                                    <i class="fas fa-arrow-up-right-from-square text-[9px] mr-0.5"></i>Open
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <button type="button" onclick="toggleUtmExistingMaterialLock(${m.material_id}, ${isLocked ? 1 : 0})"
+                            class="px-2 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${isLocked ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'}"
+                            title="${isLocked ? 'Click to Unlock Material' : 'Click to Lock Material'}">
+                            <i class="fas ${isLocked ? 'fa-lock' : 'fa-lock-open'}"></i> ${isLocked ? 'Locked' : 'Unlocked'}
+                        </button>
+                        <button type="button" onclick="deleteUtmExistingMaterial(${m.material_id})"
+                            class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer"
+                            title="Delete material">
+                            <i class="fas fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        window.updateUtmMaterialsBadges();
+    };
+
+    window.toggleUtmExistingMaterialLock = async function(matId, currentLocked) {
+        const newVal = currentLocked ? 0 : 1;
+        try {
+            const res = await fetch(`/teacher/api/material/${matId}/lock`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_locked: newVal })
+            });
+            if (!res.ok) throw new Error();
+            const item = window.utmExistingMaterials.find(m => Number(m.material_id) === Number(matId));
+            if (item) item.is_locked = newVal;
+            window.renderUtmExistingMaterials();
+            window.utmToast(`Material ${newVal ? 'locked' : 'unlocked'}.`, 'success');
+        } catch (_) {
+            window.utmToast('Failed to update material lock state.', 'error');
+        }
+    };
+
+    window.deleteUtmExistingMaterial = async function(matId) {
+        if (!confirm('Remove this learning material from the topic?')) return;
+        try {
+            const res = await fetch(`/teacher/api/material/${matId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error();
+            window.utmExistingMaterials = window.utmExistingMaterials.filter(m => Number(m.material_id) !== Number(matId));
+            window.renderUtmExistingMaterials();
+            window.utmToast('Material removed.', 'success');
+        } catch (_) {
+            window.utmToast('Failed to delete material.', 'error');
+        }
+    };
+
+    window.switchUtmMaterialMode = function(mode) {
+        window.utmCurrentMaterialMode = mode === 'url' ? 'url' : 'file';
+        const filePane = document.getElementById('utmMatFilePane');
+        const urlPane = document.getElementById('utmMatUrlPane');
+        const fileBtn = document.getElementById('utmMatTabFileBtn');
+        const urlBtn = document.getElementById('utmMatTabUrlBtn');
+
+        if (window.utmCurrentMaterialMode === 'file') {
+            filePane?.classList.remove('hidden');
+            urlPane?.classList.add('hidden');
+            if (fileBtn) fileBtn.className = 'px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer bg-white text-indigo-600 shadow-2xs';
+            if (urlBtn) urlBtn.className = 'px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer text-slate-600 hover:text-slate-800';
+        } else {
+            filePane?.classList.add('hidden');
+            urlPane?.classList.remove('hidden');
+            if (urlBtn) urlBtn.className = 'px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer bg-white text-indigo-600 shadow-2xs';
+            if (fileBtn) fileBtn.className = 'px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer text-slate-600 hover:text-slate-800';
+        }
+    };
+
+    window.handleUtmMatDragOver = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const dz = document.getElementById('utmMatDropzone');
+        if (dz) dz.classList.add('border-indigo-500', 'bg-indigo-50');
+    };
+
+    window.handleUtmMatDragLeave = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const dz = document.getElementById('utmMatDropzone');
+        if (dz) dz.classList.remove('border-indigo-500', 'bg-indigo-50');
+    };
+
+    window.handleUtmMatDrop = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.handleUtmMatDragLeave(e);
+        if (e.dataTransfer?.files?.length) {
+            window.enqueueUtmMaterialFiles(e.dataTransfer.files);
+        }
+    };
+
+    window.onUtmMaterialFilesSelected = function(input) {
+        if (input.files && input.files.length > 0) {
+            window.enqueueUtmMaterialFiles(input.files);
+            input.value = '';
+        }
+    };
+
+    window.enqueueUtmMaterialFiles = function(fileList) {
+        const maxBytes = 50 * 1024 * 1024;
+        for (const file of Array.from(fileList)) {
+            if (file.size > maxBytes) {
+                window.utmToast(`File "${file.name}" exceeds the 50MB limit.`, 'error');
+                continue;
+            }
+            const cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ');
+            const detectedType = window.detectMaterialTypeFromFile(file.name);
+            window.utmQueuedMaterials.push({
+                sourceMode: 'file',
+                file: file,
+                url: '',
+                title: cleanTitle,
+                material_type: detectedType,
+                is_locked: 0
+            });
+        }
+        window.renderUtmQueuedMaterials();
+    };
+
+    window.addUtmUrlMaterialToQueue = function() {
+        const titleEl = document.getElementById('utmLinkTitleInput');
+        const typeEl = document.getElementById('utmLinkTypeInput');
+        const urlEl = document.getElementById('utmLinkUrlInput');
+
+        const title = (titleEl?.value || '').trim();
+        const type = typeEl?.value || 'link';
+        const url = (urlEl?.value || '').trim();
+
+        if (!title) {
+            window.utmToast('Please enter a title for the link resource.', 'error');
+            titleEl?.focus();
+            return;
+        }
+        if (!url || !/^https?:\/\//i.test(url)) {
+            window.utmToast('Please enter a valid URL starting with http:// or https://', 'error');
+            urlEl?.focus();
+            return;
+        }
+
+        window.utmQueuedMaterials.push({
+            sourceMode: 'url',
+            file: null,
+            url: url,
+            title: title,
+            material_type: type,
+            is_locked: 0
+        });
+
+        if (titleEl) titleEl.value = '';
+        if (urlEl) urlEl.value = '';
+        window.renderUtmQueuedMaterials();
+    };
+
+    window.removeUtmQueuedMaterial = function(idx) {
+        window.utmQueuedMaterials.splice(idx, 1);
+        window.renderUtmQueuedMaterials();
+    };
+
+    window.clearUtmMaterialQueue = function() {
+        window.utmQueuedMaterials = [];
+        window.renderUtmQueuedMaterials();
+    };
+
+    window.renderUtmQueuedMaterials = function() {
+        const wrap = document.getElementById('utmQueuedMaterialsWrap');
+        const listEl = document.getElementById('utmQueuedMaterialsList');
+        const countEl = document.getElementById('utmQueuedMatCount');
+        if (!wrap || !listEl) return;
+
+        if (window.utmQueuedMaterials.length === 0) {
+            wrap.classList.add('hidden');
+            listEl.innerHTML = '';
+            window.updateUtmMaterialsBadges();
+            return;
+        }
+
+        wrap.classList.remove('hidden');
+        if (countEl) countEl.textContent = String(window.utmQueuedMaterials.length);
+
+        listEl.innerHTML = window.utmQueuedMaterials.map((item, idx) => {
+            const iconCls = UTM_MAT_ICONS[item.material_type] || 'fa-file text-indigo-500';
+            const subInfo = item.sourceMode === 'file'
+                ? `${item.file.name} (${(item.file.size / 1024 / 1024).toFixed(2)} MB)`
+                : item.url;
+
+            return `
+                <div class="p-2.5 rounded-xl bg-indigo-50/50 border border-indigo-200 space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0 flex-1">
+                            <i class="fas ${iconCls} text-sm flex-shrink-0"></i>
+                            <input type="text" value="${window.utmEscapeHtml(item.title)}"
+                                oninput="window.utmQueuedMaterials[${idx}].title = this.value"
+                                placeholder="Material Title *"
+                                class="utm-input py-1.5 px-2.5 text-xs font-bold bg-white flex-1">
+                        </div>
+                        <button type="button" onclick="removeUtmQueuedMaterial(${idx})"
+                            class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center cursor-pointer flex-shrink-0"
+                            title="Remove from queue">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between gap-2 flex-wrap text-[11px] pl-6">
+                        <span class="text-slate-500 truncate max-w-[260px]" title="${window.utmEscapeHtml(subInfo)}">${window.utmEscapeHtml(subInfo)}</span>
+                        <div class="flex items-center gap-2">
+                            <select onchange="window.utmQueuedMaterials[${idx}].material_type = this.value; window.renderUtmQueuedMaterials();"
+                                class="border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-semibold bg-white text-slate-700">
+                                <option value="pdf" ${item.material_type === 'pdf' ? 'selected' : ''}>PDF</option>
+                                <option value="word" ${item.material_type === 'word' ? 'selected' : ''}>Word</option>
+                                <option value="presentation" ${item.material_type === 'presentation' ? 'selected' : ''}>Presentation</option>
+                                <option value="video" ${item.material_type === 'video' ? 'selected' : ''}>Video</option>
+                                <option value="img" ${item.material_type === 'img' ? 'selected' : ''}>Image</option>
+                                <option value="link" ${item.material_type === 'link' ? 'selected' : ''}>Web Link</option>
+                            </select>
+                            <button type="button" onclick="window.utmQueuedMaterials[${idx}].is_locked = window.utmQueuedMaterials[${idx}].is_locked ? 0 : 1; window.renderUtmQueuedMaterials();"
+                                class="px-2 py-1 rounded-lg font-bold border cursor-pointer ${item.is_locked ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}">
+                                <i class="fas ${item.is_locked ? 'fa-lock' : 'fa-lock-open'}"></i> ${item.is_locked ? 'Locked' : 'Unlocked'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        window.updateUtmMaterialsBadges();
+    };
+
+    /* ── 5. Topic Lock State & Auto Unlock/Lock Schedule Helpers ── */
+    window.formatDatetimeLocalValue = function(rawDate) {
+        if (!rawDate) return '';
+        const d = new Date(rawDate);
+        if (isNaN(d.getTime())) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    window.setUtmTopicLockState = function(isLocked) {
+        const lockedVal = Number(isLocked) === 1 ? 1 : 0;
+        const hiddenInput = document.getElementById('topicIsLockedInput');
+        if (hiddenInput) hiddenInput.value = String(lockedVal);
+
+        const lockedBtn = document.getElementById('utmLockStateLockedBtn');
+        const unlockedBtn = document.getElementById('utmLockStateUnlockedBtn');
+        if (lockedBtn && unlockedBtn) {
+            if (lockedVal === 1) {
+                lockedBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer bg-amber-500 text-white shadow-2xs';
+                unlockedBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-800';
+            } else {
+                unlockedBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer bg-emerald-600 text-white shadow-2xs';
+                lockedBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-800';
+            }
+        }
+        window.updateUtmScheduleSummary();
+    };
+
+    window.clearUtmScheduleField = function(fieldId) {
+        const el = document.getElementById(fieldId);
+        if (el) el.value = '';
+        window.updateUtmScheduleSummary();
+    };
+
+    window.updateUtmScheduleSummary = function() {
+        const unlockVal = document.getElementById('topicAutoUnlockAt')?.value || '';
+        const lockVal = document.getElementById('topicAutoLockAt')?.value || '';
+        const banner = document.getElementById('utmScheduleSummaryBanner');
+        const textEl = document.getElementById('utmScheduleSummaryText');
+        if (!banner || !textEl) return;
+
+        if (!unlockVal && !lockVal) {
+            banner.classList.add('hidden');
+            textEl.textContent = '';
+            return;
+        }
+
+        const parts = [];
+        if (unlockVal) {
+            const d = new Date(unlockVal);
+            if (!isNaN(d.getTime())) {
+                parts.push(`Auto-unlocks on ${d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`);
+            }
+        }
+        if (lockVal) {
+            const d = new Date(lockVal);
+            if (!isNaN(d.getTime())) {
+                parts.push(`Auto-locks on ${d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`);
+            }
+        }
+
+        banner.classList.remove('hidden');
+        textEl.textContent = parts.join(' • ');
+    };
+
+    /* ── 6. Open Modal, Dirty State Check & Save Pipeline ── */
+    window.openTopicModal = async function(topicId, quarterId, name, description, objectives, videoUrl, options = {}) {
+        const isEdit = !!topicId;
+        const titleEl = document.getElementById('topicModalTitle');
+        const saveBtnTextEl = document.getElementById('topicSaveBtnText');
+        if (titleEl) titleEl.textContent = isEdit ? 'Edit Topic' : 'Add Topic';
+        if (saveBtnTextEl) saveBtnTextEl.textContent = isEdit ? 'Save Changes' : 'Save Topic';
+
+        document.getElementById('topicId').value = topicId || '';
+        document.getElementById('topicQuarterId').value = quarterId || '';
+        document.getElementById('topicName').value = name || '';
+        document.getElementById('topicDesc').value = description || '';
+        document.getElementById('topicVideoUrl').value = videoUrl || '';
+
+        // Populate bullet objectives
+        const parsedObjectives = window.parseRawObjectivesToArray(objectives);
+        window.renderTopicObjectiveRows(parsedObjectives.length > 0 ? parsedObjectives : ['']);
+
+        // Lock & Schedule fields
+        const initialLocked = (options.is_locked !== undefined && options.is_locked !== null)
+            ? (Number(options.is_locked) === 1 ? 1 : 0)
+            : 1;
+        window.setUtmTopicLockState(initialLocked);
+
+        const autoUnlockFormatted = window.formatDatetimeLocalValue(options.auto_unlock_at);
+        const autoLockFormatted = window.formatDatetimeLocalValue(options.auto_lock_at);
+        const unlockInput = document.getElementById('topicAutoUnlockAt');
+        const lockInput = document.getElementById('topicAutoLockAt');
+        if (unlockInput) unlockInput.value = autoUnlockFormatted;
+        if (lockInput) lockInput.value = autoLockFormatted;
+        window.updateUtmScheduleSummary();
+
+        // Reset queued materials
+        window.utmQueuedMaterials = [];
+        window.renderUtmQueuedMaterials();
+        window.switchUtmMaterialMode('file');
+
+        // Existing materials (from options or live fetch in Edit mode)
+        window.utmExistingMaterials = Array.isArray(options.materials) ? [...options.materials] : [];
+        window.renderUtmExistingMaterials();
+
+        if (isEdit && (!options.materials || !Array.isArray(options.materials))) {
+            try {
+                const res = await fetch(`/teacher/api/topic/${topicId}/materials`);
+                const data = await res.json();
+                if (data && data.success && Array.isArray(data.materials)) {
+                    window.utmExistingMaterials = data.materials;
+                    window.renderUtmExistingMaterials();
+                }
+            } catch (_) {}
+        }
+
+        window.handleUnifiedTopicVideoPreview();
+        window.updateTopicCharCounts();
+
+        window.topicInitialState = {
+            topicId: topicId || '',
+            quarterId: quarterId || '',
+            name: (name || '').trim(),
+            desc: (description || '').trim(),
+            obj: (document.getElementById('topicObj')?.value || '').trim(),
+            video: (videoUrl || '').trim(),
+            is_locked: initialLocked,
+            auto_unlock_at: autoUnlockFormatted,
+            auto_lock_at: autoLockFormatted
+        };
+
+        window.utmOpenModal('topicModal');
+        requestAnimationFrame(() => {
+            window.autoResizeAllTopicFields();
+            setTimeout(window.autoResizeAllTopicFields, 60);
+        });
+    };
+
+    window.hasUnsavedTopicChanges = function() {
+        if (!window.topicInitialState) return false;
+        window.syncObjectivesHiddenField();
+        const currentName = (document.getElementById('topicName')?.value || '').trim();
+        const currentDesc = (document.getElementById('topicDesc')?.value || '').trim();
+        const currentObj = (document.getElementById('topicObj')?.value || '').trim();
+        const currentVideo = (document.getElementById('topicVideoUrl')?.value || '').trim();
+        const currentLocked = Number(document.getElementById('topicIsLockedInput')?.value ?? 1);
+        const currentAutoUnlock = document.getElementById('topicAutoUnlockAt')?.value || '';
+        const currentAutoLock = document.getElementById('topicAutoLockAt')?.value || '';
+
+        if (currentName !== window.topicInitialState.name) return true;
+        if (currentDesc !== window.topicInitialState.desc) return true;
+        if (currentObj !== window.topicInitialState.obj) return true;
+        if (currentVideo !== window.topicInitialState.video) return true;
+        if (currentLocked !== window.topicInitialState.is_locked) return true;
+        if (currentAutoUnlock !== window.topicInitialState.auto_unlock_at) return true;
+        if (currentAutoLock !== window.topicInitialState.auto_lock_at) return true;
+        if (window.utmQueuedMaterials.length > 0) return true;
+
+        return false;
+    };
+
+    window.handleTopicModalClose = function() {
+        if (window.hasUnsavedTopicChanges()) {
+            window.utmOpenModal('topicDiscardConfirmModal');
+        } else {
+            window.utmCloseModal('topicModal');
+            window.topicInitialState = null;
+        }
+    };
+
+    window.confirmDiscardTopicChanges = function() {
+        window.utmCloseModal('topicDiscardConfirmModal');
+        window.utmCloseModal('topicModal');
+        window.topicInitialState = null;
+        window.utmQueuedMaterials = [];
+    };
+
+    window.submitTopicForm = function(e) {
+        e.preventDefault();
+        const id = (document.getElementById('topicId')?.value || '').trim();
+        const quarterId = (document.getElementById('topicQuarterId')?.value || '').trim();
+        const isEdit = !!id;
+
+        const topicName = (document.getElementById('topicName')?.value || '').trim();
+        const topicDesc = (document.getElementById('topicDesc')?.value || '').trim();
+        const objItems = window.syncObjectivesHiddenField();
+        const topicObj = (document.getElementById('topicObj')?.value || '').trim();
+        const videoUrl = (document.getElementById('topicVideoUrl')?.value || '').trim();
+        const isLocked = Number(document.getElementById('topicIsLockedInput')?.value ?? 1);
+        const autoUnlockAt = (document.getElementById('topicAutoUnlockAt')?.value || '').trim();
+        const autoLockAt = (document.getElementById('topicAutoLockAt')?.value || '').trim();
+
+        if (!topicName) {
+            window.utmToast('Topic name is required.', 'error');
+            document.getElementById('topicName')?.focus();
+            return;
+        }
+        if (!topicDesc) {
+            window.utmToast('Topic description is required.', 'error');
+            document.getElementById('topicDesc')?.focus();
+            return;
+        }
+        if (objItems.length === 0 || !topicObj) {
+            window.utmToast('Please add at least one learning objective.', 'error');
+            document.querySelector('#topicObjectivesList .utm-obj-textarea')?.focus();
+            return;
+        }
+        if (!videoUrl) {
+            window.utmToast('Video URL is required.', 'error');
+            document.getElementById('topicVideoUrl')?.focus();
+            return;
+        }
+
+        if (autoUnlockAt && autoLockAt && new Date(autoLockAt) <= new Date(autoUnlockAt)) {
+            window.utmToast('Auto-Lock date/time must be later than Auto-Unlock date/time.', 'error');
+            document.getElementById('topicAutoLockAt')?.focus();
+            return;
+        }
+
+        // Validate that a topic has at least 1 learning material (existing or queued) so topics are never empty
+        const totalMaterialsCount = window.utmExistingMaterials.length + window.utmQueuedMaterials.length;
+        if (totalMaterialsCount === 0) {
+            window.utmToast('Please attach or queue at least 1 learning material so the topic is not empty.', 'error');
+            document.getElementById('utmMatDropzone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
+        // Validate all queued materials have titles
+        for (let i = 0; i < window.utmQueuedMaterials.length; i++) {
+            if (!String(window.utmQueuedMaterials[i].title || '').trim()) {
+                window.utmToast(`Queued material #${i + 1} requires a title.`, 'error');
+                return;
+            }
+        }
+
+        const isAdminContext = window.UTM_ROLE_CONTEXT === 'Admin';
+        const url = isAdminContext
+            ? (isEdit ? `/admin/am/topics/${id}` : `/admin/am/quarters/${quarterId}/topics`)
+            : (isEdit ? `/teacher/api/topic/${id}` : `/teacher/api/topic`);
+        const method = isAdminContext ? 'POST' : (isEdit ? 'PUT' : 'POST');
+
+        window.pendingTopicPayload = {
+            id,
+            isEdit,
+            quarterId,
+            url,
+            method,
+            objItems,
+            body: {
+                quarter_id: quarterId,
+                topic_name: topicName,
+                topic_description: topicDesc,
+                topic_objectives: topicObj,
+                video_url: videoUrl,
+                is_locked: isLocked,
+                auto_unlock_at: autoUnlockAt || null,
+                auto_lock_at: autoLockAt || null
+            }
+        };
+
+        // Populate Save Confirmation Modal
+        document.getElementById('topicSaveConfirmTitle').textContent = isEdit ? 'Confirm Topic Changes' : 'Confirm New Topic';
+        document.getElementById('topicSaveConfirmSubtitle').textContent = isEdit ? 'Review updates before saving' : 'Review topic details before adding';
+        document.getElementById('topicSaveConfirmMsg').textContent = isEdit
+            ? 'Are you sure you want to finalize and save these changes?'
+            : 'Are you sure you want to create this topic and upload its learning materials?';
+        document.getElementById('topicExecuteSaveBtnText').textContent = isEdit ? 'Yes, Save Changes' : 'Yes, Save Topic';
+
+        document.getElementById('topicConfirmName').textContent = topicName;
+        document.getElementById('topicConfirmDesc').textContent = topicDesc;
+        document.getElementById('topicConfirmVideo').textContent = videoUrl;
+
+        const objListEl = document.getElementById('topicConfirmObjList');
+        if (objListEl) {
+            objListEl.innerHTML = objItems.map(item => `<li>${window.utmEscapeHtml(item)}</li>`).join('');
+        }
+
+        const matSummaryEl = document.getElementById('topicConfirmMaterials');
+        if (matSummaryEl) {
+            matSummaryEl.textContent = `${totalMaterialsCount} total (${window.utmExistingMaterials.length} existing, ${window.utmQueuedMaterials.length} queued to upload)`;
+        }
+
+        const schedSummaryEl = document.getElementById('topicConfirmSchedule');
+        if (schedSummaryEl) {
+            const stateLabel = isLocked ? 'Locked' : 'Unlocked';
+            const schedText = document.getElementById('utmScheduleSummaryText')?.textContent || 'Manual control only';
+            schedSummaryEl.textContent = `${stateLabel} • ${schedText}`;
+        }
+
+        const progWrap = document.getElementById('utmSaveUploadProgressWrap');
+        if (progWrap) progWrap.classList.add('hidden');
+
+        window.utmOpenModal('topicSaveConfirmModal');
+    };
+
+    window.confirmExecuteTopicSave = async function() {
+        if (!window.pendingTopicPayload) return;
+
+        const btn = document.getElementById('topicExecuteSaveBtn');
+        const cancelBtn = document.getElementById('topicCancelConfirmBtn');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> Saving Topic...';
+        }
+        if (cancelBtn) cancelBtn.disabled = true;
+
+        try {
+            // Step 1: Save Topic metadata + schedule
+            const res = await fetch(window.pendingTopicPayload.url, {
+                method: window.pendingTopicPayload.method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(window.pendingTopicPayload.body)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) {
+                throw new Error(data.error || data.message || 'Failed to save topic details.');
+            }
+
+            const targetTopicId = data.topic_id || window.pendingTopicPayload.id;
+
+            // Step 2: Upload any queued learning materials to /teacher/api/material
+            const queued = window.utmQueuedMaterials || [];
+            if (queued.length > 0 && targetTopicId) {
+                const progWrap = document.getElementById('utmSaveUploadProgressWrap');
+                const progBar = document.getElementById('utmSaveUploadProgressBar');
+                const progPct = document.getElementById('utmSaveUploadProgressPct');
+                const progLbl = document.getElementById('utmSaveUploadProgressLabel');
+                if (progWrap) progWrap.classList.remove('hidden');
+
+                for (let i = 0; i < queued.length; i++) {
+                    const item = queued[i];
+                    if (progLbl) progLbl.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>Uploading material ${i + 1} of ${queued.length}: ${window.utmEscapeHtml(item.title)}...`;
+
+                    const fd = new FormData();
+                    fd.append('topic_id', String(targetTopicId));
+                    fd.append('title', item.title.trim());
+                    fd.append('material_type', item.material_type);
+                    fd.append('is_locked', item.is_locked ? '1' : '0');
+                    if (item.sourceMode === 'file' && item.file) {
+                        fd.append('file', item.file);
+                    } else {
+                        fd.append('file_path_or_url', item.url);
+                    }
+
+                    const matRes = await fetch('/teacher/api/material', {
+                        method: 'POST',
+                        body: fd
+                    });
+                    const matData = await matRes.json().catch(() => ({}));
+                    if (!matRes.ok || matData.success === false) {
+                        throw new Error(matData.error || `Failed to upload material "${item.title}".`);
+                    }
+
+                    const pct = Math.round(((i + 1) / queued.length) * 100);
+                    if (progBar) progBar.style.width = pct + '%';
+                    if (progPct) progPct.textContent = pct + '%';
+                }
+            }
+
+            const savedQuarterId = window.pendingTopicPayload.quarterId;
+            window.utmCloseModal('topicSaveConfirmModal');
+            window.utmCloseModal('topicModal');
+            window.topicInitialState = null;
+            window.pendingTopicPayload = null;
+            window.utmQueuedMaterials = [];
+
+            window.utmToast('Topic and learning materials saved successfully!', 'success');
+
+            if (typeof window.refreshClassViewContent === 'function') {
+                await window.refreshClassViewContent({ ensureQuarterOpen: savedQuarterId, ensureTopicOpen: targetTopicId });
+            } else if (typeof window.loadQuarters === 'function') {
+                await window.loadQuarters();
+            }
+        } catch (err) {
+            window.utmToast(err.message || 'Failed to save topic. Please try again.', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+            if (cancelBtn) cancelBtn.disabled = false;
+        }
+    };
+})();
+</script>
+

@@ -1172,4 +1172,10 @@ app.listen(PORT, '0.0.0.0', () => {
     } catch (schedErr) {
         console.error('[Deadline Reminder Service Init Error]', schedErr.message);
     }
+    try {
+        const topicScheduleService = require('./services/topicScheduleService');
+        topicScheduleService.start(60000);
+    } catch (topicSchedErr) {
+        console.error('[Topic Schedule Service Init Error]', topicSchedErr.message);
+    }
 });

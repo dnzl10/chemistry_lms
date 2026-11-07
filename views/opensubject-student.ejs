@@ -937,9 +937,14 @@
                                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-4">
                                     <%# ── Left side: Text ── %>
                                     <div class="lg:col-span-2 topic-header-bar flex-col items-start gap-2">
-                                        <div class="flex w-full items-center">
+                                        <div class="flex w-full items-center flex-wrap gap-2">
                                             <div class="topic-accent"></div>
-                                            <h5 class="text-base font-black text-slate-800 flex-1"><%= topic.topic_name %></h5>
+                                            <h5 class="text-base font-black text-slate-800 flex-1 break-words"><%= topic.topic_name %></h5>
+                                            <% if (topic.auto_lock_at && !(topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1)) { %>
+                                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;font-size:11px;font-weight:700;padding:3px 9px;border-radius:9999px;" title="This topic is scheduled to lock automatically">
+                                                <i class="fas fa-hourglass-end" style="font-size:10px;"></i> Locks <%= new Date(topic.auto_lock_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                                            </span>
+                                            <% } %>
                                             <% if(topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1) { %>
                                             <span class="topic-lock-badge cursor-pointer" onclick="openLockedNoticeModal('This topic or assessment is currently locked by your instructor.', 'Topic Locked')" title="Click for details"><i class="fas fa-lock"></i> Locked</span>
                                             <% } else { %>
@@ -949,24 +954,28 @@
                                             <% } %>
                                         </div>
                                         <% if (topic.topic_description) { %>
-                                            <p class="text-sm text-slate-500 pl-4 mt-1 text-justify" style="text-align: justify;"><%= topic.topic_description %></p>
+                                            <p class="text-sm text-slate-500 pl-4 mt-1 text-justify break-words whitespace-pre-line" style="text-align: justify;"><%= topic.topic_description %></p>
                                         <% } %>
                                         <% if (topic.topic_objectives) { 
-                                            let objText = topic.topic_objectives;
-                                            let isNumbered = /(?:^|\s+)\d+[\.\)]\s+/.test(objText);
-                                            let parts = objText.split(/(?:^|\s+)(?:\d+[\.\)]|[-•*])(?:\s+)/);
-                                            
-                                            let objList = parts.map(p => p.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim()).filter(p => p.length > 0);
+                                            let objText = String(topic.topic_objectives).trim();
+                                            let rawLines = objText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                                            if (rawLines.length === 1) {
+                                                let inlineParts = rawLines[0].split(/(?:^|\s+)(?:\d+[\.\)]|[•*])(?:\s+)/).map(p => p.trim()).filter(Boolean);
+                                                if (inlineParts.length > 1) rawLines = inlineParts;
+                                            }
+                                            let objList = rawLines
+                                                .map(line => line.replace(/^(?:\d+[\.\)]|[-•*])\s*/, '').replace(/\s+/g, ' ').trim())
+                                                .filter(line => line.length > 0);
                                             
                                             if (objList.length > 0) {
                                         %>
-                                            <div class="text-xs text-slate-500 pl-4 mt-1 pb-2 w-full">
-                                                <span class="font-bold text-slate-600 block mb-1">Objectives:</span>
-                                                <<%= isNumbered ? 'ol' : 'ul' %> class="<%= isNumbered ? 'list-decimal' : 'list-disc' %> pl-5 space-y-1">
+                                            <div class="text-xs text-slate-600 pl-4 mt-1.5 pb-2 w-full">
+                                                <span class="font-bold text-slate-700 block mb-1.5">Objectives:</span>
+                                                <ul class="list-disc pl-5 space-y-1.5 break-words">
                                                     <% objList.forEach(obj => { %>
-                                                        <li><%= obj %></li>
+                                                        <li class="leading-relaxed"><%= obj %></li>
                                                     <% }) %>
-                                                </<%= isNumbered ? 'ol' : 'ul' %>>
+                                                </ul>
                                             </div>
                                         <%  } 
                                            } %>

@@ -11,6 +11,7 @@ const notificationService = require('../services/notificationService');
 const levelProgressionService = require('../services/levelProgressionService');
 const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const forumExpService = require('../services/forumExpService');
+const topicScheduleService = require('../services/topicScheduleService');
 const forumStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         const forumDir = path.join(__dirname, '../files');
@@ -1911,6 +1912,9 @@ router.get('/subjects/open/:id', async (req, res) => {
                 customMessage: 'The requested General Chemistry subject record does not exist or has been archived.'
             });
         }
+
+        // Evaluate any due automatic topic unlock/lock schedules before reading quarters and topics
+        await topicScheduleService.evaluateNow();
 
         // 2. GET QUARTERS
         const [quartersRaw] = await db.query(`SELECT * FROM quarters WHERE subject_id = ?`, [subjectId]);
