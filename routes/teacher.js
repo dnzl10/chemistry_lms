@@ -6122,12 +6122,18 @@ router.post('/api/question', isTeacher, async (req, res) => {
             finalStepsJson = JSON.stringify([{ type: 'pick_seq', answer: answer_text.split('+'), label: 'Reagent steps' }]);
         }
 
+        const [[maxOrderRow]] = await db.query(
+            `SELECT COALESCE(MAX(display_order), 0) + 1 AS next_order FROM elementa_questions WHERE level_number = ?`,
+            [actualLevel]
+        );
+        const nextDisplayOrder = Number(maxOrderRow?.next_order) || 1;
+
         const [result] = await db.execute(`
             INSERT INTO elementa_questions
                 (teacher_id, question_code, level_number, topic_id, topic,
                  machine_name, machine_id, prompt, answer_text, steps_json,
-                 time_limit_s, points, difficulty, verification_status, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 1)`,
+                 time_limit_s, points, difficulty, display_order, verification_status, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 1)`,
             [
                 req.user.user_id,
                 qCode,
@@ -6141,7 +6147,8 @@ router.post('/api/question', isTeacher, async (req, res) => {
                 finalStepsJson,
                 parseFloat(time_limit_s) || 90.0,
                 parseInt(points, 10) || 1,
-                difficulty || 'Easy'
+                difficulty || 'Easy',
+                nextDisplayOrder
             ]
         );
 
@@ -15739,13 +15746,17 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
             if (!question_id) {
                 // INSERT new question into elementa_questions
                 const qCode = 'Q_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                const levelNum = (assessmentFields.topic_id && TOPIC_LEVEL_MAP[assessmentFields.topic_id]) || 1;
+                const topicLabel = (LEVEL_MACHINES[levelNum] && LEVEL_MACHINES[levelNum].topic) || 'Chemistry';
                 const [qInsert] = await conn.execute(
                     `INSERT INTO elementa_questions
-                     (topic_id, teacher_id, question_code, prompt, answer_text, steps_json,
-                      time_limit_s, points, difficulty, machine_name, machine_id, verification_status, is_active)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', 1)`,
+                     (topic_id, level_number, topic, teacher_id, question_code, prompt, answer_text, steps_json,
+                      time_limit_s, points, difficulty, machine_name, machine_id, display_order, verification_status, is_active)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', 1)`,
                     [
                         assessmentFields.topic_id || null,
+                        levelNum,
+                        topicLabel,
                         teacher_id,
                         qCode,
                         promptText,
@@ -15755,7 +15766,8 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
                         pointsVal,
                         diffVal,
                         machineName,
-                        machineId
+                        machineId,
+                        sortOrder
                     ]
                 );
                 question_id = qInsert.insertId;

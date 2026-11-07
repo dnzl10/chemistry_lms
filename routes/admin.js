@@ -5688,12 +5688,17 @@ async function _upsertElementaQuestion(req, qId) {
     let questionId;
     if (!qId) {
         const creatorId = teacher_id ? parseInt(teacher_id, 10) : req.user.user_id;
+        const [[maxOrderRow]] = await db.query(
+            `SELECT COALESCE(MAX(display_order), 0) + 1 AS next_order FROM elementa_questions WHERE level_number = ?`,
+            [actualLevel]
+        );
+        const nextDisplayOrder = Number(maxOrderRow?.next_order) || 1;
         const [result] = await db.query(`
             INSERT INTO elementa_questions
                 (teacher_id, question_code, level_number, topic_id, topic,
                  machine_name, machine_id, prompt, answer_text, steps_json,
-                 time_limit_s, points, difficulty, verification_status, verified_by, verified_at, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
+                 time_limit_s, points, difficulty, display_order, verification_status, verified_by, verified_at, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
         `, [
             creatorId,
             qCode,
@@ -5708,6 +5713,7 @@ async function _upsertElementaQuestion(req, qId) {
             targetTime,
             targetPoints,
             targetDifficulty,
+            nextDisplayOrder,
             targetStatus,
             req.user.user_id
         ]);
