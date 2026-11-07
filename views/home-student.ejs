@@ -946,50 +946,148 @@
                 <!-- ===== AVAILABLE COURSES ===== -->
                 <div class="px-4 md:px-8 py-10 bg-white border-t border-b border-slate-100 mt-6 mb-10 shadow-xl shadow-slate-200">
                     <div class="mb-8">
-                        <header class="mb-10">
-                            <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Available Courses</h2>
-                            <p class="text-slate-500">Choose subject and fill in the given access code to enroll.</p>
+                        <header class="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                            <div>
+                                <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Available Courses</h2>
+                                <p class="text-slate-500">Choose subject and fill in the given access code to enroll.</p>
+                            </div>
+                            <% if (typeof activeSY !== 'undefined' && activeSY) { %>
+                                <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-700">
+                                    <i class="fas fa-graduation-cap"></i>
+                                    <span>Active Academic Year: <%= activeSY.sy_range %></span>
+                                    <span class="px-1.5 py-0.5 bg-blue-600 text-white rounded text-[10px] font-black uppercase"><%= activeSY.status || 'Active' %></span>
+                                </div>
+                            <% } %>
                         </header>
+
+                        <!-- Academic Year Semestral Enrollment Schedule Banner -->
+                        <% if (typeof activeSY !== 'undefined' && activeSY) { %>
+                            <div class="mb-8 p-4 bg-gradient-to-r from-slate-50 to-blue-50/40 border border-slate-200 rounded-2xl flex flex-wrap items-center justify-between gap-4 text-xs">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+                                        SY
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-slate-800 text-sm">Official Academic Timeline (<%= activeSY.sy_range %>)</p>
+                                        <p class="text-slate-500 text-[11px]">Centralized DepEd 2-Semester $\times$ 2-Quarter Framework with Automated Enrollment & Prerequisite Gates</p>
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-4 text-[11px]">
+                                    <div class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                                        <span class="w-2.5 h-2.5 rounded-full <%= (activeSY.sem1_enrollment_start && activeSY.sem1_enrollment_end && new Date() >= new Date(activeSY.sem1_enrollment_start) && new Date() <= new Date(activeSY.sem1_enrollment_end)) ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300' %>"></span>
+                                        <span class="text-slate-700"><strong>1st Sem Enrollment:</strong> <%= activeSY.sem1_enrollment_start ? new Date(activeSY.sem1_enrollment_start).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : 'TBA' %> - <%= activeSY.sem1_enrollment_end ? new Date(activeSY.sem1_enrollment_end).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBA' %></span>
+                                    </div>
+                                    <div class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                                        <span class="w-2.5 h-2.5 rounded-full <%= (activeSY.sem2_enrollment_start && activeSY.sem2_enrollment_end && new Date() >= new Date(activeSY.sem2_enrollment_start) && new Date() <= new Date(activeSY.sem2_enrollment_end)) ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300' %>"></span>
+                                        <span class="text-slate-700"><strong>2nd Sem Enrollment:</strong> <%= activeSY.sem2_enrollment_start ? new Date(activeSY.sem2_enrollment_start).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : 'TBA' %> - <%= activeSY.sem2_enrollment_end ? new Date(activeSY.sem2_enrollment_end).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBA' %></span>
+                                    </div>
+                                </div>
+                            </div>
+                        <% } %>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             <% subjects.forEach(subject => { %>
-                                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group">
+                                <% 
+                                    const isWindowOpen = subject.enrollmentStatus ? subject.enrollmentStatus.isOpen : true;
+                                    const isPrereqEligible = subject.prerequisite ? subject.prerequisite.eligible : true;
+                                    const isCapacityFull = Boolean(subject.max_capacity && subject.enrolled_count !== null && subject.enrolled_count >= subject.max_capacity);
+                                    const canEnroll = isWindowOpen && isPrereqEligible && !isCapacityFull;
+                                %>
+                                <div class="bg-white rounded-3xl border <%= canEnroll ? 'border-slate-200' : 'border-slate-200/80 bg-slate-50/30' %> shadow-sm overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group">
                                     
-                                    <div class="h-40 bg-slate-200 relative overflow-hidden">
+                                    <div class="h-44 bg-slate-200 relative overflow-hidden">
                                         <img src="/profile_uploads/<%= subject.subject_image || 'default_subject.png' %>" 
-                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 <%= !canEnroll ? 'filter grayscale-[25%]' : '' %>"
                                             onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=<%= subject.subject_name %>'">
                                         
-                                        <div class="absolute top-4 left-4 flex flex-col gap-2">
-                                            <span class="w-fit px-3 py-1 bg-white/90 backdrop-blur text-slate-900 text-[9px] font-black rounded-lg uppercase tracking-widest shadow-sm">
+                                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20"></div>
+
+                                        <!-- Top Left: Sem & SY -->
+                                        <div class="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
+                                            <span class="px-2.5 py-1 bg-white/95 backdrop-blur text-slate-900 text-[9px] font-black rounded-lg uppercase tracking-wider shadow-sm">
                                                 <%= subject.semester == 1 ? '1st Semester' : '2nd Semester' %>
                                             </span>
-                                            <span class="w-fit px-3 py-1 bg-blue-600/90 backdrop-blur text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-sm">
-                                                SY <%= subject.sy_range || '2025-2026' %>
+                                            <span class="px-2.5 py-1 bg-blue-600/90 backdrop-blur text-white text-[9px] font-black rounded-lg uppercase tracking-wider shadow-sm">
+                                                SY <%= subject.sy_range || (typeof activeSY !== 'undefined' && activeSY && activeSY.sy_range) || '2026-2027' %>
                                             </span>
+                                        </div>
+
+                                        <!-- Top Right: Enrollment Window & Section Status -->
+                                        <div class="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
+                                            <% if (subject.enrollmentStatus && subject.enrollmentStatus.isOpen) { %>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/95 backdrop-blur text-white text-[9px] font-bold rounded-lg uppercase tracking-wider shadow-sm">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                                                    Enrollment Open
+                                                </span>
+                                            <% } else if (subject.enrollmentStatus && subject.enrollmentStatus.status === 'upcoming') { %>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/95 backdrop-blur text-white text-[9px] font-bold rounded-lg uppercase tracking-wider shadow-sm">
+                                                    <i class="fas fa-clock text-[9px]"></i>
+                                                    Opens Soon
+                                                </span>
+                                            <% } else { %>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-500/95 backdrop-blur text-white text-[9px] font-bold rounded-lg uppercase tracking-wider shadow-sm">
+                                                    <i class="fas fa-lock text-[9px]"></i>
+                                                    Enrollment Closed
+                                                </span>
+                                            <% } %>
+
+                                            <% if (subject.max_capacity) { %>
+                                                <span class="px-2 py-0.5 bg-slate-900/80 backdrop-blur text-slate-200 text-[8px] font-semibold rounded-md border border-white/10">
+                                                    <%= subject.enrolled_count || 0 %> / <%= subject.max_capacity %> slots
+                                                </span>
+                                            <% } %>
                                         </div>
                                     </div>
 
                                     <div class="p-6 flex-1 flex flex-col">
-                                        <div class="flex justify-between items-start mb-3">
+                                        <div class="flex justify-between items-start mb-2">
                                             <span class="text-blue-600 text-[10px] font-black uppercase tracking-widest">
                                                 <%= subject.subject_code %>
                                             </span>
-                                            <div class="flex items-center gap-1 text-slate-300">
-                                                <i class="fas fa-calendar-alt text-xs"></i>
-                                                <span class="text-[10px] font-bold"><%= subject.sy_range %></span>
-                                            </div>
+                                            <% if (subject.class_name) { %>
+                                                <span class="text-slate-400 text-[10px] font-medium bg-slate-100 px-2 py-0.5 rounded-md">
+                                                    Sec: <%= subject.class_name %>
+                                                </span>
+                                            <% } %>
                                         </div>
 
                                         <h3 class="text-xl font-bold text-slate-800 mb-2 leading-tight">
                                             <%= subject.subject_name %>
                                         </h3>
 
-                                        <p class="text-slate-500 text-sm line-clamp-2 mb-4">
+                                        <p class="text-slate-500 text-xs line-clamp-2 mb-4 leading-relaxed">
                                             <%= subject.description || 'No description available for this course.' %>
                                         </p>
+
+                                        <!-- Prerequisite Notice for Chemistry 2 -->
+                                        <% if (subject.semester == 2 || (subject.subject_name && subject.subject_name.toLowerCase().includes('chemistry 2'))) { %>
+                                            <% if (subject.prerequisite && !subject.prerequisite.eligible) { %>
+                                                <div class="mb-4 p-3 bg-amber-50/90 border border-amber-200 rounded-2xl flex items-start gap-2.5">
+                                                    <i class="fas fa-shield-alt text-amber-600 mt-0.5 text-xs shrink-0"></i>
+                                                    <div class="text-[11px] leading-tight">
+                                                        <p class="font-bold text-amber-900">Prerequisite Enforced (DepEd)</p>
+                                                        <p class="text-amber-700 mt-0.5"><%= subject.prerequisite.reason %></p>
+                                                    </div>
+                                                </div>
+                                            <% } else if (subject.prerequisite && subject.prerequisite.eligible) { %>
+                                                <div class="mb-4 p-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2">
+                                                    <i class="fas fa-check-circle text-emerald-500 text-xs shrink-0"></i>
+                                                    <span class="text-[11px] font-medium text-emerald-800">
+                                                        Prerequisite Cleared <%= subject.prerequisite.chem1Grade !== null ? '(Score: ' + subject.prerequisite.chem1Grade + '%)' : '' %>
+                                                    </span>
+                                                </div>
+                                            <% } %>
+                                        <% } %>
+
+                                        <!-- Enrollment Window Info Notice if Closed -->
+                                        <% if (subject.enrollmentStatus && !subject.enrollmentStatus.isOpen) { %>
+                                            <div class="mb-4 p-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex items-center gap-2 text-[11px] text-slate-600">
+                                                <i class="fas fa-calendar-times text-slate-400 text-xs shrink-0"></i>
+                                                <span class="line-clamp-1"><%= subject.enrollmentStatus.message %></span>
+                                            </div>
+                                        <% } %>
                                         
-                                        <div class="flex items-center gap-3 mb-6 mt-auto">
+                                        <div class="flex items-center gap-3 mb-5 mt-auto">
                                             <img src="/profile_uploads/<%= subject.profile_pic || 'default_avatar.png' %>" 
                                                 class="w-8 h-8 rounded-full border-2 border-slate-100 shadow-sm object-cover">
                                             <div class="text-xs">
@@ -1004,13 +1102,25 @@
                                             <input type="hidden" name="subject_id" value="<%= subject.subject_id %>">
                                             <div class="space-y-3">
                                                 <div class="relative">
-                                                    <input type="password" name="enrollment_code" placeholder="Enter Access Code" 
-                                                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
+                                                    <% if (canEnroll) { %>
+                                                        <input type="password" name="enrollment_code" required placeholder="Enter Access Code" 
+                                                            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
+                                                    <% } else { %>
+                                                        <input type="text" disabled placeholder="<%= !isPrereqEligible ? 'Prerequisite requirement incomplete' : (!isWindowOpen ? 'Enrollment period closed' : 'Section capacity full') %>" 
+                                                            class="w-full px-4 py-3 bg-slate-100/70 border border-slate-200/70 rounded-2xl text-xs text-slate-400 cursor-not-allowed outline-none select-none">
+                                                    <% } %>
                                                 </div>
-                                                <button type="submit" class="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 group/btn">
-                                                    Enroll in Course
-                                                    <i class="fas fa-arrow-right text-[10px] group-hover/btn:translate-x-1 transition-transform"></i>
-                                                </button>
+                                                <% if (canEnroll) { %>
+                                                    <button type="submit" class="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 group/btn shadow-md shadow-slate-900/10">
+                                                        <span>Enroll in Course</span>
+                                                        <i class="fas fa-arrow-right text-[10px] group-hover/btn:translate-x-1 transition-transform"></i>
+                                                    </button>
+                                                <% } else { %>
+                                                    <button type="button" disabled class="w-full py-3 bg-slate-100 border border-slate-200 text-slate-400 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 cursor-not-allowed select-none">
+                                                        <i class="fas fa-lock text-[10px]"></i>
+                                                        <span><%= !isPrereqEligible ? 'Prerequisite Locked' : (!isWindowOpen ? 'Enrollment Locked' : 'Section Full') %></span>
+                                                    </button>
+                                                <% } %>
                                             </div>
                                         </form>
                                     </div>

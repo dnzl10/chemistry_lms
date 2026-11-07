@@ -12,6 +12,7 @@ const levelProgressionService = require('../services/levelProgressionService');
 const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const forumExpService = require('../services/forumExpService');
 const topicScheduleService = require('../services/topicScheduleService');
+const academicHelper = require('../utils/academicHelper');
 const forumStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         const forumDir = path.join(__dirname, '../files');
@@ -1447,45 +1448,86 @@ router.get('/home', async (req, res) => {
     const studentId = req.user.user_id;
 
     try {
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+
         // Kunin ang subjects na HINDI pa naka-enroll ang student (base sa student_progress)
-        const [subjects] = await db.query(`
-            SELECT s.*, u.first_name, u.last_name, u.profile_pic
+        const [rawSubjects] = await db.query(`
+            SELECT s.*, u.first_name, u.last_name, u.profile_pic,
+                   c.class_id, c.class_name, c.max_capacity, c.enrolled_count
             FROM subjects s
-            LEFT JOIN classes c ON s.subject_id = c.subject_id
+            LEFT JOIN classes c ON s.subject_id = c.subject_id ${activeSY ? 'AND (c.sy_id = ' + Number(activeSY.sy_id) + ' OR c.sy_id IS NULL)' : ''}
             LEFT JOIN users u ON c.teacher_id = u.user_id
             WHERE s.subject_id NOT IN (
                 SELECT subject_id FROM student_progress WHERE student_id = ?
             )
+            ORDER BY s.semester ASC, s.subject_id ASC
         `, [studentId]);
 
-        res.render('home-student', { user: req.user, subjects });
+        // Deduplicate subjects if a subject has multiple class sections
+        const subjectMap = new Map();
+        for (const subj of rawSubjects) {
+            if (!subjectMap.has(subj.subject_id)) {
+                subj.enrollmentStatus = academicHelper.isSemesterEnrollmentOpen(activeSY, subj.semester);
+                subj.prerequisite = await academicHelper.checkStudentPrerequisite(db, studentId, subj.subject_id, activeSY);
+                subj.sy_range = activeSY ? activeSY.sy_range : null;
+                subjectMap.set(subj.subject_id, subj);
+            }
+        }
+
+        const subjects = Array.from(subjectMap.values());
+
+        res.render('home-student', { user: req.user, subjects, activeSY });
     } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
     }
 });
 
-// POST /enroll - Logic para sa pag-enroll gamit ang code
+// POST /enroll - Logic para sa pag-enroll gamit ang code with multi-gate validation
 router.post('/enroll', async (req, res) => {
 
     const { subject_id, enrollment_code } = req.body;
-    const student_id = req.user.user_id; // Passport.js gamit mo kaya req.user dapat
+    const student_id = req.user.user_id; // Passport.js req.user
 
     try {
-        // 1. I-verify ang Code at kunin ang Class ID
-        // Ginagamit natin ang JOIN para makuha ang class_id na naka-link sa subject na iyon
+        const activeSY = await academicHelper.getActiveSchoolYear(db);
+
+        // 1. I-verify ang Code at kunin ang Course at Class details
         const [subjectData] = await db.query(`
-            SELECT s.enrollment_code, c.class_id 
+            SELECT s.enrollment_code, s.semester, s.subject_name,
+                   c.class_id, c.max_capacity, c.enrolled_count 
             FROM subjects s
-            JOIN classes c ON s.subject_id = c.subject_id
+            LEFT JOIN classes c ON s.subject_id = c.subject_id ${activeSY ? 'AND (c.sy_id = ' + Number(activeSY.sy_id) + ' OR c.sy_id IS NULL)' : ''}
             WHERE s.subject_id = ?
+            ORDER BY c.class_id DESC
+            LIMIT 1
         `, [subject_id]);
 
-        if (subjectData.length === 0 || subjectData[0].enrollment_code !== enrollment_code) {
+        if (subjectData.length === 0 || subjectData[0].enrollment_code !== (enrollment_code || '').trim()) {
             return res.send("<script>alert('Maling Enrollment Code!'); window.location='/home';</script>");
         }
 
-        const class_id = subjectData[0].class_id;
+        const course = subjectData[0];
+        const class_id = course.class_id;
+
+        // Gate 1: Check Semestral Enrollment Window
+        const windowCheck = academicHelper.isSemesterEnrollmentOpen(activeSY, course.semester);
+        if (!windowCheck.isOpen) {
+            const escapedMsg = (windowCheck.message || 'Enrollment is currently closed.').replace(/'/g, "\\'");
+            return res.send(`<script>alert('Enrollment Closed: ${escapedMsg}'); window.location='/home';</script>`);
+        }
+
+        // Gate 2: Check Prerequisite (Chemistry 1 passing mark required for Chemistry 2)
+        const prereqCheck = await academicHelper.checkStudentPrerequisite(db, student_id, subject_id, activeSY);
+        if (!prereqCheck.eligible) {
+            const escapedPrereqMsg = (prereqCheck.reason || 'Prerequisite requirement not met.').replace(/'/g, "\\'");
+            return res.send(`<script>alert('${escapedPrereqMsg}'); window.location='/home';</script>`);
+        }
+
+        // Gate 3: Check Class Capacity (if section has capacity limit)
+        if (course.max_capacity && course.enrolled_count !== null && course.enrolled_count >= course.max_capacity) {
+            return res.send("<script>alert('Section is currently full (maximum capacity reached). Please contact your instructor.'); window.location='/home';</script>");
+        }
 
         // 2. I-check kung enrolled na (safety check)
         const [existing] = await db.query(
@@ -1500,34 +1542,39 @@ router.post('/enroll', async (req, res) => {
         // 3. TRANSACTION: Mag-insert sa dalawang table nang sabay
         // Para siguradong lalabas sa Dashboard (class_students) at may progress tracking (student_progress)
         await db.query("INSERT INTO student_progress (student_id, subject_id, progress_percent) VALUES (?, ?, 0)", [student_id, subject_id]);
-        await db.query("INSERT INTO class_students (class_id, student_id) VALUES (?, ?)", [class_id, student_id]);
+        
+        if (class_id) {
+            await db.query("INSERT INTO class_students (class_id, student_id) VALUES (?, ?)", [class_id, student_id]);
+            // Increment enrolled_count
+            await db.query("UPDATE classes SET enrolled_count = COALESCE(enrolled_count, 0) + 1 WHERE class_id = ?", [class_id]);
 
-        // T-24: Notify Teacher of new student enrollment
-        try {
-            const [[clsInfo]] = await db.query(
-                `SELECT c.teacher_id, c.class_name, s.subject_name
-                 FROM classes c
-                 LEFT JOIN subjects s ON c.subject_id = s.subject_id
-                 WHERE c.class_id = ?`,
-                [class_id]
-            );
-            if (clsInfo && clsInfo.teacher_id) {
-                const studentName = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || 'A student';
-                await notificationService.dispatch({
-                    recipientIds: clsInfo.teacher_id,
-                    actorId: student_id,
-                    role: 'Teacher',
-                    category: 'academic',
-                    priority: 'normal',
-                    eventType: 'student_enrolled',
-                    title: `New Student Enrolled: ${clsInfo.class_name}`,
-                    message: `${studentName} joined ${clsInfo.class_name} (${clsInfo.subject_name || 'Course'}).`,
-                    targetUrl: `/teacher/class/${class_id}?tab=students`,
-                    metadata: { classId: class_id, studentId: student_id }
-                });
+            // T-24: Notify Teacher of new student enrollment
+            try {
+                const [[clsInfo]] = await db.query(
+                    `SELECT c.teacher_id, c.class_name, s.subject_name
+                     FROM classes c
+                     LEFT JOIN subjects s ON c.subject_id = s.subject_id
+                     WHERE c.class_id = ?`,
+                    [class_id]
+                );
+                if (clsInfo && clsInfo.teacher_id) {
+                    const studentName = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || 'A student';
+                    await notificationService.dispatch({
+                        recipientIds: clsInfo.teacher_id,
+                        actorId: student_id,
+                        role: 'Teacher',
+                        category: 'academic',
+                        priority: 'normal',
+                        eventType: 'student_enrolled',
+                        title: `New Student Enrolled: ${clsInfo.class_name}`,
+                        message: `${studentName} joined ${clsInfo.class_name} (${clsInfo.subject_name || 'Course'}).`,
+                        targetUrl: `/teacher/class/${class_id}?tab=students`,
+                        metadata: { classId: class_id, studentId: student_id }
+                    });
+                }
+            } catch (enrollNotifErr) {
+                console.error('[Student Enroll Notification Error]', enrollNotifErr.message);
             }
-        } catch (enrollNotifErr) {
-            console.error('[Student Enroll Notification Error]', enrollNotifErr.message);
         }
 
         res.send("<script>alert('Enrollment Successful!'); window.location='/dashboard';</script>");
