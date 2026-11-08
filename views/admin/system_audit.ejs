@@ -7,9 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="/js/admin_spa_handler.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        .swal2-container { z-index: 100000 !important; }
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: #f0fdfa;
@@ -276,6 +278,49 @@
                 </div>
 
                 <div id="tab-system">
+
+                <!-- ══════════════════════════════════════════════════════
+                     ADMINISTRATIVE OVERRIDES & EMERGENCY ACTIONS PANEL
+                ══════════════════════════════════════════════════════ -->
+                <div class="glass-card rounded-2xl border-2 border-amber-200/90 bg-gradient-to-r from-amber-50/80 via-white to-rose-50/60 p-5 md:p-6 mb-8 shadow-sm relative overflow-hidden">
+                    <div class="absolute -right-6 -bottom-6 w-36 h-36 bg-amber-200/30 rounded-full blur-2xl pointer-events-none"></div>
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
+                        <!-- Left info -->
+                        <div class="max-w-2xl">
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-amber-100 text-amber-800 border border-amber-300">
+                                    <i class="fas fa-shield-halved mr-1"></i> Governance Overrides
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                    <i class="fas fa-fingerprint mr-1"></i> Audit Trail Logged
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-rose-100 text-rose-800 border border-rose-200">
+                                    <i class="fas fa-triangle-exclamation mr-1"></i> Regulated Action
+                                </span>
+                            </div>
+                            <h3 class="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
+                                <i class="fas fa-unlock-keyhole text-amber-600"></i> Administrative Overrides &amp; Compliance Actions
+                            </h3>
+                            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                                Regulated compliance operations for emergency gradebook extensions and senior high cohort governance. Overrides bypass automated freezes and create permanent, immutable entries in the institutional audit ledger.
+                            </p>
+                        </div>
+
+                        <!-- Right buttons -->
+                        <div class="flex flex-wrap sm:flex-nowrap items-center gap-3">
+                            <button type="button" onclick="openGradingOverrideModal()" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
+                                <i class="fas fa-lock-open text-amber-100 text-sm"></i>
+                                <span>Emergency Grading Unlock</span>
+                            </button>
+
+                            <a href="/admin/user_access_control" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-indigo-50/80 border border-indigo-200 text-indigo-700 font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all duration-200">
+                                <i class="fas fa-users-gear text-indigo-500"></i>
+                                <span>Cohort Governance</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ══════════════════════════════════════════
                      SECTION 1 — KPI SNAPSHOT CARDS
                 ══════════════════════════════════════════ -->
@@ -478,7 +523,7 @@
                                             /CREATE|GENERATE|UPLOAD|IMPORT|ENROLL|APPROVE|BULK_IMPORT/.test(log.action) ? 'action-create' :
                                             /DELETE|REVOKE|REJECT|SUSPEND|LOGIN_FAILED/.test(log.action)                ? 'action-delete' :
                                             /EDIT|UPDATE|RESET/.test(log.action)                                      ? 'action-edit'   :
-                                            /TOGGLE|ACTIVATE|LOCK/.test(log.action)                                   ? 'action-toggle' :
+                                            /TOGGLE|ACTIVATE|LOCK|OVERRIDE|ARCHIVE/.test(log.action)    ? 'action-toggle' :
                                             /EXPORT|GENERATE_TEST/.test(log.action)                                   ? 'action-export' :
                                             /INVITE|SEND_INVITE|BULK_INVITE/.test(log.action)                         ? 'action-invite' :
                                             /APPROVE/.test(log.action)                                                 ? 'action-approve': 'action-other';
@@ -1500,6 +1545,154 @@
         } catch (err) {
             console.error('[loadRecentReceipts]', err);
             tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-rose-500 font-bold">Failed to load recent receipts.</td></tr>';
+        }
+    };
+
+    window.openGradingOverrideModal = async function() {
+        const clientSchoolYears = <%- JSON.stringify((locals.allSchoolYears || []).map(sy => ({
+            sy_id: sy.sy_id,
+            sy_range: sy.sy_range || sy.year_name || sy.sy_code || ('SY ' + sy.sy_id),
+            status: sy.status,
+            is_active: sy.is_active,
+            current_quarter: sy.current_quarter || 1
+        }))) %>;
+        const defaultSyId = <%= (locals.currentSY && locals.currentSY.sy_id) || (locals.selectedSY && locals.selectedSY.sy_id) || 1 %>;
+        const defaultQuarter = <%= (locals.currentSY && locals.currentSY.current_quarter) || (locals.selectedSY && locals.selectedSY.current_quarter) || 1 %>;
+
+        const syOptionsHtml = clientSchoolYears.length > 0
+            ? clientSchoolYears.map(sy => `
+                <option value="${sy.sy_id}" ${sy.sy_id == defaultSyId ? 'selected' : ''}>
+                    ${sy.sy_range} (${sy.status || (sy.is_active ? 'Active' : 'Archived')})
+                </option>
+            `).join('')
+            : `<option value="${defaultSyId}">Current Active Academic Year</option>`;
+
+        const { value: formValues } = await Swal.fire({
+            title: '<div class="flex items-center justify-center gap-2 text-indigo-950 font-black text-xl"><i class="fas fa-lock-open text-amber-500"></i> Emergency Grading Unlock</div>',
+            html: `
+                <div class="text-left text-xs space-y-4 pt-2">
+                    <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 flex items-start gap-2.5">
+                        <i class="fas fa-triangle-exclamation text-amber-600 mt-0.5 text-sm flex-shrink-0"></i>
+                        <div class="leading-relaxed">
+                            <strong>Compliance Notice:</strong> This override temporarily reopens teacher gradebook submissions and manual assignment grading past the statutory deadline. This action is permanently committed to the institutional audit ledger.
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase tracking-wider text-[10px] mb-1">
+                            Target School Year
+                        </label>
+                        <select id="swalSyId" class="w-full text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 focus:bg-white focus:border-indigo-500 font-semibold text-slate-800">
+                            ${syOptionsHtml}
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase tracking-wider text-[10px] mb-1">
+                                Target Quarter
+                            </label>
+                            <select id="swalQuarter" class="w-full text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 focus:bg-white focus:border-indigo-500 font-semibold text-slate-800">
+                                <option value="1" ${defaultQuarter == 1 ? 'selected' : ''}>Quarter 1</option>
+                                <option value="2" ${defaultQuarter == 2 ? 'selected' : ''}>Quarter 2</option>
+                                <option value="3" ${defaultQuarter == 3 ? 'selected' : ''}>Quarter 3</option>
+                                <option value="4" ${defaultQuarter == 4 ? 'selected' : ''}>Quarter 4</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase tracking-wider text-[10px] mb-1">
+                                Extension Window
+                            </label>
+                            <select id="swalHours" class="w-full text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 focus:bg-white focus:border-indigo-500 font-semibold text-slate-800">
+                                <option value="24">+24 Hours (1 Day)</option>
+                                <option value="48" selected>+48 Hours (2 Days - Standard)</option>
+                                <option value="72">+72 Hours (3 Days - Maximum)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase tracking-wider text-[10px] mb-1">
+                            Justification / Administrative Reason <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea id="swalReason" rows="3" placeholder="Enter formal administrative memo, emergency circular reference, or calamity relief reason (minimum 10 characters)..." class="w-full text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 focus:bg-white focus:border-indigo-500 font-medium text-slate-800 resize-none"></textarea>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-check-circle mr-1"></i> Authorize Extension',
+            confirmButtonColor: '#d97706',
+            cancelButtonText: 'Cancel',
+            cancelButtonColor: '#64748b',
+            customClass: {
+                popup: 'rounded-3xl border border-amber-200 shadow-2xl p-6',
+                confirmButton: 'rounded-xl font-bold text-xs px-5 py-2.5 shadow-md',
+                cancelButton: 'rounded-xl font-bold text-xs px-5 py-2.5'
+            },
+            focusConfirm: false,
+            preConfirm: () => {
+                const sy_id = document.getElementById('swalSyId').value;
+                const quarter_number = document.getElementById('swalQuarter').value;
+                const extension_hours = document.getElementById('swalHours').value;
+                const reason = (document.getElementById('swalReason').value || '').trim();
+
+                if (!reason || reason.length < 10) {
+                    Swal.showValidationMessage('A descriptive justification (minimum 10 characters) is required for institutional audit compliance.');
+                    return false;
+                }
+
+                return { sy_id, quarter_number, extension_hours, reason };
+            }
+        });
+
+        if (!formValues) return;
+
+        try {
+            Swal.fire({
+                title: 'Executing Override...',
+                text: 'Updating grade encoding deadline in institutional ledger...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const res = await fetch('/admin/am/grading-lock/override', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formValues)
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Grading Extension Granted',
+                    html: `
+                        <div class="text-left text-xs space-y-2 text-slate-700">
+                            <p class="font-bold text-slate-800">${data.message}</p>
+                            <p class="text-[11px] text-slate-500">The teacher grading workspace is now unlocked for Quarter ${formValues.quarter_number}. This operation has been committed to the activity log.</p>
+                        </div>
+                    `,
+                    confirmButtonColor: '#4f46e5',
+                    confirmButtonText: 'Refresh View'
+                });
+                window.location.reload();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Override Failed',
+                    text: data.message || 'An unexpected error occurred while executing the grading lock override.',
+                    confirmButtonColor: '#e11d48'
+                });
+            }
+        } catch (err) {
+            console.error('[EmergencyGradingUnlock]', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Communication Error',
+                text: err.message || 'Unable to connect to the administration server.',
+                confirmButtonColor: '#e11d48'
+            });
         }
     };
 </script>
