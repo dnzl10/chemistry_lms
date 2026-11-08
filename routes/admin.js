@@ -589,6 +589,7 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
             currentSchoolYear,
             selectedSY,
             currentSY,
+            activeSY: currentSY,
             allSchoolYears,
             isCurrentSY,
             isHistoricalSY,

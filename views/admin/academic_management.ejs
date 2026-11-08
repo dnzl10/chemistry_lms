@@ -4325,8 +4325,9 @@ function onBulkEnrollClassChanged(sel) {
         banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-emerald-50 border-emerald-200 text-emerald-800 transition-all';
         const formattedEnd = endStr ? new Date(endStr).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Ongoing';
         const isSem2 = opt.dataset.semester == 2;
+        const passThreshold = <%= (locals.selectedSY && locals.selectedSY.passing_threshold) || (locals.activeSY && locals.activeSY.passing_threshold) || (locals.currentSY && locals.currentSY.passing_threshold) || 75 %>;
         const prereqPill = isSem2
-            ? `<div class="mt-2 pt-2 border-t border-emerald-200/80 text-[11px] text-indigo-950 font-semibold"><i class="fas fa-shield-alt text-indigo-600 mr-1.5"></i><b>Chemistry 1 Prerequisite Active:</b> Students must have taken and passed Chemistry 1 (Threshold: <%= activeSY ? activeSY.passing_threshold : 75 %>%) to be enrolled into this section. Ineligible students will be skipped automatically.</div>`
+            ? `<div class="mt-2 pt-2 border-t border-emerald-200/80 text-[11px] text-indigo-950 font-semibold"><i class="fas fa-shield-alt text-indigo-600 mr-1.5"></i><b>Chemistry 1 Prerequisite Active:</b> Students must have taken and passed Chemistry 1 (Threshold: ${passThreshold}%) to be enrolled into this section. Ineligible students will be skipped automatically.</div>`
             : '';
         banner.innerHTML = `<div class="flex items-start gap-2.5"><i class="fas fa-circle-check text-emerald-500 text-base mt-0.5"></i><div><p class="font-bold">Enrollment Open</p><p class="text-[11px] text-emerald-700 mt-0.5">Enrollment window is active (Closes on ${formattedEnd}).</p>${prereqPill}</div></div>`;
         if (submitBtn && bulkEnrollFile) submitBtn.disabled = false;

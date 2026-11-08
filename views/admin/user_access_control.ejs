@@ -2245,8 +2245,11 @@ function onInviteClassChanged(sel) {
     // 3. Valid & Open
     window._selectedClassIsBlocked = false;
     const isSem2 = opt.dataset.semester == 2 || (subjectName && subjectName.toLowerCase().includes('chemistry 2'));
+    const passThreshold = (typeof _activeSY !== 'undefined' && _activeSY && _activeSY.passing_threshold) 
+        ? _activeSY.passing_threshold 
+        : (<%= (locals.selectedSY && locals.selectedSY.passing_threshold) || (locals.currentSY && locals.currentSY.passing_threshold) || (locals.activeSY && locals.activeSY.passing_threshold) || (locals.currentSchoolYear && locals.currentSchoolYear.passing_threshold) || 75 %>);
     const prereqNotice = isSem2 
-        ? `<div class="mt-2 pt-2 border-t border-emerald-200/80 text-[11px] text-indigo-950 font-semibold"><i class="fas fa-shield-alt text-indigo-600 mr-1.5"></i><b>Prerequisite Rule:</b> Chemistry 2 requires that the student has completed and passed Chemistry 1 (Threshold: <%= activeSY ? activeSY.passing_threshold : 75 %>%) to be enrolled.</div>`
+        ? `<div class="mt-2 pt-2 border-t border-emerald-200/80 text-[11px] text-indigo-950 font-semibold"><i class="fas fa-shield-alt text-indigo-600 mr-1.5"></i><b>Prerequisite Rule:</b> Chemistry 2 requires that the student has completed and passed Chemistry 1 (Threshold: ${passThreshold}%) to be enrolled.</div>`
         : '';
     banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-emerald-50 border-emerald-200 text-emerald-800 transition-all';
     banner.innerHTML = `
