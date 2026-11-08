@@ -286,8 +286,7 @@
                             <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Students</span>
                         </div>
                         <div class="flex items-baseline justify-between">
-                            <p class="text-3xl font-black text-indigo-900"><%= uacStats.enrolledStudents !== undefined ? uacStats.enrolledStudents : uacStats.totalStudents %></p>
-                            <span class="text-[11px] font-bold text-slate-400">/ <%= uacStats.totalStudents %> total</span>
+                            <p class="text-3xl font-black text-indigo-900"><%= uacStats.totalStudents %></p>
                         </div>
                         <p class="text-[10px] text-emerald-600 font-bold mt-1">Enrolled in <%= locals.selectedSY ? selectedSY.sy_range : 'Current SY' %></p>
                         <div class="progress-bar mt-3"><div class="progress-fill" style="width:100%"></div></div>
@@ -441,11 +440,7 @@
                                                         </div>
                                                         <% if (u.grade_level) { %><div class="text-slate-400 text-[10px] mt-0.5"><%= u.grade_level %></div><% } %>
                                                     <% } else { %>
-                                                        <div class="inline-flex items-center gap-1 font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg text-[10px]">
-                                                            <i class="fas fa-clock text-[9px] text-amber-500"></i>
-                                                            <span>Not Enrolled (<%= locals.selectedSY ? selectedSY.sy_range : 'Current' %>)</span>
-                                                        </div>
-                                                        <% if (u.section) { %><div class="text-slate-400 text-[10px] mt-0.5 italic">Past: <%= u.section %></div><% } %>
+                                                        <span class="text-slate-400 italic text-[11px]">Unassigned</span>
                                                     <% } %>
                                                 <% } else { %>
                                                     <% if (u.grade_level) { %><div><%= u.grade_level %></div><% } %>

@@ -451,8 +451,12 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
                     WHERE cs.student_id = users.user_id AND cs.sy_id = ?
                 ) AS enrolled_count_sy
             FROM users
+            WHERE users.role IN ('Admin', 'Teacher')
+               OR (users.role = 'Student' AND users.user_id IN (
+                   SELECT cs.student_id FROM class_students cs WHERE cs.sy_id = ?
+               ))
             ORDER BY role ASC, last_name ASC, first_name ASC
-        `, [selectedSY.sy_id, selectedSY.sy_id]);
+        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id]);
  
         // ── Flagged students ──────────────────────────────────────────────────
         const [flaggedUsers] = await db.query(`
@@ -465,8 +469,12 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
             FROM users u
             LEFT JOIN assessments a ON a.assessment_id = u.flagged_assessment_id
             WHERE u.flagged_assessment_id IS NOT NULL
+              AND (
+                  u.role IN ('Admin', 'Teacher')
+                  OR u.user_id IN (SELECT cs.student_id FROM class_students cs WHERE cs.sy_id = ?)
+              )
             ORDER BY u.last_name ASC, u.first_name ASC
-        `);
+        `, [selectedSY.sy_id]);
  
         // ── REQ#7 — Only pending (unconfirmed, not-used) invitations ─────────
         const [invitations] = await db.query(`
@@ -477,9 +485,8 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
         `);
  
         // ── KPI stats ─────────────────────────────────────────────────────────
-        const [[sRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Student'`);
-        const [[enrStudentRow]] = await db.query(
-            `SELECT COUNT(DISTINCT student_id) AS cnt FROM class_students WHERE sy_id = ?`,
+        const [[sRow]] = await db.query(
+            `SELECT COUNT(DISTINCT cs.student_id) AS cnt FROM class_students cs WHERE cs.sy_id = ?`,
             [selectedSY.sy_id]
         );
         const [[tRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Teacher'`);
@@ -490,8 +497,8 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
         );
  
         const uacStats = {
-            totalStudents   : sRow.cnt,
-            enrolledStudents: enrStudentRow ? enrStudentRow.cnt : 0,
+            totalStudents   : sRow ? sRow.cnt : 0,
+            enrolledStudents: sRow ? sRow.cnt : 0,
             totalTeachers   : tRow.cnt,
             totalAdmins     : aRow.cnt,
             pendingInvites  : pRow.cnt,
@@ -9809,8 +9816,12 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
             FROM users u
             LEFT JOIN assessments a ON a.assessment_id = u.flagged_assessment_id
             WHERE u.flagged_assessment_id IS NOT NULL
+              AND (
+                  u.role IN ('Admin', 'Teacher')
+                  OR u.user_id IN (SELECT cs.student_id FROM class_students cs WHERE cs.sy_id = ?)
+              )
             ORDER BY u.last_name ASC, u.first_name ASC
-        `);
+        `, [selectedSY.sy_id]);
 
         // ── 8. QUESTION BANK AUDIT (Arcade Challenges) ─────────────────────────
         const [[qTotalRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND sy_id = ?`, [selectedSY.sy_id]);
