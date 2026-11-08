@@ -333,9 +333,28 @@ async function checkStudentPrerequisite(db, studentId, targetSubjectId, activeSy
         return { eligible: true, reason: 'Prerequisite course record not configured in system.', chem1Grade: null, threshold };
     }
 
+    if (!studentId) {
+        return {
+            eligible: false,
+            reason: `Prerequisite Requirement Not Met: Student has not taken ${chem1Subject.subject_name}. Enrolling into ${targetSubject.subject_name} requires passing ${chem1Subject.subject_name} with at least ${threshold}%.`,
+            chem1Grade: 0,
+            threshold
+        };
+    }
+
     const chem1Id = chem1Subject.subject_id;
 
-    // Check if student enrolled in Chem 1
+    // Check if student was enrolled in Chem 1 via class_students
+    const [[chem1Enrollment]] = await db.query(
+        `SELECT cs.class_id, c.class_name, c.sy_id 
+         FROM class_students cs 
+         JOIN classes c ON c.class_id = cs.class_id 
+         WHERE cs.student_id = ? AND c.subject_id = ? 
+         LIMIT 1`,
+        [studentId, chem1Id]
+    );
+
+    // Check if student enrolled in Chem 1 progress table
     const [[progressRow]] = await db.query(
         `SELECT progress_percent FROM student_progress WHERE student_id = ? AND subject_id = ?`,
         [studentId, chem1Id]
@@ -358,10 +377,10 @@ async function checkStudentPrerequisite(db, studentId, targetSubjectId, activeSy
         WHERE esg.student_id = ? AND c.subject_id = ? AND esg.grade_percent IS NOT NULL
     `, [studentId, chem1Id]);
 
-    if (!progressRow && scoreRows.length === 0 && gameRows.length === 0) {
+    if (!chem1Enrollment && !progressRow && scoreRows.length === 0 && gameRows.length === 0) {
         return {
             eligible: false,
-            reason: `Prerequisite Requirement Not Met: You must complete ${chem1Subject.subject_name} before enrolling in ${targetSubject.subject_name}.`,
+            reason: `Prerequisite Requirement Not Met: Student has not taken ${chem1Subject.subject_name}. Completion of ${chem1Subject.subject_name} (Passing Threshold: ${threshold}%) is strictly required before enrolling in ${targetSubject.subject_name}.`,
             chem1Grade: 0,
             threshold
         };

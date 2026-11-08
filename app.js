@@ -358,11 +358,24 @@ app.post('/setup-profile', async (req, res) => {
         // ── AUTOMATIC CLASS & COURSE ENROLLMENT UPON ACCOUNT CREATION ───────────
         if (newUser && newUser.role === 'Student' && prefill && prefill.classId) {
             try {
+                // Double safety prerequisite check
+                const academicHelper = require('./utils/academicHelper');
+                const [[targetCls]] = await db.query(
+                    "SELECT class_id, subject_id FROM classes WHERE class_id = ?", [prefill.classId]
+                );
+                let canEnroll = true;
+                if (targetCls) {
+                    const prereqCheck = await academicHelper.checkStudentPrerequisite(db, newUser.user_id, targetCls.subject_id);
+                    if (!prereqCheck.eligible) {
+                        canEnroll = false;
+                        console.warn(`[Setup Profile Enrollment Blocked] Student ${newUser.email} ineligible for class ${prefill.classId}: ${prereqCheck.reason}`);
+                    }
+                }
                 const [existingCs] = await db.query(
                     "SELECT * FROM class_students WHERE class_id = ? AND student_id = ?",
                     [prefill.classId, newUser.user_id]
                 );
-                if (existingCs.length === 0) {
+                if (existingCs.length === 0 && canEnroll) {
                     await db.query(
                         "INSERT INTO class_students (class_id, student_id, sy_id) VALUES (?, ?, ?)",
                         [prefill.classId, newUser.user_id, prefill.syId || null]

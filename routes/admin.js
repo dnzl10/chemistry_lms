@@ -789,6 +789,25 @@ router.post('/uac/invite', requireAdmin, async (req, res) => {
                 });
             }
 
+            // Prerequisite Gate: Enforce Chemistry 1 passing prerequisite for Chemistry 2
+            let existingStudent = null;
+            if (cleanEmail) {
+                const [[u]] = await db.query(`SELECT user_id FROM users WHERE email = ? AND role = 'Student'`, [cleanEmail]);
+                existingStudent = u;
+            }
+            if (!existingStudent && lrn) {
+                const [[u]] = await db.query(`SELECT user_id FROM users WHERE lrn_number = ? AND role = 'Student'`, [lrn.trim()]);
+                existingStudent = u;
+            }
+
+            const prereqCheck = await academicHelper.checkStudentPrerequisite(db, existingStudent ? existingStudent.user_id : null, cls.subject_id);
+            if (!prereqCheck.eligible) {
+                return res.json({
+                    success: false,
+                    message: `Cannot enroll student into "${cls.class_name}": ${prereqCheck.reason}`
+                });
+            }
+
             enrolledClass = cls;
         }
 
@@ -2008,6 +2027,31 @@ router.post('/uac/bulk-import', requireAdmin, uploadBulk.single('file'), async (
                             skipped++;
                             continue;
                         }
+                    }
+
+                    // Rule F: Standard Enrollment Rule 4 — Chemistry 1 Prerequisite for Chemistry 2
+                    let studentUser = null;
+                    if (cleanEmail) {
+                        const [[u]] = await db.query(`SELECT user_id FROM users WHERE email = ? AND role = 'Student'`, [cleanEmail]);
+                        studentUser = u;
+                    }
+                    if (!studentUser && cleanLrn) {
+                        const [[u]] = await db.query(`SELECT user_id FROM users WHERE lrn_number = ? AND role = 'Student'`, [cleanLrn]);
+                        studentUser = u;
+                    }
+
+                    const prereqCheck = await academicHelper.checkStudentPrerequisite(
+                        db,
+                        studentUser ? studentUser.user_id : null,
+                        targetClass.subject_id,
+                        activeSY
+                    );
+                    if (!prereqCheck.eligible) {
+                        const reason = `Enrollment failed: Student "${fullName}" does not meet prerequisite for section "${targetClass.class_name}" (${targetClass.subject_name || 'Chemistry 2'}). ${prereqCheck.reason}`;
+                        log.push({ ok: false, msg: `Student "${fullName}" (${cleanEmail}): ${reason}` });
+                        failedRows.push({ row: rowIdx + 1, name: fullName, email: cleanEmail, reason });
+                        skipped++;
+                        continue;
                     }
 
                     // Preset Track column default to "Academic Track"
@@ -4607,6 +4651,20 @@ router.post('/am/classes/:id/migrate/preview', requireAdmin, async (req, res) =>
             timeframeMessage = `Enrollment closed on ${new Date(targetClass.enrollment_end).toLocaleDateString('en-PH')}`;
         }
 
+        // Check Chemistry 1 prerequisite for target class
+        const prerequisiteFailures = [];
+        for (const sId of studentIds) {
+            const prereqCheck = await academicHelper.checkStudentPrerequisite(db, sId, targetClass.subject_id);
+            if (!prereqCheck.eligible) {
+                const [[sUser]] = await db.query(`SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM users WHERE user_id = ?`, [sId]);
+                prerequisiteFailures.push({
+                    studentId: sId,
+                    name: sUser ? sUser.full_name : `Student #${sId}`,
+                    reason: prereqCheck.reason
+                });
+            }
+        }
+
         return res.json({
             success: true,
             targetClass,
@@ -4620,7 +4678,9 @@ router.post('/am/classes/:id/migrate/preview', requireAdmin, async (req, res) =>
             willExceedCapacity,
             isOutsideTimeframe,
             timeframeStatus,
-            timeframeMessage
+            timeframeMessage,
+            hasPrerequisiteFailures: prerequisiteFailures.length > 0,
+            prerequisiteFailures
         });
 
     } catch (err) {
@@ -4707,17 +4767,41 @@ router.post('/am/classes/:id/migrate', requireAdmin, async (req, res) => {
             });
         }
 
-        // Insert new enrollments into target class
-        if (toInsert.length > 0) {
-            const values = toInsert.map(sid => [targetClassId, sid, targetClass.sy_id || null]);
+        // Prerequisite Gate: Strict enforcement for Chemistry 2
+        const eligibleStudentIds = [];
+        const blockedStudents = [];
+        for (const sId of toInsert) {
+            const prereqCheck = await academicHelper.checkStudentPrerequisite(db, sId, targetClass.subject_id);
+            if (prereqCheck.eligible) {
+                eligibleStudentIds.push(sId);
+            } else {
+                const [[sUser]] = await db.query(`SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM users WHERE user_id = ?`, [sId]);
+                blockedStudents.push({
+                    studentId: sId,
+                    name: sUser ? sUser.full_name : `Student #${sId}`,
+                    reason: prereqCheck.reason
+                });
+            }
+        }
+
+        if (eligibleStudentIds.length === 0 && blockedStudents.length > 0) {
+            return res.json({
+                success: false,
+                message: `Migration blocked: None of the selected students meet the Chemistry 1 prerequisite for ${targetClass.subject_name}. ${blockedStudents[0].reason}`
+            });
+        }
+
+        // Insert new enrollments into target class (only eligible students)
+        if (eligibleStudentIds.length > 0) {
+            const values = eligibleStudentIds.map(sid => [targetClassId, sid, targetClass.sy_id || null]);
             await db.query('INSERT INTO class_students (class_id, student_id, sy_id) VALUES ?', [values]);
         }
 
-        // If remove_from_source is checked (Move / Transfer)
-        if (removeFromSource) {
+        // If remove_from_source is checked (Move / Transfer), only remove eligible students that migrated
+        if (removeFromSource && eligibleStudentIds.length > 0) {
             await db.query(
                 'DELETE FROM class_students WHERE class_id = ? AND student_id IN (?)',
-                [sourceClassId, studentIds]
+                [sourceClassId, eligibleStudentIds]
             );
         }
 
@@ -5464,6 +5548,14 @@ router.post('/am/bulk-enroll', requireAdmin, uploadBulk.single('file'), async (r
                 );
                 if (alreadyIn) {
                     log.push({ ok: false, msg: `Already enrolled: ${lrn || email}` });
+                    skipped++;
+                    continue;
+                }
+
+                // Prerequisite Gate: Chemistry 1 passing mark required for Chemistry 2
+                const prereqCheck = await academicHelper.checkStudentPrerequisite(db, student.user_id, cls.subject_id);
+                if (!prereqCheck.eligible) {
+                    log.push({ ok: false, msg: `⚠ Skipped: ${lrn || email} — ${prereqCheck.reason}` });
                     skipped++;
                     continue;
                 }
