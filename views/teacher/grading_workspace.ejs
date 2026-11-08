@@ -427,7 +427,7 @@
                     <div class="text-right flex flex-col items-end flex-shrink-0">
                         <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Grade Awarded</span>
                         <div class="flex items-center gap-1.5">
-                            <input type="number" id="manualScoreInput" min="0" max="<%= assessment.max_score || 100 %>" step="1" oninput="handleDirectScoreInput(this.value)" class="w-20 px-2 py-1 text-center text-xl font-black text-indigo-700 bg-white border-2 border-indigo-200 rounded-xl focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition shadow-sm" placeholder="0">
+                            <input type="number" id="manualScoreInput" min="0" max="<%= assessment.max_score || 100 %>" step="1" oninput="handleDirectScoreInput(this.value)" class="w-20 px-2 py-1 text-center text-xl font-black <%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? 'text-slate-400 bg-slate-100 cursor-not-allowed border-slate-300' : 'text-indigo-700 bg-white border-2 border-indigo-200 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100' %> rounded-xl transition shadow-sm" placeholder="0" <%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? 'disabled title=\"Grading locked: Quarter deadline has passed\"' : '' %>>
                             <span class="text-xs font-black text-slate-400">/ <%= assessment.max_score || 100 %></span>
                         </div>
                     </div>
@@ -505,7 +505,7 @@
                     </div>
 
                     <div class="relative">
-                        <textarea id="feedbackInput" data-text-expander rows="4" placeholder="Type your feedback here... Tip: type / to trigger shortcuts like /cite or /units" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition leading-relaxed shadow-inner"></textarea>
+                        <textarea id="feedbackInput" data-text-expander rows="4" placeholder="Type your feedback here... Tip: type / to trigger shortcuts like /cite or /units" class="w-full p-3 <%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-300' : 'bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500' %> rounded-2xl text-xs resize-none transition leading-relaxed shadow-inner" <%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? 'disabled' : '' %>></textarea>
                     </div>
                 </div>
 
@@ -521,8 +521,8 @@
 
                     <div class="flex items-center gap-3">
                         <!-- Record / Stop Action Button -->
-                        <button id="recordAudioBtn" type="button" onclick="toggleAudioRecording()" class="w-11 h-11 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-rose-200 transition flex-shrink-0" title="Click to Record (Max 60s)">
-                            <i class="fas fa-microphone" id="micIcon"></i>
+                        <button id="recordAudioBtn" type="button" onclick="<%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? '' : 'toggleAudioRecording()' %>" class="w-11 h-11 rounded-2xl <%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-200' %> flex items-center justify-center font-bold text-sm transition flex-shrink-0" title="<%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? 'Grading locked' : 'Click to Record (Max 60s)' %>" <%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? 'disabled' : '' %>>
+                            <i class="fas <%= (typeof gradingStatus !== 'undefined' && gradingStatus && !gradingStatus.isAllowed) ? 'fa-lock' : 'fa-microphone' %>" id="micIcon"></i>
                         </button>
 
                         <!-- Live Waveform Canvas & Preview -->
