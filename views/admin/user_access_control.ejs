@@ -356,7 +356,8 @@
                               REQ#2 — Button now opens invitation modal, NOT a direct-create modal.
                               Label changed to "Invite User" to reflect the flow.
                             %>
-                            <button type="button" onclick="openCohortLifecycleModal()"
+                            <button type="button" id="btnCohortLifecycle" onclick="openCohortLifecycleModal()"
+                                title="Single-year Grade 11 Chemistry cohort rollover, archival & dormancy governance"
                                 class="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-indigo-100 transition shadow-xs whitespace-nowrap">
                                 <i class="fas fa-user-graduate"></i> Cohort Lifecycle
                             </button>
@@ -503,7 +504,7 @@
                                                                 <i class="fas fa-user-check"></i>
                                                             </button>
                                                         <% } else if (!u.is_active) { %>
-                                                            <button type="button" class="btn-icon bg-emerald-50 text-emerald-600 hover:bg-emerald-100" title="Activate Account"
+                                                            <button type="button" class="btn-icon bg-emerald-50 text-emerald-600 hover:bg-emerald-100" title="Reactivate Account (Restore Portal Login)"
                                                                 onclick="confirmToggleStatus('<%= u.user_id %>', '<%= fullName %>', 'activate')">
                                                                 <i class="fas fa-user-check"></i>
                                                             </button>
@@ -3055,8 +3056,10 @@ async function confirmToggleStatus(id, name, actionType) {
         iconBg = "bg-amber-100";
         iconColor = "text-amber-600";
     } else {
-        title = "Activate User?";
-        confirmText = `Are you sure you want to activate/unsuspend <b>${name}</b>?`;
+        title = actionType === 'activate' ? "Reactivate User Account?" : "Activate / Unsuspend User?";
+        confirmText = actionType === 'activate'
+            ? `Are you sure you want to restore active portal login access for <b>${name}</b>? All transcripts, quiz marks, and simulation records remain 100% intact.`
+            : `Are you sure you want to unsuspend and restore access for <b>${name}</b>?`;
         confirmBtnColor = "bg-emerald-600 hover:bg-emerald-700";
         iconClass = "fas fa-user-check";
         iconBg = "bg-emerald-100";
@@ -4876,6 +4879,17 @@ function applyTeacherBatchLoadToAll() {
     renderTeacherPreviewTable();
     showToast(`Applied teaching load to all ${_parsedTeacherRows.length} teacher(s)!`, 'success');
 }
+
+// Auto-open Cohort Lifecycle modal if deep-linked via #cohort-lifecycle or ?open=cohort_lifecycle
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash === '#cohort-lifecycle' || window.location.search.includes('open=cohort_lifecycle')) {
+        setTimeout(() => {
+            if (typeof openCohortLifecycleModal === 'function') {
+                openCohortLifecycleModal();
+            }
+        }, 150);
+    }
+});
 
 </script>
 
