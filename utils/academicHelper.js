@@ -871,6 +871,8 @@ async function resolveAdminSchoolYearContext(db, reqQuerySyId = null) {
     };
 }
 
+const studentLifecycleHelper = require('./studentLifecycleHelper');
+
 module.exports = {
     getCurrentSchoolYear,
     getActiveSchoolYear,
@@ -883,6 +885,13 @@ module.exports = {
     checkStudentPrerequisite,
     validateSchoolYearTimeline,
     previewContentRollover,
-    executeContentRollover
+    executeContentRollover,
+    // Student Account Lifecycle
+    studentLifecycleHelper,
+    previewCohortTransition: studentLifecycleHelper.previewCohortTransition,
+    archiveGraduatingCohort: studentLifecycleHelper.archiveGraduatingCohort,
+    promoteStudentCohort: studentLifecycleHelper.promoteStudentCohort,
+    scanAndEnforceDormancy: studentLifecycleHelper.scanAndEnforceDormancy,
+    reactivateStudentAccount: studentLifecycleHelper.reactivateStudentAccount
 };
 
