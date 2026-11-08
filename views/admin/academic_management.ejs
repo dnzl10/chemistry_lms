@@ -394,6 +394,12 @@
                             class="mt-3 w-full text-center text-[11px] font-bold text-indigo-500 hover:text-indigo-700 hover:underline transition">
                             <i class="fas fa-history mr-1"></i> View All School Years
                         </button>
+
+                        <!-- Student Cohort & Lifecycle Action -->
+                        <button onclick="openStudentLifecycleModal()"
+                            class="mt-2 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-50 to-cyan-50 hover:from-indigo-100 hover:to-cyan-100 text-indigo-700 font-bold text-xs transition border border-indigo-200/80 shadow-xs">
+                            <i class="fas fa-user-graduate text-indigo-600"></i> Student Cohort Lifecycle
+                        </button>
                     </div>
 
                     <!-- KPI Stats (2 cols) -->
@@ -1092,6 +1098,32 @@
                         </select>
                         <p class="text-[11px] text-slate-400 mt-1">Hidden status allows instructors to curate and adjust materials before publishing to the new cohort</p>
                     </div>
+
+                    <!-- Student Lifecycle & Cohort Transition -->
+                    <div class="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-100 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-black text-indigo-950 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fas fa-user-shield text-indigo-600"></i> Student Lifecycle &amp; Governance
+                            </h4>
+                            <span class="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">Automated Transition</span>
+                        </div>
+
+                        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 transition">
+                            <input type="checkbox" id="addArchiveGraduating" name="archive_graduating" value="1" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Archive &amp; Deactivate Graduating Students (Grade 12) <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.2 rounded-full ml-1">Security Standard</span></span>
+                                <span class="text-[11px] text-slate-500 leading-snug block">Automatically deactivates accounts of graduating students upon activating this School Year, preventing dormant account access while preserving all transcripts, scores, and records.</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 transition">
+                            <input type="checkbox" id="addPromoteCohort" name="promote_cohort" value="1" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Promote Active Underclassmen (Grade 11 &rarr; Grade 12)</span>
+                                <span class="text-[11px] text-slate-500 leading-snug block">Advances active Grade 11 students to Grade 12, keeping their accounts active and retaining their Chemistry 1 prerequisite marks for the new school year.</span>
+                            </div>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -1366,6 +1398,124 @@
             </div>
             <% }) %>
             <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- STUDENT COHORT LIFECYCLE MANAGEMENT MODAL -->
+<div id="modalStudentLifecycle" class="modal-overlay">
+    <div class="modal-box p-0 max-w-2xl w-full flex flex-col max-h-[92vh] overflow-hidden rounded-3xl shadow-2xl">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-900 to-slate-900 text-white shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-cyan-400 text-lg">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-white text-lg leading-tight">Student Cohort Lifecycle Management</h3>
+                    <p class="text-xs text-indigo-200">Year-end graduation archiving, grade promotion, and dormancy protection</p>
+                </div>
+            </div>
+            <button onclick="closeModal('modalStudentLifecycle')" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-rose-500/80 text-white/80 hover:text-white transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+            <!-- Real-Time Metrics Grid -->
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500">Live Student Cohort Breakdown</span>
+                    <button type="button" onclick="loadLifecycleCohortSummary()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                        <i class="fas fa-rotate-right" id="lifecycleRefreshIcon"></i> Refresh
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Rising G11 Active</span>
+                        <span id="lifecycleRisingG11" class="text-2xl font-black text-indigo-600">—</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Eligible for G12</span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Graduating G12</span>
+                        <span id="lifecycleGraduatingG12" class="text-2xl font-black text-rose-600">—</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Exit Cohort</span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Dormant Unassigned</span>
+                        <span id="lifecycleDormant" class="text-2xl font-black text-amber-600">—</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">0 Active Classes</span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Total Archived</span>
+                        <span id="lifecycleArchived" class="text-2xl font-black text-slate-600">—</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">is_active = 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lifecycle Actions -->
+            <div class="space-y-4">
+                <span class="text-xs font-black uppercase tracking-wider text-slate-500 block">Governance Actions</span>
+
+                <!-- Action 1: Archive Graduating Grade 12 -->
+                <div class="p-4 rounded-2xl border border-rose-100 bg-rose-50/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h4 class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <i class="fas fa-graduation-cap text-rose-500"></i> Archive Graduating Cohort (Grade 12)
+                        </h4>
+                        <p class="text-[11px] text-slate-500">
+                            Deactivates accounts of graduating Grade 12 students to eliminate dormant access. All transcripts, grades, and records are preserved permanently.
+                        </p>
+                    </div>
+                    <button type="button" onclick="executeArchiveGraduating()" id="btnArchiveGraduating"
+                            class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white transition shadow-sm flex items-center gap-1.5">
+                        <i class="fas fa-user-lock"></i> Archive Graduates
+                    </button>
+                </div>
+
+                <!-- Action 2: Promote Grade 11 -> Grade 12 -->
+                <div class="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h4 class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <i class="fas fa-arrow-up-right-dots text-indigo-600"></i> Promote Active Cohort (Grade 11 &rarr; Grade 12)
+                        </h4>
+                        <p class="text-[11px] text-slate-500">
+                            Advances active Grade 11 students to Grade 12 for the new school year. Preserves their accounts, credentials, and prerequisite Chem 1 grades.
+                        </p>
+                    </div>
+                    <button type="button" onclick="executePromoteCohort()" id="btnPromoteCohort"
+                            class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm flex items-center gap-1.5">
+                        <i class="fas fa-angles-up"></i> Promote Cohort
+                    </button>
+                </div>
+
+                <!-- Action 3: Enforce Dormancy Lock -->
+                <div class="p-4 rounded-2xl border border-amber-100 bg-amber-50/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h4 class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <i class="fas fa-shield-halved text-amber-600"></i> Enforce Dormancy Lock
+                        </h4>
+                        <p class="text-[11px] text-slate-500">
+                            Scans for students with zero official section enrollments in the running school year and places their accounts into inactive status.
+                        </p>
+                    </div>
+                    <button type="button" onclick="executeEnforceDormancy()" id="btnEnforceDormancy"
+                            class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition shadow-sm flex items-center gap-1.5">
+                        <i class="fas fa-shield"></i> Lock Dormant
+                    </button>
+                </div>
+            </div>
+
+            <div id="lifecycleActionLog" class="hidden p-3.5 rounded-xl text-xs font-mono bg-slate-900 text-cyan-300 max-h-36 overflow-y-auto"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-end p-5 border-t border-slate-100 bg-slate-50 shrink-0">
+            <button type="button" onclick="closeModal('modalStudentLifecycle')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white transition">
+                Close
+            </button>
         </div>
     </div>
 </div>
@@ -2222,6 +2372,9 @@ async function submitAddSY(e) {
         payload.rollover_announcements = 0; // Announcements & forums are cohort-specific and permanently non-reusable
     }
 
+    payload.archive_graduating = document.getElementById('addArchiveGraduating')?.checked ? 1 : 0;
+    payload.promote_cohort = document.getElementById('addPromoteCohort')?.checked ? 1 : 0;
+
     const data = await apiPost('/admin/am/school-years', payload);
     if (data.success) {
         showToast(data.message || 'School year created successfully!', 'success');
@@ -2232,6 +2385,137 @@ async function submitAddSY(e) {
     } else {
         showToast(data.message || 'Failed to create school year.', 'error');
     }
+}
+
+// ─── Student Cohort Lifecycle Management ─────────────────────────────────────
+async function openStudentLifecycleModal() {
+    openModal('modalStudentLifecycle');
+    await loadLifecycleCohortSummary();
+}
+
+async function loadLifecycleCohortSummary() {
+    const icon = document.getElementById('lifecycleRefreshIcon');
+    if (icon) icon.classList.add('animate-spin');
+
+    try {
+        const res = await fetch('/admin/lifecycle/cohort-summary');
+        const data = await res.json();
+        if (data.success && data.summary) {
+            const s = data.summary;
+            document.getElementById('lifecycleRisingG11').textContent = s.risingG11Active ?? 0;
+            document.getElementById('lifecycleGraduatingG12').textContent = s.graduatingG12Active ?? 0;
+            document.getElementById('lifecycleDormant').textContent = s.dormantUnenrolled ?? 0;
+            document.getElementById('lifecycleArchived').textContent = s.totalArchived ?? 0;
+
+            // Update button states
+            const btnArch = document.getElementById('btnArchiveGraduating');
+            if (btnArch) btnArch.disabled = (s.graduatingG12Active === 0);
+
+            const btnProm = document.getElementById('btnPromoteCohort');
+            if (btnProm) btnProm.disabled = (s.risingG11Active === 0);
+
+            const btnDorm = document.getElementById('btnEnforceDormancy');
+            if (btnDorm) btnDorm.disabled = (s.dormantUnenrolled === 0);
+        }
+    } catch (err) {
+        console.error('[Cohort Summary Error]', err);
+        showToast('Failed to load cohort breakdown.', 'error');
+    } finally {
+        if (icon) icon.classList.remove('animate-spin');
+    }
+}
+
+function executeArchiveGraduating() {
+    showConfirm({
+        icon: 'fa-graduation-cap', iconBg: 'bg-rose-100', iconColor: 'text-rose-600',
+        title: 'Archive Graduating Cohort (Grade 12)?',
+        desc: 'This will deactivate all active Grade 12 student accounts to eliminate dormant login access. All coursework, grades, transcripts, and records are preserved permanently. Proceed?',
+        btnLabel: 'Yes, Archive Graduates', btnColor: 'bg-rose-600',
+        onConfirm: async () => {
+            closeModal('modalConfirm');
+            const logEl = document.getElementById('lifecycleActionLog');
+            if (logEl) {
+                logEl.classList.remove('hidden');
+                logEl.innerHTML = '⏳ Archiving Grade 12 graduates...';
+            }
+            try {
+                const res = await apiPost('/admin/lifecycle/archive-graduating', { targetGrade: 'Grade 12' });
+                if (res.success) {
+                    showToast(res.message, 'success');
+                    if (logEl) logEl.innerHTML = `✔ ${res.message}`;
+                    await loadLifecycleCohortSummary();
+                } else {
+                    showToast(res.message || 'Failed to archive cohort.', 'error');
+                    if (logEl) logEl.innerHTML = `⛔ ${res.message}`;
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+                if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+            }
+        }
+    });
+}
+
+function executePromoteCohort() {
+    showConfirm({
+        icon: 'fa-arrow-up-right-dots', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600',
+        title: 'Promote Active Cohort (Grade 11 → Grade 12)?',
+        desc: 'This will advance all active Grade 11 students to Grade 12. Their accounts will remain active and retain all prerequisite grades for the new school year. Proceed?',
+        btnLabel: 'Yes, Promote Cohort', btnColor: 'bg-indigo-600',
+        onConfirm: async () => {
+            closeModal('modalConfirm');
+            const logEl = document.getElementById('lifecycleActionLog');
+            if (logEl) {
+                logEl.classList.remove('hidden');
+                logEl.innerHTML = '⏳ Promoting Grade 11 to Grade 12...';
+            }
+            try {
+                const res = await apiPost('/admin/lifecycle/promote-cohort', { fromGrade: 'Grade 11', toGrade: 'Grade 12' });
+                if (res.success) {
+                    showToast(res.message, 'success');
+                    if (logEl) logEl.innerHTML = `✔ ${res.message}`;
+                    await loadLifecycleCohortSummary();
+                } else {
+                    showToast(res.message || 'Failed to promote cohort.', 'error');
+                    if (logEl) logEl.innerHTML = `⛔ ${res.message}`;
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+                if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+            }
+        }
+    });
+}
+
+function executeEnforceDormancy() {
+    showConfirm({
+        icon: 'fa-shield-halved', iconBg: 'bg-amber-100', iconColor: 'text-amber-600',
+        title: 'Enforce Dormancy Lock on Unassigned Accounts?',
+        desc: 'This will deactivate all student accounts with 0 official section enrollments in the active school year. Students will be directed to the Registrar upon login. Proceed?',
+        btnLabel: 'Yes, Lock Dormant Accounts', btnColor: 'bg-amber-600',
+        onConfirm: async () => {
+            closeModal('modalConfirm');
+            const logEl = document.getElementById('lifecycleActionLog');
+            if (logEl) {
+                logEl.classList.remove('hidden');
+                logEl.innerHTML = '⏳ Scanning and locking dormant accounts...';
+            }
+            try {
+                const res = await apiPost('/admin/lifecycle/enforce-dormancy', {});
+                if (res.success) {
+                    showToast(res.message, 'success');
+                    if (logEl) logEl.innerHTML = `✔ ${res.message}`;
+                    await loadLifecycleCohortSummary();
+                } else {
+                    showToast(res.message || 'Failed to enforce dormancy.', 'error');
+                    if (logEl) logEl.innerHTML = `⛔ ${res.message}`;
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+                if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+            }
+        }
+    });
 }
 
 async function openEditSY(sy) {

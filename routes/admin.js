@@ -2661,7 +2661,11 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
             rollover_assessments = 0,
             rollover_question_bank = 0,
             rollover_announcements = 0,
-            default_rollover_visibility = 'visible'
+            default_rollover_visibility = 'visible',
+
+            // Section 5: Student Lifecycle & Governance
+            archive_graduating = 1,
+            promote_cohort = 1
         } = req.body;
 
         // 1. Validate Timeline & Formats
@@ -2775,14 +2779,63 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
             }
         }
 
+        // Execute Student Lifecycle & Cohort Transition if this SY is active/Current
+        let lifecycleSummary = null;
+        if (activeFlag === 1) {
+            let archivedGrads = 0;
+            let promotedStudents = 0;
+
+            if (Number(archive_graduating) === 1) {
+                try {
+                    const archRes = await academicHelper.archiveGraduatingCohort(db, {
+                        targetGrade: 'Grade 12',
+                        adminUserId: req.user.user_id,
+                        sessionStore: req.sessionStore
+                    });
+                    archivedGrads = archRes.count;
+                    if (archivedGrads > 0) {
+                        await logActivity(req.user.user_id, 'Admin', 'ARCHIVE_GRADUATING_COHORT',
+                            `Archived ${archivedGrads} graduating Grade 12 students upon activating new SY ${cleanRange}`);
+                    }
+                } catch (e) {
+                    console.error('[Auto Archive Graduating Error]', e);
+                }
+            }
+
+            if (Number(promote_cohort) === 1) {
+                try {
+                    const promRes = await academicHelper.promoteStudentCohort(db, {
+                        fromGrade: 'Grade 11',
+                        toGrade: 'Grade 12',
+                        adminUserId: req.user.user_id
+                    });
+                    promotedStudents = promRes.count;
+                    if (promotedStudents > 0) {
+                        await logActivity(req.user.user_id, 'Admin', 'PROMOTE_STUDENT_COHORT',
+                            `Promoted ${promotedStudents} Grade 11 students to Grade 12 upon activating new SY ${cleanRange}`);
+                    }
+                } catch (e) {
+                    console.error('[Auto Promote Cohort Error]', e);
+                }
+            }
+
+            lifecycleSummary = { archivedGrads, promotedStudents };
+        }
+
         await logActivity(req.user.user_id, 'Admin', 'CREATE_SCHOOL_YEAR',
             `Created school year: ${cleanRange} (${cleanCode}) [Status: ${finalStatus}]`);
+
+        let successMsg = `School year ${cleanRange} created successfully!`;
+        if (rolloverSummary) successMsg += ` (${rolloverSummary.classesCloned} sections rolled over with clean rosters)`;
+        if (lifecycleSummary?.archivedGrads > 0) successMsg += ` [${lifecycleSummary.archivedGrads} Grade 12 graduates archived]`;
+        if (lifecycleSummary?.promotedStudents > 0) successMsg += ` [${lifecycleSummary.promotedStudents} Grade 11 promoted to Grade 12]`;
 
         return res.json({
             success: true,
             sy_id: newSyId,
             rollover: rolloverSummary,
-            message: `School year ${cleanRange} created successfully!${rolloverSummary ? ` (${rolloverSummary.classesCloned} class sections rolled over with clean rosters)` : ''}`
+            lifecycle: lifecycleSummary,
+            message: successMsg
         });
 
     } catch (err) {

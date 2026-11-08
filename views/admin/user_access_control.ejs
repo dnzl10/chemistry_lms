@@ -356,6 +356,10 @@
                               REQ#2 — Button now opens invitation modal, NOT a direct-create modal.
                               Label changed to "Invite User" to reflect the flow.
                             %>
+                            <button type="button" onclick="openCohortLifecycleModal()"
+                                class="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-indigo-100 transition shadow-xs whitespace-nowrap">
+                                <i class="fas fa-user-graduate"></i> Cohort Lifecycle
+                            </button>
                             <button onclick="openInviteModal()"
                                 class="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:opacity-90 transition shadow-md whitespace-nowrap">
                                 <i class="fas fa-user-plus"></i> Invite User
@@ -1642,6 +1646,124 @@
     </div>
 </div>
 
+<!-- STUDENT COHORT LIFECYCLE MANAGEMENT MODAL -->
+<div id="modalCohortLifecycle" class="modal-overlay">
+    <div class="modal-box p-0 max-w-2xl w-full flex flex-col max-h-[92vh] overflow-hidden rounded-3xl shadow-2xl">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-900 to-slate-900 text-white shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-cyan-400 text-lg">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-white text-lg leading-tight">Student Cohort Lifecycle Management</h3>
+                    <p class="text-xs text-indigo-200">Year-end graduation archiving, grade promotion, and dormancy protection</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeModal('modalCohortLifecycle')" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-rose-500/80 text-white/80 hover:text-white transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+            <!-- Real-Time Metrics Grid -->
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500">Live Student Cohort Breakdown</span>
+                    <button type="button" onclick="loadUacCohortSummary()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                        <i class="fas fa-rotate-right" id="uacLifecycleRefreshIcon"></i> Refresh
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Rising G11 Active</span>
+                        <span id="uacLifecycleRisingG11" class="text-2xl font-black text-indigo-600">—</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Eligible for G12</span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Graduating G12</span>
+                        <span id="uacLifecycleGraduatingG12" class="text-2xl font-black text-rose-600">—</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Exit Cohort</span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Dormant Unassigned</span>
+                        <span id="uacLifecycleDormant" class="text-2xl font-black text-amber-600">—</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">0 Active Classes</span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Total Archived</span>
+                        <span id="uacLifecycleArchived" class="text-2xl font-black text-slate-600">—</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">is_active = 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lifecycle Actions -->
+            <div class="space-y-4">
+                <span class="text-xs font-black uppercase tracking-wider text-slate-500 block">Governance Actions</span>
+
+                <!-- Action 1: Archive Graduating Grade 12 -->
+                <div class="p-4 rounded-2xl border border-rose-100 bg-rose-50/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h4 class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <i class="fas fa-graduation-cap text-rose-500"></i> Archive Graduating Cohort (Grade 12)
+                        </h4>
+                        <p class="text-[11px] text-slate-500">
+                            Deactivates accounts of graduating Grade 12 students to eliminate dormant access. All transcripts, grades, and records are preserved permanently.
+                        </p>
+                    </div>
+                    <button type="button" onclick="executeUacArchiveGraduating()" id="btnUacArchiveGraduating"
+                            class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white transition shadow-sm flex items-center gap-1.5">
+                        <i class="fas fa-user-lock"></i> Archive Graduates
+                    </button>
+                </div>
+
+                <!-- Action 2: Promote Grade 11 -> Grade 12 -->
+                <div class="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h4 class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <i class="fas fa-arrow-up-right-dots text-indigo-600"></i> Promote Active Cohort (Grade 11 &rarr; Grade 12)
+                        </h4>
+                        <p class="text-[11px] text-slate-500">
+                            Advances active Grade 11 students to Grade 12 for the new school year. Preserves their accounts, credentials, and prerequisite Chem 1 grades.
+                        </p>
+                    </div>
+                    <button type="button" onclick="executeUacPromoteCohort()" id="btnUacPromoteCohort"
+                            class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm flex items-center gap-1.5">
+                        <i class="fas fa-angles-up"></i> Promote Cohort
+                    </button>
+                </div>
+
+                <!-- Action 3: Enforce Dormancy Lock -->
+                <div class="p-4 rounded-2xl border border-amber-100 bg-amber-50/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <h4 class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <i class="fas fa-shield-halved text-amber-600"></i> Enforce Dormancy Lock
+                        </h4>
+                        <p class="text-[11px] text-slate-500">
+                            Scans for students with zero official section enrollments in the running school year and places their accounts into inactive status.
+                        </p>
+                    </div>
+                    <button type="button" onclick="executeUacEnforceDormancy()" id="btnUacEnforceDormancy"
+                            class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition shadow-sm flex items-center gap-1.5">
+                        <i class="fas fa-shield"></i> Lock Dormant
+                    </button>
+                </div>
+            </div>
+
+            <div id="uacLifecycleActionLog" class="hidden p-3.5 rounded-xl text-xs font-mono bg-slate-900 text-cyan-300 max-h-36 overflow-y-auto"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-end p-5 border-t border-slate-100 bg-slate-50 shrink-0">
+            <button type="button" onclick="closeModal('modalCohortLifecycle')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white transition">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Toast notification -->
 <div id="toast"><i id="toastIcon" class="fas"></i> <span id="toastMsg"></span></div>
 
@@ -2672,6 +2794,156 @@ function confirmDelete(userId, name) {
             if (data.success) { showToast('User deleted.', 'success'); refreshAdminContent({ message: 'Removing user...' }); }
             else showToast(data.message || 'Delete failed.', 'error');
         },
+    });
+}
+
+// ─────────────────────────────────
+// STUDENT COHORT LIFECYCLE MANAGEMENT
+// ─────────────────────────────────
+async function openCohortLifecycleModal() {
+    openModal('modalCohortLifecycle');
+    await loadUacCohortSummary();
+}
+
+async function loadUacCohortSummary() {
+    const icon = document.getElementById('uacLifecycleRefreshIcon');
+    if (icon) icon.classList.add('animate-spin');
+
+    try {
+        const res = await fetch('/admin/lifecycle/cohort-summary');
+        const data = await res.json();
+        if (data.success && data.summary) {
+            const s = data.summary;
+            document.getElementById('uacLifecycleRisingG11').textContent = s.risingG11Active ?? 0;
+            document.getElementById('uacLifecycleGraduatingG12').textContent = s.graduatingG12Active ?? 0;
+            document.getElementById('uacLifecycleDormant').textContent = s.dormantUnenrolled ?? 0;
+            document.getElementById('uacLifecycleArchived').textContent = s.totalArchived ?? 0;
+
+            const btnArch = document.getElementById('btnUacArchiveGraduating');
+            if (btnArch) btnArch.disabled = (s.graduatingG12Active === 0);
+
+            const btnProm = document.getElementById('btnUacPromoteCohort');
+            if (btnProm) btnProm.disabled = (s.risingG11Active === 0);
+
+            const btnDorm = document.getElementById('btnUacEnforceDormancy');
+            if (btnDorm) btnDorm.disabled = (s.dormantUnenrolled === 0);
+        }
+    } catch (err) {
+        console.error('[UAC Cohort Summary Error]', err);
+        showToast('Failed to load cohort breakdown.', 'error');
+    } finally {
+        if (icon) icon.classList.remove('animate-spin');
+    }
+}
+
+function executeUacArchiveGraduating() {
+    showConfirm({
+        icon: 'fas fa-graduation-cap', iconBg: 'bg-rose-100', iconColor: 'text-rose-600',
+        title: 'Archive Graduating Cohort (Grade 12)?',
+        desc: 'This will deactivate all active Grade 12 student accounts to eliminate dormant login access. All coursework, grades, transcripts, and records are preserved permanently. Proceed?',
+        btnLabel: 'Yes, Archive Graduates', btnColor: 'bg-rose-600',
+        onConfirm: async () => {
+            closeModal('modalConfirm');
+            const logEl = document.getElementById('uacLifecycleActionLog');
+            if (logEl) {
+                logEl.classList.remove('hidden');
+                logEl.innerHTML = '⏳ Archiving Grade 12 graduates...';
+            }
+            try {
+                const res = await fetch('/admin/lifecycle/archive-graduating', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetGrade: 'Grade 12' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    if (logEl) logEl.innerHTML = `✔ ${data.message}`;
+                    await loadUacCohortSummary();
+                    refreshAdminContent({ message: 'Updating user directory...' });
+                } else {
+                    showToast(data.message || 'Failed to archive cohort.', 'error');
+                    if (logEl) logEl.innerHTML = `⛔ ${data.message}`;
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+                if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+            }
+        }
+    });
+}
+
+function executeUacPromoteCohort() {
+    showConfirm({
+        icon: 'fas fa-arrow-up-right-dots', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600',
+        title: 'Promote Active Cohort (Grade 11 → Grade 12)?',
+        desc: 'This will advance all active Grade 11 students to Grade 12. Their accounts will remain active and retain all prerequisite grades for the new school year. Proceed?',
+        btnLabel: 'Yes, Promote Cohort', btnColor: 'bg-indigo-600',
+        onConfirm: async () => {
+            closeModal('modalConfirm');
+            const logEl = document.getElementById('uacLifecycleActionLog');
+            if (logEl) {
+                logEl.classList.remove('hidden');
+                logEl.innerHTML = '⏳ Promoting Grade 11 to Grade 12...';
+            }
+            try {
+                const res = await fetch('/admin/lifecycle/promote-cohort', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fromGrade: 'Grade 11', toGrade: 'Grade 12' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    if (logEl) logEl.innerHTML = `✔ ${data.message}`;
+                    await loadUacCohortSummary();
+                    refreshAdminContent({ message: 'Updating user directory...' });
+                } else {
+                    showToast(data.message || 'Failed to promote cohort.', 'error');
+                    if (logEl) logEl.innerHTML = `⛔ ${data.message}`;
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+                if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+            }
+        }
+    });
+}
+
+function executeUacEnforceDormancy() {
+    showConfirm({
+        icon: 'fas fa-shield-halved', iconBg: 'bg-amber-100', iconColor: 'text-amber-600',
+        title: 'Enforce Dormancy Lock on Unassigned Accounts?',
+        desc: 'This will deactivate all student accounts with 0 official section enrollments in the active school year. Students will be directed to the Registrar upon login. Proceed?',
+        btnLabel: 'Yes, Lock Dormant Accounts', btnColor: 'bg-amber-600',
+        onConfirm: async () => {
+            closeModal('modalConfirm');
+            const logEl = document.getElementById('uacLifecycleActionLog');
+            if (logEl) {
+                logEl.classList.remove('hidden');
+                logEl.innerHTML = '⏳ Scanning and locking dormant accounts...';
+            }
+            try {
+                const res = await fetch('/admin/lifecycle/enforce-dormancy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    if (logEl) logEl.innerHTML = `✔ ${data.message}`;
+                    await loadUacCohortSummary();
+                    refreshAdminContent({ message: 'Updating user directory...' });
+                } else {
+                    showToast(data.message || 'Failed to enforce dormancy.', 'error');
+                    if (logEl) logEl.innerHTML = `⛔ ${data.message}`;
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+                if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+            }
+        }
     });
 }
 
