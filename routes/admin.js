@@ -513,13 +513,14 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
                 c.subject_id,
                 s.subject_name,
                 s.subject_code,
+                s.semester,
                 c.sy_id,
                 sy.sy_range,
                 sy.is_active AS sy_is_active,
                 c.max_capacity,
                 c.enrolled_count,
-                c.enrollment_start,
-                c.enrollment_end,
+                COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+                COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
                 CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) AS teacher_name,
                 u.first_name AS teacher_first,
                 u.last_name AS teacher_last,
@@ -770,40 +771,21 @@ router.post('/uac/invite', requireAdmin, async (req, res) => {
                 return res.json({ success: false, message: 'Please select a class / section to enroll the student into.' });
             }
 
-            const [[cls]] = await db.query(`
-                SELECT c.class_id, c.class_name, c.teacher_id, c.subject_id, c.sy_id,
-                       c.max_capacity, c.enrollment_start, c.enrollment_end,
-                       s.subject_name, s.subject_code,
-                       (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id) AS current_enrolled
-                FROM classes c
-                LEFT JOIN subjects s ON c.subject_id = s.subject_id
-                WHERE c.class_id = ?
-            `, [classId]);
-
-            if (!cls) {
-                return res.json({ success: false, message: 'The selected class was not found.' });
+            const windowCheck = await academicHelper.checkClassEnrollmentOpen(db, classId);
+            if (!windowCheck.isOpen) {
+                return res.json({
+                    success: false,
+                    message: windowCheck.message
+                });
             }
+
+            const cls = windowCheck.cls;
 
             // Check capacity: cannot enroll if class is already full
             if (cls.max_capacity !== null && cls.current_enrolled >= cls.max_capacity) {
                 return res.json({
                     success: false,
                     message: `Class "${cls.class_name} - ${cls.subject_name || 'Subject'}" is already at full capacity (${cls.current_enrolled}/${cls.max_capacity}). Cannot enroll student.`
-                });
-            }
-
-            // Check enrollment timeframe
-            const now = new Date();
-            if (cls.enrollment_start && now < new Date(cls.enrollment_start)) {
-                return res.json({
-                    success: false,
-                    message: `Enrollment for class "${cls.class_name}" has not started yet (Opens on ${new Date(cls.enrollment_start).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}).`
-                });
-            }
-            if (cls.enrollment_end && now > new Date(cls.enrollment_end)) {
-                return res.json({
-                    success: false,
-                    message: `Enrollment for class "${cls.class_name}" has already ended (Closed on ${new Date(cls.enrollment_end).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}).`
                 });
             }
 
@@ -1740,8 +1722,10 @@ router.post('/uac/bulk-import', requireAdmin, uploadBulk.single('file'), async (
         const [clsRows] = await db.query(`
             SELECT 
                 c.class_id, c.class_name, c.teacher_id, c.subject_id, c.sy_id,
-                c.max_capacity, c.enrollment_start, c.enrollment_end,
-                s.subject_name, s.subject_code,
+                c.max_capacity,
+                COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+                COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
+                s.subject_name, s.subject_code, s.semester,
                 CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) AS teacher_name,
                 u.first_name AS teacher_first, u.last_name AS teacher_last,
                 u.faculty_id AS teacher_faculty_id,
@@ -1993,11 +1977,12 @@ router.post('/uac/bulk-import', requireAdmin, uploadBulk.single('file'), async (
                         continue;
                     }
 
-                    // Rule D: Standard Enrollment Rule 2 — Enrollment Time Window
+                    // Rule D: Standard Enrollment Rule 2 — Enrollment Time Window (Sem 1 / Sem 2)
                     const now = new Date();
+                    const semLabel = (targetClass.semester == 2 || targetClass.semester === '2' || targetClass.semester === '2nd Semester') ? '2nd Semester' : '1st Semester';
                     if (targetClass.enrollment_start && now < new Date(targetClass.enrollment_start)) {
                         const openStr = new Date(targetClass.enrollment_start).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                        const reason = `Enrollment failed: Enrollment for section "${targetClass.class_name}" (${targetClass.subject_name}) has not started yet (Opens on ${openStr}).`;
+                        const reason = `Enrollment failed: Enrollment for section "${targetClass.class_name}" (${targetClass.subject_name || 'Subject'} - ${semLabel}) has not started yet (Opens on ${openStr}).`;
                         log.push({ ok: false, msg: `Student "${fullName}" (${cleanEmail}): ${reason}` });
                         failedRows.push({ row: rowIdx + 1, name: fullName, email: cleanEmail, reason });
                         skipped++;
@@ -2005,7 +1990,7 @@ router.post('/uac/bulk-import', requireAdmin, uploadBulk.single('file'), async (
                     }
                     if (targetClass.enrollment_end && now > new Date(targetClass.enrollment_end)) {
                         const closeStr = new Date(targetClass.enrollment_end).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                        const reason = `Enrollment failed: Enrollment for section "${targetClass.class_name}" (${targetClass.subject_name}) has ended (Closed on ${closeStr}).`;
+                        const reason = `Enrollment failed: Enrollment period for section "${targetClass.class_name}" (${targetClass.subject_name || 'Subject'} - ${semLabel}) has ended (Closed on ${closeStr}). Students cannot be enrolled after the enrollment period has closed.`;
                         log.push({ ok: false, msg: `Student "${fullName}" (${cleanEmail}): ${reason}` });
                         failedRows.push({ row: rowIdx + 1, name: fullName, email: cleanEmail, reason });
                         skipped++;
@@ -2958,6 +2943,22 @@ router.post('/am/school-years/:id', requireAdmin, async (req, res) => {
             syId
         ]);
 
+        // Cascade updated enrollment windows to classes associated with this school year
+        await db.query(`
+            UPDATE classes c
+            JOIN subjects s ON s.subject_id = c.subject_id
+            SET 
+                c.enrollment_start = IF(s.semester = 2, ?, ?),
+                c.enrollment_end   = IF(s.semester = 2, ?, ?)
+            WHERE c.sy_id = ?
+        `, [
+            sem2_enrollment_start || null,
+            sem1_enrollment_start || null,
+            sem2_enrollment_end || null,
+            sem1_enrollment_end || null,
+            syId
+        ]);
+
         await logActivity(req.user.user_id, 'Admin', 'EDIT_SCHOOL_YEAR',
             `Updated school year ID ${syId} → ${cleanRange} (${cleanCode}) [Status: ${finalStatus}]`);
 
@@ -3907,11 +3908,15 @@ router.get('/am/subjects/:id/classes', requireAdmin, async (req, res) => {
 
         const [classes] = await db.query(`
             SELECT
-                c.class_id, c.class_name, c.teacher_id, c.sy_id,
+                c.class_id, c.class_name, c.teacher_id, c.sy_id, c.max_capacity,
+                COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+                COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
+                s.semester,
                 CONCAT(u.first_name, ' ', u.last_name) AS teacher_name,
                 sy.sy_range,
                 COUNT(cs.student_id) AS student_count
             FROM classes c
+            LEFT JOIN subjects s      ON s.subject_id  = c.subject_id
             LEFT JOIN users u         ON u.user_id     = c.teacher_id
             LEFT JOIN school_years sy ON sy.sy_id      = c.sy_id
             LEFT JOIN class_students cs ON cs.class_id = c.class_id
@@ -3973,9 +3978,24 @@ router.post('/am/classes', requireAdmin, async (req, res) => {
 
         sy_id = activeSY.sy_id;
 
+        // Inherit enrollment_start and enrollment_end from school year based on subject semester
+        const [[subjectRow]] = await db.query(
+            `SELECT semester FROM subjects WHERE subject_id = ?`, [subject_id]
+        );
+        const [[syRow]] = await db.query(
+            `SELECT sem1_enrollment_start, sem1_enrollment_end, sem2_enrollment_start, sem2_enrollment_end FROM school_years WHERE sy_id = ?`, [sy_id]
+        );
+        let classEnrollStart = null;
+        let classEnrollEnd = null;
+        if (syRow) {
+            const isSem2 = subjectRow && (subjectRow.semester == 2 || subjectRow.semester === '2' || subjectRow.semester === '2nd Semester');
+            classEnrollStart = isSem2 ? syRow.sem2_enrollment_start : syRow.sem1_enrollment_start;
+            classEnrollEnd   = isSem2 ? syRow.sem2_enrollment_end   : syRow.sem1_enrollment_end;
+        }
+
         const [result] = await db.query(
-            `INSERT INTO classes (class_name, teacher_id, subject_id, sy_id) VALUES (?, ?, ?, ?)`,
-            [class_name, teacher_id, subject_id, sy_id]
+            `INSERT INTO classes (class_name, teacher_id, subject_id, sy_id, enrollment_start, enrollment_end) VALUES (?, ?, ?, ?, ?, ?)`,
+            [class_name, teacher_id, subject_id, sy_id, classEnrollStart, classEnrollEnd]
         );
 
         await logActivity(req.user.user_id, 'Admin', 'CREATE_CLASS',
@@ -4286,8 +4306,10 @@ router.get('/am/classes/:id/students', requireAdmin, async (req, res) => {
 
         const [[classInfo]] = await db.query(`
             SELECT c.class_id, c.class_name, c.subject_id, c.sy_id, c.max_capacity,
-                   c.enrollment_start, c.enrollment_end, c.enrolled_count,
-                   s.subject_name, s.subject_code, sy.sy_range,
+                   COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+                   COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
+                   c.enrolled_count,
+                   s.subject_name, s.subject_code, s.semester, sy.sy_range,
                    CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) AS teacher_name
             FROM classes c
             LEFT JOIN subjects s ON s.subject_id = c.subject_id
@@ -4365,10 +4387,13 @@ router.post('/am/classes/:id/unenroll', requireAdmin, async (req, res) => {
         }
 
         const [[cls]] = await db.query(`
-            SELECT c.class_id, c.class_name, c.teacher_id, c.subject_id, c.enrollment_start, c.enrollment_end,
-                   s.subject_name
+            SELECT c.class_id, c.class_name, c.teacher_id, c.subject_id,
+                   COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+                   COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
+                   s.subject_name, s.semester
             FROM classes c
             LEFT JOIN subjects s ON s.subject_id = c.subject_id
+            LEFT JOIN school_years sy ON sy.sy_id = c.sy_id
             WHERE c.class_id = ?
         `, [classId]);
 
@@ -4480,8 +4505,10 @@ router.get('/am/migrate/targets', requireAdmin, async (req, res) => {
         const [classes] = await db.query(`
             SELECT 
                 c.class_id, c.class_name, c.subject_id, c.sy_id,
-                c.max_capacity, c.enrollment_start, c.enrollment_end,
-                s.subject_name, s.subject_code, sy.sy_range,
+                c.max_capacity,
+                COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+                COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
+                s.subject_name, s.subject_code, s.semester, sy.sy_range,
                 CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) AS teacher_name,
                 (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id) AS current_enrolled
             FROM classes c
@@ -4532,12 +4559,15 @@ router.post('/am/classes/:id/migrate/preview', requireAdmin, async (req, res) =>
         const [[targetClass]] = await db.query(`
             SELECT 
                 c.class_id, c.class_name, c.subject_id, c.sy_id,
-                c.max_capacity, c.enrollment_start, c.enrollment_end,
-                s.subject_name, s.subject_code,
+                c.max_capacity,
+                COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+                COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
+                s.subject_name, s.subject_code, s.semester,
                 CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) AS teacher_name,
                 (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id) AS current_enrolled
             FROM classes c
             JOIN subjects s ON s.subject_id = c.subject_id
+            LEFT JOIN school_years sy ON sy.sy_id = c.sy_id
             LEFT JOIN users u ON u.user_id = c.teacher_id
             WHERE c.class_id = ?
         `, [targetClassId]);
@@ -4637,11 +4667,14 @@ router.post('/am/classes/:id/migrate', requireAdmin, async (req, res) => {
         `, [sourceClassId]);
 
         const [[targetClass]] = await db.query(`
-            SELECT c.class_id, c.class_name, c.teacher_id, c.sy_id, c.max_capacity, c.enrollment_start, c.enrollment_end,
-                   s.subject_name,
+            SELECT c.class_id, c.class_name, c.teacher_id, c.sy_id, c.max_capacity,
+                   COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+                   COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
+                   s.subject_name, s.semester,
                    (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id) AS current_enrolled
             FROM classes c
             LEFT JOIN subjects s ON s.subject_id = c.subject_id
+            LEFT JOIN school_years sy ON sy.sy_id = c.sy_id
             WHERE c.class_id = ?
         `, [targetClassId]);
 
@@ -5363,11 +5396,12 @@ router.post('/am/bulk-enroll', requireAdmin, uploadBulk.single('file'), async (r
         const classId = parseInt(req.body.class_id, 10);
         if (isNaN(classId)) return res.json({ success: false, message: 'A valid class must be selected.' });
 
-        // Validate class exists and fetch its sy_id and teacher_id
-        const [[cls]] = await db.query(
-            `SELECT class_id, class_name, teacher_id, sy_id FROM classes WHERE class_id = ?`, [classId]
-        );
-        if (!cls) return res.json({ success: false, message: 'Selected class not found.' });
+        // Enforce School Year & Class Enrollment Window
+        const windowCheck = await academicHelper.checkClassEnrollmentOpen(db, classId);
+        if (!windowCheck.isOpen) {
+            return res.json({ success: false, message: windowCheck.message });
+        }
+        const cls = windowCheck.cls;
 
         const wb   = XLSX.read(req.file.buffer, { type: 'buffer' });
         const ws   = wb.Sheets[wb.SheetNames[0]];

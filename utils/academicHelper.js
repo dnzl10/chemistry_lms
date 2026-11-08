@@ -113,6 +113,74 @@ function isSemesterEnrollmentOpen(schoolYear, semester, currentDate = new Date()
 }
 
 /**
+ * Checks whether enrollment is open for a class, respecting both the School Year's
+ * semestral enrollment window (Sem 1 vs Sem 2) and any class-level dates.
+ * @param {object} db - database connection pool
+ * @param {number} classId - class_id to check
+ * @param {Date} [currentDate] - override date for testing
+ * @returns {Promise<object>} { isOpen, status, message, cls, semNum, semLabel }
+ */
+async function checkClassEnrollmentOpen(db, classId, currentDate = new Date()) {
+    if (!classId) return { isOpen: false, status: 'error', message: 'No class specified.' };
+
+    const [[cls]] = await db.query(`
+        SELECT 
+            c.class_id, c.class_name, c.subject_id, c.sy_id, c.max_capacity,
+            COALESCE(c.enrollment_start, IF(s.semester = 2, sy.sem2_enrollment_start, sy.sem1_enrollment_start)) AS enrollment_start,
+            COALESCE(c.enrollment_end,   IF(s.semester = 2, sy.sem2_enrollment_end,   sy.sem1_enrollment_end))   AS enrollment_end,
+            s.subject_name, s.subject_code, s.semester,
+            sy.sy_range, sy.status AS sy_status, sy.is_active AS sy_is_active,
+            sy.sem1_enrollment_start, sy.sem1_enrollment_end,
+            sy.sem2_enrollment_start, sy.sem2_enrollment_end,
+            (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id) AS current_enrolled
+        FROM classes c
+        LEFT JOIN subjects s ON s.subject_id = c.subject_id
+        LEFT JOIN school_years sy ON sy.sy_id = c.sy_id
+        WHERE c.class_id = ?
+    `, [classId]);
+
+    if (!cls) return { isOpen: false, status: 'not_found', message: 'Class not found.' };
+
+    const semNum = (cls.semester == 2 || cls.semester === '2' || cls.semester === '2nd Semester') ? 2 : 1;
+    const semLabel = semNum === 2 ? '2nd Semester' : '1st Semester';
+
+    const now = currentDate instanceof Date ? currentDate : new Date(currentDate);
+
+    if (cls.enrollment_start && now < new Date(cls.enrollment_start)) {
+        const openStr = new Date(cls.enrollment_start).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return {
+            isOpen: false,
+            status: 'upcoming',
+            message: `Enrollment for class "${cls.class_name}" (${cls.subject_name || 'Subject'} - ${semLabel}) has not opened yet (Opens on ${openStr}).`,
+            cls,
+            semNum,
+            semLabel
+        };
+    }
+
+    if (cls.enrollment_end && now > new Date(cls.enrollment_end)) {
+        const closeStr = new Date(cls.enrollment_end).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return {
+            isOpen: false,
+            status: 'closed',
+            message: `Enrollment period for class "${cls.class_name}" (${cls.subject_name || 'Subject'} - ${semLabel}) has already ended (Closed on ${closeStr}). Students cannot be enrolled after the enrollment period has closed.`,
+            cls,
+            semNum,
+            semLabel
+        };
+    }
+
+    return {
+        isOpen: true,
+        status: 'open',
+        message: 'Enrollment is open.',
+        cls,
+        semNum,
+        semLabel
+    };
+}
+
+/**
  * Evaluates whether a quarter's grade encoding deadline has passed.
  * @param {object} schoolYear - school_years row
  * @param {number|string} quarterNumber - 1, 2, 3, or 4
@@ -790,6 +858,7 @@ module.exports = {
     resolveAdminSchoolYearContext,
     normalizeSchoolYearStatus,
     isSemesterEnrollmentOpen,
+    checkClassEnrollmentOpen,
     isQuarterGradingOpen,
     resolveAssessmentQuarter,
     checkStudentPrerequisite,

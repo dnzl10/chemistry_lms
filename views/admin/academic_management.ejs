@@ -1755,9 +1755,10 @@
         <div class="p-6 space-y-4">
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Target Class *</label>
-                <select id="bulkEnrollClassId" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                <select id="bulkEnrollClassId" onchange="onBulkEnrollClassChanged(this)" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
                     <option value="">— Select Class —</option>
                 </select>
+                <div id="bulkEnrollClassStatusBanner" class="hidden mt-2 p-2.5 rounded-xl text-xs border transition-all"></div>
             </div>
             <div class="drop-zone p-10 text-center"
                  onclick="document.getElementById('enrollBulkFile').click()"
@@ -3201,9 +3202,27 @@ async function loadClasses() {
         if (!data.success) { container.innerHTML = `<p class="text-rose-500 text-sm">${data.message}</p>`; return; }
         const classes = data.classes;
 
-        // Populate bulk enroll dropdown
+        // Populate bulk enroll dropdown with enrollment window awareness
         const sel = document.getElementById('bulkEnrollClassId');
-        sel.innerHTML = '<option value="">— Select Class —</option>' + classes.map(c => `<option value="${c.class_id}">${c.class_name}</option>`).join('');
+        const now = new Date();
+        sel.innerHTML = '<option value="">— Select Class —</option>' + classes.map(c => {
+            let label = c.class_name;
+            let statusSuffix = '';
+            let isClosed = false;
+            let isUpcoming = false;
+            if (c.enrollment_end && now > new Date(c.enrollment_end)) {
+                isClosed = true;
+                const endStr = new Date(c.enrollment_end).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                statusSuffix = ` [Closed on ${endStr}]`;
+            } else if (c.enrollment_start && now < new Date(c.enrollment_start)) {
+                isUpcoming = true;
+                const startStr = new Date(c.enrollment_start).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                statusSuffix = ` [Opens on ${startStr}]`;
+            }
+            const disabledAttr = (isClosed || isUpcoming) ? 'disabled style="color: #ef4444; font-weight: 600;"' : '';
+            return `<option value="${c.class_id}" ${disabledAttr} data-closed="${isClosed ? '1' : '0'}" data-upcoming="${isUpcoming ? '1' : '0'}" data-start="${c.enrollment_start ? new Date(c.enrollment_start).toISOString() : ''}" data-end="${c.enrollment_end ? new Date(c.enrollment_end).toISOString() : ''}">${label}${statusSuffix}</option>`;
+        }).join('');
+        if (typeof onBulkEnrollClassChanged === 'function') onBulkEnrollClassChanged(sel);
 
         // Populate announcement class filter
         const annSel = document.getElementById('annClassTarget');
@@ -4276,10 +4295,50 @@ async function submitBulkSubjects() {
     } else { log.innerHTML = `<div class="text-rose-400">❌ ${data.message}</div>`; showToast('Import failed.', 'error'); }
 }
 
+function onBulkEnrollClassChanged(sel) {
+    const banner = document.getElementById('bulkEnrollClassStatusBanner');
+    const submitBtn = document.getElementById('btnSubmitEnrollBulk');
+    if (!banner) return;
+    if (!sel || !sel.value) {
+        banner.className = 'hidden';
+        banner.innerHTML = '';
+        return;
+    }
+    const opt = sel.options[sel.selectedIndex];
+    const isClosed = opt.dataset.closed === '1';
+    const isUpcoming = opt.dataset.upcoming === '1';
+    const startStr = opt.dataset.start;
+    const endStr = opt.dataset.end;
+
+    banner.classList.remove('hidden');
+    if (isClosed) {
+        banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-rose-50 border-rose-200 text-rose-800 transition-all';
+        const formattedEnd = endStr ? new Date(endStr).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'ended';
+        banner.innerHTML = `<div class="flex items-start gap-2.5"><i class="fas fa-calendar-xmark text-rose-500 text-base mt-0.5"></i><div><p class="font-bold">Enrollment Period Closed</p><p class="text-[11px] text-rose-600 mt-0.5">Enrollment for this class ended on ${formattedEnd}. Students cannot be enrolled after the enrollment period has closed.</p></div></div>`;
+        if (submitBtn) submitBtn.disabled = true;
+    } else if (isUpcoming) {
+        banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-amber-50 border-amber-200 text-amber-800 transition-all';
+        const formattedStart = startStr ? new Date(startStr).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'upcoming';
+        banner.innerHTML = `<div class="flex items-start gap-2.5"><i class="fas fa-clock text-amber-500 text-base mt-0.5"></i><div><p class="font-bold">Enrollment Not Started Yet</p><p class="text-[11px] text-amber-600 mt-0.5">Enrollment for this class opens on ${formattedStart}. Students cannot be enrolled until enrollment opens.</p></div></div>`;
+        if (submitBtn) submitBtn.disabled = true;
+    } else {
+        banner.className = 'mt-2 p-3 rounded-xl text-xs border bg-emerald-50 border-emerald-200 text-emerald-800 transition-all';
+        const formattedEnd = endStr ? new Date(endStr).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Ongoing';
+        banner.innerHTML = `<div class="flex items-start gap-2.5"><i class="fas fa-circle-check text-emerald-500 text-base mt-0.5"></i><div><p class="font-bold">Enrollment Open</p><p class="text-[11px] text-emerald-700 mt-0.5">Enrollment window is active (Closes on ${formattedEnd}).</p></div></div>`;
+        if (submitBtn && bulkEnrollFile) submitBtn.disabled = false;
+    }
+}
+
 async function submitBulkEnroll() {
-    const classId = document.getElementById('bulkEnrollClassId').value;
+    const selEl = document.getElementById('bulkEnrollClassId');
+    const classId = selEl ? selEl.value : null;
     if (!classId) { showToast('Please select a target class first.', 'error'); return; }
-    if (!bulkEnrollFile) return;
+    const selectedOpt = selEl.options[selEl.selectedIndex];
+    if (selectedOpt && (selectedOpt.dataset.closed === '1' || selectedOpt.dataset.upcoming === '1')) {
+        showToast('Enrollment for this class is closed or not open yet. Students cannot be enrolled.', 'error');
+        return;
+    }
+    if (!bulkEnrollFile) { showToast('Please upload an enrollment file first.', 'error'); return; }
     const fd  = new FormData(); fd.append('file', bulkEnrollFile); fd.append('class_id', classId);
     const log = document.getElementById('enrollBulkLog');
     log.classList.remove('hidden'); log.innerHTML = `<div class="text-cyan-400">⏳ Enrolling students…</div>`;
@@ -4288,7 +4347,7 @@ async function submitBulkEnroll() {
     if (data.success) {
         log.innerHTML = `<div class="text-emerald-400 font-bold mb-1">✅ Done! Enrolled: ${data.enrolled} · Skipped: ${data.skipped} · Errors: ${data.errors}</div>${(data.log||[]).map(l=>`<div class="text-xs mt-0.5 ${l.ok?'text-slate-400':'text-rose-400'}">${l.msg}</div>`).join('')}`;
         showToast(`Enrolled ${data.enrolled} student(s)!`, 'success'); loadClasses();
-    } else { log.innerHTML = `<div class="text-rose-400">❌ ${data.message}</div>`; showToast('Enrollment failed.', 'error'); }
+    } else { log.innerHTML = `<div class="text-rose-400">❌ ${data.message}</div>`; showToast(data.message || 'Enrollment failed.', 'error'); }
 }
 
 function downloadAcademicTemplate(type) {
