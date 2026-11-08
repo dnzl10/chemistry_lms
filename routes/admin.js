@@ -3178,11 +3178,53 @@ router.get('/lifecycle/cohort-summary', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /admin/lifecycle/archive-outgoing
-// Archives and deactivates the outgoing Chemistry cohort (is_active = 0, current_session_id = NULL).
-// Preserves all transcripts, grades, and coursework (Zero Data Loss).
-// Also supports legacy POST /admin/lifecycle/archive-graduating as an alias.
+// POST /admin/am/grading-lock/override
+// Grants an emergency 48-hour grade encoding extension for a specified quarter.
+// Body: { sy_id, quarter_number, extension_hours = 48, reason }
 // ─────────────────────────────────────────────────────────────────────────────
+router.post('/am/grading-lock/override', requireAdmin, async (req, res) => {
+    try {
+        let { sy_id, quarter_number, extension_hours = 48, reason } = req.body;
+        const qNum = parseInt(quarter_number, 10);
+        if (isNaN(qNum) || qNum < 1 || qNum > 4) {
+            return res.status(400).json({ success: false, message: 'Valid quarter number (1-4) is required.' });
+        }
+
+        let syId = sy_id ? parseInt(sy_id, 10) : null;
+        if (!syId) {
+            const currentSY = await academicHelper.getCurrentSchoolYear(db);
+            syId = currentSY ? currentSY.sy_id : null;
+        }
+
+        if (!syId) {
+            return res.status(404).json({ success: false, message: 'Active school year not found.' });
+        }
+
+        const hours = parseInt(extension_hours, 10) || 48;
+        const newDeadline = new Date(Date.now() + hours * 60 * 60 * 1000);
+
+        const colName = `q${qNum}_grade_deadline`;
+        await db.query(`UPDATE school_years SET ${colName} = ? WHERE sy_id = ?`, [newDeadline, syId]);
+
+        const deadlineStr = newDeadline.toLocaleString('en-PH', {
+            month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        await logActivity(req.user.user_id, 'Admin', 'ADMIN_GRADING_OVERRIDE',
+            `Extended Quarter ${qNum} grade encoding deadline by ${hours} hours to ${deadlineStr} for SY ID ${syId}. Reason: ${reason || 'Administrative Extension'}`);
+
+        return res.json({
+            success: true,
+            sy_id: syId,
+            quarter_number: qNum,
+            new_deadline: newDeadline,
+            message: `Quarter ${qNum} grade encoding deadline extended to ${deadlineStr} (${hours} hours). Instructors may now edit assignments and grades.`
+        });
+    } catch (err) {
+        console.error('[Grading Lock Override Error]', err);
+        return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    }
+});
 router.post(['/lifecycle/archive-outgoing', '/lifecycle/archive-graduating'], requireAdmin, async (req, res) => {
     try {
         const result = await academicHelper.archiveOutgoingCohort(db, {

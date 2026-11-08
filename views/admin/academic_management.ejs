@@ -400,6 +400,12 @@
                             class="mt-2 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-50 to-cyan-50 hover:from-indigo-100 hover:to-cyan-100 text-indigo-700 font-bold text-xs transition border border-indigo-200/80 shadow-xs">
                             <i class="fas fa-user-graduate text-indigo-600"></i> Student Cohort Lifecycle
                         </button>
+
+                        <!-- Emergency Grading Deadline Extension Button -->
+                        <button onclick="openGradingOverrideModal()"
+                            class="mt-1.5 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-amber-50/70 hover:bg-amber-100/80 text-amber-800 font-bold text-xs transition border border-amber-200 shadow-xs">
+                            <i class="fas fa-unlock-keyhole text-amber-600"></i> Emergency Grading Unlock
+                        </button>
                     </div>
 
                     <!-- KPI Stats (2 cols) -->
@@ -827,10 +833,10 @@
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-rose-600 mb-1 uppercase tracking-wide flex items-center gap-1">
-                                    <i class="fas fa-lock"></i> Q1 Grade Encoding Deadline
+                                    <i class="fas fa-lock"></i> Q1 Grade Encoding Deadline (Teacher Gradebook Freeze)
                                 </label>
                                 <input type="datetime-local" id="addQ1Deadline" name="q1_grade_deadline" class="w-full px-2.5 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40 focus:ring-rose-500">
-                                <p class="text-[9px] text-slate-400 mt-0.5">Instructors locked out from grade changes after cutoff</p>
+                                <p class="text-[9px] text-slate-400 mt-0.5">Freezes teacher manual assignment grading &amp; composite gradebook (students unaffected)</p>
                             </div>
                         </div>
 
@@ -851,10 +857,10 @@
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-rose-600 mb-1 uppercase tracking-wide flex items-center gap-1">
-                                    <i class="fas fa-lock"></i> Q2 Grade Encoding Deadline
+                                    <i class="fas fa-lock"></i> Q2 Grade Encoding Deadline (Teacher Gradebook Freeze)
                                 </label>
                                 <input type="datetime-local" id="addQ2Deadline" name="q2_grade_deadline" class="w-full px-2.5 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40 focus:ring-rose-500">
-                                <p class="text-[9px] text-slate-400 mt-0.5">Instructors locked out from grade changes after cutoff</p>
+                                <p class="text-[9px] text-slate-400 mt-0.5">Freezes teacher manual assignment grading &amp; composite gradebook (students unaffected)</p>
                             </div>
                         </div>
                     </div>
@@ -900,10 +906,10 @@
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-rose-600 mb-1 uppercase tracking-wide flex items-center gap-1">
-                                    <i class="fas fa-lock"></i> Q3 Grade Encoding Deadline
+                                    <i class="fas fa-lock"></i> Q3 Grade Encoding Deadline (Teacher Gradebook Freeze)
                                 </label>
                                 <input type="datetime-local" id="addQ3Deadline" name="q3_grade_deadline" class="w-full px-2.5 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40 focus:ring-rose-500">
-                                <p class="text-[9px] text-slate-400 mt-0.5">Instructors locked out from grade changes after cutoff</p>
+                                <p class="text-[9px] text-slate-400 mt-0.5">Freezes teacher manual assignment grading &amp; composite gradebook (students unaffected)</p>
                             </div>
                         </div>
 
@@ -924,10 +930,10 @@
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-rose-600 mb-1 uppercase tracking-wide flex items-center gap-1">
-                                    <i class="fas fa-lock"></i> Q4 Grade Encoding Deadline
+                                    <i class="fas fa-lock"></i> Q4 Grade Encoding Deadline (Teacher Gradebook Freeze)
                                 </label>
                                 <input type="datetime-local" id="addQ4Deadline" name="q4_grade_deadline" class="w-full px-2.5 py-1.5 rounded-lg border border-rose-200 text-xs bg-rose-50/40 focus:ring-rose-500">
-                                <p class="text-[9px] text-slate-400 mt-0.5">Instructors locked out from grade changes after cutoff</p>
+                                <p class="text-[9px] text-slate-400 mt-0.5">Freezes teacher manual assignment grading &amp; composite gradebook (students unaffected)</p>
                             </div>
                         </div>
                     </div>
@@ -2357,7 +2363,89 @@ async function submitAddSY(e) {
     }
 }
 
-// ─── Student Cohort Lifecycle Management ─────────────────────────────────────
+async function openGradingOverrideModal() {
+    if (typeof Swal === 'undefined') {
+        showToast('Modal component loading...', 'info');
+        return;
+    }
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Grant Emergency Grading Extension',
+        html: `
+            <div class="text-left text-xs space-y-3 p-1">
+                <p class="text-slate-600 leading-relaxed">
+                    Temporarily unlock teacher grade encoding for an expired quarter. This allows teachers to enter or correct assignment scores and rubric marks.
+                </p>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Select Quarter to Unlock:</label>
+                    <select id="swalQuarterSelect" class="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-slate-50 font-bold text-slate-800">
+                        <option value="1">Quarter 1 (1st Sem - Chem 1)</option>
+                        <option value="2">Quarter 2 (1st Sem - Chem 1)</option>
+                        <option value="3">Quarter 3 (2nd Sem - Chem 2)</option>
+                        <option value="4">Quarter 4 (2nd Sem - Chem 2)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Extension Duration:</label>
+                    <select id="swalHoursSelect" class="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-slate-50 font-bold text-slate-800">
+                        <option value="24">24 Hours</option>
+                        <option value="48" selected>48 Hours (Standard)</option>
+                        <option value="72">72 Hours (3 Days)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Administrative Justification:</label>
+                    <input type="text" id="swalReasonInput" placeholder="e.g. Approved medical extension / Grade discrepancy review" class="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-amber-500">
+                </div>
+            </div>
+        `,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-unlock mr-1.5"></i> Unlock Grading Window',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#d97706',
+        cancelButtonColor: '#64748b',
+        customClass: {
+            popup: 'rounded-3xl shadow-2xl border border-slate-100',
+            confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
+            cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5'
+        },
+        preConfirm: () => {
+            const quarter = document.getElementById('swalQuarterSelect').value;
+            const hours = document.getElementById('swalHoursSelect').value;
+            const reason = document.getElementById('swalReasonInput').value;
+            if (!reason) {
+                Swal.showValidationMessage('Please provide an administrative reason for audit compliance.');
+                return false;
+            }
+            return { quarter, hours, reason };
+        }
+    });
+
+    if (!formValues) return;
+
+    try {
+        const res = await apiPost('/admin/am/grading-lock/override', {
+            quarter_number: formValues.quarter,
+            extension_hours: formValues.hours,
+            reason: formValues.reason
+        });
+
+        if (res.success) {
+            Swal.fire({
+                title: 'Grading Extension Granted',
+                text: res.message,
+                icon: 'success',
+                confirmButtonColor: '#4f46e5',
+                customClass: { popup: 'rounded-3xl' }
+            });
+        } else {
+            showToast(res.message || 'Failed to grant extension.', 'error');
+        }
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
 async function openStudentLifecycleModal() {
     openModal('modalStudentLifecycle');
     await loadLifecycleCohortSummary();
