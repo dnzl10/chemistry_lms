@@ -6252,7 +6252,7 @@ async function _upsertElementaQuestion(req, qId) {
                 (sy_id, teacher_id, question_code, level_number, topic_id, topic,
                  machine_name, machine_id, prompt, answer_text, steps_json,
                  time_limit_s, points, difficulty, display_order, verification_status, verified_by, verified_at, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
         `, [
             targetSyId,
             creatorId,
