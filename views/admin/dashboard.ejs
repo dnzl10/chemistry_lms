@@ -199,6 +199,9 @@
             </div>
 
             <div class="flex items-center gap-3 md:gap-6">
+                <!-- Dynamic School Year Context Selector -->
+                <%- include('../partials/admin_sy_selector') %>
+
                 <!-- Notification bell -->
                 <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
                     <i class="far fa-bell text-xl text-cyan-600"></i>
@@ -225,6 +228,9 @@
         <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
             <div class="p-4 md:p-8 flex-1 fade-in">
 
+                <!-- Dynamic Academic Context Warning Banner (Archive / Draft) -->
+                <%- include('../partials/admin_sy_banner') %>
+
                 <!-- ══════════════════════════════════════════
                      SECTION 1 — KPI STAT CARDS
                 ══════════════════════════════════════════ -->
@@ -239,7 +245,7 @@
                             <span class="text-[10px] font-black uppercase tracking-widest text-violet-400">Students</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= stats.totalStudents %></p>
-                        <p class="text-xs text-slate-400 mt-1">Registered</p>
+                        <p class="text-xs text-slate-400 mt-1">Enrolled (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : '' %>)</p>
                     </div>
 
                     <!-- Teachers -->
@@ -275,7 +281,7 @@
                             <span class="text-[10px] font-black uppercase tracking-widest text-amber-400">Assessments</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= stats.totalAssessments %></p>
-                        <p class="text-xs text-slate-400 mt-1">Total</p>
+                        <p class="text-xs text-slate-400 mt-1"><%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : 'Total' %></p>
                     </div>
 
                     <!-- Questions -->

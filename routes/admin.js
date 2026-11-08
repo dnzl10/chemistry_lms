@@ -126,45 +126,59 @@ async function logActivity(actorId, actorRole, action, description) {
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/dashboard', requireAdmin, async (req, res) => {
     try {
-        const [[studentRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Student'`);
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
+
+        const [[studentRow]]  = await db.query(`
+            SELECT COUNT(DISTINCT cs.student_id) AS cnt 
+            FROM class_students cs 
+            JOIN classes c ON c.class_id = cs.class_id 
+            WHERE c.sy_id = ?
+        `, [selectedSY.sy_id]);
         const [[teacherRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Teacher'`);
         const [[adminRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Admin'`);
         const [[subjRow]]     = await db.query(`SELECT COUNT(*) AS cnt FROM subjects`);
-        const [[assessRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM assessments`);
+        const [[assessRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE sy_id = ?`, [selectedSY.sy_id]);
         const [[qbRow]]       = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1`);
         const [[pendInvRow]]  = await db.query(
             `SELECT COUNT(*) AS cnt FROM account_invitations WHERE is_used = 0 AND (expires_at IS NULL OR expires_at > NOW())`
         );
 
         const stats = {
-            totalStudents   : studentRow.cnt,
-            totalTeachers   : teacherRow.cnt,
-            totalAdmins     : adminRow.cnt,
-            totalSubjects   : subjRow.cnt,
-            totalAssessments: assessRow.cnt,
-            totalQuestions  : qbRow.cnt,
-            pendingInvites  : pendInvRow.cnt,
+            totalStudents   : studentRow ? studentRow.cnt : 0,
+            totalTeachers   : teacherRow ? teacherRow.cnt : 0,
+            totalAdmins     : adminRow ? adminRow.cnt : 0,
+            totalSubjects   : subjRow ? subjRow.cnt : 0,
+            totalAssessments: assessRow ? assessRow.cnt : 0,
+            totalQuestions  : qbRow ? qbRow.cnt : 0,
+            pendingInvites  : pendInvRow ? pendInvRow.cnt : 0,
         };
 
-        const [[syRow]] = await db.query(`SELECT sy_id, sy_range FROM school_years WHERE is_active = 1 LIMIT 1`);
-        let activeSY = null;
-        if (syRow) {
-            const [[classCountRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM classes WHERE sy_id = ?`, [syRow.sy_id]);
-            const [[enrollCountRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM class_students WHERE sy_id = ?`, [syRow.sy_id]);
-            activeSY = { sy_id: syRow.sy_id, sy_range: syRow.sy_range, classCount: classCountRow.cnt, enrolledCount: enrollCountRow.cnt };
-        }
+        const [[classCountRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM classes WHERE sy_id = ?`, [selectedSY.sy_id]);
+        const [[enrollCountRow]] = await db.query(`
+            SELECT COUNT(DISTINCT cs.student_id) AS cnt 
+            FROM class_students cs 
+            JOIN classes c ON c.class_id = cs.class_id 
+            WHERE c.sy_id = ?
+        `, [selectedSY.sy_id]);
+        const activeSY = {
+            sy_id: selectedSY.sy_id,
+            sy_range: selectedSY.sy_range,
+            classCount: classCountRow ? classCountRow.cnt : 0,
+            enrolledCount: enrollCountRow ? enrollCountRow.cnt : 0
+        };
 
         const [[expInvRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM account_invitations WHERE is_used = 0 AND expires_at < NOW()`);
         const [[flagRow]]     = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE flagged_assessment_id IS NOT NULL`);
-        const [[lockedPDRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE is_unlocked = 0 AND due_date IS NOT NULL AND due_date < NOW()`);
-        const [[overdueRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM calendar_events WHERE event_type = 'Deadline' AND event_date < CURDATE()`);
+        const [[lockedPDRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE is_unlocked = 0 AND due_date IS NOT NULL AND due_date < NOW() AND sy_id = ?`, [selectedSY.sy_id]);
+        const [[overdueRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM calendar_events WHERE event_type = 'Deadline' AND event_date < CURDATE() AND event_date >= ? AND event_date <= ?`, [selectedSY.start_date, selectedSY.end_date]);
 
         const alerts = {
-            expiredInvites  : expInvRow.cnt,
-            flaggedStudents : flagRow.cnt,
-            lockedPastDue   : lockedPDRow.cnt,
-            overdueDeadlines: overdueRow.cnt,
-            total           : expInvRow.cnt + flagRow.cnt + lockedPDRow.cnt + overdueRow.cnt,
+            expiredInvites  : expInvRow ? expInvRow.cnt : 0,
+            flaggedStudents : flagRow ? flagRow.cnt : 0,
+            lockedPastDue   : lockedPDRow ? lockedPDRow.cnt : 0,
+            overdueDeadlines: overdueRow ? overdueRow.cnt : 0,
+            total           : (expInvRow ? expInvRow.cnt : 0) + (flagRow ? flagRow.cnt : 0) + (lockedPDRow ? lockedPDRow.cnt : 0) + (overdueRow ? overdueRow.cnt : 0),
         };
 
         const [activeSessions] = await db.query(`
@@ -199,22 +213,31 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
             counts.push(found ? found.total : 0);
         }
 
-        const [[preTestRow]]     = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions gs JOIN assessments a ON a.assessment_id = gs.assessment_id WHERE a.assessment_type = 'Pre-Test'    AND gs.started_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`);
-        const [[postTestRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions gs JOIN assessments a ON a.assessment_id = gs.assessment_id WHERE a.assessment_type = 'Post-Test'   AND gs.started_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`);
-        const [[quizRow]]        = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions gs JOIN assessments a ON a.assessment_id = gs.assessment_id WHERE a.assessment_type = 'Quiz'        AND gs.started_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`);
+        const [[preTestRow]]     = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions gs JOIN assessments a ON a.assessment_id = gs.assessment_id WHERE a.assessment_type = 'Pre-Test'    AND gs.started_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND a.sy_id = ?`, [selectedSY.sy_id]);
+        const [[postTestRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions gs JOIN assessments a ON a.assessment_id = gs.assessment_id WHERE a.assessment_type = 'Post-Test'   AND gs.started_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND a.sy_id = ?`, [selectedSY.sy_id]);
+        const [[quizRow]]        = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions gs JOIN assessments a ON a.assessment_id = gs.assessment_id WHERE a.assessment_type = 'Quiz'        AND gs.started_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND a.sy_id = ?`, [selectedSY.sy_id]);
         const [[competitiveRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions gs WHERE gs.play_mode = 'Versus' AND gs.started_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`);
 
-        const chartData = { labels, counts, preTestCount: preTestRow.cnt, postTestCount: postTestRow.cnt, quizCount: quizRow.cnt, competitiveCount: competitiveRow.cnt };
+        const chartData = { labels, counts, preTestCount: preTestRow ? preTestRow.cnt : 0, postTestCount: postTestRow ? postTestRow.cnt : 0, quizCount: quizRow ? quizRow.cnt : 0, competitiveCount: competitiveRow ? competitiveRow.cnt : 0 };
 
-        const [topStudents]     = await db.query(`SELECT user_id, first_name, last_name, profile_pic, current_level, total_exp FROM users WHERE role = 'Student' ORDER BY total_exp DESC LIMIT 10`);
+        const [topStudents]     = await db.query(`
+            SELECT u.user_id, u.first_name, u.last_name, u.profile_pic, u.current_level, u.total_exp 
+            FROM users u 
+            JOIN class_students cs ON cs.student_id = u.user_id
+            JOIN classes c ON c.class_id = cs.class_id AND c.sy_id = ?
+            WHERE u.role = 'Student' 
+            GROUP BY u.user_id
+            ORDER BY u.total_exp DESC 
+            LIMIT 10
+        `, [selectedSY.sy_id]);
         const [recentLogs]      = await db.query(`SELECT al.log_id, al.actor_role, al.action, al.description, al.created_at, CONCAT(u.first_name,' ',u.last_name) AS actor_name FROM activity_logs al LEFT JOIN users u ON u.user_id = al.actor_id ORDER BY al.created_at DESC LIMIT 15`);
         const [recentUsers]     = await db.query(`SELECT user_id, first_name, last_name, role, profile_pic, created_at FROM users ORDER BY created_at DESC LIMIT 5`);
-        const [upcomingEvents]     = await db.query(`SELECT ce.event_id, ce.event_title, ce.event_type, ce.event_date, ce.event_location, ce.duration_type, ce.start_date, ce.end_date, ce.duration_minutes, s.subject_name FROM calendar_events ce LEFT JOIN subjects s ON s.subject_id = ce.subject_id WHERE ce.event_date >= CURDATE() ORDER BY ce.event_date ASC LIMIT 5`);
-        const [allUpcomingEvents]  = await db.query(`SELECT ce.event_id, ce.event_title, ce.event_type, ce.event_date, ce.event_location, ce.event_description, ce.duration_type, ce.start_date, ce.end_date, ce.duration_minutes, ce.is_repeatable, ce.repeat_cycle, s.subject_name FROM calendar_events ce LEFT JOIN subjects s ON s.subject_id = ce.subject_id WHERE ce.event_date >= CURDATE() ORDER BY ce.event_date ASC`);
-        const [[topicsRow]]        = await db.query(`SELECT COUNT(*) AS cnt FROM forum_topics`);
-        const [[repliesRow]]       = await db.query(`SELECT COUNT(*) AS cnt FROM forum_replies`);
-        const [latestReplies]      = await db.query(`SELECT fr.reply_id, fr.reply_content, fr.created_at, CONCAT(u.first_name,' ',u.last_name) AS user_name, ft.title AS forum_title FROM forum_replies fr JOIN users u ON u.user_id = fr.user_id JOIN forum_topics ft ON ft.forum_id = fr.topic_id ORDER BY fr.created_at DESC LIMIT 3`);
-        const forumStats           = { totalTopics: topicsRow.cnt, totalReplies: repliesRow.cnt, latestReplies };
+        const [upcomingEvents]     = await db.query(`SELECT ce.event_id, ce.event_title, ce.event_type, ce.event_date, ce.event_location, ce.duration_type, ce.start_date, ce.end_date, ce.duration_minutes, s.subject_name FROM calendar_events ce LEFT JOIN subjects s ON s.subject_id = ce.subject_id WHERE ce.event_date >= CURDATE() AND ce.event_date <= ? ORDER BY ce.event_date ASC LIMIT 5`, [selectedSY.end_date]);
+        const [allUpcomingEvents]  = await db.query(`SELECT ce.event_id, ce.event_title, ce.event_type, ce.event_date, ce.event_location, ce.event_description, ce.duration_type, ce.start_date, ce.end_date, ce.duration_minutes, ce.is_repeatable, ce.repeat_cycle, s.subject_name FROM calendar_events ce LEFT JOIN subjects s ON s.subject_id = ce.subject_id WHERE ce.event_date >= CURDATE() AND ce.event_date <= ? ORDER BY ce.event_date ASC`, [selectedSY.end_date]);
+        const [[topicsRow]]        = await db.query(`SELECT COUNT(*) AS cnt FROM forum_topics ft LEFT JOIN classes c ON c.class_id = ft.class_id WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)`, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+        const [[repliesRow]]       = await db.query(`SELECT COUNT(*) AS cnt FROM forum_replies fr JOIN forum_topics ft ON ft.forum_id = fr.topic_id LEFT JOIN classes c ON c.class_id = ft.class_id WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)`, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+        const [latestReplies]      = await db.query(`SELECT fr.reply_id, fr.reply_content, fr.created_at, CONCAT(u.first_name,' ',u.last_name) AS user_name, ft.title AS forum_title FROM forum_replies fr JOIN users u ON u.user_id = fr.user_id JOIN forum_topics ft ON ft.forum_id = fr.topic_id LEFT JOIN classes c ON c.class_id = ft.class_id WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?) ORDER BY fr.created_at DESC LIMIT 3`, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+        const forumStats           = { totalTopics: topicsRow ? topicsRow.cnt : 0, totalReplies: repliesRow ? repliesRow.cnt : 0, latestReplies };
         const [[totalMatchRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions WHERE play_mode = 'Versus'`);
         const [[todayMatchRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions WHERE play_mode = 'Versus' AND DATE(started_at) = CURDATE()`);
         const [topWinnerRows]   = await db.query(`
@@ -231,6 +254,12 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
         res.render('admin/dashboard', {
             user: req.user, stats, activeSY, alerts, activeSessions,
             chartData, topStudents, recentLogs, recentUsers, upcomingEvents, allUpcomingEvents, forumStats, matchStats,
+            selectedSY,
+            currentSY,
+            allSchoolYears,
+            isCurrentSY,
+            isHistoricalSY,
+            isDraftSY
         });
 
     } catch (err) {
