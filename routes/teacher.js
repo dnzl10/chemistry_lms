@@ -3,6 +3,23 @@ const router = express.Router();
 const { ensureAuthenticated } = require('../middleware/auth');
 router.use(ensureAuthenticated);
 const db = require('../db');
+const academicHelper = require('../utils/academicHelper');
+
+// Universal Teacher School Year Context Middleware
+// Automatically resolves the active current school year set by the Admin and attaches it
+// to req and res.locals so all teacher views and routes are strictly scoped to the active SY.
+router.use(async (req, res, next) => {
+    try {
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        req.currentSY = currentSY;
+        req.activeSY = currentSY;
+        res.locals.currentSY = currentSY;
+        res.locals.activeSY = currentSY;
+    } catch (err) {
+        console.error('[Teacher SY Middleware] Failed to resolve current SY:', err);
+    }
+    next();
+});
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const path = require('path');
@@ -24,7 +41,6 @@ const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const levelProgressionService = require('../services/levelProgressionService');
 const forumExpService = require('../services/forumExpService');
 const topicScheduleService = require('../services/topicScheduleService');
-const academicHelper = require('../utils/academicHelper');
 const { SIMULATIONS_REGISTRY } = require('../services/simulationQuizService');
 
 const simTitleMap = {};
@@ -282,6 +298,8 @@ router.get('/dashboard', isTeacher, async (req, res) => {
     try {
         const currentSY = await academicHelper.getCurrentSchoolYear(db);
         const currentSyId = currentSY ? currentSY.sy_id : null;
+        const syStartDate = currentSY && currentSY.start_date ? new Date(currentSY.start_date) : null;
+        const syEndDate = currentSY && currentSY.end_date ? new Date(currentSY.end_date) : null;
 
         const [
             [classes],
@@ -507,7 +525,11 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 LEFT JOIN topics t ON ft.topic_id = t.topic_id
                 LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
                 WHERE ft.teacher_id = ? 
-                ORDER BY ft.created_at DESC`, [teacherId]),
+                  AND (
+                      ft.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
+                      OR (ft.class_id IS NULL AND (? IS NULL OR (ft.created_at >= ? AND ft.created_at <= ?)))
+                  )
+                ORDER BY ft.created_at DESC`, [teacherId, teacherId, currentSyId, currentSyId, currentSyId, syStartDate, syEndDate]),
 
             db.query(`
             SELECT DISTINCT
@@ -537,24 +559,51 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND sp.progress_percent < 50 
                 GROUP BY u.user_id, s.subject_id`, [teacherId, currentSyId, currentSyId]),
 
-            db.query(`SELECT * FROM announcements WHERE teacher_id = ? ORDER BY created_at DESC LIMIT 3`, [teacherId]),
+            db.query(`
+                SELECT * FROM announcements 
+                WHERE teacher_id = ? 
+                  AND (
+                      sy_id = ?
+                      OR class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
+                      OR (sy_id IS NULL AND class_id IS NULL AND (? IS NULL OR (created_at >= ? AND created_at <= ?)))
+                  )
+                ORDER BY created_at DESC LIMIT 3`, [teacherId, currentSyId, teacherId, currentSyId, currentSyId, currentSyId, syStartDate, syEndDate]),
 
-            db.query(`SELECT * FROM forum_topics WHERE teacher_id = ? AND is_pinned = 1`, [teacherId]),
+            db.query(`
+                SELECT * FROM forum_topics 
+                WHERE teacher_id = ? AND is_pinned = 1
+                  AND (
+                      class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
+                      OR (class_id IS NULL AND (? IS NULL OR (created_at >= ? AND created_at <= ?)))
+                  )`, [teacherId, teacherId, currentSyId, currentSyId, currentSyId, syStartDate, syEndDate]),
 
             db.query(`
                 SELECT ev.*, s.subject_name 
                 FROM calendar_events ev
                 LEFT JOIN subjects s ON ev.subject_id = s.subject_id
                 WHERE ev.teacher_id = ? 
-                ORDER BY ev.event_date ASC`, [teacherId]),
+                  AND (
+                      ev.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
+                      OR (ev.class_id IS NULL AND (? IS NULL OR (ev.event_date >= ? AND ev.event_date <= ?)))
+                  )
+                ORDER BY ev.event_date ASC`, [teacherId, teacherId, currentSyId, currentSyId, currentSyId, syStartDate, syEndDate]),
 
             db.query(`
-                SELECT u.first_name, u.last_name, u.profile_pic, COALESCE(u.total_exp, 0) as total_points
+                SELECT u.first_name, u.last_name, u.profile_pic,
+                       COALESCE(
+                           (SELECT SUM(ss.exp_gained) FROM student_scores ss
+                            JOIN assessments a ON ss.assessment_id = a.assessment_id
+                            JOIN topics t ON a.topic_id = t.topic_id
+                            JOIN quarters q ON t.quarter_id = q.quarter_id
+                            JOIN classes c2 ON q.subject_id = c2.subject_id AND c2.class_id = cs.class_id
+                            WHERE ss.student_id = u.user_id AND (? IS NULL OR c2.sy_id = ?)),
+                           u.total_exp, 0
+                       ) AS total_points
                 FROM users u
                 JOIN class_students cs ON u.user_id = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
                 WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND u.role = 'Student'
-                GROUP BY u.user_id ORDER BY total_points DESC LIMIT 5`, [teacherId, currentSyId, currentSyId]),
+                GROUP BY u.user_id ORDER BY total_points DESC LIMIT 5`, [currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT ROUND(AVG(eca.is_correct) * 100, 1) as avg_accuracy
@@ -679,6 +728,9 @@ router.get('/dashboard', isTeacher, async (req, res) => {
 router.get('/all-activities', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     try {
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = currentSY ? currentSY.sy_id : null;
+
         const [activities] = await db.query(`
             SELECT * FROM (
                 -- 1. Standard Individual Student Submissions (Assignments, Quizzes, Solo Arcade)
@@ -727,7 +779,7 @@ router.get('/all-activities', isTeacher, async (req, res) => {
                 JOIN topics t ON a.topic_id = t.topic_id
                 JOIN quarters q ON t.quarter_id = q.quarter_id
                 JOIN subjects s ON q.subject_id = s.subject_id
-                JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ?
+                JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                 JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id
                 LEFT JOIN elementa_game_sessions egs ON (
                     egs.assessment_id = ss.assessment_id 
@@ -790,13 +842,13 @@ router.get('/all-activities', isTeacher, async (req, res) => {
                     SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
                     FROM class_students cs2
                     JOIN classes c2 ON cs2.class_id = c2.class_id
-                    WHERE c2.teacher_id = ?
+                    WHERE c2.teacher_id = ? AND (? IS NULL OR c2.sy_id = ?)
                     GROUP BY cs2.student_id, c2.subject_id
                 ) fallback_p1 ON fallback_p1.student_id = u1.user_id
                     AND (q.subject_id IS NULL OR fallback_p1.subject_id = q.subject_id)
                 JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_p1.class_id)
                 JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                   AND (egs.play_mode = 'Versus' OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0))
 
                 UNION ALL
@@ -844,13 +896,13 @@ router.get('/all-activities', isTeacher, async (req, res) => {
                     SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
                     FROM class_students cs2
                     JOIN classes c2 ON cs2.class_id = c2.class_id
-                    WHERE c2.teacher_id = ?
+                    WHERE c2.teacher_id = ? AND (? IS NULL OR c2.sy_id = ?)
                     GROUP BY cs2.student_id, c2.subject_id
                 ) fallback_fp ON fallback_fp.student_id = u.user_id
                     AND (q.subject_id IS NULL OR fallback_fp.subject_id = q.subject_id)
                 JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_fp.class_id)
                 JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                   AND (egs.student_id_p2 IS NULL OR egs.student_id_p2 = 0)
                   AND (egs.assessment_id IS NULL OR NOT EXISTS (
                       SELECT 1 FROM student_scores ss2 
@@ -860,12 +912,19 @@ router.get('/all-activities', isTeacher, async (req, res) => {
             ) AS all_feed
             ORDER BY submitted_at DESC
             LIMIT 100
-        `, [teacherId, teacherId, teacherId, teacherId, teacherId]);
+        `, [
+            teacherId, currentSyId, currentSyId,
+            teacherId, currentSyId, currentSyId,
+            teacherId, currentSyId, currentSyId,
+            teacherId, currentSyId, currentSyId,
+            teacherId, currentSyId, currentSyId
+        ]);
 
         const notifications = await getTeacherNotifications(db, teacherId);
 
         res.render('teacher/all_activities', {
             user: req.user,
+            currentSY,
             activities,
             notifications
         });
@@ -1249,10 +1308,29 @@ const uploadWhitelist = multer({
 });
 
 async function verifyClassOwnership(dbConn, teacherId, classId) {
-    const [[c]] = await dbConn.execute('SELECT teacher_id FROM classes WHERE class_id = ?', [classId]);
-    if (!c || c.teacher_id !== teacherId) {
-        throw new Error("Unauthorized to manage this class.");
+    const [[c]] = await dbConn.execute(
+        `SELECT c.class_id, c.teacher_id, c.sy_id, sy.status AS sy_status, sy.is_active AS sy_is_active 
+         FROM classes c 
+         LEFT JOIN school_years sy ON c.sy_id = sy.sy_id 
+         WHERE c.class_id = ?`, 
+        [classId]
+    );
+    if (!c || (teacherId && c.teacher_id !== teacherId)) {
+        const err = new Error("Unauthorized to manage this class.");
+        err.statusCode = 403;
+        throw err;
     }
+    const currentSY = await academicHelper.getCurrentSchoolYear(dbConn);
+    if (!currentSY || c.sy_id !== currentSY.sy_id || !c.sy_is_active) {
+        const err = new Error("This class belongs to an archived School Year and is read-only. Modifications are not allowed.");
+        err.statusCode = 403;
+        throw err;
+    }
+    return c;
+}
+
+async function assertActiveClass(dbConn, teacherId, classId) {
+    return await verifyClassOwnership(dbConn, teacherId, classId);
 }
 
 // 1. Settings (Dates and Capacity)
@@ -1297,7 +1375,7 @@ router.post('/class/:id/settings', isTeacher, async (req, res) => {
     } catch (err) {
         await conn.rollback();
         console.error(err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(err.statusCode || 500).json({ success: false, message: err.message, error: err.message });
     } finally {
         conn.release();
     }
@@ -1374,11 +1452,11 @@ router.post('/class/:id/whitelist/upload', isTeacher, uploadWhitelist.single('fi
             });
         } catch (err) {
             console.error('[Teacher Whitelist Helper Error]', err);
-            return res.status(500).json({ success: false, message: err.message });
+            return res.status(err.statusCode || 500).json({ success: false, message: err.message, error: err.message });
         }
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(err.statusCode || 500).json({ success: false, message: err.message, error: err.message });
     }
 });
 
@@ -1408,11 +1486,11 @@ router.post('/class/:id/whitelist/add', isTeacher, async (req, res) => {
             }
             res.json({ success: true, message: "Invitation sent successfully." });
         } catch (err) {
-            return res.status(500).json({ success: false, message: err.message });
+            return res.status(err.statusCode || 500).json({ success: false, message: err.message, error: err.message });
         }
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(err.statusCode || 500).json({ success: false, message: err.message, error: err.message });
     }
 });
 
@@ -1429,7 +1507,7 @@ router.delete('/class/:id/whitelist/remove', isTeacher, async (req, res) => {
         res.json({ success: true, message: "Student removed from whitelist." });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(err.statusCode || 500).json({ success: false, message: err.message, error: err.message });
     }
 });
 
@@ -2590,6 +2668,7 @@ router.get('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
 router.post('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
     try {
         const classId = req.params.classId;
+        await assertActiveClass(db, req.user.role === 'Admin' ? null : req.user.user_id, classId);
         const rawTitle = req.body.title || req.body.set_name || '';
         const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
         const description = (req.body.description || '').trim();
@@ -2692,7 +2771,7 @@ router.post('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
         res.json({ success: true, group_set_id: groupSetId });
     } catch (e) {
         console.error('[POST /api/classes/:classId/group-sets]', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -3740,15 +3819,9 @@ router.get('/api/attendance/:classId', isTeacher, async (req, res) => {
         const teacherId = req.user.user_id;
         const targetDate = req.query.date || new Date().toISOString().slice(0, 10);
 
-        // Verify class ownership (Admins have supervisor access to all classes)
+        // Verify class ownership and active school year status
         const isAdmin = req.user.role === 'Admin';
-        const [cls] = await db.query(
-            isAdmin
-                ? "SELECT class_id, class_name FROM classes WHERE class_id = ?"
-                : "SELECT class_id, class_name FROM classes WHERE class_id = ? AND teacher_id = ?",
-            isAdmin ? [classId] : [classId, teacherId]
-        );
-        if (!cls.length) return res.status(403).json({ success: false, error: 'Unauthorized class access' });
+        await assertActiveClass(db, isAdmin ? null : teacherId, classId);
 
         // Query enrolled students and left-join attendance_records for targetDate
         const [students] = await db.query(`
@@ -3823,15 +3896,9 @@ router.post('/api/attendance/:classId/save', isTeacher, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Cannot mark or save attendance for future dates.' });
         }
 
-        // Verify class ownership (Admins have supervisor access to all classes)
+        // Verify class ownership and active school year status
         const isAdmin = req.user.role === 'Admin';
-        const [cls] = await db.query(
-            isAdmin
-                ? "SELECT class_id, class_name FROM classes WHERE class_id = ?"
-                : "SELECT class_id, class_name FROM classes WHERE class_id = ? AND teacher_id = ?",
-            isAdmin ? [classId] : [classId, teacherId]
-        );
-        if (!cls.length) return res.status(403).json({ success: false, error: 'Unauthorized class access' });
+        await assertActiveClass(db, isAdmin ? null : teacherId, classId);
 
         for (const r of records) {
             const studentId = r.student_id;
@@ -3910,15 +3977,9 @@ router.get('/api/attendance/:classId/analytics', isTeacher, async (req, res) => 
         const teacherId = req.user.user_id;
         const range = req.query.range || 'all'; // 'all', '30d', '7d', 'month'
 
-        // Verify class ownership (Admins have supervisor access to all classes)
+        // Verify class ownership and active school year status
         const isAdmin = req.user.role === 'Admin';
-        const [cls] = await db.query(
-            isAdmin
-                ? "SELECT class_id, class_name FROM classes WHERE class_id = ?"
-                : "SELECT class_id, class_name FROM classes WHERE class_id = ? AND teacher_id = ?",
-            isAdmin ? [classId] : [classId, teacherId]
-        );
-        if (!cls.length) return res.status(403).json({ success: false, error: 'Unauthorized class access' });
+        await assertActiveClass(db, isAdmin ? null : teacherId, classId);
 
         let dateFilter = '';
         let lmsDateFilter = '';
@@ -4261,15 +4322,9 @@ router.get('/api/attendance/:classId/student/:studentId/history', isTeacher, asy
         const { classId, studentId } = req.params;
         const teacherId = req.user.user_id;
 
-        // Verify class ownership (Admins have supervisor access to all classes)
+        // Verify class ownership and active school year status
         const isAdmin = req.user.role === 'Admin';
-        const [cls] = await db.query(
-            isAdmin
-                ? "SELECT class_id, class_name FROM classes WHERE class_id = ?"
-                : "SELECT class_id, class_name FROM classes WHERE class_id = ? AND teacher_id = ?",
-            isAdmin ? [classId] : [classId, teacherId]
-        );
-        if (!cls.length) return res.status(403).json({ success: false, error: 'Unauthorized class access' });
+        await assertActiveClass(db, isAdmin ? null : teacherId, classId);
 
         // Student info with LMS telemetry
         const [studentRows] = await db.query(`
@@ -5950,6 +6005,9 @@ router.get('/question_bank', isTeacher, (req, res) => {
 router.get('/question-bank', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     try {
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = currentSY ? currentSY.sy_id : null;
+
         const [questions] = await db.execute(`
             SELECT
                 eq.question_id,
@@ -5978,20 +6036,21 @@ router.get('/question-bank', isTeacher, async (req, res) => {
             LEFT JOIN topics t ON eq.topic_id = t.topic_id
             LEFT JOIN users vu ON eq.verified_by = vu.user_id
             LEFT JOIN users tu ON eq.teacher_id = tu.user_id
-            WHERE eq.is_active = 1
-            ORDER BY eq.level_number ASC, eq.display_order ASC, eq.question_id DESC`
+            WHERE eq.is_active = 1 AND (? IS NULL OR eq.sy_id = ?)
+            ORDER BY eq.level_number ASC, eq.display_order ASC, eq.question_id DESC`,
+            [currentSyId, currentSyId]
         );
 
-        // Quarters + topics (nested, for dropdowns)
+        // Quarters + topics (nested, for dropdowns) - scoped to active classes
         const [quartersRaw] = await db.execute(`
             SELECT qt.quarter_id, qt.quarter_number, qt.subject_id,
                    t.topic_id,   t.topic_name
             FROM quarters qt
             JOIN classes c ON qt.subject_id = c.subject_id
             LEFT JOIN topics t ON t.quarter_id = qt.quarter_id
-            WHERE c.teacher_id = ?
+            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
             ORDER BY qt.quarter_number ASC, t.topic_id ASC`,
-            [teacherId]
+            [teacherId, currentSyId, currentSyId]
         );
 
         const quartersMap = {};
@@ -6134,14 +6193,18 @@ router.post('/api/question', isTeacher, async (req, res) => {
         );
         const nextDisplayOrder = Number(maxOrderRow?.next_order) || 1;
 
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = currentSY ? currentSY.sy_id : null;
+
         const [result] = await db.execute(`
             INSERT INTO elementa_questions
-                (teacher_id, question_code, level_number, topic_id, topic,
+                (teacher_id, sy_id, question_code, level_number, topic_id, topic,
                  machine_name, machine_id, prompt, answer_text, steps_json,
                  time_limit_s, points, difficulty, display_order, verification_status, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 1)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 1)`,
             [
                 req.user.user_id,
+                currentSyId,
                 qCode,
                 actualLevel,
                 actualTopicId,
@@ -7205,23 +7268,28 @@ const forumUpload = multer({
 router.get('/forums', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     try {
-        // 1. Fetch all subjects that belong to this teacher's classes
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = currentSY ? currentSY.sy_id : null;
+        const syStartDate = currentSY && currentSY.start_date ? new Date(currentSY.start_date) : null;
+        const syEndDate = currentSY && currentSY.end_date ? new Date(currentSY.end_date) : null;
+
+        // 1. Fetch all subjects that belong to this teacher's active classes
         const [subjects] = await db.execute(`
             SELECT DISTINCT s.subject_id, s.subject_name, s.subject_code, s.subject_image
             FROM subjects s
             JOIN classes c ON s.subject_id = c.subject_id
-            WHERE c.teacher_id = ?
+            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
             ORDER BY s.subject_name ASC`,
-            [teacherId]
+            [teacherId, currentSyId, currentSyId]
         );
 
-        // Fetch classes for section selection
+        // Fetch active classes for section selection
         const [classes] = await db.execute(`
             SELECT c.class_id, c.class_name, c.subject_id
             FROM classes c
-            WHERE c.teacher_id = ?
+            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
             ORDER BY c.class_name ASC`,
-            [teacherId]
+            [teacherId, currentSyId, currentSyId]
         );
 
         const subjectIds = subjects.map(s => s.subject_id);
@@ -7229,6 +7297,7 @@ router.get('/forums', isTeacher, async (req, res) => {
             const notifications = await getTeacherNotifications(db, teacherId);
             return res.render('teacher/forums', {
                 user: req.user,
+                currentSY,
                 allForumsData: [],
                 forums: [],
                 subjects: [],
@@ -7252,7 +7321,7 @@ router.get('/forums', isTeacher, async (req, res) => {
             subjectIds
         );
 
-        // 3. All forum threads for this teacher with enriched metadata
+        // 3. All forum threads for this teacher with enriched metadata (scoped to active school year)
         const [forums] = await db.execute(`
             SELECT
                 ft.forum_id,
@@ -7289,13 +7358,13 @@ router.get('/forums', isTeacher, async (req, res) => {
                 -- Completion count (students who marked done)
                 (SELECT COUNT(*) FROM student_forum_done sfd WHERE sfd.forum_id = ft.forum_id) AS done_count,
 
-                -- Enrolled students count (scoped to specific class if class_id is set, else all classes of subject)
+                -- Enrolled students count (scoped to specific class if class_id is set, else all classes of subject in active SY)
                 IF(ft.class_id IS NOT NULL,
                     (SELECT COUNT(DISTINCT cs2.student_id) FROM class_students cs2 WHERE cs2.class_id = ft.class_id),
                     (SELECT COUNT(DISTINCT cs.student_id)
                      FROM class_students cs
                      JOIN classes c2 ON cs.class_id = c2.class_id
-                     WHERE c2.subject_id = ft.subject_id)
+                     WHERE c2.subject_id = ft.subject_id AND (? IS NULL OR c2.sy_id = ?))
                 ) AS enrolled_count
 
             FROM forum_topics ft
@@ -7304,8 +7373,16 @@ router.get('/forums', isTeacher, async (req, res) => {
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
             LEFT JOIN classes c ON ft.class_id = c.class_id
             WHERE ft.teacher_id = ?
+              AND (
+                  ft.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
+                  OR (ft.class_id IS NULL AND (? IS NULL OR (ft.created_at >= ? AND ft.created_at <= ?)))
+              )
             ORDER BY ft.is_pinned DESC, ft.created_at DESC`,
-            [teacherId]
+            [
+                currentSyId, currentSyId,
+                teacherId, teacherId, currentSyId, currentSyId,
+                currentSyId, syStartDate, syEndDate
+            ]
         );
 
         // Flatten teacher_name
@@ -7313,7 +7390,7 @@ router.get('/forums', isTeacher, async (req, res) => {
             f.teacher_name = `${f.teacher_first} ${f.teacher_last}`;
         });
 
-        // 4. All enrolled students (for completion tracker in thread view)
+        // 4. All enrolled students in active classes
         const [enrolledStudents] = await db.execute(`
             SELECT DISTINCT
                 u.user_id   AS student_id,
@@ -7324,14 +7401,16 @@ router.get('/forums', isTeacher, async (req, res) => {
             JOIN class_students cs ON u.user_id = cs.student_id
             JOIN classes c ON cs.class_id = c.class_id
             WHERE c.subject_id IN (${placeholders})
+              AND (? IS NULL OR c.sy_id = ?)
               AND u.role = 'Student'
             ORDER BY u.last_name, u.first_name ASC`,
-            subjectIds
+            [...subjectIds, currentSyId, currentSyId]
         );
 
         const notifications = await getTeacherNotifications(db, teacherId);
         res.render('teacher/forums', {
             user: req.user,
+            currentSY,
             allForumsData: forums,
             forums: forums,
             subjects,
@@ -11078,9 +11157,17 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
         sim: parseWeight(rawWeights.sim, 20),
         syllabus: parseWeight(rawWeights.syllabus, 10),
         lms: parseWeight(rawWeights.lms, 80),
-        att: parseWeight(rawWeights.att, 20)
+        att: parseWeight(rawWeights.att, 20),
+        q1: parseWeight(rawWeights.q1 || rawWeights.w_q1, 50),
+        q2: parseWeight(rawWeights.q2 || rawWeights.w_q2, 50),
+        q3: parseWeight(rawWeights.q3 || rawWeights.w_q3, 50),
+        q4: parseWeight(rawWeights.q4 || rawWeights.w_q4, 50)
     };
     const round1 = (num) => Math.round((Number(num) + Number.EPSILON) * 10) / 10;
+
+    const activeSY = await academicHelper.getCurrentSchoolYear(dbConn);
+    const activeSyId = activeSY ? activeSY.sy_id : null;
+    const passingThreshold = options.passingThreshold || (activeSY ? Number(activeSY.passing_threshold || 75) : 75.0);
 
     // 1. Fetch Target Classes
     let classQuery = `
@@ -11097,7 +11184,8 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
         classQuery += ` AND c.class_id = ?`;
         classParams.push(parseInt(classId, 10));
     } else {
-        classQuery += ` ORDER BY c.class_name ASC, s.subject_name ASC`;
+        classQuery += ` AND (? IS NULL OR c.sy_id = ?) ORDER BY c.class_name ASC, s.subject_name ASC`;
+        classParams.push(activeSyId, activeSyId);
     }
 
     const [classRows] = await dbConn.query(classQuery, classParams);
@@ -11492,24 +11580,188 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
                 grandLmsAvgs.push(lmsAvg);
             }
 
-            // PART 2: Composite Final Grade
-            // Computed strictly from LMS Avg and Attendance Percentage:
-            // Final Grade = (LMS Avg * (w_lms / 100)) + (Attendance % * (w_att / 100))
+            // PART 2: Composite Final Grade (Legacy Coursework + Attendance)
             let finalGrade = null;
             if (hasCourseworkActivity && lmsAvg !== null) {
                 const effAttRate = attRate !== null ? attRate : 0;
                 const lmsFinalPart = lmsAvg * (weights.lms / 100);
                 const attFinalPart = effAttRate * (weights.att / 100);
-
                 finalGrade = round1(lmsFinalPart + attFinalPart);
-                validFinalGrades.push(finalGrade);
-                grandFinalGrades.push(finalGrade);
             }
 
-            // Academic Standing: DepEd 75% Threshold & Submission Completeness
+            // PART 3: DEPED QUARTERLY GRADE COMPUTATION ENGINE
+            const quarterGrades = {};
+            for (const qNum of validQuarters) {
+                const qAsmts = topicAsmts.filter(a => Number(a.quarter_number) === qNum);
+                const qTotalAsmtItems = qAsmts.reduce((sum, a) => sum + (effectiveTaskItems.get(a.assessment_id) || 10), 0);
+                let qAsmtScore = 0;
+                let qAsmtSubs = 0;
+                for (const a of qAsmts) {
+                    const sc = studentScoreMap.get(`${sid}_${a.assessment_id}`);
+                    if (sc) {
+                        qAsmtScore += sc.score;
+                        qAsmtSubs++;
+                    }
+                }
+
+                const qAsgns = topicAsgns.filter(a => Number(a.quarter_number) === qNum);
+                const qTotalAsgnItems = qAsgns.reduce((sum, a) => sum + (effectiveTaskItems.get(a.assessment_id) || 10), 0);
+                let qAsgnScore = 0;
+                let qAsgnSubs = 0;
+                for (const a of qAsgns) {
+                    const sc = studentScoreMap.get(`${sid}_${a.assessment_id}`);
+                    if (sc) {
+                        qAsgnScore += sc.score;
+                        qAsgnSubs++;
+                    }
+                }
+
+                const qForums = forums.filter(f => Number(f.quarter_number) === qNum);
+                let qForumsDone = 0;
+                for (const f of qForums) {
+                    if (forumDoneMap.has(`${sid}_${f.forum_id}`)) {
+                        qForumsDone++;
+                    }
+                }
+
+                const qSims = simList.filter(s => SIMULATION_QUARTER_MAP[s.simulation_slug] === qNum);
+                let qSimAvg = null;
+                if (qSims.length > 0) {
+                    qSimAvg = Math.round(qSims.reduce((sum, s) => sum + s.percentage, 0) / qSims.length);
+                }
+
+                const qHasActivity = (qAsmtSubs > 0 || qAsgnSubs > 0 || qForumsDone > 0 || qSims.length > 0);
+                const qAsmtPct = (qHasActivity && qTotalAsmtItems > 0) ? Math.round((qAsmtScore / qTotalAsmtItems) * 100) : null;
+                const qAsgnPct = (qHasActivity && qTotalAsgnItems > 0) ? Math.round((qAsgnScore / qTotalAsgnItems) * 100) : null;
+                const qForumPct = (qHasActivity && qForums.length > 0) ? Math.round((qForumsDone / qForums.length) * 100) : null;
+
+                let qLmsAvg = null;
+                let qFinalGrade = null;
+                if (qHasActivity) {
+                    const pAsmt = (qAsmtPct !== null ? qAsmtPct : 0) * (weights.asmt / 100);
+                    const pAsgn = (qAsgnPct !== null ? qAsgnPct : 0) * (weights.asgn / 100);
+                    const pForum = (qForumPct !== null ? qForumPct : 0) * (weights.forum / 100);
+                    const pSim = (qSimAvg !== null ? qSimAvg : 0) * (weights.sim / 100);
+                    const pSyl = (syllabusProgress || 0) * (weights.syllabus / 100);
+                    qLmsAvg = round1(pAsmt + pAsgn + pForum + pSim + pSyl);
+
+                    const effAtt = attRate !== null ? attRate : 0;
+                    qFinalGrade = round1((qLmsAvg * (weights.lms / 100)) + (effAtt * (weights.att / 100)));
+                }
+
+                quarterGrades[qNum] = {
+                    quarter: qNum,
+                    hasActivity: qHasActivity,
+                    asmtPct: qAsmtPct,
+                    asgnPct: qAsgnPct,
+                    forumPct: qForumPct,
+                    simPct: qSimAvg,
+                    lmsAvg: qLmsAvg,
+                    finalGrade: qFinalGrade
+                };
+            }
+
+            const q1Grade = quarterGrades[1]?.finalGrade ?? null;
+            const q2Grade = quarterGrades[2]?.finalGrade ?? null;
+            const q3Grade = quarterGrades[3]?.finalGrade ?? null;
+            const q4Grade = quarterGrades[4]?.finalGrade ?? null;
+
+            let semestralGrade = null;
+            const isSem1 = validQuarters.includes(1) || validQuarters.includes(2);
+            const isSem2 = validQuarters.includes(3) || validQuarters.includes(4);
+
+            if (isSem1) {
+                const w1 = weights.q1 || 50;
+                const w2 = weights.q2 || 50;
+                const totW = (w1 + w2) || 100;
+                const normW1 = w1 / totW;
+                const normW2 = w2 / totW;
+
+                if (q1Grade !== null && q2Grade !== null) {
+                    semestralGrade = round1((q1Grade * normW1) + (q2Grade * normW2));
+                } else if (q1Grade !== null) {
+                    semestralGrade = q1Grade;
+                } else if (q2Grade !== null) {
+                    semestralGrade = q2Grade;
+                }
+            } else if (isSem2) {
+                const w3 = weights.q3 || 50;
+                const w4 = weights.q4 || 50;
+                const totW = (w3 + w4) || 100;
+                const normW3 = w3 / totW;
+                const normW4 = w4 / totW;
+
+                if (q3Grade !== null && q4Grade !== null) {
+                    semestralGrade = round1((q3Grade * normW3) + (q4Grade * normW4));
+                } else if (q3Grade !== null) {
+                    semestralGrade = q3Grade;
+                } else if (q4Grade !== null) {
+                    semestralGrade = q4Grade;
+                }
+            }
+
+            // Prerequisite Evaluation against passing threshold
+            let chem2Eligibility = {
+                status: 'N/A',
+                badge: 'N/A',
+                code: 'NA',
+                color: 'slate',
+                message: 'Not applicable'
+            };
+
+            const isChem1 = (cls.subject_name && cls.subject_name.toLowerCase().includes('chemistry 1')) || isSem1;
+            if (isChem1) {
+                if (q1Grade !== null && q2Grade !== null) {
+                    if (semestralGrade >= passingThreshold) {
+                        chem2Eligibility = {
+                            status: 'ELIGIBLE',
+                            badge: 'Eligible for Chem 2',
+                            code: 'PASSED',
+                            color: 'emerald',
+                            message: `Passed Chem 1 (Semestral Grade: ${semestralGrade}%, Req: ≥${passingThreshold}%)`
+                        };
+                    } else {
+                        chem2Eligibility = {
+                            status: 'INELIGIBLE',
+                            badge: 'Prerequisite Failed',
+                            code: 'FAILED',
+                            color: 'rose',
+                            message: `Failed prerequisite (Semestral Grade: ${semestralGrade}%, Req: ≥${passingThreshold}%)`
+                        };
+                    }
+                } else {
+                    chem2Eligibility = {
+                        status: 'PENDING',
+                        badge: 'Pending Quarters',
+                        code: 'PENDING',
+                        color: 'amber',
+                        message: 'Both Q1 and Q2 final grades required'
+                    };
+                }
+            } else if (isSem2) {
+                chem2Eligibility = {
+                    status: 'CURRENT_CHEM2',
+                    badge: 'Chem 2 Enrolled',
+                    code: 'ENROLLED',
+                    color: 'indigo',
+                    message: 'Currently enrolled in Chemistry 2'
+                };
+            }
+
+            // Effective Final Grade
+            const effectiveFinalGrade = (effectiveQuarter && quarterGrades[effectiveQuarter]?.finalGrade !== null)
+                ? quarterGrades[effectiveQuarter].finalGrade
+                : (semestralGrade !== null ? semestralGrade : finalGrade);
+
+            if (effectiveFinalGrade !== null) {
+                validFinalGrades.push(effectiveFinalGrade);
+                grandFinalGrades.push(effectiveFinalGrade);
+            }
+
+            // Academic Standing: DepEd Threshold & Submission Completeness
             let standing = 'Incomplete';
-            if (finalGrade !== null) {
-                standing = finalGrade >= 75 ? 'Passed' : 'At-Risk';
+            if (effectiveFinalGrade !== null) {
+                standing = effectiveFinalGrade >= passingThreshold ? 'Passed' : 'At-Risk';
             }
 
             if (standing === 'Passed') { classPassed++; grandPassed++; }
@@ -11550,10 +11802,19 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
                 asgn: { score: studentAsgnScore, total: totalAsgnItems, submittedItems: studentAsgnSubmittedItems, count: totalAsgnCount, pct: asgnPct, exp: studentAsgnExp, submitted: studentAsgnSubmissions },
                 forum: { completed: studentForumsDone, total: totalForums, pct: forumPct, exp: studentForumExp },
 
+                // DepEd Quarterly & Semestral Breakdown
+                quarter_grades: quarterGrades,
+                q1_grade: q1Grade,
+                q2_grade: q2Grade,
+                q3_grade: q3Grade,
+                q4_grade: q4Grade,
+                semestral_grade: semestralGrade,
+                chem2_eligibility: chem2Eligibility,
+
                 // Summary
                 lms_avg: lmsAvg,
                 arcade_avg: arcadeAvg,
-                final_grade: finalGrade,
+                final_grade: effectiveFinalGrade,
                 syllabus_progress: syllabusProgress,
                 standing: standing,
                 is_passed: standing === 'Passed',
@@ -14438,7 +14699,11 @@ function sanitizeGradebookQueryParams(query = {}) {
         sim: parseWeightParam(query.w_sim, 20),
         syllabus: parseWeightParam(query.w_syllabus, 10),
         lms: parseWeightParam(query.w_lms, 80),
-        att: parseWeightParam(query.w_att, 20)
+        att: parseWeightParam(query.w_att, 20),
+        q1: parseWeightParam(query.w_q1, 50),
+        q2: parseWeightParam(query.w_q2, 50),
+        q3: parseWeightParam(query.w_q3, 50),
+        q4: parseWeightParam(query.w_q4, 50)
     };
 
     return { selectedClassId, filterQuarter, filterStanding, weights };
@@ -14519,7 +14784,7 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
             students,
             isConsolidated = false
         }) {
-            const lastCol = isConsolidated ? 'O' : 'N';
+            const lastCol = isConsolidated ? 'R' : 'Q';
 
             applyExcelMetadataHeader(ws, {
                 title,
@@ -14534,39 +14799,53 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
             // ── KPI Summary Block (Rows 7-8) ─────────────────────────
             // Distribute 6 KPI Cards across Columns
             if (isConsolidated) {
-                // 15 Columns: A to O
-                ws.mergeCells('A7:B7'); ws.mergeCells('A8:B8');
-                ws.mergeCells('C7:D7'); ws.mergeCells('C8:D8');
-                ws.mergeCells('E7:F7'); ws.mergeCells('E8:F8');
+                // 18 Columns: A to R (3 cols per card)
+                ws.mergeCells('A7:C7'); ws.mergeCells('A8:C8');
+                ws.mergeCells('D7:F7'); ws.mergeCells('D8:F8');
                 ws.mergeCells('G7:I7'); ws.mergeCells('G8:I8');
                 ws.mergeCells('J7:L7'); ws.mergeCells('J8:L8');
                 ws.mergeCells('M7:O7'); ws.mergeCells('M8:O8');
+                ws.mergeCells('P7:R7'); ws.mergeCells('P8:R8');
             } else {
-                // 14 Columns: A to N
+                // 17 Columns: A to Q (2 + 3 + 3 + 3 + 3 + 3)
                 ws.mergeCells('A7:B7'); ws.mergeCells('A8:B8');
-                ws.mergeCells('C7:D7'); ws.mergeCells('C8:D8');
-                ws.mergeCells('E7:F7'); ws.mergeCells('E8:F8');
-                ws.mergeCells('G7:H7'); ws.mergeCells('G8:H8');
+                ws.mergeCells('C7:E7'); ws.mergeCells('C8:E8');
+                ws.mergeCells('F7:H7'); ws.mergeCells('F8:H8');
                 ws.mergeCells('I7:K7'); ws.mergeCells('I8:K8');
                 ws.mergeCells('L7:N7'); ws.mergeCells('L8:N8');
+                ws.mergeCells('O7:Q7'); ws.mergeCells('O8:Q8');
             }
 
-            const kpiLabels = [
+            const kpiLabels = isConsolidated ? [
+                { cell: 'A7', text: 'TOTAL ENROLLED' },
+                { cell: 'D7', text: 'PASSING RATE (>=75%)' },
+                { cell: 'G7', text: 'STUDENTS AT RISK (<75%)' },
+                { cell: 'J7', text: 'CLASS LMS MEAN' },
+                { cell: 'M7', text: 'SIMULATION MASTERY MEAN' },
+                { cell: 'P7', text: 'COMPOSITE CLASS GRADE' }
+            ] : [
                 { cell: 'A7', text: 'TOTAL ENROLLED' },
                 { cell: 'C7', text: 'PASSING RATE (>=75%)' },
-                { cell: 'E7', text: 'STUDENTS AT RISK (<75%)' },
-                { cell: isConsolidated ? 'G7' : 'G7', text: 'CLASS LMS MEAN' },
-                { cell: isConsolidated ? 'J7' : 'I7', text: 'SIMULATION MASTERY MEAN' },
-                { cell: isConsolidated ? 'M7' : 'L7', text: 'COMPOSITE CLASS GRADE' }
+                { cell: 'F7', text: 'STUDENTS AT RISK (<75%)' },
+                { cell: 'I7', text: 'CLASS LMS MEAN' },
+                { cell: 'L7', text: 'SIMULATION MASTERY MEAN' },
+                { cell: 'O7', text: 'COMPOSITE CLASS GRADE' }
             ];
 
-            const kpiValues = [
+            const kpiValues = isConsolidated ? [
+                { cell: 'A8', text: `${kpis.totalEnrolled} Students`, color: 'FF0F172A' },
+                { cell: 'D8', text: `${kpis.passingRate}% (${kpis.passedCount}/${kpis.totalEnrolled})`, color: 'FF15803D' },
+                { cell: 'G8', text: `${kpis.atRiskRate}% (${kpis.atRiskCount}/${kpis.totalEnrolled})`, color: 'FFB91C1C' },
+                { cell: 'J8', text: kpis.classLmsMean !== null ? `${kpis.classLmsMean}%` : '—', color: 'FF0F172A' },
+                { cell: 'M8', text: kpis.classArcadeMean !== null ? `${kpis.classArcadeMean}%` : '—', color: 'FF0F172A' },
+                { cell: 'P8', text: kpis.classFinalMean !== null ? `${kpis.classFinalMean}%` : '—', color: 'FF1E1B4B' }
+            ] : [
                 { cell: 'A8', text: `${kpis.totalEnrolled} Students`, color: 'FF0F172A' },
                 { cell: 'C8', text: `${kpis.passingRate}% (${kpis.passedCount}/${kpis.totalEnrolled})`, color: 'FF15803D' },
-                { cell: 'E8', text: `${kpis.atRiskRate}% (${kpis.atRiskCount}/${kpis.totalEnrolled})`, color: 'FFB91C1C' },
-                { cell: isConsolidated ? 'G8' : 'G8', text: kpis.classLmsMean !== null ? `${kpis.classLmsMean}%` : '—', color: 'FF0F172A' },
-                { cell: isConsolidated ? 'J8' : 'I8', text: kpis.classArcadeMean !== null ? `${kpis.classArcadeMean}%` : '—', color: 'FF0F172A' },
-                { cell: isConsolidated ? 'M8' : 'L8', text: kpis.classFinalMean !== null ? `${kpis.classFinalMean}%` : '—', color: 'FF1E1B4B' }
+                { cell: 'F8', text: `${kpis.atRiskRate}% (${kpis.atRiskCount}/${kpis.totalEnrolled})`, color: 'FFB91C1C' },
+                { cell: 'I8', text: kpis.classLmsMean !== null ? `${kpis.classLmsMean}%` : '—', color: 'FF0F172A' },
+                { cell: 'L8', text: kpis.classArcadeMean !== null ? `${kpis.classArcadeMean}%` : '—', color: 'FF0F172A' },
+                { cell: 'O8', text: kpis.classFinalMean !== null ? `${kpis.classFinalMean}%` : '—', color: 'FF1E1B4B' }
             ];
 
             ws.getRow(7).height = 18;
@@ -14607,11 +14886,13 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
             const headerTitles = isConsolidated ? [
                 '#', 'LRN Number', 'Last Name', 'First Name', 'Class / Subject', 'Sex',
                 'Attendance Rate', 'Written Works (Asmt %)', 'Performance Tasks (Asgn %)', 'Participation (Forum %)',
-                'LMS Coursework Avg', 'Simulation Mastery %', 'Total EXP', 'Composite Final Grade %', 'Academic Standing'
+                'LMS Coursework Avg', 'Simulation Mastery %', 'Total EXP',
+                'Q1 Final %', 'Q2 Final %', 'Semestral Final %', 'Academic Standing', 'Chem 2 Prerequisite Status'
             ] : [
                 '#', 'LRN Number', 'Last Name', 'First Name', 'Sex',
                 'Attendance Rate', 'Written Works (Asmt %)', 'Performance Tasks (Asgn %)', 'Participation (Forum %)',
-                'LMS Coursework Avg', 'Simulation Mastery %', 'Total EXP', 'Composite Final Grade %', 'Academic Standing'
+                'LMS Coursework Avg', 'Simulation Mastery %', 'Total EXP',
+                'Q1 Final %', 'Q2 Final %', 'Semestral Final %', 'Academic Standing', 'Chem 2 Prerequisite Status'
             ];
 
             const headerRow = ws.addRow(headerTitles);
@@ -14650,6 +14931,11 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                         ? `${s.arcade_avg}%`
                         : (!s.is_incomplete && (gradebookData.weights?.sim || 0) > 0 ? '0%' : '—');
 
+                    const q1Str = s.q1_grade !== null ? `${s.q1_grade}%` : '—';
+                    const q2Str = s.q2_grade !== null ? `${s.q2_grade}%` : '—';
+                    const semStr = s.semestral_grade !== null ? `${s.semestral_grade}%` : (s.final_grade !== null ? `${s.final_grade}%` : '—');
+                    const chem2Badge = s.chem2_eligibility ? (s.chem2_eligibility.badge || s.chem2_eligibility.status || '—') : '—';
+
                     const rowData = isConsolidated ? [
                         idx + 1,
                         String(s.lrn_number || '—'),
@@ -14664,8 +14950,11 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                         s.lms_avg !== null ? `${s.lms_avg}%` : '—',
                         simCellStr,
                         Number(s.total_exp || 0),
-                        s.final_grade !== null ? `${s.final_grade}%` : '—',
-                        s.standing
+                        q1Str,
+                        q2Str,
+                        semStr,
+                        s.standing,
+                        chem2Badge
                     ] : [
                         idx + 1,
                         String(s.lrn_number || '—'),
@@ -14679,8 +14968,11 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                         s.lms_avg !== null ? `${s.lms_avg}%` : '—',
                         simCellStr,
                         Number(s.total_exp || 0),
-                        s.final_grade !== null ? `${s.final_grade}%` : '—',
-                        s.standing
+                        q1Str,
+                        q2Str,
+                        semStr,
+                        s.standing,
+                        chem2Badge
                     ];
 
                     const row = ws.addRow(rowData);
@@ -14693,10 +14985,13 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                     row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
                     row.getCell(4).alignment = { horizontal: 'left', vertical: 'middle' };
 
-                    const standingColIdx = isConsolidated ? 15 : 14;
                     const expColIdx = isConsolidated ? 13 : 12;
                     const lmsAvgColIdx = isConsolidated ? 11 : 10;
-                    const finalGradeColIdx = isConsolidated ? 14 : 13;
+                    const q1ColIdx = isConsolidated ? 14 : 13;
+                    const q2ColIdx = isConsolidated ? 15 : 14;
+                    const semGradeColIdx = isConsolidated ? 16 : 15;
+                    const standingColIdx = isConsolidated ? 17 : 16;
+                    const chem2ColIdx = isConsolidated ? 18 : 17;
 
                     if (isConsolidated) {
                         row.getCell(5).alignment = { horizontal: 'left', vertical: 'middle' }; // Class
@@ -14720,8 +15015,10 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                     row.getCell(lmsAvgColIdx).font = { bold: true };
                     row.getCell(expColIdx).numFmt = '#,##0';
                     row.getCell(expColIdx).alignment = { horizontal: 'right', vertical: 'middle' };
-                    row.getCell(finalGradeColIdx).font = { bold: true };
-                    row.getCell(finalGradeColIdx).alignment = { horizontal: 'center', vertical: 'middle' };
+                    row.getCell(q1ColIdx).alignment = { horizontal: 'center', vertical: 'middle' };
+                    row.getCell(q2ColIdx).alignment = { horizontal: 'center', vertical: 'middle' };
+                    row.getCell(semGradeColIdx).font = { bold: true, color: { argb: 'FF1E1B4B' } };
+                    row.getCell(semGradeColIdx).alignment = { horizontal: 'center', vertical: 'middle' };
 
                     // Zebra striping
                     const isEven = (idx % 2 === 0);
@@ -14732,7 +15029,7 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                             left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
                             right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
                         };
-                        if (isEven && colNum !== standingColIdx) {
+                        if (isEven && colNum !== standingColIdx && colNum !== chem2ColIdx) {
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
                         }
                     });
@@ -14749,6 +15046,26 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                     } else {
                         statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
                         statusCell.font = { italic: true, color: { argb: 'FF64748B' }, size: 9 };
+                    }
+
+                    // Chem 2 Prerequisite Status badge
+                    const chem2Cell = row.getCell(chem2ColIdx);
+                    chem2Cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    if (s.chem2_eligibility && (s.chem2_eligibility.code === 'PASSED' || s.chem2_eligibility.status === 'ELIGIBLE')) {
+                        chem2Cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+                        chem2Cell.font = { bold: true, color: { argb: 'FF15803D' }, size: 9 };
+                    } else if (s.chem2_eligibility && (s.chem2_eligibility.code === 'FAILED' || s.chem2_eligibility.status === 'INELIGIBLE')) {
+                        chem2Cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                        chem2Cell.font = { bold: true, color: { argb: 'FFB91C1C' }, size: 9 };
+                    } else if (s.chem2_eligibility && (s.chem2_eligibility.code === 'PENDING' || s.chem2_eligibility.status === 'PENDING')) {
+                        chem2Cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                        chem2Cell.font = { bold: true, color: { argb: 'FFB45309' }, size: 9 };
+                    } else if (s.chem2_eligibility && (s.chem2_eligibility.code === 'ENROLLED' || s.chem2_eligibility.status === 'CURRENT_CHEM2')) {
+                        chem2Cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
+                        chem2Cell.font = { bold: true, color: { argb: 'FF3730A3' }, size: 9 };
+                    } else {
+                        chem2Cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                        chem2Cell.font = { italic: true, color: { argb: 'FF64748B' }, size: 9 };
                     }
                 });
 
@@ -14772,13 +15089,13 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                     sumRow1.getCell(12).value = kpis.classArcadeMean !== null ? `${kpis.classArcadeMean}%` : '—';
                     sumRow1.getCell(12).alignment = { horizontal: 'center', vertical: 'middle' };
                     sumRow1.getCell(12).font = { bold: true };
-                    sumRow1.getCell(14).value = kpis.classFinalMean !== null ? `${kpis.classFinalMean}%` : '—';
-                    sumRow1.getCell(14).alignment = { horizontal: 'center', vertical: 'middle' };
-                    sumRow1.getCell(14).font = { bold: true, color: { argb: 'FF1E1B4B' } };
-                    sumRow1.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
-                    sumRow1.getCell(15).value = `${kpis.passingRate}% Passing`;
-                    sumRow1.getCell(15).alignment = { horizontal: 'center', vertical: 'middle' };
-                    sumRow1.getCell(15).font = { bold: true, color: { argb: 'FF15803D' } };
+                    sumRow1.getCell(16).value = kpis.classFinalMean !== null ? `${kpis.classFinalMean}%` : '—';
+                    sumRow1.getCell(16).alignment = { horizontal: 'center', vertical: 'middle' };
+                    sumRow1.getCell(16).font = { bold: true, color: { argb: 'FF1E1B4B' } };
+                    sumRow1.getCell(16).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                    sumRow1.getCell(17).value = `${kpis.passingRate}% Passing`;
+                    sumRow1.getCell(17).alignment = { horizontal: 'center', vertical: 'middle' };
+                    sumRow1.getCell(17).font = { bold: true, color: { argb: 'FF15803D' } };
                 } else {
                     ws.mergeCells(`A${sumRow1.number}:D${sumRow1.number}`);
                     sumRow1.getCell(1).value = 'Class Performance Means:';
@@ -14793,13 +15110,13 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                     sumRow1.getCell(11).value = kpis.classArcadeMean !== null ? `${kpis.classArcadeMean}%` : '—';
                     sumRow1.getCell(11).alignment = { horizontal: 'center', vertical: 'middle' };
                     sumRow1.getCell(11).font = { bold: true };
-                    sumRow1.getCell(13).value = kpis.classFinalMean !== null ? `${kpis.classFinalMean}%` : '—';
-                    sumRow1.getCell(13).alignment = { horizontal: 'center', vertical: 'middle' };
-                    sumRow1.getCell(13).font = { bold: true, color: { argb: 'FF1E1B4B' } };
-                    sumRow1.getCell(13).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
-                    sumRow1.getCell(14).value = `${kpis.passingRate}% Passing`;
-                    sumRow1.getCell(14).alignment = { horizontal: 'center', vertical: 'middle' };
-                    sumRow1.getCell(14).font = { bold: true, color: { argb: 'FF15803D' } };
+                    sumRow1.getCell(15).value = kpis.classFinalMean !== null ? `${kpis.classFinalMean}%` : '—';
+                    sumRow1.getCell(15).alignment = { horizontal: 'center', vertical: 'middle' };
+                    sumRow1.getCell(15).font = { bold: true, color: { argb: 'FF1E1B4B' } };
+                    sumRow1.getCell(15).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                    sumRow1.getCell(16).value = `${kpis.passingRate}% Passing`;
+                    sumRow1.getCell(16).alignment = { horizontal: 'center', vertical: 'middle' };
+                    sumRow1.getCell(16).font = { bold: true, color: { argb: 'FF15803D' } };
                 }
 
                 // Footer Row 2: DepEd Roster Totals
@@ -14811,46 +15128,46 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                     sumRow2.getCell(1).font = { bold: true, color: { argb: 'FF1E1B4B' }, size: 9.5 };
                     sumRow2.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
 
-                    ws.mergeCells(`F${sumRow2.number}:H${sumRow2.number}`);
+                    ws.mergeCells(`F${sumRow2.number}:I${sumRow2.number}`);
                     sumRow2.getCell(6).value = `Passed: ${kpis.passedCount} (${kpis.passingRate}%)`;
                     sumRow2.getCell(6).font = { bold: true, color: { argb: 'FF15803D' } };
                     sumRow2.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
                     sumRow2.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
 
-                    ws.mergeCells(`I${sumRow2.number}:K${sumRow2.number}`);
-                    sumRow2.getCell(9).value = `At-Risk: ${kpis.atRiskCount} (${kpis.atRiskRate}%)`;
-                    sumRow2.getCell(9).font = { bold: true, color: { argb: 'FFB91C1C' } };
-                    sumRow2.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
-                    sumRow2.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                    ws.mergeCells(`J${sumRow2.number}:M${sumRow2.number}`);
+                    sumRow2.getCell(10).value = `At-Risk: ${kpis.atRiskCount} (${kpis.atRiskRate}%)`;
+                    sumRow2.getCell(10).font = { bold: true, color: { argb: 'FFB91C1C' } };
+                    sumRow2.getCell(10).alignment = { horizontal: 'center', vertical: 'middle' };
+                    sumRow2.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
 
-                    ws.mergeCells(`L${sumRow2.number}:O${sumRow2.number}`);
-                    sumRow2.getCell(12).value = `Total Enrolled: ${kpis.totalEnrolled} Students`;
-                    sumRow2.getCell(12).font = { bold: true, color: { argb: 'FF1E293B' } };
-                    sumRow2.getCell(12).alignment = { horizontal: 'center', vertical: 'middle' };
-                    sumRow2.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    ws.mergeCells(`N${sumRow2.number}:R${sumRow2.number}`);
+                    sumRow2.getCell(14).value = `Total Enrolled: ${kpis.totalEnrolled} Students`;
+                    sumRow2.getCell(14).font = { bold: true, color: { argb: 'FF1E293B' } };
+                    sumRow2.getCell(14).alignment = { horizontal: 'center', vertical: 'middle' };
+                    sumRow2.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
                 } else {
                     ws.mergeCells(`A${sumRow2.number}:D${sumRow2.number}`);
                     sumRow2.getCell(1).value = 'DepEd Academic Standing Breakdown:';
                     sumRow2.getCell(1).font = { bold: true, color: { argb: 'FF1E1B4B' }, size: 9.5 };
                     sumRow2.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
 
-                    ws.mergeCells(`E${sumRow2.number}:G${sumRow2.number}`);
+                    ws.mergeCells(`E${sumRow2.number}:H${sumRow2.number}`);
                     sumRow2.getCell(5).value = `Passed: ${kpis.passedCount} (${kpis.passingRate}%)`;
                     sumRow2.getCell(5).font = { bold: true, color: { argb: 'FF15803D' } };
                     sumRow2.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
                     sumRow2.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
 
-                    ws.mergeCells(`H${sumRow2.number}:J${sumRow2.number}`);
-                    sumRow2.getCell(8).value = `At-Risk: ${kpis.atRiskCount} (${kpis.atRiskRate}%)`;
-                    sumRow2.getCell(8).font = { bold: true, color: { argb: 'FFB91C1C' } };
-                    sumRow2.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
-                    sumRow2.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                    ws.mergeCells(`I${sumRow2.number}:L${sumRow2.number}`);
+                    sumRow2.getCell(9).value = `At-Risk: ${kpis.atRiskCount} (${kpis.atRiskRate}%)`;
+                    sumRow2.getCell(9).font = { bold: true, color: { argb: 'FFB91C1C' } };
+                    sumRow2.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
+                    sumRow2.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
 
-                    ws.mergeCells(`K${sumRow2.number}:N${sumRow2.number}`);
-                    sumRow2.getCell(11).value = `Total Enrolled: ${kpis.totalEnrolled} Students`;
-                    sumRow2.getCell(11).font = { bold: true, color: { argb: 'FF1E293B' } };
-                    sumRow2.getCell(11).alignment = { horizontal: 'center', vertical: 'middle' };
-                    sumRow2.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    ws.mergeCells(`M${sumRow2.number}:Q${sumRow2.number}`);
+                    sumRow2.getCell(13).value = `Total Enrolled: ${kpis.totalEnrolled} Students`;
+                    sumRow2.getCell(13).font = { bold: true, color: { argb: 'FF1E293B' } };
+                    sumRow2.getCell(13).alignment = { horizontal: 'center', vertical: 'middle' };
+                    sumRow2.getCell(13).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
                 }
             }
 
@@ -14870,8 +15187,11 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                     { width: 18 },  // LMS Coursework Avg
                     { width: 18 },  // Simulation Mastery %
                     { width: 14 },  // Total EXP
-                    { width: 20 },  // Composite Final Grade %
-                    { width: 18 }   // Academic Standing
+                    { width: 14 },  // Q1 Final %
+                    { width: 14 },  // Q2 Final %
+                    { width: 18 },  // Semestral Final %
+                    { width: 18 },  // Academic Standing
+                    { width: 22 }   // Chem 2 Prerequisite Status
                 ];
             } else {
                 ws.columns = [
@@ -14887,8 +15207,11 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
                     { width: 18 },  // LMS Coursework Avg
                     { width: 18 },  // Simulation Mastery %
                     { width: 14 },  // Total EXP
-                    { width: 20 },  // Composite Final Grade %
-                    { width: 18 }   // Academic Standing
+                    { width: 14 },  // Q1 Final %
+                    { width: 14 },  // Q2 Final %
+                    { width: 18 },  // Semestral Final %
+                    { width: 18 },  // Academic Standing
+                    { width: 22 }   // Chem 2 Prerequisite Status
                 ];
             }
         }
@@ -15073,22 +15396,23 @@ router.get('/reports/export/gradebook/pdf', isTeacher, async (req, res) => {
         });
         doc.pipe(res);
 
-        // Column layout: 13 columns totaling 770pt with generous horizontal breathing room
-        // Grouped logically: Demographics & Attendance -> 5 LMS Avg Components (Asmt, Asgn, Forum, Sim, Syllabus) -> LMS Avg -> Final Grade -> Standing
+        // Column layout: 15 columns totaling 770pt with DepEd Quarterly & Prerequisite Eligibility
         const COLS = [
-            { id: 'num',      title: '#',                 width: 22,  align: 'center' },
-            { id: 'lrn',      title: 'LRN Number',        width: 76,  align: 'left' },
-            { id: 'name',     title: 'Student Full Name', width: 128, align: 'left' },
-            { id: 'sex',      title: 'Sex',               width: 34,  align: 'center' },
-            { id: 'att',      title: 'Attendance',        width: 54,  align: 'center' },
-            { id: 'asmt',     title: 'Assessments',       width: 66,  align: 'center' },
-            { id: 'asgn',     title: 'Assignments',       width: 64,  align: 'center' },
-            { id: 'forum',    title: 'Forums Done',       width: 60,  align: 'center' },
-            { id: 'sim',      title: 'Simulations',       width: 56,  align: 'center' },
-            { id: 'prog',     title: 'Syllabus',          width: 44,  align: 'center' },
-            { id: 'lms',      title: 'LMS Avg',           width: 52,  align: 'center' },
-            { id: 'final',    title: 'Final Grade',       width: 56,  align: 'center' },
-            { id: 'standing', title: 'Standing',          width: 58,  align: 'center' }
+            { id: 'num',      title: '#',                 width: 18,  align: 'center' },
+            { id: 'lrn',      title: 'LRN Number',        width: 65,  align: 'left' },
+            { id: 'name',     title: 'Student Full Name', width: 105, align: 'left' },
+            { id: 'sex',      title: 'Sex',               width: 22,  align: 'center' },
+            { id: 'att',      title: 'Att.',              width: 36,  align: 'center' },
+            { id: 'asmt',     title: 'Written Works',     width: 50,  align: 'center' },
+            { id: 'asgn',     title: 'Perf. Tasks',       width: 50,  align: 'center' },
+            { id: 'forum',    title: 'Forums',            width: 40,  align: 'center' },
+            { id: 'sim',      title: 'Sims',              width: 40,  align: 'center' },
+            { id: 'lms',      title: 'LMS Avg',           width: 48,  align: 'center' },
+            { id: 'q1',       title: 'Q1 Grade',          width: 46,  align: 'center' },
+            { id: 'q2',       title: 'Q2 Grade',          width: 46,  align: 'center' },
+            { id: 'sem',      title: 'Sem. Grade',        width: 52,  align: 'center' },
+            { id: 'standing', title: 'Standing',          width: 54,  align: 'center' },
+            { id: 'chem2',    title: 'Chem 2 Status',     width: 98,  align: 'center' }
         ];
 
         function drawGradebookTableHeader(startY) {
@@ -15209,12 +15533,12 @@ router.get('/reports/export/gradebook/pdf', isTeacher, async (req, res) => {
 
                     // 2. LRN Number
                     doc.font('Helvetica').fontSize(7.5).fillColor('#1e293b')
-                       .text(s.lrn_number || '—', cellX + 4, textOffsetY, { width: COLS[1].width - 8, align: 'left' });
+                       .text(s.lrn_number || '—', cellX + 3, textOffsetY, { width: COLS[1].width - 6, align: 'left' });
                     cellX += COLS[1].width;
 
                     // 3. Student Full Name
                     doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#0f172a')
-                       .text(s.full_name || `${s.last_name}, ${s.first_name}`, cellX + 4, textOffsetY, { width: COLS[2].width - 8, align: 'left', lineBreak: false });
+                       .text(s.full_name || `${s.last_name}, ${s.first_name}`, cellX + 3, textOffsetY, { width: COLS[2].width - 6, align: 'left', lineBreak: false });
                     cellX += COLS[2].width;
 
                     // 4. Sex
@@ -15228,26 +15552,26 @@ router.get('/reports/export/gradebook/pdf', isTeacher, async (req, res) => {
                        .text(attRateStr, cellX, textOffsetY, { width: COLS[4].width, align: 'center' });
                     cellX += COLS[4].width;
 
-                    // 6. Assessments (Written Works — Completed Assessments / Total Assessments + Full-Scope %)
+                    // 6. Assessments (Written Works %)
                     const asmtStr = (s.asmt && s.asmt.pct !== null)
-                        ? `${s.asmt.submitted}/${s.asmt.count} (${s.asmt.pct}%)`
-                        : (s.asmt && s.asmt.count > 0 ? `0/${s.asmt.count} (—)` : '—');
+                        ? `${s.asmt.pct}%`
+                        : (s.asmt && s.asmt.count > 0 ? `0%` : '—');
                     doc.font('Helvetica').fontSize(7.2).fillColor('#334155')
                        .text(asmtStr, cellX, textOffsetY, { width: COLS[5].width, align: 'center' });
                     cellX += COLS[5].width;
 
-                    // 7. Assignments (Performance Tasks — Completed Assignments / Total Assignments + Full-Scope %)
+                    // 7. Assignments (Performance Tasks %)
                     const asgnStr = (s.asgn && s.asgn.pct !== null)
-                        ? `${s.asgn.submitted}/${s.asgn.count} (${s.asgn.pct}%)`
-                        : (s.asgn && s.asgn.count > 0 ? `0/${s.asgn.count} (—)` : '—');
+                        ? `${s.asgn.pct}%`
+                        : (s.asgn && s.asgn.count > 0 ? `0%` : '—');
                     doc.font('Helvetica').fontSize(7.2).fillColor('#334155')
                        .text(asgnStr, cellX, textOffsetY, { width: COLS[6].width, align: 'center' });
                     cellX += COLS[6].width;
 
-                    // 8. Forums Done
+                    // 8. Forums
                     const forumStr = (s.forum && s.forum.pct !== null)
-                        ? `${s.forum.completed}/${s.forum.total} (${s.forum.pct}%)`
-                        : (s.forum && s.forum.total > 0 ? `0/${s.forum.total} (—)` : '—');
+                        ? `${s.forum.pct}%`
+                        : (s.forum && s.forum.total > 0 ? `0%` : '—');
                     doc.font('Helvetica').fontSize(7.2).fillColor('#334155')
                        .text(forumStr, cellX, textOffsetY, { width: COLS[7].width, align: 'center' });
                     cellX += COLS[7].width;
@@ -15256,29 +15580,37 @@ router.get('/reports/export/gradebook/pdf', isTeacher, async (req, res) => {
                     const simStr = s.arcade_avg !== null
                         ? `${s.arcade_avg}%`
                         : (!s.is_incomplete && activeWeights.sim > 0 ? '0%' : '—');
-                    doc.font('Helvetica').fontSize(7.5).fillColor('#334155')
+                    doc.font('Helvetica').fontSize(7.2).fillColor('#334155')
                        .text(simStr, cellX, textOffsetY, { width: COLS[8].width, align: 'center' });
                     cellX += COLS[8].width;
 
-                    // 10. Syllabus %
-                    doc.font('Helvetica').fontSize(7.5).fillColor('#475569')
-                       .text(`${s.syllabus_progress}%`, cellX, textOffsetY, { width: COLS[9].width, align: 'center' });
-                    cellX += COLS[9].width;
-
-                    // 11. LMS Coursework Avg
+                    // 10. LMS Coursework Avg
                     const lmsAvgStr = s.lms_avg !== null ? `${s.lms_avg}%` : '—';
                     doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#1e1b4b')
-                       .text(lmsAvgStr, cellX, textOffsetY, { width: COLS[10].width, align: 'center' });
+                       .text(lmsAvgStr, cellX, textOffsetY, { width: COLS[9].width, align: 'center' });
+                    cellX += COLS[9].width;
+
+                    // 11. Q1 Final Grade
+                    const q1Str = s.q1_grade !== null ? `${s.q1_grade}%` : '—';
+                    doc.font('Helvetica').fontSize(7.5).fillColor('#334155')
+                       .text(q1Str, cellX, textOffsetY, { width: COLS[10].width, align: 'center' });
                     cellX += COLS[10].width;
 
-                    // 12. Final Grade %
-                    const finalStr = s.final_grade !== null ? `${s.final_grade}%` : '—';
-                    doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a')
-                       .text(finalStr, cellX, textOffsetY - 0.5, { width: COLS[11].width, align: 'center' });
+                    // 12. Q2 Final Grade
+                    const q2Str = s.q2_grade !== null ? `${s.q2_grade}%` : '—';
+                    doc.font('Helvetica').fontSize(7.5).fillColor('#334155')
+                       .text(q2Str, cellX, textOffsetY, { width: COLS[11].width, align: 'center' });
                     cellX += COLS[11].width;
 
-                    // 13. Academic Standing (Badge Pill)
-                    const badgeW = 50;
+                    // 13. Semestral Final Grade
+                    const semGradeVal = s.semestral_grade !== null ? s.semestral_grade : s.final_grade;
+                    const semStr = semGradeVal !== null ? `${semGradeVal}%` : '—';
+                    doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a')
+                       .text(semStr, cellX, textOffsetY - 0.5, { width: COLS[12].width, align: 'center' });
+                    cellX += COLS[12].width;
+
+                    // 14. Academic Standing (Badge Pill)
+                    const badgeW = 46;
                     const badgeH = 12.5;
                     const badgeX = cellX + 4;
                     const badgeY = curY + 3.75;
@@ -15299,6 +15631,37 @@ router.get('/reports/export/gradebook/pdf', isTeacher, async (req, res) => {
                     doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 2.5).fill(badgeBg);
                     doc.font('Helvetica-Bold').fontSize(6.5).fillColor(badgeColor)
                        .text(s.standing.toUpperCase(), badgeX, badgeY + 3, { width: badgeW, align: 'center' });
+                    cellX += COLS[13].width;
+
+                    // 15. Chem 2 Prerequisite Status (Badge Pill)
+                    const cBadgeW = 90;
+                    const cBadgeH = 12.5;
+                    const cBadgeX = cellX + 4;
+                    const cBadgeY = curY + 3.75;
+
+                    let cBg = '#f1f5f9';
+                    let cColor = '#64748b';
+                    let cLabel = 'N/A';
+                    if (s.chem2_eligibility) {
+                        cLabel = s.chem2_eligibility.badge || s.chem2_eligibility.status || 'N/A';
+                        if (s.chem2_eligibility.code === 'PASSED' || s.chem2_eligibility.status === 'ELIGIBLE') {
+                            cBg = '#dcfce7';
+                            cColor = '#15803d';
+                        } else if (s.chem2_eligibility.code === 'FAILED' || s.chem2_eligibility.status === 'INELIGIBLE') {
+                            cBg = '#fee2e2';
+                            cColor = '#b91c1c';
+                        } else if (s.chem2_eligibility.code === 'PENDING' || s.chem2_eligibility.status === 'PENDING') {
+                            cBg = '#fef3c7';
+                            cColor = '#b45309';
+                        } else if (s.chem2_eligibility.code === 'ENROLLED' || s.chem2_eligibility.status === 'CURRENT_CHEM2') {
+                            cBg = '#e0e7ff';
+                            cColor = '#3730a3';
+                        }
+                    }
+
+                    doc.roundedRect(cBadgeX, cBadgeY, cBadgeW, cBadgeH, 2.5).fill(cBg);
+                    doc.font('Helvetica-Bold').fontSize(6.5).fillColor(cColor)
+                       .text(cLabel.toUpperCase(), cBadgeX, cBadgeY + 3, { width: cBadgeW, align: 'center' });
 
                     curY += rowH;
                 }
@@ -15336,7 +15699,7 @@ router.get('/reports/export/gradebook/pdf', isTeacher, async (req, res) => {
             // Authentication & Sign-off Block
             const authY = curY;
             doc.fontSize(6.5).font('Helvetica-Oblique').fillColor('#64748b')
-               .text(`Grading Scale & Standard: Computed in accordance with DepEd Order No. 8, s. 2015 (75% Minimum Passing Mastery Threshold). Active Weighting: LMS Avg = ${lmsWeightFormulaStr}; Final Grade = ${finalWeightFormulaStr}. All assessments and coursework have been validated through Elementa LMS and verified by teacher roll call records.`, 36, authY, { width: 540, lineGap: 1.5 });
+               .text(`Grading Scale & Standard: Computed in accordance with DepEd Order No. 8, s. 2015 (75% Minimum Passing Mastery Threshold). Active Weighting: LMS Avg = ${lmsWeightFormulaStr}; Final Grade = ${finalWeightFormulaStr}; Semestral = ${activeWeights.q1 || 50}% Q1 + ${activeWeights.q2 || 50}% Q2. All assessments and coursework have been validated through Elementa LMS and verified by teacher roll call records.`, 36, authY, { width: 540, lineGap: 1.5 });
 
             doc.moveTo(600, authY + 18).lineTo(780, authY + 18).strokeColor('#94a3b8').lineWidth(0.75).stroke();
             const teacherName = req.user ? `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() : 'Instructor';
@@ -16952,15 +17315,17 @@ router.post('/api/assessment/:aid/batch-zero', isTeacher, async (req, res) => {
 router.get('/arcade-telemetry', isTeacher, async (req, res) => {
     try {
         const teacherId = req.user.user_id;
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSyId = currentSY ? currentSY.sy_id : null;
 
-        // Fetch classes taught by this teacher
+        // Fetch classes taught by this teacher for active school year
         const [classes] = await db.query(
             `SELECT c.class_id, c.class_name, s.subject_name 
              FROM classes c
              LEFT JOIN subjects s ON s.subject_id = c.subject_id
-             WHERE c.teacher_id = ? 
+             WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
              ORDER BY c.class_name ASC`,
-            [teacherId]
+            [teacherId, currentSyId, currentSyId]
         );
 
         const selectedClassId = req.query.class_id ? parseInt(req.query.class_id, 10) : (classes[0] ? classes[0].class_id : null);
@@ -16977,7 +17342,7 @@ router.get('/arcade-telemetry', isTeacher, async (req, res) => {
              ORDER BY atomic_number ASC`
         );
 
-        // Fetch recent arcade sessions for this class or general
+        // Fetch recent arcade sessions for this class or general within active cohort
         let sessionSql = `
             SELECT s.session_id, s.started_at AS played_at, s.play_mode AS game_mode, s.final_score_p1 AS final_score, s.final_score_p2, s.cabinet_id,
                    s.winner,
@@ -16993,6 +17358,11 @@ router.get('/arcade-telemetry', isTeacher, async (req, res) => {
         if (selectedClassId) {
             sessionSql += ` JOIN class_students cs ON (cs.student_id = u.user_id OR cs.student_id = u2.user_id) WHERE cs.class_id = ? `;
             sessionParams.push(selectedClassId);
+        } else {
+            sessionSql += ` JOIN class_students cs ON (cs.student_id = u.user_id OR cs.student_id = u2.user_id)
+                            JOIN classes c ON cs.class_id = c.class_id
+                            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) `;
+            sessionParams.push(teacherId, currentSyId, currentSyId);
         }
         sessionSql += ` GROUP BY s.session_id ORDER BY s.started_at DESC LIMIT 50`;
 

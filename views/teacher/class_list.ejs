@@ -433,7 +433,7 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <!-- SY filter buttons -->
                             <div class="flex gap-1 flex-wrap" id="syFilterGroup">
-                                <button class="sy-btn active" data-sy="" onclick="filterClasses(this)">All Years</button>
+                                <button class="sy-btn <%= (!schoolYears.some(sy => sy.status === 'Current' || sy.is_active)) ? 'active' : '' %>" data-sy="" onclick="filterClasses(this)">All Years</button>
                                 <% schoolYears.forEach(function(sy){ %>
                                 <button class="sy-btn <%= (sy.status === 'Current' || sy.is_active) ? 'active' : '' %>"
                                         data-sy="<%= sy.sy_id %>"

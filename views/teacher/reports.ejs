@@ -2198,14 +2198,14 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-1 justify-end">
-                        <button type="button" onclick="applyGradebookWeightPreset(30, 30, 10, 20, 10, 80, 20)"
+                        <button type="button" onclick="applyGradebookWeightPreset(30, 30, 10, 20, 10, 80, 20, 50, 50)"
                             class="text-[10px] font-bold px-2 py-1 rounded-lg bg-white hover:bg-violet-100 text-violet-700 border border-violet-200 transition cursor-pointer"
-                            title="Reset to Default (30/30/10/20/10 LMS Avg &amp; 80% LMS + 20% Attendance Final)">
-                            Default (80/20)
+                            title="Reset to Default (30/30/10/20/10 LMS Avg, 80/20 Final, 50/50 Semestral)">
+                            Default (80/20 • 50/50)
                         </button>
-                        <button type="button" onclick="applyGradebookWeightPreset(40, 25, 10, 15, 10, 80, 20)"
+                        <button type="button" onclick="applyGradebookWeightPreset(40, 25, 10, 15, 10, 80, 20, 50, 50)"
                             class="text-[10px] font-bold px-2 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition cursor-pointer"
-                            title="40% Assessment Weight Preset (40/25/10/15/10 LMS Avg &amp; 80% LMS + 20% Attendance)">
+                            title="40% Assessment Weight Preset (40/25/10/15/10 LMS Avg, 80/20 Final, 50/50 Semestral)">
                             40% Assessment
                         </button>
                     </div>
@@ -2342,6 +2342,49 @@
                     </div>
                 </div>
 
+                <!-- PART 3: DepEd Semestral Final Grade & Chem 2 Prerequisite Weighting -->
+                <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                                <i class="fas fa-graduation-cap text-emerald-600"></i>
+                                3. Semestral Grade &amp; Chem 2 Prerequisite Weighting
+                            </p>
+                            <p class="text-[10px] text-slate-500 mt-0.5">Apportions weight between <span class="font-bold text-slate-700">Quarter 1</span> and <span class="font-bold text-slate-700">Quarter 2</span> (Senior High School Semestral Final Grade). Prerequisite rule: Passing Chemistry 1 (Threshold: &ge; <%= (locals.activeSY && activeSY.passing_threshold) ? activeSY.passing_threshold : 75 %>%) qualifies student for Chemistry 2.</p>
+                        </div>
+                        <span id="gbSemWeightTotalBadge"
+                            class="text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
+                            Total: 100%
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-white border border-slate-200 rounded-xl p-2.5">
+                            <label for="gbWeightQ1"
+                                class="text-[10px] font-black text-slate-600 uppercase tracking-wider block">Quarter 1 Weight</label>
+                            <p class="text-[9px] text-slate-400 mb-1.5">Q1 Final Composite Grade Contribution</p>
+                            <div class="relative flex items-center">
+                                <input type="number" id="gbWeightQ1" min="0" max="100" step="1" value="50"
+                                    oninput="updateGradebookWeightTotals()"
+                                    class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm font-black text-indigo-950 focus:outline-none focus:border-emerald-500 pr-7">
+                                <span class="absolute right-2.5 text-xs font-black text-slate-400">%</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-xl p-2.5">
+                            <label for="gbWeightQ2"
+                                class="text-[10px] font-black text-slate-600 uppercase tracking-wider block">Quarter 2 Weight</label>
+                            <p class="text-[9px] text-slate-400 mb-1.5">Q2 Final Composite Grade Contribution</p>
+                            <div class="relative flex items-center">
+                                <input type="number" id="gbWeightQ2" min="0" max="100" step="1" value="50"
+                                    oninput="updateGradebookWeightTotals()"
+                                    class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm font-black text-indigo-950 focus:outline-none focus:border-emerald-500 pr-7">
+                                <span class="absolute right-2.5 text-xs font-black text-slate-400">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Live Formula Preview & Validation Notice -->
                 <div class="bg-indigo-950 text-white rounded-xl p-3 space-y-1.5">
                     <div class="flex items-center justify-between">
@@ -2349,7 +2392,7 @@
                             class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                             <i class="fas fa-wand-magic-sparkles"></i> Active Grading Formula Preview
                         </span>
-                        <span class="text-[10px] text-slate-300 font-semibold">Passing Threshold: &ge; 75%</span>
+                        <span class="text-[10px] text-slate-300 font-semibold">Passing Threshold: &ge; <%= (locals.activeSY && activeSY.passing_threshold) ? activeSY.passing_threshold : 75 %>%</span>
                     </div>
                     <p id="gbFormulaPreviewLms" class="text-[11px] font-mono text-slate-200">
                         LMS Avg = (30% × Assessments) + (30% × Assignments) + (10% × Forums) + (20% × Simulations) +
@@ -2357,6 +2400,9 @@
                     </p>
                     <p id="gbFormulaPreviewFinal" class="text-[11px] font-mono text-amber-300 font-bold">
                         Final Grade = (80% × LMS Avg) + (20% × Attendance)
+                    </p>
+                    <p id="gbFormulaPreviewSemestral" class="text-[11px] font-mono text-emerald-300 font-bold">
+                        Semestral Grade = (50% × Quarter 1) + (50% × Quarter 2) → Chem 2 Eligibility (&ge; <%= (locals.activeSY && activeSY.passing_threshold) ? activeSY.passing_threshold : 75 %>%)
                     </p>
                 </div>
 
@@ -2805,7 +2851,7 @@
                 document.getElementById('gradebookWeightModal').classList.add('open');
             }
 
-            function applyGradebookWeightPreset(asmt, asgn, forum, sim, syllabus, lms, att) {
+            function applyGradebookWeightPreset(asmt, asgn, forum, sim, syllabus, lms, att, q1 = 50, q2 = 50) {
                 document.getElementById('gbWeightAsmt').value = asmt;
                 document.getElementById('gbWeightAsgn').value = asgn;
                 document.getElementById('gbWeightForum').value = forum;
@@ -2813,6 +2859,8 @@
                 document.getElementById('gbWeightSyllabus').value = syllabus;
                 document.getElementById('gbWeightLms').value = lms;
                 document.getElementById('gbWeightAtt').value = att;
+                if (document.getElementById('gbWeightQ1')) document.getElementById('gbWeightQ1').value = q1;
+                if (document.getElementById('gbWeightQ2')) document.getElementById('gbWeightQ2').value = q2;
                 updateGradebookWeightTotals();
             }
 
@@ -2828,6 +2876,10 @@
                 const wAtt = Math.max(0, Number(document.getElementById('gbWeightAtt')?.value || 0));
                 const finalTotal = Math.round((wLms + wAtt) * 100) / 100;
 
+                const wQ1 = Math.max(0, Number(document.getElementById('gbWeightQ1')?.value || 0));
+                const wQ2 = Math.max(0, Number(document.getElementById('gbWeightQ2')?.value || 0));
+                const semTotal = Math.round((wQ1 + wQ2) * 100) / 100;
+
                 const lmsBadge = document.getElementById('gbLmsWeightTotalBadge');
                 if (lmsBadge) {
                     lmsBadge.textContent = `Total: ${lmsTotal}%`;
@@ -2840,6 +2892,14 @@
                 if (finalBadge) {
                     finalBadge.textContent = `Total: ${finalTotal}%`;
                     finalBadge.className = finalTotal === 100
+                        ? 'text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0'
+                        : 'text-[11px] font-black px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 flex-shrink-0';
+                }
+
+                const semBadge = document.getElementById('gbSemWeightTotalBadge');
+                if (semBadge) {
+                    semBadge.textContent = `Total: ${semTotal}%`;
+                    semBadge.className = semTotal === 100
                         ? 'text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0'
                         : 'text-[11px] font-black px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 flex-shrink-0';
                 }
@@ -2863,12 +2923,21 @@
                     previewFinal.textContent = `Final Grade = ${finalParts.length > 0 ? finalParts.join(' + ') : '0%'}`;
                 }
 
+                const previewSem = document.getElementById('gbFormulaPreviewSemestral');
+                if (previewSem) {
+                    const semParts = [];
+                    if (wQ1 > 0) semParts.push(`(${wQ1}% × Quarter 1)`);
+                    if (wQ2 > 0) semParts.push(`(${wQ2}% × Quarter 2)`);
+                    const prereqThresh = <%= (locals.activeSY && activeSY.passing_threshold) ? activeSY.passing_threshold : 75 %>;
+                    previewSem.textContent = `Semestral Grade = ${semParts.length > 0 ? semParts.join(' + ') : '0%'} → Chem 2 Eligibility (≥ ${prereqThresh}%)`;
+                }
+
                 const errBox = document.getElementById('gbWeightValidationError');
                 const errText = document.getElementById('gbWeightValidationErrorText');
-                if (lmsTotal !== 100 || finalTotal !== 100) {
+                if (lmsTotal !== 100 || finalTotal !== 100 || semTotal !== 100) {
                     if (errBox) errBox.style.display = 'flex';
                     if (errText) {
-                        errText.textContent = `Part 1 (LMS Avg) total is ${lmsTotal}% and Part 2 (Final Grade) total is ${finalTotal}%. Both sections must add up to 100%.`;
+                        errText.textContent = `Weights must total 100%: Part 1 (LMS Avg: ${lmsTotal}%), Part 2 (Final Grade: ${finalTotal}%), Part 3 (Semestral: ${semTotal}%).`;
                     }
                     return false;
                 } else {
@@ -2879,7 +2948,7 @@
 
             function confirmGradebookExport() {
                 if (!updateGradebookWeightTotals()) {
-                    rpToast('Please ensure both LMS Avg weights and Final Grade weights total 100%.', 'error');
+                    rpToast('Please ensure all LMS Avg, Final Grade, and Semestral weights total 100%.', 'error');
                     return;
                 }
                 const format = document.getElementById('gbWeightExportFormat')?.value || 'pdf';
@@ -2904,6 +2973,8 @@
                 const wSyllabus = document.getElementById('gbWeightSyllabus')?.value ?? '10';
                 const wLms = document.getElementById('gbWeightLms')?.value ?? '80';
                 const wAtt = document.getElementById('gbWeightAtt')?.value ?? '20';
+                const wQ1 = document.getElementById('gbWeightQ1')?.value ?? '50';
+                const wQ2 = document.getElementById('gbWeightQ2')?.value ?? '50';
 
                 const params = new URLSearchParams();
                 if (classId && classId !== 'all') {
@@ -2917,6 +2988,19 @@
                 params.set('w_asmt', String(wAsmt));
                 params.set('w_asgn', String(wAsgn));
                 params.set('w_forum', String(wForum));
+                params.set('w_sim', String(wSim));
+                params.set('w_syllabus', String(wSyllabus));
+                params.set('w_lms', String(wLms));
+                params.set('w_att', String(wAtt));
+                params.set('w_q1', String(wQ1));
+                params.set('w_q2', String(wQ2));
+
+                const docTypeLabel = format === 'pdf' ? 'Landscape PDF' : 'DepEd Excel';
+                rpToast(`Generating ${docTypeLabel} Master Gradebook…`);
+
+                const url = `/teacher/reports/export/gradebook/${format}?${params.toString()}`;
+                window.open(url, '_blank');
+            }
                 params.set('w_sim', String(wSim));
                 params.set('w_syllabus', String(wSyllabus));
                 params.set('w_lms', String(wLms));
