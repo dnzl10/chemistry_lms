@@ -658,9 +658,65 @@ async function executeContentRollover(db, options) {
     };
 }
 
+/**
+ * Resolves the operational School Year context for Admin Portal pages.
+ * Supports viewing historical (Archive) or preparation (Draft) years via query param `?sy_id=`.
+ * Defaults safely to the live `Current` school year.
+ *
+ * @param {object} db - Database connection/pool
+ * @param {number|string|null} [reqQuerySyId] - Optional sy_id from req.query.sy_id
+ * @returns {Promise<{
+ *   selectedSY: object,
+ *   currentSY: object,
+ *   allSchoolYears: Array<object>,
+ *   isCurrentSY: boolean,
+ *   isHistoricalSY: boolean,
+ *   isDraftSY: boolean
+ * }>}
+ */
+async function resolveAdminSchoolYearContext(db, reqQuerySyId = null) {
+    const [allSchoolYears] = await db.query(
+        `SELECT * FROM school_years ORDER BY is_active DESC, sy_range DESC`
+    );
+
+    let currentSY = allSchoolYears.find(sy => sy.status === 'Current' || sy.is_active === 1);
+    if (!currentSY) {
+        currentSY = allSchoolYears[0] || {
+            sy_id: 1,
+            sy_range: '2026-2027',
+            sy_code: 'SY26-27',
+            status: 'Current',
+            is_active: 1
+        };
+    }
+
+    let selectedSY = currentSY;
+    const parsedId = parseInt(reqQuerySyId, 10);
+    if (!isNaN(parsedId) && parsedId > 0) {
+        const found = allSchoolYears.find(sy => sy.sy_id === parsedId);
+        if (found) {
+            selectedSY = found;
+        }
+    }
+
+    const isCurrentSY = (selectedSY.sy_id === currentSY.sy_id);
+    const isHistoricalSY = (selectedSY.status === 'Archive' || (!isCurrentSY && selectedSY.is_active === 0 && selectedSY.status !== 'Draft'));
+    const isDraftSY = (selectedSY.status === 'Draft');
+
+    return {
+        selectedSY,
+        currentSY,
+        allSchoolYears,
+        isCurrentSY,
+        isHistoricalSY,
+        isDraftSY
+    };
+}
+
 module.exports = {
     getCurrentSchoolYear,
     getActiveSchoolYear,
+    resolveAdminSchoolYearContext,
     normalizeSchoolYearStatus,
     isSemesterEnrollmentOpen,
     isQuarterGradingOpen,

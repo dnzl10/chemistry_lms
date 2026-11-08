@@ -1,0 +1,50 @@
+<%
+    // Standardized Admin School Year Context Selector Partial
+    // Expected locals: selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY
+    const _selSY = typeof selectedSY !== 'undefined' && selectedSY ? selectedSY : (typeof currentSY !== 'undefined' ? currentSY : null);
+    const _currSY = typeof currentSY !== 'undefined' && currentSY ? currentSY : _selSY;
+    const _allSY = typeof allSchoolYears !== 'undefined' && Array.isArray(allSchoolYears) ? allSchoolYears : (_selSY ? [_selSY] : []);
+    const _isCur = typeof isCurrentSY !== 'undefined' ? isCurrentSY : true;
+    const _isHist = typeof isHistoricalSY !== 'undefined' ? isHistoricalSY : false;
+    const _isDraft = typeof isDraftSY !== 'undefined' ? isDraftSY : false;
+%>
+<% if (_selSY) { %>
+<div class="inline-flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-2.5 py-1.5 shadow-sm text-xs">
+    <div class="flex items-center gap-1.5 pr-2 border-r border-slate-200">
+        <% if (_isCur) { %>
+            <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-sm animate-pulse"></span>
+            <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">Live Current</span>
+        <% } else if (_isDraft) { %>
+            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+            <span class="text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded-md">Draft Prep</span>
+        <% } else { %>
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-600 bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded-md">Archive</span>
+        <% } %>
+    </div>
+
+    <!-- Dropdown Selector -->
+    <div class="relative flex items-center">
+        <label for="adminGlobalSySelect" class="sr-only">Select Academic School Year</label>
+        <select id="adminGlobalSySelect"
+                onchange="switchAdminSchoolYearContext(this.value)"
+                class="bg-transparent font-bold text-slate-800 text-xs pr-6 pl-1 py-0.5 focus:outline-none cursor-pointer border-none appearance-none">
+            <% _allSY.forEach(sy => { %>
+                <option value="<%= sy.sy_id %>" <%= Number(sy.sy_id) === Number(_selSY.sy_id) ? 'selected' : '' %>>
+                    <%= sy.sy_range %> <%= sy.sy_code ? `(${sy.sy_code})` : '' %> — <%= sy.status %> <%= sy.is_active ? '●' : '' %>
+                </option>
+            <% }); %>
+        </select>
+        <i class="fas fa-chevron-down text-[9px] text-slate-400 pointer-events-none absolute right-1"></i>
+    </div>
+</div>
+
+<script>
+function switchAdminSchoolYearContext(syId) {
+    if (!syId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('sy_id', syId);
+    window.location.href = url.toString();
+}
+</script>
+<% } %>

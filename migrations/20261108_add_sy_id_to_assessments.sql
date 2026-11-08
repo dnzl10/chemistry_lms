@@ -21,3 +21,4 @@ WHERE `sy_id` IS NULL;
 
 -- 4. Add index for query performance
 CREATE INDEX `idx_assessments_sy_id` ON `assessments`(`sy_id`);
+

@@ -1,0 +1,37 @@
+<%
+    const _bSelSY = typeof selectedSY !== 'undefined' && selectedSY ? selectedSY : null;
+    const _bCurrSY = typeof currentSY !== 'undefined' && currentSY ? currentSY : _bSelSY;
+    const _bIsCur = typeof isCurrentSY !== 'undefined' ? isCurrentSY : true;
+    const _bIsHist = typeof isHistoricalSY !== 'undefined' ? isHistoricalSY : false;
+    const _bIsDraft = typeof isDraftSY !== 'undefined' ? isDraftSY : false;
+%>
+<% if (_bSelSY && !_bIsCur) { %>
+    <div class="mb-6 p-4 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm <%= _bIsHist ? 'bg-amber-50/95 border-amber-200 text-amber-950' : 'bg-sky-50/95 border-sky-200 text-sky-950' %>">
+        <div class="flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 <%= _bIsHist ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700' %>">
+                <i class="fas <%= _bIsHist ? 'fa-box-archive' : 'fa-compass-drafting' %> text-lg"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h4 class="font-black text-sm tracking-tight">
+                        <%= _bIsHist ? 'Archived Academic Year (Read-Only Mode)' : 'Draft Academic Year (Preparation Mode)' %>
+                    </h4>
+                    <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border <%= _bIsHist ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-sky-100 text-sky-800 border-sky-300' %>">
+                        <%= _bSelSY.sy_range %> <%= _bSelSY.sy_code ? `(${_bSelSY.sy_code})` : '' %>
+                    </span>
+                </div>
+                <p class="text-xs <%= _bIsHist ? 'text-amber-800/80' : 'text-sky-800/80' %> mt-0.5">
+                    <%= _bIsHist 
+                        ? 'You are inspecting historical archived cohort records. Roster changes, grade submissions, and new assessments are locked.' 
+                        : 'You are pre-configuring upcoming curriculum and enrollment structures before official portal launch.' %>
+                </p>
+            </div>
+        </div>
+        <div class="flex-shrink-0">
+            <a href="?sy_id=<%= _bCurrSY ? _bCurrSY.sy_id : '' %>" 
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-white border <%= _bIsHist ? 'border-amber-300 text-amber-900 hover:bg-amber-100' : 'border-sky-300 text-sky-900 hover:bg-sky-100' %> transition shadow-sm">
+                <i class="fas fa-rotate-left"></i> Return to Current SY (<%= _bCurrSY ? _bCurrSY.sy_range : 'Live' %>)
+            </a>
+        </div>
+    </div>
+<% } %>
