@@ -645,6 +645,43 @@ async function executeContentRollover(db, options) {
         questionsRetained = qbRes.affectedRows || 0;
     }
 
+    // 4. Assessments Rollover (Clone to targetSyId with is_unlocked = 0)
+    let assessmentsCloned = 0;
+    if (rolloverAssessments) {
+        const [sourceAsmts] = await db.query(`
+            SELECT quarter_id, topic_id, assessment_name, assessment_type, total_items,
+                   question_selection_mode, duration_minutes, timer_type, competitive_enabled,
+                   sound_bg, sound_correct, sound_wrong, sound_result_pass, sound_result_fail,
+                   speech_enabled, teacher_id
+            FROM assessments
+            WHERE sy_id = ?
+        `, [sourceSyId]);
+
+        for (const a of sourceAsmts) {
+            const [[existingAsm]] = await db.query(`
+                SELECT assessment_id FROM assessments
+                WHERE sy_id = ? AND topic_id = ? AND assessment_name = ?
+            `, [targetSyId, a.topic_id, a.assessment_name]);
+
+            if (!existingAsm) {
+                await db.query(`
+                    INSERT INTO assessments 
+                    (sy_id, quarter_id, topic_id, assessment_name, assessment_type, total_items,
+                     question_selection_mode, duration_minutes, timer_type, competitive_enabled,
+                     is_unlocked, sound_bg, sound_correct, sound_wrong, sound_result_pass,
+                     sound_result_fail, speech_enabled, teacher_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    targetSyId, a.quarter_id, a.topic_id, a.assessment_name, a.assessment_type, a.total_items,
+                    a.question_selection_mode, a.duration_minutes, a.timer_type, a.competitive_enabled,
+                    a.sound_bg, a.sound_correct, a.sound_wrong, a.sound_result_pass,
+                    a.sound_result_fail, a.speech_enabled, a.teacher_id
+                ]);
+                assessmentsCloned++;
+            }
+        }
+    }
+
     return {
         success: true,
         sourceSyRange: sourceSy.sy_range,
@@ -652,6 +689,7 @@ async function executeContentRollover(db, options) {
         classesCloned,
         materialsUpdated,
         questionsRetained,
+        assessmentsCloned,
         defaultVisibility,
         assessmentsExcluded: !rolloverAssessments,
         announcementsExcluded: !rolloverAnnouncements

@@ -262,7 +262,9 @@
                     </p>
                 </div>
             </div>
-            <div class="flex items-center gap-3 md:gap-6">
+            <div class="flex items-center gap-3 md:gap-5">
+                <!-- Global School Year Context Selector -->
+                <%- include('../partials/admin_sy_selector') %>
                 <!-- Notification bell -->
                 <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
                     <i class="far fa-bell text-xl text-cyan-600"></i>
@@ -288,6 +290,9 @@
         <!-- SCROLLABLE CONTENT -->
         <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
             <div id="adminMainContent" class="p-4 md:p-8 flex-1 fade-in">
+
+                <!-- School Year Alert Banner (Archive/Draft) -->
+                <%- include('../partials/admin_sy_banner') %>
 
                 <!-- ── BREADCRUMB ── -->
                 <div class="breadcrumb flex items-center mb-5" id="breadcrumb">
@@ -3156,7 +3161,8 @@ async function loadClasses() {
     const container = document.getElementById('classesContainer');
     container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-rose-300 text-2xl"></i></div>`;
     try {
-        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/classes`);
+        const curSyId = new URLSearchParams(window.location.search).get('sy_id');
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/classes${curSyId ? '?sy_id=' + curSyId : ''}`);
         const data = await res.json();
         if (!data.success) { container.innerHTML = `<p class="text-rose-500 text-sm">${data.message}</p>`; return; }
         const classes = data.classes;
@@ -4095,7 +4101,8 @@ async function loadAnnouncements() {
     const container = document.getElementById('announcementsContainer');
     container.innerHTML = `<div class="text-center py-6"><i class="fas fa-spinner fa-spin text-amber-300 text-xl"></i></div>`;
     try {
-        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/announcements`);
+        const curSyId = new URLSearchParams(window.location.search).get('sy_id');
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/announcements${curSyId ? '?sy_id=' + curSyId : ''}`);
         const data = await res.json();
         if (!data.success || !data.announcements.length) {
             container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fas fa-bullhorn text-3xl mb-2 block opacity-30"></i><p class="font-bold text-sm">No announcements yet.</p></div>`;

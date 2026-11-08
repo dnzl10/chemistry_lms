@@ -2450,30 +2450,26 @@ router.get('/uac/bulk-template', requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/academic_management', requireAdmin, async (req, res) => {
     try {
-        // ── All school years ──────────────────────────────────────────────────
-        const [allSchoolYears] = await db.query(
-            `SELECT * FROM school_years ORDER BY is_active DESC, sy_range DESC`
-        );
+        // ── Resolve School Year Context (Default to Current, support ?sy_id=) ──
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
+
         // Show only 2 latest in the card; all go to the "past SY" modal
         const schoolYears     = allSchoolYears.slice(0, 2);
-        const pastSchoolYears = allSchoolYears; // all, sorted active first then latest-to-oldest
+        const pastSchoolYears = allSchoolYears;
 
-        // ── Active school year with class/enroll counts ───────────────────────
-        let activeSY = null;
-        const activeSYRow = allSchoolYears.find(sy => sy.status === 'Current' || sy.is_active);
-        if (activeSYRow) {
-            const [[classCountRow]]  = await db.query(
-                `SELECT COUNT(*) AS cnt FROM classes WHERE sy_id = ?`, [activeSYRow.sy_id]
-            );
-            const [[enrollCountRow]] = await db.query(
-                `SELECT COUNT(*) AS cnt FROM class_students WHERE sy_id = ?`, [activeSYRow.sy_id]
-            );
-            activeSY = {
-                ...activeSYRow,
-                classCount   : classCountRow ? classCountRow.cnt : 0,
-                enrolledCount: enrollCountRow ? enrollCountRow.cnt : 0,
-            };
-        }
+        // ── Selected school year with class/enroll counts ─────────────────────
+        const [[classCountRow]]  = await db.query(
+            `SELECT COUNT(*) AS cnt FROM classes WHERE sy_id = ?`, [selectedSY.sy_id]
+        );
+        const [[enrollCountRow]] = await db.query(
+            `SELECT COUNT(*) AS cnt FROM class_students WHERE sy_id = ?`, [selectedSY.sy_id]
+        );
+        const activeSY = {
+            ...selectedSY,
+            classCount   : classCountRow ? classCountRow.cnt : 0,
+            enrolledCount: enrollCountRow ? enrollCountRow.cnt : 0,
+        };
 
         // ── Subjects with quarter/topic counts ────────────────────────────────
         const [subjects] = await db.query(`
@@ -2494,17 +2490,16 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
             `SELECT user_id, first_name, last_name FROM users WHERE role = 'Teacher' ORDER BY last_name ASC, first_name ASC`
         );
 
-        // ── KPI stat cards ────────────────────────────────────────────────────
+        // ── KPI stat cards (totalClasses scoped to selectedSY) ────────────────
         const [[subjRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM subjects`);
         const [[quarRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM quarters`);
         const [[topicRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM topics`);
-        const [[classRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM classes`);
 
         const amStats = {
             totalSubjects : subjRow.cnt,
             totalQuarters : quarRow.cnt,
             totalTopics   : topicRow.cnt,
-            totalClasses  : classRow.cnt,
+            totalClasses  : classCountRow ? classCountRow.cnt : 0,
         };
 
         res.render('admin/academic_management', {
@@ -2512,6 +2507,12 @@ router.get('/academic_management', requireAdmin, async (req, res) => {
             schoolYears,
             pastSchoolYears,
             activeSY,
+            selectedSY,
+            currentSY,
+            allSchoolYears,
+            isCurrentSY,
+            isHistoricalSY,
+            isDraftSY,
             subjects,
             teachers,
             amStats,
@@ -3861,15 +3862,9 @@ router.get('/am/subjects/:id/classes', requireAdmin, async (req, res) => {
         const subjectId = parseInt(req.params.id, 10);
         if (isNaN(subjectId)) return res.json({ success: false, message: 'Invalid subject ID.' });
 
-        // Get active SY
-        const [[activeSY]] = await db.query(
-            `SELECT sy_id, sy_range FROM school_years WHERE is_active = 1 LIMIT 1`
-        );
-
-        // If no active SY, return empty with a note
-        if (!activeSY) {
-            return res.json({ success: true, classes: [], activeSY: null });
-        }
+        // Resolve School Year Context (Current live SY or ?sy_id=)
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSY  = syContext.selectedSY;
 
         const [classes] = await db.query(`
             SELECT
@@ -3884,9 +3879,16 @@ router.get('/am/subjects/:id/classes', requireAdmin, async (req, res) => {
             WHERE c.subject_id = ? AND c.sy_id = ?
             GROUP BY c.class_id
             ORDER BY c.class_name ASC
-        `, [subjectId, activeSY.sy_id]);
+        `, [subjectId, targetSY.sy_id]);
 
-        return res.json({ success: true, classes, activeSY });
+        return res.json({
+            success: true,
+            classes,
+            activeSY: targetSY,
+            selectedSY: targetSY,
+            isHistoricalSY: syContext.isHistoricalSY,
+            isDraftSY: syContext.isDraftSY
+        });
 
     } catch (err) {
         console.error('[AM Get Classes Error]', err);
@@ -4794,7 +4796,11 @@ router.get('/am/subjects/:id/announcements', requireAdmin, async (req, res) => {
         const subjectId = parseInt(req.params.id, 10);
         if (isNaN(subjectId)) return res.json({ success: false, message: 'Invalid subject ID.' });
 
-        // Announcements linked to classes under this subject OR subject-wide (class_id NULL + matches subject via teacher)
+        // Resolve School Year Context (Current live SY or ?sy_id=)
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSY  = syContext.selectedSY;
+
+        // Announcements linked to classes under this subject in targetSY OR subject-wide for targetSY teachers
         const [announcements] = await db.query(`
             SELECT
                 a.announcement_id, a.title, a.content, a.is_priority, a.is_critical, a.scope, a.due_date, a.allow_replies, a.attachment_url, a.attachment_name, a.created_at,
@@ -4804,12 +4810,18 @@ router.get('/am/subjects/:id/announcements', requireAdmin, async (req, res) => {
             FROM announcements a
             LEFT JOIN classes c ON c.class_id = a.class_id
             LEFT JOIN users u   ON u.user_id   = a.teacher_id
-            WHERE c.subject_id = ? OR (a.class_id IS NULL AND c.subject_id IS NULL
-                AND a.teacher_id IN (SELECT teacher_id FROM classes WHERE subject_id = ?))
+            WHERE (c.subject_id = ? AND c.sy_id = ?) 
+               OR (a.class_id IS NULL AND a.teacher_id IN (SELECT teacher_id FROM classes WHERE subject_id = ? AND sy_id = ?))
             ORDER BY a.is_critical DESC, a.is_priority DESC, a.created_at DESC
-        `, [subjectId, subjectId]);
+        `, [subjectId, targetSY.sy_id, subjectId, targetSY.sy_id]);
 
-        return res.json({ success: true, announcements });
+        return res.json({
+            success: true,
+            announcements,
+            selectedSY: targetSY,
+            isHistoricalSY: syContext.isHistoricalSY,
+            isDraftSY: syContext.isDraftSY
+        });
 
     } catch (err) {
         console.error('[AM Get Announcements Error]', err);
