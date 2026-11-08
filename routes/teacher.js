@@ -1309,17 +1309,22 @@ const uploadWhitelist = multer({
 
 async function verifyClassOwnership(dbConn, teacherId, classId) {
     const [[c]] = await dbConn.execute(
-        `SELECT c.class_id, c.teacher_id, c.sy_id, sy.status AS sy_status, sy.is_active AS sy_is_active 
+        `SELECT c.class_id, c.class_name, c.teacher_id, c.sy_id, sy.status AS sy_status, sy.is_active AS sy_is_active 
          FROM classes c 
          LEFT JOIN school_years sy ON c.sy_id = sy.sy_id 
          WHERE c.class_id = ?`, 
         [classId]
     );
     if (!c || (teacherId && c.teacher_id !== teacherId)) {
-        const err = new Error("Unauthorized to manage this class.");
+        const err = new Error("Unauthorized to access this class.");
         err.statusCode = 403;
         throw err;
     }
+    return c;
+}
+
+async function assertActiveClass(dbConn, teacherId, classId) {
+    const c = await verifyClassOwnership(dbConn, teacherId, classId);
     const currentSY = await academicHelper.getCurrentSchoolYear(dbConn);
     if (!currentSY || c.sy_id !== currentSY.sy_id || !c.sy_is_active) {
         const err = new Error("This class belongs to an archived School Year and is read-only. Modifications are not allowed.");
@@ -1329,10 +1334,6 @@ async function verifyClassOwnership(dbConn, teacherId, classId) {
     return c;
 }
 
-async function assertActiveClass(dbConn, teacherId, classId) {
-    return await verifyClassOwnership(dbConn, teacherId, classId);
-}
-
 // 1. Settings (Dates and Capacity)
 router.post('/class/:id/settings', isTeacher, async (req, res) => {
     const conn = await db.getConnection();
@@ -1340,7 +1341,7 @@ router.post('/class/:id/settings', isTeacher, async (req, res) => {
         const classId = req.params.id;
         let { enrollment_start, enrollment_end, max_capacity } = req.body;
 
-        await verifyClassOwnership(conn, req.user.user_id, classId);
+        await assertActiveClass(conn, req.user.user_id, classId);
 
         if (enrollment_start && enrollment_end && new Date(enrollment_start) >= new Date(enrollment_end)) {
             return res.status(400).json({ success: false, message: "Start date must be before end date." });
@@ -1385,7 +1386,7 @@ router.post('/class/:id/settings', isTeacher, async (req, res) => {
 router.post('/class/:id/whitelist/upload', isTeacher, uploadWhitelist.single('file'), async (req, res) => {
     try {
         const classId = req.params.id;
-        await verifyClassOwnership(db, req.user.user_id, classId);
+        await assertActiveClass(db, req.user.user_id, classId);
 
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded." });
 
@@ -1464,7 +1465,7 @@ router.post('/class/:id/whitelist/upload', isTeacher, uploadWhitelist.single('fi
 router.post('/class/:id/whitelist/add', isTeacher, async (req, res) => {
     try {
         const classId = req.params.id;
-        await verifyClassOwnership(db, req.user.user_id, classId);
+        await assertActiveClass(db, req.user.user_id, classId);
 
         let { email, student_name, expirationDate } = req.body;
         if (!email) return res.status(400).json({ success: false, message: "Email is required." });
@@ -1498,7 +1499,7 @@ router.post('/class/:id/whitelist/add', isTeacher, async (req, res) => {
 router.delete('/class/:id/whitelist/remove', isTeacher, async (req, res) => {
     try {
         const classId = req.params.id;
-        await verifyClassOwnership(db, req.user.user_id, classId);
+        await assertActiveClass(db, req.user.user_id, classId);
 
         const { email } = req.body;
         if (!email) return res.status(400).json({ success: false, message: "Email is required." });
@@ -3819,9 +3820,9 @@ router.get('/api/attendance/:classId', isTeacher, async (req, res) => {
         const teacherId = req.user.user_id;
         const targetDate = req.query.date || new Date().toISOString().slice(0, 10);
 
-        // Verify class ownership and active school year status
+        // Verify class ownership (read-only view permitted for archived classes)
         const isAdmin = req.user.role === 'Admin';
-        await assertActiveClass(db, isAdmin ? null : teacherId, classId);
+        const clsObj = await verifyClassOwnership(db, isAdmin ? null : teacherId, classId);
 
         // Query enrolled students and left-join attendance_records for targetDate
         const [students] = await db.query(`
@@ -3860,7 +3861,7 @@ router.get('/api/attendance/:classId', isTeacher, async (req, res) => {
 
         res.json({
             success: true,
-            class_name: cls[0].class_name,
+            class_name: clsObj.class_name,
             date: targetDate,
             students,
             summary: {
@@ -3896,9 +3897,9 @@ router.post('/api/attendance/:classId/save', isTeacher, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Cannot mark or save attendance for future dates.' });
         }
 
-        // Verify class ownership and active school year status
+        // Verify class ownership and active school year status (saving attendance is a mutation)
         const isAdmin = req.user.role === 'Admin';
-        await assertActiveClass(db, isAdmin ? null : teacherId, classId);
+        const clsObj = await assertActiveClass(db, isAdmin ? null : teacherId, classId);
 
         for (const r of records) {
             const studentId = r.student_id;
@@ -3925,7 +3926,7 @@ router.post('/api/attendance/:classId/save', isTeacher, async (req, res) => {
             );
         }
 
-        await logActivity(req, 'RECORD_ATTENDANCE', `Recorded attendance for Class ID ${classId} (${cls[0].class_name}) on ${date} (${records.length} students)`, teacherId, 'Teacher');
+        await logActivity(req, 'RECORD_ATTENDANCE', `Recorded attendance for Class ID ${classId} (${clsObj.class_name}) on ${date} (${records.length} students)`, teacherId, 'Teacher');
 
         // T-26: Chronic Absence Alert (>= 3 recorded absences in this class)
         try {
@@ -3952,7 +3953,7 @@ router.post('/api/attendance/:classId/save', isTeacher, async (req, res) => {
                         priority: 'high',
                         eventType: 'chronic_absence_alert',
                         title: `Attendance Risk Alert: ${sName}`,
-                        message: `${sName} has reached ${ab.absent_count} recorded absences in ${cls[0].class_name}.`,
+                        message: `${sName} has reached ${ab.absent_count} recorded absences in ${clsObj.class_name}.`,
                         targetUrl: `/teacher/class/${classId}?tab=attendance`,
                         dedupeKey: `chronic_abs_${classId}_${ab.student_id}_${ab.absent_count}`,
                         extraMeta: { classId: Number(classId), studentId: ab.student_id, absentCount: ab.absent_count }
@@ -3977,9 +3978,9 @@ router.get('/api/attendance/:classId/analytics', isTeacher, async (req, res) => 
         const teacherId = req.user.user_id;
         const range = req.query.range || 'all'; // 'all', '30d', '7d', 'month'
 
-        // Verify class ownership and active school year status
+        // Verify class ownership (read-only view permitted for archived classes)
         const isAdmin = req.user.role === 'Admin';
-        await assertActiveClass(db, isAdmin ? null : teacherId, classId);
+        const clsObj = await verifyClassOwnership(db, isAdmin ? null : teacherId, classId);
 
         let dateFilter = '';
         let lmsDateFilter = '';
@@ -4273,7 +4274,7 @@ router.get('/api/attendance/:classId/analytics', isTeacher, async (req, res) => 
         res.json({
             success: true,
             class_id: classId,
-            class_name: cls[0].class_name,
+            class_name: clsObj.class_name,
             range,
             summary: {
                 enrolledCount: students.length,
@@ -4322,9 +4323,9 @@ router.get('/api/attendance/:classId/student/:studentId/history', isTeacher, asy
         const { classId, studentId } = req.params;
         const teacherId = req.user.user_id;
 
-        // Verify class ownership and active school year status
+        // Verify class ownership (read-only view permitted for archived classes)
         const isAdmin = req.user.role === 'Admin';
-        await assertActiveClass(db, isAdmin ? null : teacherId, classId);
+        const clsObj = await verifyClassOwnership(db, isAdmin ? null : teacherId, classId);
 
         // Student info with LMS telemetry
         const [studentRows] = await db.query(`
@@ -4355,7 +4356,7 @@ router.get('/api/attendance/:classId/student/:studentId/history', isTeacher, asy
 
         res.json({
             success: true,
-            class_name: cls[0].class_name,
+            class_name: clsObj.class_name,
             student: studentRows[0],
             history
         });
@@ -17483,5 +17484,7 @@ router._computeClassTopicRemediation = computeClassTopicRemediation;
 router._computeClassGradebookData = computeClassGradebookData;
 router._getStudentFilteredReportData = getStudentFilteredReportData;
 router._renderStudentProgressReportCardPage = renderStudentProgressReportCardPage;
+router._verifyClassOwnership = verifyClassOwnership;
+router._assertActiveClass = assertActiveClass;
 
 module.exports = router;

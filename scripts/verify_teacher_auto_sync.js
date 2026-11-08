@@ -58,23 +58,37 @@ async function runVerification() {
         );
         console.log(`  Found ${archivedClasses.length} archived/other classes.`);
 
-        // ── TEST 3: Archived Class Mutation Guard (assertActiveClass) ────────
-        console.log('\n3. Testing Server-Side Archival Mutation Guard...');
+        // ── TEST 3: Archived Class Governance (verifyClassOwnership vs assertActiveClass) ──
+        console.log('\n3. Testing Server-Side Archival Read vs Mutation Guards...');
         const teacherRouter = require('../routes/teacher');
         assert('Teacher router exports computeClassGradebookData', typeof teacherRouter._computeClassGradebookData === 'function');
+        assert('Teacher router exports verifyClassOwnership', typeof teacherRouter._verifyClassOwnership === 'function');
+        assert('Teacher router exports assertActiveClass', typeof teacherRouter._assertActiveClass === 'function');
 
-        // Test simulate assertActiveClass behavior directly on an archived class
         if (archivedClasses.length > 0) {
             const archCls = archivedClasses[0];
-            const [checkRows] = await db.query(
-                `SELECT c.class_id, c.sy_id, sy.is_active AS sy_is_active, sy.status AS sy_status
-                 FROM classes c
-                 LEFT JOIN school_years sy ON c.sy_id = sy.sy_id
-                 WHERE c.class_id = ?`,
-                [archCls.class_id]
-            );
-            const isArchived = !checkRows[0] || checkRows[0].sy_id !== currentSY.sy_id || !checkRows[0].sy_is_active;
-            assert('Archived class is correctly detected as non-active', isArchived, `class_id=${archCls.class_id}`);
+            
+            // A. verifyClassOwnership MUST SUCCEED on archived classes (allows read-only viewing of attendance, grades, etc.)
+            let verifyReadSuccess = false;
+            let readClsObj = null;
+            try {
+                readClsObj = await teacherRouter._verifyClassOwnership(db, null, archCls.class_id);
+                verifyReadSuccess = !!readClsObj && !!readClsObj.class_name;
+            } catch (err) {
+                verifyReadSuccess = false;
+            }
+            assert('verifyClassOwnership allows read access to archived class and returns class_name', verifyReadSuccess, `class_id=${archCls.class_id}, class_name=${readClsObj?.class_name}`);
+
+            // B. assertActiveClass MUST FAIL with 403 on archived classes (blocks mutations: settings, whitelist, attendance saving)
+            let assertMutationBlocked = false;
+            let blockedMessage = '';
+            try {
+                await teacherRouter._assertActiveClass(db, null, archCls.class_id);
+            } catch (err) {
+                assertMutationBlocked = err.statusCode === 403;
+                blockedMessage = err.message;
+            }
+            assert('assertActiveClass blocks mutation on archived class with HTTP 403', assertMutationBlocked, `Message: "${blockedMessage}"`);
         } else {
             console.log('  ℹ️ No archived classes present in DB right now to test guard.');
         }
