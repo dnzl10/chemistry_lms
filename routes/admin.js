@@ -8620,32 +8620,7 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
         `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
 
         // ─────────────────────────────────────────────────────────────────────
-        // TAB 4 — TEST PAPER QUESTION BANK (Arcade Single Source of Truth)
-        // ─────────────────────────────────────────────────────────────────────
-        const [questionBank] = await db.query(`
-            SELECT
-                eq.question_id,
-                eq.prompt AS question_text,
-                eq.machine_name AS input_mode,
-                eq.difficulty,
-                '' AS option_a, '' AS option_b, '' AS option_c, '' AS option_d,
-                eq.answer_text AS correct_answer,
-                eq.topic_id,
-                t.topic_name,
-                q.quarter_id, q.quarter_number,
-                s.subject_id
-            FROM elementa_questions eq
-            LEFT JOIN topics   t  ON t.topic_id   = eq.topic_id
-            LEFT JOIN quarters q  ON q.quarter_id  = t.quarter_id
-            LEFT JOIN subjects s  ON s.subject_id  = q.subject_id
-            WHERE eq.is_active = 1
-            ORDER BY s.subject_name ASC, q.quarter_number ASC, eq.question_id ASC
-        `);
-
-        questionBank.forEach(q => { q.sequences = []; });
-
-        // ─────────────────────────────────────────────────────────────────────
-        // TAB 5 — ITEM ANALYSIS & REMEDIATION (Arcade Micro-Telemetry)
+        // TAB 4 — ITEM ANALYSIS & REMEDIATION (Arcade Micro-Telemetry)
         // ─────────────────────────────────────────────────────────────────────
 
         // Item analysis from elementa_customer_attempts & elementa_questions
@@ -8742,7 +8717,7 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             subjects,
             quarters,
             topics,
-            questionBank,
+            questionBank: [],
             selectedSY,
             currentSY,
             allSchoolYears,

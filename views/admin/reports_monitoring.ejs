@@ -13,8 +13,7 @@
     activityLogs    : array (latest 20 from activity_logs)
     subjects        : array for filter dropdowns
     quarters        : array for filter dropdowns
-    topics          : array for test-paper builder
-    questionBank    : array (full question list for test-paper selection)
+    topics          : array for filter dropdowns
   ============================================================
 %>
 <!DOCTYPE html>
@@ -159,11 +158,6 @@
         .accordion-body { display:none; }
         .accordion-body.open { display:block; }
         .accordion-trigger { cursor:pointer; }
-
-        /* ── TEST PAPER QUESTION CARD ── */
-        .q-card { transition: all 0.15s ease; }
-        .q-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); }
-        .q-card.selected { background:#eef2ff; border-color:#6366f1; }
 
         /* ── FILTER PILLS ── */
         .filter-pill { cursor:pointer; padding:5px 12px; border-radius:8px; font-size:11px; font-weight:700; transition:all .15s; border:1.5px solid #e2e8f0; color:#64748b; }
@@ -455,10 +449,6 @@
                                     <i class="fas fa-id-card text-sky-400"></i> Student Dossier
                                 </button>
                                 <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600"
-                                        onclick="switchTab('tab-testpaper', this)">
-                                    <i class="fas fa-file-lines text-amber-400"></i> Test Paper
-                                </button>
-                                <button class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm text-slate-600"
                                         onclick="switchTab('tab-analysis', this)">
                                     <i class="fas fa-magnifying-glass-chart text-rose-400"></i> Item Analysis
                                 </button>
@@ -701,105 +691,7 @@
                             </div><!-- /tab-dossier -->
 
                             <!-- ══════════════════════════════
-                                 TAB 4 — TEST PAPER GENERATOR
-                            ══════════════════════════════ -->
-                            <div id="tab-testpaper" class="tab-content p-5">
-                                <div class="mb-4">
-                                    <h3 class="font-black text-indigo-900 text-base">Smart Test Paper Generator</h3>
-                                    <p class="text-xs text-slate-400 mt-0.5">Select questions, generate a branded printable PDF with an auto answer key.</p>
-                                </div>
-
-                                <!-- Filters row -->
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Subject</label>
-                                        <select id="tpSubjectFilter" class="fi text-sm" onchange="filterTestPaperQuestions()">
-                                            <option value="">All Subjects</option>
-                                            <% if (subjects && subjects.length > 0) { %>
-                                            <% subjects.forEach(function(sub) { %>
-                                            <option value="<%= sub.subject_id %>"><%= sub.subject_name %></option>
-                                            <% }) %>
-                                            <% } %>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Quarter</label>
-                                        <select id="tpQuarterFilter" class="fi text-sm" onchange="filterTestPaperQuestions()">
-                                            <option value="">All Quarters</option>
-                                            <% if (quarters && quarters.length > 0) { %>
-                                            <% quarters.forEach(function(q) { %>
-                                            <option value="<%= q.quarter_id %>">Quarter <%= q.quarter_number %></option>
-                                            <% }) %>
-                                            <% } %>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Topic</label>
-                                        <select id="tpTopicFilter" class="fi text-sm" onchange="filterTestPaperQuestions()">
-                                            <option value="">All Topics</option>
-                                            <% if (topics && topics.length > 0) { %>
-                                            <% topics.forEach(function(t) { %>
-                                            <option value="<%= t.topic_id %>"><%= t.topic_name %></option>
-                                            <% }) %>
-                                            <% } %>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <!-- Question selection workspace -->
-                                <div class="mb-3 flex items-center justify-between flex-wrap gap-2">
-                                    <p class="text-sm font-bold text-slate-600">
-                                        <span id="tpSelectedCount">0</span> question(s) selected
-                                        <button onclick="clearTpSelection()" class="ml-2 text-xs text-rose-400 hover:text-rose-600 font-bold">Clear</button>
-                                    </p>
-                                    <div class="flex items-center gap-2">
-                                        <input id="tpExamTitle" type="text" placeholder="Exam Title (e.g. Q1 Pre-Test)" class="fi text-sm w-52">
-                                        <button onclick="generateTestPaper()"
-                                            class="flex items-center gap-2 text-xs font-bold bg-amber-500 text-white px-4 py-2 rounded-xl hover:bg-amber-600 transition shadow-md whitespace-nowrap">
-                                            <i class="fas fa-print"></i> Generate PDF
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div id="tpQuestionList" class="space-y-2 max-h-80 overflow-y-auto pr-1">
-                                <% if (questionBank && questionBank.length > 0) { %>
-                                <% questionBank.forEach(function(q, idx) { %>
-                                <div class="q-card border border-slate-100 rounded-xl p-3 cursor-pointer select-none"
-                                     data-qid="<%= q.question_id %>"
-                                     data-subject="<%= q.subject_id || '' %>"
-                                     data-quarter="<%= q.quarter_id || '' %>"
-                                     data-topic="<%= q.topic_id || '' %>"
-                                     data-mode="<%= q.input_mode %>"
-                                     onclick="toggleTpQuestion(this)">
-                                    <div class="flex items-start gap-3">
-                                        <div class="w-6 h-6 rounded-md border-2 border-slate-200 flex items-center justify-center flex-shrink-0 mt-0.5 transition" id="tpCheck_<%= q.question_id %>">
-                                            <i class="fas fa-check text-[10px] text-indigo-600 hidden"></i>
-                                        </div>
-                                        <div class="flex-1">
-                                            <p class="text-sm text-slate-700 font-medium leading-snug"><%= q.question_text %></p>
-                                            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md
-                                                    <%= q.input_mode === 'Standard' ? 'bg-indigo-50 text-indigo-600' : q.input_mode === 'Numeric' ? 'bg-amber-50 text-amber-600' : 'bg-cyan-50 text-cyan-600' %>">
-                                                    <%= q.input_mode.replace('_', ' ') %>
-                                                </span>
-                                                <span class="text-[10px] text-slate-400 font-bold"><%= q.difficulty %></span>
-                                                <span class="text-[10px] text-slate-400"><%= q.topic_name || '' %></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <% }) %>
-                                <% } else { %>
-                                <div class="py-12 text-center text-slate-400 text-sm">
-                                    <i class="fas fa-database text-3xl mb-2 block opacity-20"></i>
-                                    No questions available.
-                                </div>
-                                <% } %>
-                                </div>
-                            </div><!-- /tab-testpaper -->
-
-                            <!-- ══════════════════════════════
-                                 TAB 5 — ITEM ANALYSIS
+                                 TAB 4 — ITEM ANALYSIS
                             ══════════════════════════════ -->
                             <div id="tab-analysis" class="tab-content p-6">
                                 <!-- Header Section -->
@@ -1054,63 +946,6 @@ function applyDossierFilters() {
         if (show) n++;
     });
     document.getElementById('dossierCountLabel').textContent = 'Showing ' + n + ' student(s)';
-}
-
-// ─────────────────────────────────
-// TEST PAPER — QUESTION SELECTION
-// ─────────────────────────────────
-var _tpSelected = {};
-
-function toggleTpQuestion(card) {
-    var qid = card.dataset.qid;
-    var checkIcon = document.getElementById('tpCheck_' + qid);
-    if (_tpSelected[qid]) {
-        delete _tpSelected[qid];
-        card.classList.remove('selected');
-        card.style.borderColor = '';
-        card.style.background  = '';
-        if (checkIcon) checkIcon.querySelector('i').classList.add('hidden');
-        checkIcon.style.borderColor = '';
-    } else {
-        _tpSelected[qid] = true;
-        card.classList.add('selected');
-        if (checkIcon) {
-            checkIcon.querySelector('i').classList.remove('hidden');
-            checkIcon.style.borderColor = '#6366f1';
-        }
-    }
-    document.getElementById('tpSelectedCount').textContent = Object.keys(_tpSelected).length;
-}
-
-function clearTpSelection() {
-    _tpSelected = {};
-    document.querySelectorAll('.q-card').forEach(function(c) {
-        c.classList.remove('selected');
-        var qid = c.dataset.qid;
-        var chk = document.getElementById('tpCheck_' + qid);
-        if (chk) { chk.querySelector('i').classList.add('hidden'); chk.style.borderColor = ''; }
-    });
-    document.getElementById('tpSelectedCount').textContent = '0';
-}
-
-function filterTestPaperQuestions() {
-    var subj    = document.getElementById('tpSubjectFilter').value;
-    var quarter = document.getElementById('tpQuarterFilter').value;
-    var topic   = document.getElementById('tpTopicFilter').value;
-    document.querySelectorAll('.q-card').forEach(function(c) {
-        var matchSubj    = !subj    || c.dataset.subject  === subj;
-        var matchQuarter = !quarter || c.dataset.quarter  === quarter;
-        var matchTopic   = !topic   || c.dataset.topic    === topic;
-        c.style.display  = (matchSubj && matchQuarter && matchTopic) ? '' : 'none';
-    });
-}
-
-function generateTestPaper() {
-    var ids = Object.keys(_tpSelected);
-    if (ids.length === 0) { showToast('Select at least one question.', 'warning'); return; }
-    var title = document.getElementById('tpExamTitle').value.trim() || 'Exam';
-    var url   = '/admin/rm/test-paper?ids=' + ids.join(',') + '&title=' + encodeURIComponent(title);
-    window.open(url, '_blank');
 }
 
 // ─────────────────────────────────
