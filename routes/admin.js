@@ -8670,29 +8670,38 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
         };
 
         // ─────────────────────────────────────────────────────────────────────
-        // TAB 1 — CURRICULUM PROGRESS DATA
+        // TAB 1 — CURRICULUM CONTENTS DATA
         // curriculumData: [ { quarter_number, subject_name, topics: [ { topic_name,
-        //   materialCount, assessmentCount, coveredPct } ] } ]
-        // coveredPct = if either materials > 0 OR assessments > 0, considered covered.
-        // We use: min(100, round((materialCount + assessmentCount) / maxPossible * 100))
-        // Simple formula: coveredPct = min(100, (assessmentCount >= 1 ? 50 : 0) + (materialCount >= 1 ? 50 : 0))
-        // This yields 0%, 50%, or 100% — clean and meaningful for a progress bar.
+        //   materialCount, assessmentCount, assignmentCount, forumCount, coveredPct } ] } ]
+        // coveredPct = proportion of the 4 content categories covered:
+        // Materials (25%), Assessments (25%), Assignments (25%), Discussion Forums (25%).
+        // Simple formula: min(100, (mC>=1?25:0) + (aC>=1?25:0) + (asgnC>=1?25:0) + (fC>=1?25:0))
+        // This yields clean 0%, 25%, 50%, 75%, or 100% progress across all 4 content pillars.
         // ─────────────────────────────────────────────────────────────────────
         const [rawCurriculum] = await db.query(`
             SELECT
                 q.quarter_id, q.quarter_number,
                 s.subject_name,
                 t.topic_id, t.topic_name,
-                COUNT(DISTINCT lm.material_id)  AS materialCount,
-                COUNT(DISTINCT a.assessment_id) AS assessmentCount
+                COUNT(DISTINCT lm.material_id)     AS materialCount,
+                COUNT(DISTINCT a.assessment_id)    AS assessmentCount,
+                COUNT(DISTINCT asgn.assessment_id) AS assignmentCount,
+                COUNT(DISTINCT ft.forum_id)        AS forumCount
             FROM quarters q
             JOIN subjects s ON s.subject_id = q.subject_id
-            LEFT JOIN topics t           ON t.quarter_id    = q.quarter_id
-            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id AND (lm.sy_id = ? OR lm.sy_id IS NULL)
-            LEFT JOIN assessments a       ON a.topic_id     = t.topic_id AND a.sy_id = ?
+            LEFT JOIN topics t             ON t.quarter_id    = q.quarter_id
+            LEFT JOIN learning_materials lm ON lm.topic_id   = t.topic_id AND (lm.sy_id = ? OR lm.sy_id IS NULL)
+            LEFT JOIN assessments a         ON a.topic_id    = t.topic_id AND a.sy_id = ? AND (a.assessment_type != 'Assignment' OR a.assessment_type IS NULL)
+            LEFT JOIN assessments asgn      ON asgn.topic_id = t.topic_id AND asgn.sy_id = ? AND asgn.assessment_type = 'Assignment'
+            LEFT JOIN (
+                SELECT ft_inner.forum_id, ft_inner.topic_id
+                FROM forum_topics ft_inner
+                LEFT JOIN classes cls ON cls.class_id = ft_inner.class_id
+                WHERE cls.sy_id = ? OR (ft_inner.class_id IS NULL AND ft_inner.created_at >= ? AND ft_inner.created_at <= ?)
+            ) ft ON ft.topic_id = t.topic_id
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name ASC, q.quarter_number ASC, t.topic_id ASC
-        `, [selectedSY.sy_id, selectedSY.sy_id]);
+        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.start_date || '1970-01-01', selectedSY.end_date || '2099-12-31']);
 
         // Group into quarters
         const curriculumMap = {};
@@ -8707,14 +8716,18 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
                 };
             }
             if (row.topic_id) {
-                const mC = parseInt(row.materialCount,  10) || 0;
-                const aC = parseInt(row.assessmentCount,10) || 0;
-                const coveredPct = Math.min(100, (aC >= 1 ? 50 : 0) + (mC >= 1 ? 50 : 0));
+                const mC = parseInt(row.materialCount,   10) || 0;
+                const aC = parseInt(row.assessmentCount, 10) || 0;
+                const asgnC = parseInt(row.assignmentCount, 10) || 0;
+                const fC = parseInt(row.forumCount,      10) || 0;
+                const coveredPct = Math.min(100, (mC >= 1 ? 25 : 0) + (aC >= 1 ? 25 : 0) + (asgnC >= 1 ? 25 : 0) + (fC >= 1 ? 25 : 0));
                 curriculumMap[key].topics.push({
                     topic_id       : row.topic_id,
                     topic_name     : row.topic_name,
                     materialCount  : mC,
                     assessmentCount: aC,
+                    assignmentCount: asgnC,
+                    forumCount     : fC,
                     coveredPct,
                 });
             }
@@ -8886,7 +8899,7 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ── EXPORT: CURRICULUM PROGRESS — Excel ─────────────────────────────────────
+// ── EXPORT: CURRICULUM CONTENTS — Excel ──────────────────────────────────────
 router.get('/rm/export/curriculum', requireAdmin, async (req, res) => {
     try {
         const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
@@ -8897,35 +8910,44 @@ router.get('/rm/export/curriculum', requireAdmin, async (req, res) => {
                 s.subject_name,
                 q.quarter_number,
                 t.topic_name,
-                COUNT(DISTINCT lm.material_id)   AS materialCount,
-                COUNT(DISTINCT a.assessment_id)  AS assessmentCount
+                COUNT(DISTINCT lm.material_id)     AS materialCount,
+                COUNT(DISTINCT a.assessment_id)    AS assessmentCount,
+                COUNT(DISTINCT asgn.assessment_id) AS assignmentCount,
+                COUNT(DISTINCT ft.forum_id)        AS forumCount
             FROM quarters q
             JOIN subjects s ON s.subject_id = q.subject_id
-            LEFT JOIN topics t            ON t.quarter_id   = q.quarter_id
-            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id AND (lm.sy_id = ? OR lm.sy_id IS NULL)
-            LEFT JOIN assessments a         ON a.topic_id   = t.topic_id AND a.sy_id = ?
+            LEFT JOIN topics t             ON t.quarter_id   = q.quarter_id
+            LEFT JOIN learning_materials lm ON lm.topic_id   = t.topic_id AND (lm.sy_id = ? OR lm.sy_id IS NULL)
+            LEFT JOIN assessments a         ON a.topic_id    = t.topic_id AND a.sy_id = ? AND (a.assessment_type != 'Assignment' OR a.assessment_type IS NULL)
+            LEFT JOIN assessments asgn      ON asgn.topic_id = t.topic_id AND asgn.sy_id = ? AND asgn.assessment_type = 'Assignment'
+            LEFT JOIN (
+                SELECT ft_inner.forum_id, ft_inner.topic_id
+                FROM forum_topics ft_inner
+                LEFT JOIN classes cls ON cls.class_id = ft_inner.class_id
+                WHERE cls.sy_id = ? OR (ft_inner.class_id IS NULL AND ft_inner.created_at >= ? AND ft_inner.created_at <= ?)
+            ) ft ON ft.topic_id = t.topic_id
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name, q.quarter_number, t.topic_id
-        `, [selectedSY.sy_id, selectedSY.sy_id]);
+        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.start_date || '1970-01-01', selectedSY.end_date || '2099-12-31']);
 
         const auditRef = generateAuditRef('CUR');
         const wb = new ExcelJS.Workbook();
         wb.creator = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || 'Admin';
         wb.created = new Date();
-        const ws = wb.addWorksheet('Curriculum Progress');
+        const ws = wb.addWorksheet('Curriculum Contents');
 
         applyExcelMetadataHeader(ws, {
-            title: 'Curriculum Progress & Topic Coverage Report',
+            title: 'Curriculum Contents & Topic Coverage Report',
             scope: 'All Subjects & Quarters',
             user: req.user,
             role: 'Admin',
             classification: 'RESTRICTED — ADMIN EYES ONLY',
             auditRef,
-            lastCol: 'F'
+            lastCol: 'H'
         });
 
         // Header row
-        const headerRow = ws.addRow(['Subject', 'Quarter', 'Topic', 'Materials', 'Assessments', 'Covered %']);
+        const headerRow = ws.addRow(['Subject', 'Quarter', 'Topic', 'Materials', 'Assessments', 'Assignments', 'Forums', 'Covered %']);
         headerRow.eachCell(cell => {
             cell.font      = { bold: true, color: { argb: 'FFFFFFFF' } };
             cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
@@ -8934,15 +8956,19 @@ router.get('/rm/export/curriculum', requireAdmin, async (req, res) => {
         });
 
         rows.forEach((r, idx) => {
-            const mC  = parseInt(r.materialCount,  10) || 0;
-            const aC  = parseInt(r.assessmentCount,10) || 0;
-            const pct = Math.min(100, (aC >= 1 ? 50 : 0) + (mC >= 1 ? 50 : 0));
+            const mC    = parseInt(r.materialCount,   10) || 0;
+            const aC    = parseInt(r.assessmentCount, 10) || 0;
+            const asgnC = parseInt(r.assignmentCount, 10) || 0;
+            const fC    = parseInt(r.forumCount,      10) || 0;
+            const pct   = Math.min(100, (mC >= 1 ? 25 : 0) + (aC >= 1 ? 25 : 0) + (asgnC >= 1 ? 25 : 0) + (fC >= 1 ? 25 : 0));
             const row = ws.addRow([
                 r.subject_name || '',
                 `Quarter ${r.quarter_number}`,
                 r.topic_name   || '(No Topics)',
                 mC,
                 aC,
+                asgnC,
+                fC,
                 `${pct}%`,
             ]);
             if (idx % 2 === 0) {
@@ -8954,15 +8980,15 @@ router.get('/rm/export/curriculum', requireAdmin, async (req, res) => {
 
         ws.columns = [
             { width: 28 }, { width: 14 }, { width: 34 },
-            { width: 14 }, { width: 16 }, { width: 14 }
+            { width: 14 }, { width: 16 }, { width: 16 }, { width: 14 }, { width: 14 }
         ];
 
-        setExportHttpHeaders(res, `curriculum_progress_${auditRef}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        setExportHttpHeaders(res, `curriculum_contents_${auditRef}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         await wb.xlsx.write(res);
         res.end();
 
         await logActivity(req.user.user_id, 'Admin', 'EXPORT_CURRICULUM',
-            `Exported Curriculum Progress Excel report (Ref: ${auditRef})`);
+            `Exported Curriculum Contents Excel report (Ref: ${auditRef})`);
 
     } catch (err) {
         console.error('[RM Export Curriculum Error]', err);

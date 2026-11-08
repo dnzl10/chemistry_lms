@@ -5,7 +5,7 @@
   EJS VARIABLES EXPECTED FROM ROUTER:
     user            : logged-in admin
     rmStats         : { totalStudents, totalAssessments, totalQuestions, totalMaterials }
-    curriculumData  : array [ { quarter_number, subject_name, topics: [ { topic_name, materialCount, assessmentCount, coveredPct } ] } ]
+    curriculumData  : array [ { quarter_number, subject_name, topics: [ { topic_name, materialCount, assessmentCount, assignmentCount, forumCount, coveredPct } ] } ]
     classMapping    : array [ { class_name, teacher_name, subject_name, studentCount, avgScore } ]
     students        : array (for individual export / dossier)
     itemAnalysis    : array [ { question_id, question_text, correct_answer, totalAttempts, correctCount, distractors: {A,B,C,D} } ]
@@ -455,13 +455,13 @@
                             </div>
 
                             <!-- ══════════════════════════════
-                                 TAB 1 — CURRICULUM PROGRESS
+                                 TAB 1 — CURRICULUM CONTENTS
                             ══════════════════════════════ -->
                             <div id="tab-curriculum" class="tab-content active p-5">
                                 <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                                     <div>
-                                        <h3 class="font-black text-indigo-900 text-base">Curriculum Progress Monitor</h3>
-                                        <p class="text-xs text-slate-400 mt-0.5">Coverage tracked by Quarter → Topic → Materials & Assessments.</p>
+                                        <h3 class="font-black text-indigo-900 text-base">Curriculum Contents Monitor</h3>
+                                        <p class="text-xs text-slate-400 mt-0.5">Coverage tracked by Quarter → Topic → Materials, Assessments, Assignments & Forums</p>
                                     </div>
                                     <button onclick="exportCurriculum()"
                                         class="flex items-center gap-2 text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition shadow-md">
@@ -501,9 +501,11 @@
                                                         <div class="progress-fill <%= t.coveredPct >= 75 ? 'bg-emerald-500' : t.coveredPct >= 40 ? 'bg-amber-400' : 'bg-rose-400' %>"
                                                              style="width:<%= t.coveredPct %>%"></div>
                                                     </div>
-                                                    <div class="flex gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                    <div class="flex flex-wrap gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                                                         <span><i class="fas fa-book mr-1 text-blue-400"></i><%= t.materialCount %> Materials</span>
                                                         <span><i class="fas fa-clipboard-list mr-1 text-amber-400"></i><%= t.assessmentCount %> Assessments</span>
+                                                        <span><i class="fas fa-file-pen mr-1 text-emerald-400"></i><%= t.assignmentCount || 0 %> Assignments</span>
+                                                        <span><i class="fas fa-comments mr-1 text-purple-400"></i><%= t.forumCount || 0 %> Forums</span>
                                                     </div>
                                                 </div>
                                             <% }) %>
