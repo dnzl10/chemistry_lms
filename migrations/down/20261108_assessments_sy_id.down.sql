@@ -8,3 +8,4 @@ DROP INDEX idx_assessments_sy_id ON assessments;
 
 ALTER TABLE assessments 
 DROP COLUMN sy_id;
+
