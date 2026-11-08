@@ -5484,18 +5484,21 @@ const VALID_TIMER_TYPES    = ['Global', 'PerItem'];
 // PAGE LOADER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-router.get('/gaming_question_bank', requireAdmin, async (req, res) => {
+router.get(['/gaming_question_bank', '/gaming_qbank'], requireAdmin, async (req, res) => {
     try {
-        const [[aTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments`);
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
+
+        const [[aTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE sy_id = ?`, [selectedSY.sy_id]);
         const [[qTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1`);
         const [[mTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM button_mappings`);
         const [[rTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM remediation_materials`);
 
         const gqStats = {
-            totalAssessments : aTot.cnt,
-            totalQuestions   : qTot.cnt,
-            totalMappings    : mTot.cnt,
-            totalRemediation : rTot.cnt,
+            totalAssessments : aTot ? aTot.cnt : 0,
+            totalQuestions   : qTot ? qTot.cnt : 0,
+            totalMappings    : mTot ? mTot.cnt : 0,
+            totalRemediation : rTot ? rTot.cnt : 0,
         };
 
         const [assessments] = await db.query(`
@@ -5504,7 +5507,7 @@ router.get('/gaming_question_bank', requireAdmin, async (req, res) => {
                 a.total_items, a.duration_minutes, a.timer_type,
                 a.is_unlocked, a.start_date, a.due_date, a.competitive_enabled,
                 a.question_selection_mode, a.speech_enabled,
-                a.quarter_id, a.topic_id, a.teacher_id,
+                a.quarter_id, a.topic_id, a.teacher_id, a.sy_id,
                 t.topic_name,
                 q.quarter_number, q.quarter_id,
                 s.subject_id, s.subject_name,
@@ -5518,9 +5521,10 @@ router.get('/gaming_question_bank', requireAdmin, async (req, res) => {
             LEFT JOIN subjects s  ON s.subject_id  = q.subject_id
             LEFT JOIN users    u  ON u.user_id     = a.teacher_id
             LEFT JOIN elementa_game_sessions egs ON egs.assessment_id = a.assessment_id
+            WHERE a.sy_id = ?
             GROUP BY a.assessment_id
             ORDER BY a.assessment_id DESC
-        `);
+        `, [selectedSY.sy_id]);
 
         // Load arcade challenges exclusively from elementa_questions for the Question Bank tab
         const [questions] = await db.query(`
@@ -5664,7 +5668,13 @@ router.get('/gaming_question_bank', requireAdmin, async (req, res) => {
             quartersList,
             teachersList,
             LEVEL_MACHINES,
-            LEVEL_TOPIC_MAP
+            LEVEL_TOPIC_MAP,
+            selectedSY,
+            currentSY,
+            allSchoolYears,
+            isCurrentSY,
+            isHistoricalSY,
+            isDraftSY
         });
 
     } catch (err) {
@@ -5783,17 +5793,20 @@ router.post('/gqb/assessments', requireAdmin, async (req, res) => {
             return res.json({ success: false, message: 'Manual selection mode requires at least one question selected.' });
         }
 
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body.sy_id);
+        const targetSyId = (syContext && syContext.selectedSY) ? syContext.selectedSY.sy_id : null;
+
         const effectiveTotalItems = qMode === 'manual' ? selected_questions.length : total_items;
 
         const [result] = await db.query(`
             INSERT INTO assessments (
-                quarter_id, topic_id, assessment_name, assessment_type,
+                sy_id, quarter_id, topic_id, assessment_name, assessment_type,
                 total_items, duration_minutes, timer_type, is_unlocked,
                 start_date, due_date, competitive_enabled, question_selection_mode, teacher_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            topic.quarter_id, topic_id,
+            targetSyId, topic.quarter_id, topic_id,
             assessment_name ? assessment_name.trim().substring(0, 100) : null,
             assessment_type, effectiveTotalItems, duration_minutes, timer_type,
             is_unlocked, start_date || null, due_date || null,

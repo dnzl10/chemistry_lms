@@ -302,6 +302,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-3 md:gap-6">
+                <!-- Dynamic School Year Context Selector -->
+                <%- include('../partials/admin_sy_selector') %>
+
                 <!-- Notification bell -->
                 <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
                     <i class="far fa-bell text-xl text-cyan-600"></i>
@@ -328,12 +331,15 @@
         <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
             <div id="adminMainContent" class="p-4 md:p-8 flex-1 fade-in">
 
+                <!-- Dynamic Academic Context Warning Banner (Archive / Draft) -->
+                <%- include('../partials/admin_sy_banner') %>
+
                 <!-- ── KPI STAT CARDS ── -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div class="stat-card glass-card rounded-2xl p-5 border border-amber-100 shadow-sm">
                         <div class="flex items-center justify-between mb-3">
                             <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center"><i class="fas fa-clipboard-list text-amber-600"></i></div>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Assessments</span>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Assessments (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : '' %>)</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= gqStats.totalAssessments %></p>
                         <div class="progress-bar mt-3"><div class="progress-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div>
@@ -571,8 +577,24 @@
                             </table>
                             <% if (assessments.length === 0) { %>
                             <div class="py-16 text-center text-slate-400">
-                                <p class="font-bold text-slate-600">No assessments found.</p>
-                                <p class="text-xs text-slate-400 mt-1">Click "New Assessment" above to create one.</p>
+                                <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 text-2xl shadow-sm">
+                                    <i class="fas fa-clipboard-list"></i>
+                                </div>
+                                <p class="font-bold text-slate-700 text-base">No assessments found for <%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : 'this School Year' %></p>
+                                <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                                    <% if (typeof isHistoricalSY !== 'undefined' && isHistoricalSY) { %>
+                                        This is an archived school year. No assessments were registered for this academic period.
+                                    <% } else if (typeof isDraftSY !== 'undefined' && isDraftSY) { %>
+                                        This is a draft school year. Assessments will activate once this school year is published as current.
+                                    <% } else { %>
+                                        Assessments reset clean for each new school year. You can create a new assessment or carry over assessments using the rollover settings.
+                                    <% } %>
+                                </p>
+                                <% if (typeof isHistoricalSY === 'undefined' || !isHistoricalSY) { %>
+                                <button onclick="openAssessmentModal(null)" class="mt-4 inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs px-4 py-2 rounded-xl hover:opacity-90 transition shadow-sm">
+                                    <i class="fas fa-plus"></i> Create Assessment
+                                </button>
+                                <% } %>
                             </div>
                             <% } %>
                         </div>
@@ -2180,6 +2202,7 @@ async function submitAssessmentModal() {
     }
 
     const payload = {
+        sy_id: '<%= typeof selectedSY !== "undefined" && selectedSY ? selectedSY.sy_id : "" %>',
         assessment_name: name,
         assessment_type: type,
         topic_id: topicId,
