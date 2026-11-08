@@ -8937,7 +8937,7 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             SELECT
                 c.class_id, c.class_name,
                 CONCAT(u.first_name,' ',u.last_name) AS teacher_name,
-                s.subject_name,
+                s.subject_name, s.semester,
                 COUNT(DISTINCT cs.student_id) AS studentCount,
                 AVG(sg.grade_percent) AS avgScore
             FROM classes c
@@ -8947,7 +8947,7 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             LEFT JOIN elementa_student_grades sg
                 ON (sg.class_id = c.class_id OR sg.student_id = cs.student_id)
             WHERE c.sy_id = ?
-            GROUP BY c.class_id
+            GROUP BY c.class_id, s.semester
             ORDER BY s.subject_name ASC, c.class_name ASC
         `, [selectedSY.sy_id]);
 
