@@ -246,7 +246,9 @@
                     <p class="text-xs text-slate-400 hidden sm:block"><i class="fas fa-circle text-green-400 text-[8px] mr-1"></i>Manage users, invitations &amp; bulk registration</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3 md:gap-6">
+            <div class="flex items-center gap-3 md:gap-5">
+                <!-- Global School Year Context Selector -->
+                <%- include('../partials/admin_sy_selector') %>
                 <!-- Notification bell -->
                 <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
                     <i class="far fa-bell text-xl text-cyan-600"></i>
@@ -273,6 +275,9 @@
         <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
             <div id="adminMainContent" class="p-4 md:p-8 flex-1 fade-in">
 
+                <!-- School Year Alert Banner (Archive/Draft) -->
+                <%- include('../partials/admin_sy_banner') %>
+
                 <!-- ── KPI STAT CARDS ── -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div class="stat-card glass-card rounded-2xl p-5 border border-sky-100 shadow-sm">
@@ -280,7 +285,11 @@
                             <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center"><i class="fas fa-user-graduate text-sky-600"></i></div>
                             <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Students</span>
                         </div>
-                        <p class="text-3xl font-black text-indigo-900"><%= uacStats.totalStudents %></p>
+                        <div class="flex items-baseline justify-between">
+                            <p class="text-3xl font-black text-indigo-900"><%= uacStats.enrolledStudents !== undefined ? uacStats.enrolledStudents : uacStats.totalStudents %></p>
+                            <span class="text-[11px] font-bold text-slate-400">/ <%= uacStats.totalStudents %> total</span>
+                        </div>
+                        <p class="text-[10px] text-emerald-600 font-bold mt-1">Enrolled in <%= locals.selectedSY ? selectedSY.sy_range : 'Current SY' %></p>
                         <div class="progress-bar mt-3"><div class="progress-fill" style="width:100%"></div></div>
                     </div>
                     <div class="stat-card glass-card rounded-2xl p-5 border border-emerald-100 shadow-sm">
@@ -424,9 +433,25 @@
                                             </td>
 
                                             <td class="p-3 hidden xl:table-cell text-xs text-slate-500">
-                                                <% if (u.grade_level) { %><div><%= u.grade_level %></div><% } %>
-                                                <% if (u.section) { %><div class="text-slate-400 text-[10px]"><%= u.section %></div><% } %>
-                                                <% if (u.department) { %><div class="text-slate-400 text-[10px]"><%= u.department %></div><% } %>
+                                                <% if (u.role === 'Student') { %>
+                                                    <% if (u.enrolled_count_sy > 0) { %>
+                                                        <div class="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg text-[11px]" title="<%= u.enrolled_classes_sy %>">
+                                                            <i class="fas fa-circle-check text-[9px] text-emerald-500"></i>
+                                                            <span class="truncate max-w-[130px]"><%= u.enrolled_classes_sy %></span>
+                                                        </div>
+                                                        <% if (u.grade_level) { %><div class="text-slate-400 text-[10px] mt-0.5"><%= u.grade_level %></div><% } %>
+                                                    <% } else { %>
+                                                        <div class="inline-flex items-center gap-1 font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg text-[10px]">
+                                                            <i class="fas fa-clock text-[9px] text-amber-500"></i>
+                                                            <span>Not Enrolled (<%= locals.selectedSY ? selectedSY.sy_range : 'Current' %>)</span>
+                                                        </div>
+                                                        <% if (u.section) { %><div class="text-slate-400 text-[10px] mt-0.5 italic">Past: <%= u.section %></div><% } %>
+                                                    <% } %>
+                                                <% } else { %>
+                                                    <% if (u.grade_level) { %><div><%= u.grade_level %></div><% } %>
+                                                    <% if (u.section) { %><div class="text-slate-400 text-[10px]"><%= u.section %></div><% } %>
+                                                    <% if (u.department) { %><div class="text-slate-400 text-[10px]"><%= u.department %></div><% } %>
+                                                <% } %>
                                             </td>
 
                                             <td class="p-3 hidden md:table-cell">

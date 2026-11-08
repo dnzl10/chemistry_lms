@@ -387,7 +387,11 @@ function createTransporter() {
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/user_access_control', requireAdmin, async (req, res) => {
     try {
-        // ── Confirmed users (those who completed registration) ────────────────
+        // ── Resolve School Year Context (Default to Current, support ?sy_id=) ──
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
+
+        // ── Confirmed users with School-Year-Scoped Enrollment ─────────────────
         const [users] = await db.query(`
             SELECT
                 user_id, email,
@@ -405,10 +409,21 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
                 self_description, interests,
                 mobile_number, home_address, city_town,
                 is_active, is_suspended,
-                created_at
+                created_at,
+                (
+                    SELECT GROUP_CONCAT(DISTINCT cur_c.class_name ORDER BY cur_c.class_name SEPARATOR ', ')
+                    FROM class_students cs
+                    JOIN classes cur_c ON cur_c.class_id = cs.class_id
+                    WHERE cs.student_id = users.user_id AND cs.sy_id = ?
+                ) AS enrolled_classes_sy,
+                (
+                    SELECT COUNT(*)
+                    FROM class_students cs
+                    WHERE cs.student_id = users.user_id AND cs.sy_id = ?
+                ) AS enrolled_count_sy
             FROM users
             ORDER BY role ASC, last_name ASC, first_name ASC
-        `);
+        `, [selectedSY.sy_id, selectedSY.sy_id]);
  
         // ── Flagged students ──────────────────────────────────────────────────
         const [flaggedUsers] = await db.query(`
@@ -434,6 +449,10 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
  
         // ── KPI stats ─────────────────────────────────────────────────────────
         const [[sRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Student'`);
+        const [[enrStudentRow]] = await db.query(
+            `SELECT COUNT(DISTINCT student_id) AS cnt FROM class_students WHERE sy_id = ?`,
+            [selectedSY.sy_id]
+        );
         const [[tRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Teacher'`);
         const [[aRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Admin'`);
         const [[pRow]] = await db.query(
@@ -442,13 +461,14 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
         );
  
         const uacStats = {
-            totalStudents : sRow.cnt,
-            totalTeachers : tRow.cnt,
-            totalAdmins   : aRow.cnt,
-            pendingInvites: pRow.cnt,
+            totalStudents   : sRow.cnt,
+            enrolledStudents: enrStudentRow ? enrStudentRow.cnt : 0,
+            totalTeachers   : tRow.cnt,
+            totalAdmins     : aRow.cnt,
+            pendingInvites  : pRow.cnt,
         };
  
-        // ── Available Classes for Enrollment ──────────────────────────────────
+        // ── Available Classes for Enrollment (Scoped to selectedSY) ───────────
         const [classesList] = await db.query(`
             SELECT 
                 c.class_id,
@@ -473,8 +493,9 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
             LEFT JOIN users u ON c.teacher_id = u.user_id
             LEFT JOIN subjects s ON c.subject_id = s.subject_id
             LEFT JOIN school_years sy ON c.sy_id = sy.sy_id
+            WHERE c.sy_id = ?
             ORDER BY c.class_name ASC, s.subject_name ASC
-        `);
+        `, [selectedSY.sy_id]);
 
         // ── Available Subjects for Enrollment ────────────────────────────────
         const [subjectsList] = await db.query(`
@@ -483,22 +504,7 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
             ORDER BY subject_name ASC
         `);
 
-        // ── Automatically Detect Current School Year ──────────────────────────
-        let [[currentSchoolYear]] = await db.query(
-            `SELECT sy_id, sy_range, is_active FROM school_years WHERE is_active = 1 LIMIT 1`
-        );
-        if (!currentSchoolYear) {
-            const [[latestSy]] = await db.query(
-                `SELECT sy_id, sy_range, is_active FROM school_years ORDER BY sy_id DESC LIMIT 1`
-            );
-            currentSchoolYear = latestSy || null;
-        }
-        if (!currentSchoolYear) {
-            const now = new Date();
-            const yr = now.getFullYear();
-            const range = now.getMonth() >= 5 ? `${yr}-${yr + 1}` : `${yr - 1}-${yr}`;
-            currentSchoolYear = { sy_id: 1, sy_range: range, is_active: 1 };
-        }
+        const currentSchoolYear = selectedSY;
 
         // ── Maps for client-side duplicate verification (LRN & Faculty ID) ───
         const [usersWithFid] = await db.query(
@@ -544,6 +550,12 @@ router.get('/user_access_control', requireAdmin, async (req, res) => {
             classesList,
             subjectsList,
             currentSchoolYear,
+            selectedSY,
+            currentSY,
+            allSchoolYears,
+            isCurrentSY,
+            isHistoricalSY,
+            isDraftSY,
             existingFacultyIdsMap,
             pendingFacultyIdsMap,
             existingLrnsMap,
