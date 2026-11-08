@@ -5892,17 +5892,6 @@ router.get('/student/:studentId/scores', isTeacher, async (req, res) => {
 // All routes are already prefixed with /teacher
 // ============================================================
 
-// ── isTeacher middleware ──────────────────────────────────────────────────────
-// FIX 3: Defined here so the standalone router file works without depending on
-// teacher.js scope. If you already import this from a shared middleware file,
-// replace with: const { isTeacher } = require('../middleware/auth');
-function isTeacher(req, res, next) {
-    if (req.isAuthenticated && req.isAuthenticated() && req.user && req.user.role === 'Teacher') {
-        return next();
-    }
-    return res.status(403).json({ error: 'Access denied: Teachers only.' });
-}
-
 // FIX 4: Resolve uploads directory relative to this file's location, not a
 // hardcoded absolute path. Adjust the relative segments to match your project
 // structure (e.g. if this file is in routes/, go up one level to project root
