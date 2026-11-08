@@ -1,22 +1,26 @@
 /**
  * utils/studentLifecycleHelper.js
  * 
- * Comprehensive Student Account Lifecycle & Deactivation Service Layer.
+ * Single-Year Chemistry Cohort Lifecycle & Deactivation Service Layer.
  * 
- * Manages DepEd Senior High School cohort transitions:
- * - Graduation Archiving (Grade 12 -> Deactivated / is_active = 0)
- * - Underclassmen Cohort Promotion (Grade 11 -> Grade 12 / is_active = 1)
- * - Dormancy Enforcement (Zero section assignments in active SY -> is_active = 0)
- * - Single-Click Student Reinstatement (Reactivate account -> is_active = 1)
+ * Tailored for specialized Chemistry 1 & Chemistry 2 curriculum:
+ * - Target Audience: Grade 11 STEM students exclusively.
+ * - Lifespan: Exactly 1 Academic Year (General Chemistry 1 in Sem 1, Chemistry 2 in Sem 2).
+ * - Archival Mechanism: When an Academic Year concludes or rolls over, the entire outgoing
+ *   student cohort is archived and deactivated (`is_active = 0`, active sessions revoked).
+ * - Elimination of Grade 12 Promotion: Grade 12 students do not use this platform. Outgoing students
+ *   are deactivated prior to or upon the opening of the new school year.
+ * - Single-Click Reinstatement: Individual students who require remedial completion or grade review
+ *   can be reactivated (`is_active = 1`) by an administrator with full audit logging.
  * 
  * Guarantees:
- * 1. Zero data loss: Coursework, quiz marks, arcade scores, and transcripts are never deleted.
- * 2. Remote session revocation: Active express sessions are invalidated upon deactivation.
- * 3. Full audit logging support for administrative accountability.
+ * 1. Zero data loss: All coursework, quiz scores, elementa simulations, and transcripts are permanently preserved.
+ * 2. Remote session revocation: Active express sessions are invalidated immediately upon deactivation.
+ * 3. Full audit logging support for administrative transparency.
  */
 
 /**
- * Previews cohort counts and transition metrics without modifying database state.
+ * Previews cohort counts and transition metrics for the outgoing Chemistry cohort.
  * 
  * @param {object} db - MySQL connection or pool
  * @param {object} [options] - { activeSyId }
@@ -25,25 +29,15 @@
 async function previewCohortTransition(db, options = {}) {
     const activeSyId = options.activeSyId || null;
 
-    // 1. Grade 12 Active (Graduating Cohort)
-    const [[g12ActiveRow]] = await db.query(`
+    // 1. Total Active Students in System (Current Outgoing Cohort)
+    const [[activeRow]] = await db.query(`
         SELECT COUNT(*) AS cnt 
         FROM users 
         WHERE role = 'Student' 
-          AND (grade_level = 'Grade 12' OR grade_level LIKE '%12%')
           AND is_active = 1
     `);
 
-    // 2. Grade 11 Active (Rising Cohort)
-    const [[g11ActiveRow]] = await db.query(`
-        SELECT COUNT(*) AS cnt 
-        FROM users 
-        WHERE role = 'Student' 
-          AND (grade_level = 'Grade 11' OR grade_level LIKE '%11%')
-          AND is_active = 1
-    `);
-
-    // 3. Already Archived / Deactivated Students
+    // 2. Already Archived Alumni Students
     const [[archivedRow]] = await db.query(`
         SELECT COUNT(*) AS cnt 
         FROM users 
@@ -51,7 +45,7 @@ async function previewCohortTransition(db, options = {}) {
           AND is_active = 0
     `);
 
-    // 4. Suspended Accounts
+    // 3. Suspended Accounts
     const [[suspendedRow]] = await db.query(`
         SELECT COUNT(*) AS cnt 
         FROM users 
@@ -59,14 +53,14 @@ async function previewCohortTransition(db, options = {}) {
           AND is_suspended = 1
     `);
 
-    // 5. Total Registered Students
+    // 4. Total Registered Students Ever
     const [[totalRow]] = await db.query(`
         SELECT COUNT(*) AS cnt 
         FROM users 
         WHERE role = 'Student'
     `);
 
-    // 6. Active students with ZERO section assignments in the specified/active school year
+    // 5. Active students with ZERO section assignments in the specified/active school year
     let dormantCount = 0;
     if (activeSyId) {
         const [[dormantRow]] = await db.query(`
@@ -88,8 +82,8 @@ async function previewCohortTransition(db, options = {}) {
     return {
         success: true,
         summary: {
-            graduatingG12Active: Number(g12ActiveRow?.cnt || 0),
-            risingG11Active: Number(g11ActiveRow?.cnt || 0),
+            activeCohortCount: Number(activeRow?.cnt || 0),
+            outgoingCohortActive: Number(activeRow?.cnt || 0), // canonical alias
             totalArchived: Number(archivedRow?.cnt || 0),
             totalSuspended: Number(suspendedRow?.cnt || 0),
             totalStudents: Number(totalRow?.cnt || 0),
@@ -100,31 +94,29 @@ async function previewCohortTransition(db, options = {}) {
 }
 
 /**
- * Archives and deactivates graduating students (Grade 12).
- * Sets is_active = 0, current_session_id = NULL while preserving all historical records.
+ * Archives and deactivates the outgoing Chemistry cohort (end of School Year).
+ * Sets is_active = 0, current_session_id = NULL while strictly preserving all historical records.
  * 
  * @param {object} db - MySQL connection or pool
- * @param {object} [options] - { targetGrade, adminUserId, sessionStore }
+ * @param {object} [options] - { adminUserId, sessionStore, activeSyId }
  * @returns {Promise<object>}
  */
-async function archiveGraduatingCohort(db, options = {}) {
-    const targetGrade = options.targetGrade || 'Grade 12';
+async function archiveOutgoingCohort(db, options = {}) {
     const sessionStore = options.sessionStore || null;
 
-    // Fetch list of graduating active students
+    // Fetch list of all active students
     const [studentsToArchive] = await db.query(`
         SELECT user_id, email, first_name, last_name, current_session_id, grade_level
         FROM users
         WHERE role = 'Student'
-          AND (grade_level = ? OR grade_level LIKE ?)
           AND is_active = 1
-    `, [targetGrade, `%${targetGrade}%`]);
+    `);
 
     if (studentsToArchive.length === 0) {
         return {
             success: true,
             count: 0,
-            message: `No active ${targetGrade} students found to archive.`,
+            message: 'No active student accounts found to archive.',
             students: []
         };
     }
@@ -132,7 +124,7 @@ async function archiveGraduatingCohort(db, options = {}) {
     const userIds = studentsToArchive.map(s => s.user_id);
     const placeholders = userIds.map(() => '?').join(',');
 
-    // Atomically deactivate
+    // Atomically deactivate all outgoing students
     await db.query(`
         UPDATE users
         SET is_active = 0,
@@ -140,7 +132,7 @@ async function archiveGraduatingCohort(db, options = {}) {
         WHERE user_id IN (${placeholders})
     `, userIds);
 
-    // Invalidate remote sessions
+    // Invalidate remote sessions immediately
     if (sessionStore && typeof sessionStore.destroy === 'function') {
         studentsToArchive.forEach(s => {
             if (s.current_session_id) {
@@ -156,7 +148,7 @@ async function archiveGraduatingCohort(db, options = {}) {
     return {
         success: true,
         count: studentsToArchive.length,
-        message: `Successfully archived and deactivated ${studentsToArchive.length} graduating ${targetGrade} students. Historical grades and records preserved.`,
+        message: `Successfully archived and deactivated ${studentsToArchive.length} outgoing Chemistry student accounts. Transcripts and academic histories preserved with zero data loss.`,
         students: studentsToArchive.map(s => ({
             userId: s.user_id,
             name: `${s.first_name} ${s.last_name}`,
@@ -167,59 +159,10 @@ async function archiveGraduatingCohort(db, options = {}) {
 }
 
 /**
- * Promotes an active student cohort to the next grade level (e.g. Grade 11 -> Grade 12).
- * Retains is_active = 1 and maintains all prerequisite and coursework history.
- * 
- * @param {object} db - MySQL connection or pool
- * @param {object} [options] - { fromGrade, toGrade, adminUserId }
- * @returns {Promise<object>}
+ * Backward compatibility wrapper for archiveOutgoingCohort.
  */
-async function promoteStudentCohort(db, options = {}) {
-    const fromGrade = options.fromGrade || 'Grade 11';
-    const toGrade = options.toGrade || 'Grade 12';
-
-    // Fetch list of active students to promote
-    const [studentsToPromote] = await db.query(`
-        SELECT user_id, email, first_name, last_name, grade_level
-        FROM users
-        WHERE role = 'Student'
-          AND (grade_level = ? OR grade_level LIKE ?)
-          AND is_active = 1
-    `, [fromGrade, `%${fromGrade}%`]);
-
-    if (studentsToPromote.length === 0) {
-        return {
-            success: true,
-            count: 0,
-            message: `No active ${fromGrade} students found to promote.`,
-            students: []
-        };
-    }
-
-    const userIds = studentsToPromote.map(s => s.user_id);
-    const placeholders = userIds.map(() => '?').join(',');
-
-    // Atomically advance grade level
-    await db.query(`
-        UPDATE users
-        SET grade_level = ?
-        WHERE user_id IN (${placeholders})
-    `, [toGrade, ...userIds]);
-
-    return {
-        success: true,
-        count: studentsToPromote.length,
-        fromGrade,
-        toGrade,
-        message: `Successfully promoted ${studentsToPromote.length} active students from ${fromGrade} to ${toGrade}.`,
-        students: studentsToPromote.map(s => ({
-            userId: s.user_id,
-            name: `${s.first_name} ${s.last_name}`,
-            email: s.email,
-            previousGrade: s.grade_level,
-            newGrade: toGrade
-        }))
-    };
+async function archiveGraduatingCohort(db, options = {}) {
+    return archiveOutgoingCohort(db, options);
 }
 
 /**
@@ -299,7 +242,7 @@ async function scanAndEnforceDormancy(db, options = {}) {
 
 /**
  * Reinstates an archived/deactivated student back to active status (is_active = 1).
- * Used when a student re-enrolls or requires access to review official records.
+ * Used when a student re-enrolls, retakes a module, or requires access to review official records.
  * 
  * @param {object} db - MySQL connection or pool
  * @param {object} options - { studentId, adminUserId }
@@ -339,9 +282,8 @@ async function reactivateStudentAccount(db, options = {}) {
 
 module.exports = {
     previewCohortTransition,
-    archiveGraduatingCohort,
-    promoteStudentCohort,
+    archiveOutgoingCohort,
+    archiveGraduatingCohort, // alias
     scanAndEnforceDormancy,
     reactivateStudentAccount
 };
-

@@ -889,8 +889,8 @@ module.exports = {
     // Student Account Lifecycle
     studentLifecycleHelper,
     previewCohortTransition: studentLifecycleHelper.previewCohortTransition,
-    archiveGraduatingCohort: studentLifecycleHelper.archiveGraduatingCohort,
-    promoteStudentCohort: studentLifecycleHelper.promoteStudentCohort,
+    archiveOutgoingCohort: studentLifecycleHelper.archiveOutgoingCohort,
+    archiveGraduatingCohort: studentLifecycleHelper.archiveGraduatingCohort, // alias
     scanAndEnforceDormancy: studentLifecycleHelper.scanAndEnforceDormancy,
     reactivateStudentAccount: studentLifecycleHelper.reactivateStudentAccount
 };
