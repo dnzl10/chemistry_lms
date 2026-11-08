@@ -523,15 +523,34 @@
                                             </td>
                                         </tr>
                                     <% }) %>
+                                        <tr id="userEmptyRow" class="<%= users.length === 0 ? '' : 'hidden' %>">
+                                            <td colspan="9" class="p-0 border-0">
+                                                <div class="py-16 px-4 text-center">
+                                                    <div class="w-16 h-16 mx-auto mb-3.5 rounded-2xl bg-indigo-50/80 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-sm transition-all duration-300">
+                                                        <i id="userEmptyIcon" class="fas <%= users.length === 0 ? 'fa-users' : 'fa-user-slash' %> text-2xl"></i>
+                                                    </div>
+                                                    <h4 class="text-base font-extrabold text-slate-800 mb-1" id="userEmptyTitle">
+                                                        <%= users.length === 0 ? 'No confirmed users yet' : 'No matching users found' %>
+                                                    </h4>
+                                                    <p class="text-xs text-slate-400 max-w-md mx-auto mb-5 leading-relaxed" id="userEmptySubtitle">
+                                                        <%= users.length === 0 ? 'Users will appear here once they accept their email invitation and set up their account.' : "We couldn't find any users matching your query. Try adjusting your search keywords or switching role filters." %>
+                                                    </p>
+                                                    <div class="flex items-center justify-center gap-2.5 flex-wrap">
+                                                        <button type="button" id="userEmptyClearBtn" onclick="clearUserFilters()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition shadow-sm <%= users.length === 0 ? 'hidden' : '' %>">
+                                                            <i class="fas fa-rotate-left text-slate-400"></i> Clear Search & Filters
+                                                        </button>
+                                                        <button type="button" onclick="openInviteModal()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-90 shadow-md transition">
+                                                            <i class="fas fa-user-plus"></i> Invite User
+                                                        </button>
+                                                        <button type="button" onclick="switchTab('tab-bulk', document.querySelector('[onclick*=\'tab-bulk\']'))" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition shadow-sm">
+                                                            <i class="fas fa-file-excel text-emerald-500"></i> Bulk Import
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
                                 </tbody>
                             </table>
-                            <% if (users.length === 0) { %>
-                            <div class="py-16 text-center text-slate-400">
-                                <i class="fas fa-users text-4xl mb-3 block opacity-30"></i>
-                                <p class="font-bold">No confirmed users yet.</p>
-                                <p class="text-sm mt-1 opacity-60">Users appear here only after accepting their email invitation.</p>
-                            </div>
-                            <% } %>
                         </div>
                         <div class="mt-3 flex items-center justify-between text-xs text-slate-400 px-1">
                             <span id="userCountLabel">Showing <%= users.length %> user(s)</span>
@@ -662,15 +681,28 @@
                                     </td>
                                 </tr>
                                 <% }) %>
+                                <% if (invitations.length === 0) { %>
+                                    <tr>
+                                        <td colspan="7" class="p-0 border-0">
+                                            <div class="py-14 px-4 text-center">
+                                                <div class="w-16 h-16 mx-auto mb-3.5 rounded-2xl bg-amber-50/80 border border-amber-100 flex items-center justify-center text-amber-500 shadow-sm">
+                                                    <i class="fas fa-envelope-open-text text-2xl"></i>
+                                                </div>
+                                                <h4 class="text-base font-extrabold text-slate-800 mb-1">No pending invitations</h4>
+                                                <p class="text-xs text-slate-400 max-w-md mx-auto mb-5 leading-relaxed">
+                                                    All invited users have confirmed their accounts, or no pending invitation links are currently active.
+                                                </p>
+                                                <div class="flex items-center justify-center gap-2.5 flex-wrap">
+                                                    <button type="button" onclick="document.getElementById('qiEmail')?.focus(); document.getElementById('qiEmail')?.scrollIntoView({ behavior: 'smooth', block: 'center' });" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 shadow-md transition">
+                                                        <i class="fas fa-paper-plane"></i> Quick Send Invite
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% } %>
                                 </tbody>
                             </table>
-                            <% if (invitations.length === 0) { %>
-                            <div class="py-12 text-center text-slate-400">
-                                <i class="fas fa-envelope text-4xl mb-3 block opacity-30"></i>
-                                <p class="font-bold">No pending invitations.</p>
-                                <p class="text-sm mt-1 opacity-60">All invited users have already confirmed their accounts.</p>
-                            </div>
-                            <% } %>
                         </div>
                     </div><!-- /tab-invites -->
 
@@ -1764,25 +1796,72 @@ function showToast(msg, type = 'info') {
 }
 
 // ─────────────────────────────────
-// TABLE SEARCH + ROLE FILTER
+// TABLE SEARCH + ROLE FILTER & EMPTY STATE
 // ─────────────────────────────────
 let _roleFilter = 'All';
 function filterUsers() {
-    const q = document.getElementById('userSearch').value.toLowerCase().trim();
+    const searchInput = document.getElementById('userSearch');
+    const q = (searchInput?.value || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('.user-row');
     let n = 0;
-    document.querySelectorAll('.user-row').forEach(r => {
+
+    rows.forEach(r => {
         const show = (!q || r.dataset.search.includes(q)) &&
                      (_roleFilter === 'All' || r.dataset.role === _roleFilter);
         r.style.display = show ? '' : 'none';
         if (show) n++;
     });
-    document.getElementById('userCountLabel').textContent = `Showing ${n} user(s)`;
+
+    const countLabel = document.getElementById('userCountLabel');
+    if (countLabel) countLabel.textContent = `Showing ${n} user(s)`;
+
+    const emptyRow = document.getElementById('userEmptyRow');
+    const emptyIcon = document.getElementById('userEmptyIcon');
+    const emptyTitle = document.getElementById('userEmptyTitle');
+    const emptySub = document.getElementById('userEmptySubtitle');
+    const clearBtn = document.getElementById('userEmptyClearBtn');
+
+    if (emptyRow) {
+        if (n === 0) {
+            emptyRow.classList.remove('hidden');
+            if (rows.length === 0) {
+                // No confirmed users at all in database
+                if (emptyIcon) emptyIcon.className = 'fas fa-users text-2xl';
+                if (emptyTitle) emptyTitle.textContent = 'No confirmed users yet';
+                if (emptySub) emptySub.textContent = 'Users will appear here once they accept their email invitation and complete account setup.';
+                if (clearBtn) clearBtn.classList.add('hidden');
+            } else {
+                // Search or role filter yielded 0 results
+                if (emptyIcon) emptyIcon.className = 'fas fa-user-slash text-2xl';
+                const roleLabel = _roleFilter === 'All' ? 'users' : `${_roleFilter.toLowerCase()}s`;
+                const queryLabel = q ? ` matching "${q}"` : '';
+                if (emptyTitle) emptyTitle.textContent = 'No matching users found';
+                if (emptySub) emptySub.textContent = `No ${roleLabel} found${queryLabel}. Try adjusting your search query or resetting role filters.`;
+                if (clearBtn) clearBtn.classList.remove('hidden');
+            }
+        } else {
+            emptyRow.classList.add('hidden');
+        }
+    }
 }
+
 function setRoleFilter(role, el) {
     _roleFilter = role;
     document.querySelectorAll('.role-filter').forEach(r => r.classList.remove('rf-active'));
-    el.classList.add('rf-active');
+    if (el) el.classList.add('rf-active');
     filterUsers();
+}
+
+function clearUserFilters() {
+    const input = document.getElementById('userSearch');
+    if (input) input.value = '';
+    const allRoleBtn = document.querySelector('.role-filter');
+    if (allRoleBtn) {
+        setRoleFilter('All', allRoleBtn);
+    } else {
+        _roleFilter = 'All';
+        filterUsers();
+    }
 }
 
 // ─────────────────────────────────
