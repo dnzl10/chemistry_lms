@@ -987,7 +987,7 @@
                             <div>
                                 <span class="text-xs font-black text-indigo-950 block">Require passing mark in Chemistry 1 before Chemistry 2 enrollment</span>
                                 <span class="text-[11px] text-indigo-700/80 leading-snug block mt-0.5">
-                                    When checked, the system automatically blocks students from self-enrolling in Chemistry 2 if they have a failing or incomplete standing in Chemistry 1.
+                                    When checked, the system enforces DepEd prerequisites, preventing enrollment, section assignment, or migration into Chemistry 2 if the student has a failing or incomplete standing in Chemistry 1 (&lt; 75%).
                                 </span>
                             </div>
                         </label>
@@ -1399,9 +1399,10 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Enrollment Code</label>
-                    <input type="text" name="enrollment_code" placeholder="AUTO-GENERATED if blank"
-                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Course Access Code (Institutional Placement)</label>
+                    <input type="text" name="enrollment_code" readonly placeholder="N/A (Managed via Admin Roster Enrollment)"
+                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 font-mono text-slate-500 cursor-not-allowed">
+                    <p class="text-[10px] text-slate-400 mt-1">Direct student code self-enrollment has been decommissioned. Section placements are managed centrally by Admin.</p>
                 </div>
             </div>
             <div>
@@ -1445,8 +1446,10 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Enrollment Code</label>
-                    <input type="text" id="editSubjectEnrollCode" name="enrollment_code" class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-mono">
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Course Access Code (Institutional Placement)</label>
+                    <input type="text" id="editSubjectEnrollCode" name="enrollment_code" readonly
+                        class="search-input w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 font-mono text-slate-500 cursor-not-allowed">
+                    <p class="text-[10px] text-slate-400 mt-1">Direct student code self-enrollment has been decommissioned. Section placements are managed centrally by Admin.</p>
                 </div>
             </div>
             <div>
@@ -3561,7 +3564,12 @@ async function toggleClassStudents(classId, headerEl, forceReload = false) {
                     <div class="py-4 text-slate-400">
                         <i class="fas fa-user-slash text-2xl mb-2 block opacity-30"></i>
                         <p class="text-xs font-bold">No students currently enrolled in this section.</p>
-                        <p class="text-[11px] text-slate-400 mt-1">Use the Bulk Enroll tab or invite students to populate this class.</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Use Bulk Student Enrollment to officially assign students to this section.</p>
+                        <div class="mt-3">
+                            <button onclick="quickEnrollForClass(${classId})" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition shadow-xs">
+                                <i class="fas fa-user-plus"></i> Enroll Students
+                            </button>
+                        </div>
                     </div>
                 </div>`;
             return;
@@ -3594,6 +3602,10 @@ async function toggleClassStudents(classId, headerEl, forceReload = false) {
                         <button id="btn-bulk-migrate-${classId}" onclick="handleBulkMigrate(${classId})"
                                 class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-xs transition">
                             <i class="fas fa-right-left"></i> Migrate Selected
+                        </button>
+                        <button onclick="quickEnrollForClass(${classId})"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-xs transition">
+                            <i class="fas fa-user-plus"></i> Enroll Students
                         </button>
                         <button onclick="handleMigrateEntireClass(${classId})"
                                 class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white shadow-sm transition">
@@ -3642,6 +3654,18 @@ async function toggleClassStudents(classId, headerEl, forceReload = false) {
     } catch (err) {
         console.error('[AM Class Students Error]', err);
         container.innerHTML = `<p class="text-center text-rose-500 text-xs py-4">Failed to load students: ${err.message}</p>`;
+    }
+}
+
+// ─── Quick Bulk Enrollment Shortcut ──────────────────────────────────────────
+function quickEnrollForClass(classId) {
+    openModal('modalBulkEnroll');
+    const selEl = document.getElementById('bulkEnrollClassId');
+    if (selEl) {
+        selEl.value = classId;
+        if (typeof onBulkEnrollClassChanged === 'function') {
+            onBulkEnrollClassChanged(selEl);
+        }
     }
 }
 
