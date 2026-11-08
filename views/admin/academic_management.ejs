@@ -2392,66 +2392,130 @@ async function loadLifecycleCohortSummary() {
     }
 }
 
-function executeArchiveOutgoingCohort() {
-    showConfirm({
-        icon: 'fa-user-lock', iconBg: 'bg-rose-100', iconColor: 'text-rose-600',
-        title: 'Archive Outgoing Chemistry Cohort?',
-        desc: 'This will deactivate all student accounts completing Chemistry to eliminate unauthorized access during Grade 12. All coursework, grades, transcripts, and simulation scores are preserved permanently. Proceed?',
-        btnLabel: 'Yes, Archive Outgoing Cohort', btnColor: 'bg-rose-600',
-        onConfirm: async () => {
-            closeModal('modalConfirm');
-            const logEl = document.getElementById('lifecycleActionLog');
-            if (logEl) {
-                logEl.classList.remove('hidden');
-                logEl.innerHTML = '⏳ Archiving outgoing Chemistry cohort...';
+async function executeArchiveOutgoingCohort() {
+    if (typeof Swal !== 'undefined') {
+        const result = await Swal.fire({
+            title: 'Archive Outgoing Chemistry Cohort?',
+            html: `<div class="text-left text-xs text-slate-600 space-y-2 mt-2 leading-relaxed">
+                <p>This will <strong class="text-rose-600 font-bold">deactivate and archive</strong> all active student accounts currently completing Chemistry 1 &amp; 2.</p>
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-[11px]">
+                    <i class="fas fa-shield-halved text-amber-600 mr-1"></i>
+                    <strong>Security Guarantee:</strong> Former students will be denied login access during Grade 12.
+                </div>
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-[11px]">
+                    <i class="fas fa-database text-blue-600 mr-1"></i>
+                    <strong>Zero Data Loss:</strong> All grades, quizzes, Elementa scores, and transcripts remain 100% preserved.
+                </div>
+            </div>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-user-lock mr-1.5"></i> Yes, Archive Outgoing Cohort',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            reverseButtons: true,
+            customClass: {
+                popup: 'rounded-3xl shadow-2xl border border-slate-100',
+                confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
+                cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5'
             }
-            try {
-                const res = await apiPost('/admin/lifecycle/archive-outgoing', {});
-                if (res.success) {
-                    showToast(res.message, 'success');
-                    if (logEl) logEl.innerHTML = `✔ ${res.message}`;
-                    await loadLifecycleCohortSummary();
-                } else {
-                    showToast(res.message || 'Failed to archive cohort.', 'error');
-                    if (logEl) logEl.innerHTML = `⛔ ${res.message}`;
-                }
-            } catch (err) {
-                showToast(err.message, 'error');
-                if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+        });
+        if (!result.isConfirmed) return;
+    } else {
+        const confirmed = confirm('Archive Outgoing Chemistry Cohort?\n\nThis will deactivate all student accounts completing Chemistry to eliminate unauthorized access during Grade 12. Transcripts and grades remain 100% preserved. Proceed?');
+        if (!confirmed) return;
+    }
+
+    const logEl = document.getElementById('lifecycleActionLog');
+    if (logEl) {
+        logEl.classList.remove('hidden');
+        logEl.innerHTML = '⏳ Archiving outgoing Chemistry cohort...';
+    }
+    try {
+        const res = await apiPost('/admin/lifecycle/archive-outgoing', {});
+        if (res.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Cohort Archived Successfully',
+                    text: res.message,
+                    icon: 'success',
+                    confirmButtonColor: '#4f46e5',
+                    customClass: { popup: 'rounded-3xl' }
+                });
+            } else {
+                showToast(res.message, 'success');
             }
+            if (logEl) logEl.innerHTML = `✔ ${res.message}`;
+            await loadLifecycleCohortSummary();
+        } else {
+            showToast(res.message || 'Failed to archive cohort.', 'error');
+            if (logEl) logEl.innerHTML = `⛔ ${res.message}`;
         }
-    });
+    } catch (err) {
+        showToast(err.message, 'error');
+        if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+    }
 }
 
-function executeEnforceDormancy() {
-    showConfirm({
-        icon: 'fa-shield-halved', iconBg: 'bg-amber-100', iconColor: 'text-amber-600',
-        title: 'Enforce Dormancy Lock on Unassigned Accounts?',
-        desc: 'This will deactivate all student accounts with 0 official section enrollments in the active school year. Students will be directed to the Registrar upon login. Proceed?',
-        btnLabel: 'Yes, Lock Dormant Accounts', btnColor: 'bg-amber-600',
-        onConfirm: async () => {
-            closeModal('modalConfirm');
-            const logEl = document.getElementById('lifecycleActionLog');
-            if (logEl) {
-                logEl.classList.remove('hidden');
-                logEl.innerHTML = '⏳ Scanning and locking dormant accounts...';
+async function executeEnforceDormancy() {
+    if (typeof Swal !== 'undefined') {
+        const result = await Swal.fire({
+            title: 'Enforce Dormancy Lock?',
+            html: `<div class="text-left text-xs text-slate-600 space-y-2 mt-2 leading-relaxed">
+                <p>This will <strong class="text-amber-600 font-bold">deactivate student accounts</strong> that currently have <strong>0 official section enrollments</strong> in the active school year.</p>
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-[11px]">
+                    <i class="fas fa-info-circle text-indigo-500 mr-1"></i>
+                    Deactivated students attempting to log in will be directed to the Registrar.
+                </div>
+            </div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-shield mr-1.5"></i> Yes, Lock Dormant Accounts',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#d97706',
+            cancelButtonColor: '#64748b',
+            reverseButtons: true,
+            customClass: {
+                popup: 'rounded-3xl shadow-2xl border border-slate-100',
+                confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
+                cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5'
             }
-            try {
-                const res = await apiPost('/admin/lifecycle/enforce-dormancy', {});
-                if (res.success) {
-                    showToast(res.message, 'success');
-                    if (logEl) logEl.innerHTML = `✔ ${res.message}`;
-                    await loadLifecycleCohortSummary();
-                } else {
-                    showToast(res.message || 'Failed to enforce dormancy.', 'error');
-                    if (logEl) logEl.innerHTML = `⛔ ${res.message}`;
-                }
-            } catch (err) {
-                showToast(err.message, 'error');
-                if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+        });
+        if (!result.isConfirmed) return;
+    } else {
+        const confirmed = confirm('Enforce Dormancy Lock?\n\nThis will deactivate all student accounts with 0 official section enrollments in the active school year. Proceed?');
+        if (!confirmed) return;
+    }
+
+    const logEl = document.getElementById('lifecycleActionLog');
+    if (logEl) {
+        logEl.classList.remove('hidden');
+        logEl.innerHTML = '⏳ Scanning and locking dormant accounts...';
+    }
+    try {
+        const res = await apiPost('/admin/lifecycle/enforce-dormancy', {});
+        if (res.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Dormancy Enforced',
+                    text: res.message,
+                    icon: 'success',
+                    confirmButtonColor: '#4f46e5',
+                    customClass: { popup: 'rounded-3xl' }
+                });
+            } else {
+                showToast(res.message, 'success');
             }
+            if (logEl) logEl.innerHTML = `✔ ${res.message}`;
+            await loadLifecycleCohortSummary();
+        } else {
+            showToast(res.message || 'Failed to enforce dormancy.', 'error');
+            if (logEl) logEl.innerHTML = `⛔ ${res.message}`;
         }
-    });
+    } catch (err) {
+        showToast(err.message, 'error');
+        if (logEl) logEl.innerHTML = `⛔ ${err.message}`;
+    }
 }
 
 async function openEditSY(sy) {
