@@ -275,9 +275,32 @@
             <% } %>
 
             <% if (typeof error !== 'undefined' && error) { %>
-                <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl">
-                    <%= error %>
-                </div>
+                <% if (error.indexOf('Institutional Notice') !== -1) { %>
+                    <div class="mb-4 p-3.5 bg-blue-50/90 border border-blue-200 text-blue-900 text-xs leading-relaxed rounded-xl flex items-start gap-3 shadow-xs">
+                        <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 text-blue-600 mt-0.5">
+                            <i class="fas fa-graduation-cap text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-blue-950 text-xs mb-0.5">Archived Cohort Account</p>
+                            <p class="text-blue-800 text-[11px] leading-relaxed"><%= error %></p>
+                        </div>
+                    </div>
+                <% } else if (error.indexOf('suspended') !== -1) { %>
+                    <div class="mb-4 p-3.5 bg-rose-50/90 border border-rose-200 text-rose-900 text-xs leading-relaxed rounded-xl flex items-start gap-3 shadow-xs">
+                        <div class="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
+                            <i class="fas fa-ban text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-rose-950 text-xs mb-0.5">Account Suspended</p>
+                            <p class="text-rose-800 text-[11px] leading-relaxed"><%= error %></p>
+                        </div>
+                    </div>
+                <% } else { %>
+                    <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl flex items-center gap-2">
+                        <i class="fas fa-circle-exclamation text-xs shrink-0"></i>
+                        <span><%= error %></span>
+                    </div>
+                <% } %>
             <% } %>
 
             <form action="/login" method="POST" class="flex flex-col gap-4">

@@ -625,9 +625,17 @@ app.get('/auth/google/callback',
     const user = req.user;
     if (!user) return res.redirect('/login-error');
 
-    if (Number(user.is_active) === 0 || Number(user.is_suspended) === 1) {
+    if (Number(user.is_suspended) === 1) {
+        logActivity(req, 'LOGIN_BLOCKED', `Suspended user OAuth attempt: ${user.email}`, user.user_id, user.role).catch(()=>{});
         return req.logout((err) => {
-            res.redirect('/login?error=' + encodeURIComponent('This account is suspended. Contact the Admin.'));
+            res.redirect('/login?error=' + encodeURIComponent('This account has been suspended by administration. Please contact the Office of Student Affairs.'));
+        });
+    }
+
+    if (Number(user.is_active) === 0) {
+        logActivity(req, 'LOGIN_BLOCKED', `Archived user OAuth attempt: ${user.email}`, user.user_id, user.role).catch(()=>{});
+        return req.logout((err) => {
+            res.redirect('/login?error=' + encodeURIComponent('Institutional Notice: This student account has been archived following graduation or school year completion. For transcript requests or record evaluations, please contact the Registrar.'));
         });
     }
 
@@ -687,10 +695,15 @@ app.post('/login', loginLimiter, async (req, res, next) => {
         if (users.length > 0) {
             user = users[0];
             
-            // STRICT Numeric Check for lifecycle
-            if (Number(user.is_active) === 0 || Number(user.is_suspended) === 1) {
+            // STRICT Numeric Check for lifecycle & suspension
+            if (Number(user.is_suspended) === 1) {
                 logActivity(req, 'LOGIN_FAILED', `Suspended account attempt: ${email}`, user.user_id, user.role).catch(()=>{});
-                return res.render('login', { error: 'This account is suspended. Contact the Admin.', showResetPrompt: false, showGoogleResetPrompt: false });
+                return res.render('login', { error: 'This account has been suspended by administration. Please contact the Office of Student Affairs.', showResetPrompt: false, showGoogleResetPrompt: false });
+            }
+
+            if (Number(user.is_active) === 0) {
+                logActivity(req, 'LOGIN_FAILED', `Archived account attempt: ${email}`, user.user_id, user.role).catch(()=>{});
+                return res.render('login', { error: 'Institutional Notice: This student account has been archived following graduation or school year completion. For transcript requests or record evaluations, please contact the Registrar.', showResetPrompt: false, showGoogleResetPrompt: false });
             }
             // 7. Timing Attack Defense (Real comparison)
             isMatch = await bcrypt.compare(password, user.password_hash);
