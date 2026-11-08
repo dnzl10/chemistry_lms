@@ -344,3 +344,4 @@ module.exports = {
     scanAndEnforceDormancy,
     reactivateStudentAccount
 };
+

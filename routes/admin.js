@@ -3117,6 +3117,147 @@ router.delete('/am/school-years/:id', requireAdmin, async (req, res) => {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// STUDENT ACCOUNT LIFECYCLE & DEACTIVATION MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /admin/lifecycle/cohort-summary
+// Fetches real-time student cohort breakdown (Grade 11, Grade 12, Active, Inactive, Dormant).
+// Query: { sy_id } (optional)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/lifecycle/cohort-summary', requireAdmin, async (req, res) => {
+    try {
+        let activeSyId = req.query.sy_id ? parseInt(req.query.sy_id, 10) : null;
+        if (!activeSyId) {
+            const currentSY = await academicHelper.getCurrentSchoolYear(db);
+            activeSyId = currentSY ? currentSY.sy_id : null;
+        }
+
+        const preview = await academicHelper.previewCohortTransition(db, { activeSyId });
+        return res.json(preview);
+    } catch (err) {
+        console.error('[Lifecycle Summary Error]', err);
+        return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/lifecycle/archive-graduating
+// Archives and deactivates Grade 12 graduating students (is_active = 0, current_session_id = NULL).
+// Preserves all transcripts, grades, and coursework.
+// Body: { targetGrade } (defaults to 'Grade 12')
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/lifecycle/archive-graduating', requireAdmin, async (req, res) => {
+    try {
+        const { targetGrade = 'Grade 12' } = req.body;
+        const result = await academicHelper.archiveGraduatingCohort(db, {
+            targetGrade,
+            adminUserId: req.user.user_id,
+            sessionStore: req.sessionStore
+        });
+
+        if (result.count > 0) {
+            await logActivity(req.user.user_id, 'Admin', 'ARCHIVE_GRADUATING_COHORT',
+                `Archived and deactivated ${result.count} graduating ${targetGrade} student accounts.`);
+        }
+
+        return res.json(result);
+    } catch (err) {
+        console.error('[Archive Graduating Error]', err);
+        return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/lifecycle/promote-cohort
+// Promotes underclassmen cohort to the next grade level (e.g. Grade 11 -> Grade 12).
+// Body: { fromGrade = 'Grade 11', toGrade = 'Grade 12' }
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/lifecycle/promote-cohort', requireAdmin, async (req, res) => {
+    try {
+        const { fromGrade = 'Grade 11', toGrade = 'Grade 12' } = req.body;
+        const result = await academicHelper.promoteStudentCohort(db, {
+            fromGrade,
+            toGrade,
+            adminUserId: req.user.user_id
+        });
+
+        if (result.count > 0) {
+            await logActivity(req.user.user_id, 'Admin', 'PROMOTE_STUDENT_COHORT',
+                `Promoted ${result.count} students from ${fromGrade} to ${toGrade}.`);
+        }
+
+        return res.json(result);
+    } catch (err) {
+        console.error('[Promote Cohort Error]', err);
+        return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/lifecycle/enforce-dormancy
+// Deactivates student accounts that have ZERO section enrollments for the running school year.
+// Body: { sy_id } (optional, defaults to active school year)
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/lifecycle/enforce-dormancy', requireAdmin, async (req, res) => {
+    try {
+        let activeSyId = req.body.sy_id ? parseInt(req.body.sy_id, 10) : null;
+        if (!activeSyId) {
+            const currentSY = await academicHelper.getCurrentSchoolYear(db);
+            activeSyId = currentSY ? currentSY.sy_id : null;
+        }
+
+        if (!activeSyId) {
+            return res.json({ success: false, message: 'No active school year found to evaluate dormancy.' });
+        }
+
+        const result = await academicHelper.scanAndEnforceDormancy(db, {
+            activeSyId,
+            adminUserId: req.user.user_id,
+            sessionStore: req.sessionStore
+        });
+
+        if (result.count > 0) {
+            await logActivity(req.user.user_id, 'Admin', 'ENFORCE_DORMANCY',
+                `Deactivated ${result.count} dormant unassigned student accounts for school year ID ${activeSyId}.`);
+        }
+
+        return res.json(result);
+    } catch (err) {
+        console.error('[Enforce Dormancy Error]', err);
+        return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/lifecycle/reactivate-student
+// Reinstates an archived student account (sets is_active = 1).
+// Body: { student_id }
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/lifecycle/reactivate-student', requireAdmin, async (req, res) => {
+    try {
+        const studentId = parseInt(req.body.student_id, 10);
+        if (!studentId || isNaN(studentId)) {
+            return res.status(400).json({ success: false, message: 'Valid student ID is required.' });
+        }
+
+        const result = await academicHelper.reactivateStudentAccount(db, {
+            studentId,
+            adminUserId: req.user.user_id
+        });
+
+        await logActivity(req.user.user_id, 'Admin', 'REACTIVATE_STUDENT',
+            `Reactivated student account: ${result.name} (User ID: ${result.studentId})`);
+
+        return res.json(result);
+    } catch (err) {
+        console.error('[Reactivate Student Error]', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // SUBJECTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
