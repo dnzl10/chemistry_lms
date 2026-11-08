@@ -779,6 +779,7 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
                 asmt: { score: studentAsmtScore, total: totalAsmtItems, submittedItems: studentAsmtSubmittedItems, count: totalAsmtCount, pct: asmtPct, exp: studentAsmtExp, submitted: studentAsmtSubmissions },
                 asgn: { score: studentAsgnScore, total: totalAsgnItems, submittedItems: studentAsgnSubmittedItems, count: totalAsgnCount, pct: asgnPct, exp: studentAsgnExp, submitted: studentAsgnSubmissions },
                 forum: { completed: studentForumsDone, total: totalForums, pct: forumPct, exp: studentForumExp },
+                sim: { count: simList.length, avg: arcadeAvg, exp: totalSimBonusExp },
 
                 // DepEd Quarterly & Semestral Breakdown
                 quarter_grades: quarterGrades,
