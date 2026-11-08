@@ -263,6 +263,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-3 md:gap-6">
+                <!-- Dynamic School Year Context Selector -->
+                <%- include('../partials/admin_sy_selector') %>
+
                 <!-- Notification bell -->
                 <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
                     <i class="far fa-bell text-xl text-cyan-600"></i>
@@ -289,6 +292,9 @@
         <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
             <div id="adminMainContent" class="p-4 md:p-8 flex-1 fade-in">
 
+                <!-- Dynamic Academic Context Warning Banner (Archive / Draft) -->
+                <%- include('../partials/admin_sy_banner') %>
+
                 <!-- ── KPI STAT CARDS ── -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div class="stat-card glass-card rounded-2xl p-5 border border-cyan-100">
@@ -296,20 +302,20 @@
                             <div class="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center">
                                 <i class="fas fa-folder-open text-cyan-600"></i>
                             </div>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Materials</span>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Materials Vault</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= reStats.totalMaterials %></p>
-                        <p class="text-xs text-slate-400 mt-1">Learning files</p>
+                        <p class="text-xs text-slate-400 mt-1">Preserved materials</p>
                     </div>
                     <div class="stat-card glass-card rounded-2xl p-5 border border-indigo-100">
                         <div class="flex items-center justify-between mb-3">
                             <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
                                 <i class="fas fa-comments text-indigo-500"></i>
                             </div>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Forums</span>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Forums (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : '' %>)</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= reStats.totalForums %></p>
-                        <p class="text-xs text-slate-400 mt-1">Discussion boards</p>
+                        <p class="text-xs text-slate-400 mt-1">Discussion threads</p>
                     </div>
                     <div class="stat-card glass-card rounded-2xl p-5 border border-emerald-100">
                         <div class="flex items-center justify-between mb-3">
@@ -319,17 +325,17 @@
                             <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Interactions</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= reStats.totalInteractions %></p>
-                        <p class="text-xs text-slate-400 mt-1">Views &amp; downloads</p>
+                        <p class="text-xs text-slate-400 mt-1">Views &amp; activities</p>
                     </div>
                     <div class="stat-card glass-card rounded-2xl p-5 border border-amber-100">
                         <div class="flex items-center justify-between mb-3">
                             <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
                                 <i class="fas fa-trophy text-amber-500"></i>
                             </div>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Students</span>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Enrolled Students</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= reStats.totalStudents %></p>
-                        <p class="text-xs text-slate-400 mt-1">Active learners</p>
+                        <p class="text-xs text-slate-400 mt-1"><%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : 'Academic Year' %></p>
                     </div>
                 </div>
 
@@ -632,8 +638,13 @@
                         <div class="space-y-3" id="forumList">
                         <% if (forums.length === 0) { %>
                             <div class="py-14 text-center text-slate-400">
-                                <i class="fas fa-comments text-5xl block mb-3 opacity-20"></i>
-                                <p class="font-bold">No forum boards yet.</p>
+                                <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-500 text-2xl shadow-sm">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <p class="font-bold text-slate-700 text-base">No forum discussions for <%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : 'this School Year' %></p>
+                                <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                                    Discussion boards refresh clean each school year to ensure students engage in fresh, unpolluted peer learning threads.
+                                </p>
                             </div>
                         <% } %>
                         <% forums.forEach(function(f) { %>

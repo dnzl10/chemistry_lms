@@ -6934,18 +6934,39 @@ const uploadMaterial = multer({
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/resources_engagement', requireAdmin, async (req, res) => {
     try {
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
 
         // ── KPI stats ──────────────────────────────────────────────────────────
         const [[mRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM learning_materials`);
-        const [[fRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM forum_topics`);
-        const [[iRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM student_material_interactions`);
-        const [[sRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Student'`);
+        const [[fRow]] = await db.query(`
+            SELECT COUNT(*) AS cnt 
+            FROM forum_topics ft
+            LEFT JOIN classes c ON c.class_id = ft.class_id
+            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
+        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+        const [[iRow]] = await db.query(`
+            SELECT COUNT(*) AS cnt 
+            FROM student_material_interactions smi
+            WHERE (smi.interacted_at >= ? AND smi.interacted_at <= ?)
+               OR smi.student_id IN (
+                   SELECT cs.student_id FROM class_students cs
+                   JOIN classes c ON c.class_id = cs.class_id
+                   WHERE c.sy_id = ?
+               )
+        `, [selectedSY.start_date, selectedSY.end_date, selectedSY.sy_id]);
+        const [[sRow]] = await db.query(`
+            SELECT COUNT(DISTINCT cs.student_id) AS cnt
+            FROM class_students cs
+            JOIN classes c ON c.class_id = cs.class_id
+            WHERE c.sy_id = ?
+        `, [selectedSY.sy_id]);
 
         const reStats = {
-            totalMaterials    : mRow.cnt,
-            totalForums       : fRow.cnt,
-            totalInteractions : iRow.cnt,
-            totalStudents     : sRow.cnt,
+            totalMaterials    : mRow ? mRow.cnt : 0,
+            totalForums       : fRow ? fRow.cnt : 0,
+            totalInteractions : iRow ? iRow.cnt : 0,
+            totalStudents     : sRow ? sRow.cnt : 0,
         };
 
         // ── All topics flat list for dropdowns ────────────────────────────────
@@ -7026,12 +7047,14 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
                 CONCAT(u.first_name, ' ', u.last_name) AS teacher_name,
                 COUNT(DISTINCT fr.reply_id) AS reply_count
             FROM forum_topics ft
+            LEFT JOIN classes c ON c.class_id = ft.class_id
             LEFT JOIN topics t  ON t.topic_id  = ft.topic_id
             LEFT JOIN users u   ON u.user_id    = ft.teacher_id
             LEFT JOIN forum_replies fr ON fr.topic_id = ft.forum_id
+            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
             GROUP BY ft.forum_id
             ORDER BY ft.is_pinned DESC, ft.created_at DESC
-        `);
+        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
 
         // Attach top 30 replies per forum with endorsement, vote count, unmask status
         const forums = [];
@@ -7065,8 +7088,15 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
             FROM student_material_interactions smi
             JOIN users u  ON u.user_id    = smi.student_id
             JOIN learning_materials lm ON lm.material_id = smi.material_id
+            WHERE (smi.interacted_at >= ? AND smi.interacted_at <= ?)
+               OR smi.student_id IN (
+                   SELECT cs.student_id FROM class_students cs
+                   JOIN classes c ON c.class_id = cs.class_id
+                   WHERE c.sy_id = ?
+               )
             ORDER BY smi.interacted_at DESC, smi.interaction_id DESC
-        `);
+            LIMIT 100
+        `, [selectedSY.start_date, selectedSY.end_date, selectedSY.sy_id]);
 
         // ── Game Interaction Log (Arcade Game Sessions) ───────────────────────
         const [gameInteractionLog] = await db.query(`
@@ -7086,9 +7116,12 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
             LEFT JOIN users u1 ON u1.user_id = gs.student_id_p1
             LEFT JOIN users u2 ON u2.user_id = gs.student_id_p2
             LEFT JOIN assessments a ON a.assessment_id = gs.assessment_id
+            WHERE (gs.started_at >= ? AND gs.started_at <= ?)
+               OR a.sy_id = ?
+               OR gs.class_id IN (SELECT class_id FROM classes WHERE sy_id = ?)
             ORDER BY gs.started_at DESC, gs.session_id DESC
             LIMIT 50
-        `);
+        `, [selectedSY.start_date, selectedSY.end_date, selectedSY.sy_id, selectedSY.sy_id]);
 
         // ── Activity Audit Feed (Pillar 3 sidebar fallback) ───────────────────
         const [activityFeed] = await db.query(`
@@ -7122,29 +7155,33 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
                     SELECT GROUP_CONCAT(DISTINCT c.class_name SEPARATOR ', ')
                     FROM class_students cs
                     JOIN classes c ON c.class_id = cs.class_id
-                    WHERE cs.student_id = u.user_id
+                    WHERE cs.student_id = u.user_id AND c.sy_id = ?
                 ) AS class_names,
                 COALESCE(m.mats_distinct, 0) AS mats_distinct,
                 COALESCE(m.mats_total, 0) AS mats_total,
                 COALESCE(g.games_total, 0) AS games_total,
                 COALESCE(g.games_distinct, 0) AS games_distinct
             FROM users u
+            JOIN class_students cs_flt ON cs_flt.student_id = u.user_id
+            JOIN classes c_flt ON c_flt.class_id = cs_flt.class_id AND c_flt.sy_id = ?
             LEFT JOIN (
                 SELECT student_id, COUNT(DISTINCT material_id) AS mats_distinct, COUNT(*) AS mats_total
                 FROM student_material_interactions
+                WHERE interacted_at >= ? AND interacted_at <= ?
                 GROUP BY student_id
             ) m ON m.student_id = u.user_id
             LEFT JOIN (
                 SELECT student_id, COUNT(session_id) AS games_total, COUNT(DISTINCT assessment_id) AS games_distinct
                 FROM (
-                    SELECT session_id, student_id_p1 AS student_id, assessment_id FROM elementa_game_sessions WHERE student_id_p1 IS NOT NULL
+                    SELECT session_id, student_id_p1 AS student_id, assessment_id FROM elementa_game_sessions WHERE student_id_p1 IS NOT NULL AND started_at >= ? AND started_at <= ?
                     UNION ALL
-                    SELECT session_id, student_id_p2 AS student_id, assessment_id FROM elementa_game_sessions WHERE student_id_p2 IS NOT NULL
+                    SELECT session_id, student_id_p2 AS student_id, assessment_id FROM elementa_game_sessions WHERE student_id_p2 IS NOT NULL AND started_at >= ? AND started_at <= ?
                 ) all_gs
                 GROUP BY student_id
             ) g ON g.student_id = u.user_id
             WHERE u.role = 'Student'
-        `);
+            GROUP BY u.user_id
+        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date, selectedSY.start_date, selectedSY.end_date, selectedSY.start_date, selectedSY.end_date]);
 
         // Helper function for dynamic milestone message based on student performance
         function generateStudentMilestoneMessage(matPercent, gamePercent, placement) {
@@ -7227,11 +7264,11 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
                    COUNT(DISTINCT c.class_id) AS class_count,
                    COUNT(DISTINCT cs.student_id) AS student_count
             FROM subjects s
-            LEFT JOIN classes c ON c.subject_id = s.subject_id
+            LEFT JOIN classes c ON c.subject_id = s.subject_id AND c.sy_id = ?
             LEFT JOIN class_students cs ON cs.class_id = c.class_id
             GROUP BY s.subject_id
             ORDER BY s.subject_name ASC
-        `);
+        `, [selectedSY.sy_id]);
 
         const [subjectGameStats] = await db.query(`
             SELECT 
@@ -7245,8 +7282,9 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
             JOIN assessments a ON a.assessment_id = gs.assessment_id
             JOIN topics t ON t.topic_id = a.topic_id
             JOIN quarters q ON q.quarter_id = t.quarter_id
+            WHERE a.sy_id = ?
             GROUP BY q.subject_id
-        `);
+        `, [selectedSY.sy_id]);
 
         const subjMap = {};
         subjectGameStats.forEach(stat => {
@@ -7289,9 +7327,10 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
                 (gs.class_id = c.class_id)
                 OR (gs.class_id IS NULL AND (gs.student_id_p1 = cs.student_id OR gs.student_id_p2 = cs.student_id))
             )
+            WHERE c.sy_id = ?
             GROUP BY c.class_id
             ORDER BY s.subject_name ASC, c.class_name ASC
-        `);
+        `, [selectedSY.sy_id]);
 
         const classesBreakdown = classesBreakdownRaw.map(c => ({
             ...c,
@@ -7310,12 +7349,12 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
                 (SELECT GROUP_CONCAT(DISTINCT c2.class_name SEPARATOR ', ')
                  FROM class_students cs2
                  JOIN classes c2 ON c2.class_id = cs2.class_id
-                 WHERE cs2.student_id = u.user_id) AS class_names,
+                 WHERE cs2.student_id = u.user_id AND c2.sy_id = ?) AS class_names,
                 (SELECT GROUP_CONCAT(DISTINCT s2.subject_name SEPARATOR ', ')
                  FROM class_students cs3
                  JOIN classes c3 ON c3.class_id = cs3.class_id
                  JOIN subjects s2 ON s2.subject_id = c3.subject_id
-                 WHERE cs3.student_id = u.user_id) AS subject_names,
+                 WHERE cs3.student_id = u.user_id AND c3.sy_id = ?) AS subject_names,
                 MAX(GREATEST(
                     COALESCE(gs.highest_level_reached, 1),
                     COALESCE(lb.best_level_reached, 1),
@@ -7330,12 +7369,14 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
                 COUNT(DISTINCT gs.session_id) AS total_game_sessions,
                 MAX(gs.started_at) AS last_played_at
             FROM users u
+            JOIN class_students cs_lead ON cs_lead.student_id = u.user_id
+            JOIN classes c_lead ON c_lead.class_id = cs_lead.class_id AND c_lead.sy_id = ?
             LEFT JOIN elementa_game_sessions gs ON (gs.student_id_p1 = u.user_id OR gs.student_id_p2 = u.user_id)
             LEFT JOIN elementa_leaderboard lb ON lb.student_id = u.user_id
             WHERE u.role = 'Student'
             GROUP BY u.user_id
             ORDER BY highest_level_reached DESC, highest_game_score DESC, total_game_sessions DESC
-        `);
+        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id]);
 
         const studentGameLeaderboard = studentGameLeaderboardRaw.map((s, idx) => ({
             ...s,
@@ -7363,6 +7404,12 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
             studentGameLeaderboard,
             leaderboard: studentGameLeaderboard, // backward-compatibility fallback
             leaderboardHistory: [],
+            selectedSY,
+            currentSY,
+            allSchoolYears,
+            isCurrentSY,
+            isHistoricalSY,
+            isDraftSY
         });
 
     } catch (err) {
