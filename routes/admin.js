@@ -2711,7 +2711,7 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
             Number(rollover_materials) === 1 ? 1 : 0,
             Number(rollover_assessments) === 1 ? 1 : 0,
             Number(rollover_question_bank) === 1 ? 1 : 0,
-            Number(rollover_announcements) === 1 ? 1 : 0,
+            0, // rollover_announcements permanently 0 (announcements/forums cannot be reused)
             default_rollover_visibility === 'hidden' ? 'hidden' : 'visible'
         ]);
 
@@ -2727,7 +2727,7 @@ router.post('/am/school-years', requireAdmin, async (req, res) => {
                     rolloverMaterials: Number(rollover_materials) === 1,
                     rolloverAssessments: Number(rollover_assessments) === 1,
                     rolloverQuestionBank: Number(rollover_question_bank) === 1,
-                    rolloverAnnouncements: Number(rollover_announcements) === 1,
+                    rolloverAnnouncements: false, // Announcements & forums are cohort-specific and never rolled over
                     defaultVisibility: default_rollover_visibility,
                     adminUserId: req.user.user_id
                 });
@@ -2797,7 +2797,7 @@ router.post('/am/school-years/:id/rollover', requireAdmin, async (req, res) => {
             rolloverMaterials: Number(rollover_materials) === 1,
             rolloverAssessments: Number(rollover_assessments) === 1,
             rolloverQuestionBank: Number(rollover_question_bank) === 1,
-            rolloverAnnouncements: Number(rollover_announcements) === 1,
+            rolloverAnnouncements: false, // Announcements & forums are cohort-specific and never rolled over
             defaultVisibility: default_rollover_visibility,
             adminUserId: req.user.user_id
         });
@@ -4756,8 +4756,9 @@ router.post('/am/classes/:id/migrate', requireAdmin, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /admin/am/subjects/:id/progress?class_id=
-// Return student progress for a subject, optionally filtered by class.
+// GET /admin/am/subjects/:id/progress?class_id=&sy_id=
+// Return student progress for a subject, strictly scoped to selected School Year,
+// optionally filtered by class.
 // Returns: { success: true, progress: [...] }
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/am/subjects/:id/progress', requireAdmin, async (req, res) => {
@@ -4767,24 +4768,29 @@ router.get('/am/subjects/:id/progress', requireAdmin, async (req, res) => {
 
         if (isNaN(subjectId)) return res.json({ success: false, message: 'Invalid subject ID.' });
 
+        // Resolve School Year Context (Current live SY or ?sy_id=)
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSY  = syContext.selectedSY;
+
         let query, params;
 
         if (classId && !isNaN(classId)) {
-            // Filter by specific class: only enrolled students in that class
+            // Filter by specific class: only enrolled students in that class AND ensure class belongs to targetSY
             query = `
                 SELECT
                     u.user_id, u.first_name, u.last_name, u.profile_pic,
                     COALESCE(sp.progress_percent, 0) AS progress_percent,
                     sp.last_accessed
                 FROM class_students cs
+                JOIN classes c ON c.class_id = cs.class_id
                 JOIN users u ON u.user_id = cs.student_id
                 LEFT JOIN student_progress sp ON sp.student_id = u.user_id AND sp.subject_id = ?
-                WHERE cs.class_id = ?
+                WHERE cs.class_id = ? AND c.sy_id = ?
                 ORDER BY progress_percent DESC, u.last_name ASC, u.first_name ASC
             `;
-            params = [subjectId, classId];
+            params = [subjectId, classId, targetSY.sy_id];
         } else {
-            // All students enrolled in any class for this subject
+            // All students enrolled in any class for this subject strictly within targetSY!
             query = `
                 SELECT DISTINCT
                     u.user_id, u.first_name, u.last_name, u.profile_pic,
@@ -4794,15 +4800,21 @@ router.get('/am/subjects/:id/progress', requireAdmin, async (req, res) => {
                 JOIN classes c ON c.class_id = cs.class_id
                 JOIN users u ON u.user_id = cs.student_id
                 LEFT JOIN student_progress sp ON sp.student_id = u.user_id AND sp.subject_id = ?
-                WHERE c.subject_id = ?
+                WHERE c.subject_id = ? AND c.sy_id = ?
                 ORDER BY progress_percent DESC, u.last_name ASC, u.first_name ASC
             `;
-            params = [subjectId, subjectId];
+            params = [subjectId, subjectId, targetSY.sy_id];
         }
 
         const [progress] = await db.query(query, params);
 
-        return res.json({ success: true, progress });
+        return res.json({
+            success: true,
+            progress,
+            selectedSY: targetSY,
+            isHistoricalSY: syContext.isHistoricalSY,
+            isDraftSY: syContext.isDraftSY
+        });
 
     } catch (err) {
         console.error('[AM Get Progress Error]', err);
@@ -4816,8 +4828,9 @@ router.get('/am/subjects/:id/progress', requireAdmin, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /admin/am/subjects/:id/announcements
-// Return all announcements for a subject (subject-wide + per-class).
+// GET /admin/am/subjects/:id/announcements?sy_id=
+// Return all announcements for a subject, strictly scoped to the selected School Year.
+// Announcements from past school years (e.g. 2025-2026) are NEVER displayed in 2026-2027.
 // Returns: { success: true, announcements: [...] }
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/am/subjects/:id/announcements', requireAdmin, async (req, res) => {
@@ -4829,20 +4842,24 @@ router.get('/am/subjects/:id/announcements', requireAdmin, async (req, res) => {
         const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
         const targetSY  = syContext.selectedSY;
 
-        // Announcements linked to classes under this subject in targetSY OR subject-wide for targetSY teachers
+        // Announcements strictly scoped to this subject and selected targetSY
         const [announcements] = await db.query(`
             SELECT
-                a.announcement_id, a.title, a.content, a.is_priority, a.is_critical, a.scope, a.due_date, a.allow_replies, a.attachment_url, a.attachment_name, a.created_at,
-                a.class_id, a.teacher_id,
+                a.announcement_id, a.title, a.content, a.is_priority, a.is_critical, a.scope, a.due_date,
+                a.attachment_url, a.attachment_name, a.attachment_type, a.created_at,
+                a.class_id, a.teacher_id, a.sy_id, a.subject_id,
                 c.class_name,
                 CONCAT(u.first_name, ' ', u.last_name) AS teacher_name
             FROM announcements a
             LEFT JOIN classes c ON c.class_id = a.class_id
             LEFT JOIN users u   ON u.user_id   = a.teacher_id
-            WHERE (c.subject_id = ? AND c.sy_id = ?) 
-               OR (a.class_id IS NULL AND a.teacher_id IN (SELECT teacher_id FROM classes WHERE subject_id = ? AND sy_id = ?))
+            WHERE (
+                (c.subject_id = ? AND c.sy_id = ?)
+                OR (a.class_id IS NULL AND a.subject_id = ? AND a.sy_id = ?)
+                OR (a.class_id IS NULL AND a.subject_id IS NULL AND a.scope = 'global' AND a.sy_id = ?)
+            )
             ORDER BY a.is_critical DESC, a.is_priority DESC, a.created_at DESC
-        `, [subjectId, targetSY.sy_id, subjectId, targetSY.sy_id]);
+        `, [subjectId, targetSY.sy_id, subjectId, targetSY.sy_id, targetSY.sy_id]);
 
         return res.json({
             success: true,
@@ -4860,13 +4877,13 @@ router.get('/am/subjects/:id/announcements', requireAdmin, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/announcements
-// Create a new announcement for a subject/class.
-// Body: { title, content, class_id, subject_id, is_priority, teacher_id }
+// Create a new announcement for a subject/class, strictly stamped with current/selected SY.
+// Body: { title, content, class_id, subject_id, is_priority, teacher_id, sy_id }
 // Returns: { success: true } | { success: false, message }
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/am/announcements', requireAdmin, async (req, res) => {
     try {
-        let { title, content, class_id, subject_id, is_priority, is_critical, due_date, allow_replies, forward_webhook, teacher_id } = req.body;
+        let { title, content, class_id, subject_id, is_priority, is_critical, due_date, forward_webhook, teacher_id, sy_id } = req.body;
 
         if (!title   || !title.trim())   return res.json({ success: false, message: 'Title is required.' });
         if (!content || !content.trim()) return res.json({ success: false, message: 'Content is required.' });
@@ -4878,24 +4895,32 @@ router.post('/am/announcements', requireAdmin, async (req, res) => {
         teacher_id  = teacher_id ? parseInt(teacher_id, 10) : req.user.user_id;
         is_priority = is_priority ? 1 : 0;
         is_critical = is_critical ? 1 : 0;
-        allow_replies = allow_replies ? 1 : 0;
+
+        // Resolve School Year Context
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, sy_id || req.query.sy_id);
+        const targetSY  = syContext.selectedSY;
 
         let className = '';
-        // If a class_id is given, validate it belongs to the subject
+        let targetSyId = targetSY.sy_id;
+        let targetSubjId = subject_id;
+
+        // If a class_id is given, validate it belongs to the subject and inherit sy_id
         if (class_id && subject_id) {
             const [[cls]] = await db.query(
-                `SELECT class_id, class_name FROM classes WHERE class_id = ? AND subject_id = ?`,
+                `SELECT class_id, class_name, sy_id, subject_id FROM classes WHERE class_id = ? AND subject_id = ?`,
                 [class_id, subject_id]
             );
             if (!cls)
                 return res.json({ success: false, message: 'Selected class does not belong to this subject.' });
             className = cls.class_name;
+            if (cls.sy_id) targetSyId = cls.sy_id;
+            targetSubjId = cls.subject_id;
         }
 
         const [result] = await db.query(
-            `INSERT INTO announcements (class_id, teacher_id, title, content, is_priority, is_critical, due_date) 
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [class_id, teacher_id, title, content, is_priority, is_critical, due_date || null]
+            `INSERT INTO announcements (class_id, teacher_id, sy_id, subject_id, title, content, is_priority, is_critical, due_date) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [class_id, teacher_id, targetSyId, targetSubjId, title, content, is_priority, is_critical, due_date || null]
         );
 
         if (forward_webhook) {
@@ -4915,7 +4940,7 @@ router.post('/am/announcements', requireAdmin, async (req, res) => {
         }
 
         await logActivity(req.user.user_id, 'Admin', 'CREATE_ANNOUNCEMENT',
-            `Posted announcement "${title}" for subject ID ${subject_id}`);
+            `Posted announcement "${title}" for subject ID ${subject_id} in SY ${targetSyId}`);
 
         // T-28: Notify affected Teacher(s) of Admin Class/Subject Announcement
         try {
@@ -4928,8 +4953,8 @@ router.post('/am/announcements', requireAdmin, async (req, res) => {
                 affectedClasses = rows;
             } else if (subject_id) {
                 const [rows] = await db.query(
-                    `SELECT class_id, class_name, teacher_id FROM classes WHERE subject_id = ? AND teacher_id IS NOT NULL`,
-                    [subject_id]
+                    `SELECT class_id, class_name, teacher_id FROM classes WHERE subject_id = ? AND sy_id = ? AND teacher_id IS NOT NULL`,
+                    [subject_id, targetSyId]
                 );
                 affectedClasses = rows;
             }
@@ -4952,7 +4977,7 @@ router.post('/am/announcements', requireAdmin, async (req, res) => {
             console.error('[Admin Announcement Teacher Notification Error]', annNotifErr.message);
         }
 
-        return res.json({ success: true, announcement_id: result.insertId });
+        return res.json({ success: true, announcement_id: result.insertId, sy_id: targetSyId });
 
     } catch (err) {
         console.error('[AM Create Announcement Error]', err);
@@ -4966,10 +4991,14 @@ router.post('/am/announcements', requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/api/broadcast/global', requireAdmin, announcementUpload.single('attachment'), async (req, res) => {
     try {
-        const { title, content, is_critical, due_date, forward_webhook } = req.body;
+        const { title, content, is_critical, due_date, forward_webhook, sy_id } = req.body;
         if (!title || !title.trim() || !content || !content.trim()) {
             return res.status(400).json({ success: false, message: 'Title and content are required.' });
         }
+
+        // Resolve School Year Context
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, sy_id || req.query.sy_id);
+        const targetSY  = syContext.selectedSY;
 
         let attachment_url = null;
         let attachment_name = null;
@@ -4982,10 +5011,11 @@ router.post('/api/broadcast/global', requireAdmin, announcementUpload.single('at
         }
 
         const [result] = await db.query(
-            `INSERT INTO announcements (class_id, scope, teacher_id, title, content, is_priority, is_critical, due_date, attachment_url, attachment_name, attachment_type)
-             VALUES (NULL, 'global', ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+            `INSERT INTO announcements (class_id, scope, teacher_id, sy_id, title, content, is_priority, is_critical, due_date, attachment_url, attachment_name, attachment_type)
+             VALUES (NULL, 'global', ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
             [
                 req.user.user_id,
+                targetSY.sy_id,
                 title.trim(),
                 content.trim(),
                 is_critical ? 1 : 0,

@@ -1082,14 +1082,6 @@
                                 <span class="text-[11px] text-slate-500 leading-snug block">Copies questions into internal question banks so instructors can easily pull items when building new quizzes.</span>
                             </div>
                         </label>
-
-                        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition">
-                            <input type="checkbox" id="addRolloverAnnouncements" name="rollover_announcements" value="1" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
-                            <div>
-                                <span class="text-xs font-bold text-slate-800 block">Retain Announcements &amp; Forum Threads <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.2 rounded-full ml-1">Disabled by default</span></span>
-                                <span class="text-[11px] text-slate-500 leading-snug block">Ensures dated, cohort-specific announcements and student discussions are not carried over into the new school year.</span>
-                            </div>
-                        </label>
                     </div>
 
                     <div>
@@ -2184,7 +2176,7 @@ async function submitAddSY(e) {
     payload.rollover_materials = document.getElementById('addRolloverMaterials').checked ? 1 : 0;
     payload.rollover_assessments = document.getElementById('addRolloverAssessments').checked ? 1 : 0;
     payload.rollover_question_bank = document.getElementById('addRolloverQB').checked ? 1 : 0;
-    payload.rollover_announcements = document.getElementById('addRolloverAnnouncements').checked ? 1 : 0;
+    payload.rollover_announcements = 0; // Announcements & forums are cohort-specific and permanently non-reusable
 
     const data = await apiPost('/admin/am/school-years', payload);
     if (data.success) {
@@ -4074,9 +4066,12 @@ async function loadProgress() {
     const container = document.getElementById('progressContainer');
     container.innerHTML = `<div class="text-center py-6"><i class="fas fa-spinner fa-spin text-cyan-300 text-xl"></i></div>`;
     try {
-        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/progress?class_id=${classId}`);
+        const curSyId = new URLSearchParams(window.location.search).get('sy_id');
+        let url = `/admin/am/subjects/${activeDrillSubjectId}/progress?class_id=${encodeURIComponent(classId || '')}`;
+        if (curSyId) url += `&sy_id=${encodeURIComponent(curSyId)}`;
+        const res  = await fetch(url);
         const data = await res.json();
-        if (!data.success || !data.progress.length) {
+        if (!data.success || !data.progress || !data.progress.length) {
             container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fas fa-chart-bar text-3xl mb-2 block opacity-30"></i><p class="font-bold text-sm">No progress data yet.</p></div>`;
             return;
         }
@@ -4095,6 +4090,9 @@ async function loadProgress() {
     } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load progress.</p>`; }
 }
 
+// Global cache for announcements preview
+window._academicAnnouncements = {};
+
 // ─── Announcements ────────────────────────────────────────────────────────────
 async function loadAnnouncements() {
     if (!activeDrillSubjectId) return;
@@ -4102,12 +4100,15 @@ async function loadAnnouncements() {
     container.innerHTML = `<div class="text-center py-6"><i class="fas fa-spinner fa-spin text-amber-300 text-xl"></i></div>`;
     try {
         const curSyId = new URLSearchParams(window.location.search).get('sy_id');
-        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/announcements${curSyId ? '?sy_id=' + curSyId : ''}`);
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/announcements${curSyId ? '?sy_id=' + encodeURIComponent(curSyId) : ''}`);
         const data = await res.json();
-        if (!data.success || !data.announcements.length) {
+        if (!data.success || !data.announcements || !data.announcements.length) {
             container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fas fa-bullhorn text-3xl mb-2 block opacity-30"></i><p class="font-bold text-sm">No announcements yet.</p></div>`;
             return;
         }
+        window._academicAnnouncements = {};
+        data.announcements.forEach(a => { window._academicAnnouncements[a.announcement_id] = a; });
+
         container.innerHTML = `<div class="space-y-3">` + data.announcements.map(a => `
             <div class="p-4 rounded-xl border ${a.is_critical ? 'border-rose-300 bg-rose-50/70' : (a.is_priority ? 'border-amber-200 bg-amber-50/50' : 'border-slate-100 bg-white')}">
                 <div class="flex items-start justify-between gap-3">
@@ -4127,16 +4128,19 @@ async function loadAnnouncements() {
                         </div>
                     </div>
                     <div class="flex items-center gap-1 flex-shrink-0">
-                        <button class="btn-icon text-cyan-600 hover:bg-cyan-50" title="Preview Announcement & Proof" onclick='openAnnouncementPreview(${JSON.stringify(a)})'>
+                        <button class="btn-icon text-cyan-600 hover:bg-cyan-50" title="Preview Announcement & Proof" onclick="openAnnouncementPreview(window._academicAnnouncements[${a.announcement_id}])">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="btn-icon btn-delete flex-shrink-0" onclick="confirmDeleteAnnouncement(${a.announcement_id},'${a.title.replace(/'/g,"\\'")}')">
+                        <button class="btn-icon btn-delete flex-shrink-0" onclick="confirmDeleteAnnouncement(${a.announcement_id},'${(a.title || '').replace(/'/g,"\\'")}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
             </div>`).join('') + `</div>`;
-    } catch { container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load announcements.</p>`; }
+    } catch (e) {
+        console.error('[loadAnnouncements Error]:', e);
+        container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load announcements.</p>`;
+    }
 }
 
 function openAddAnnouncement() {
@@ -4154,9 +4158,12 @@ async function submitAddAnnouncement(e) {
     if (!isGlobal) {
         fd.set('subject_id', activeDrillSubjectId);
     }
+    const curSyId = new URLSearchParams(window.location.search).get('sy_id');
+    if (curSyId) {
+        fd.set('sy_id', curSyId);
+    }
     if (!fd.has('is_priority')) fd.set('is_priority', '0');
     if (!fd.has('is_critical')) fd.set('is_critical', '0');
-    if (!fd.has('allow_replies')) fd.set('allow_replies', '0');
     if (!fd.has('forward_webhook')) fd.set('forward_webhook', '0');
 
     try {

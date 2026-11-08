@@ -692,7 +692,7 @@ async function executeContentRollover(db, options) {
         assessmentsCloned,
         defaultVisibility,
         assessmentsExcluded: !rolloverAssessments,
-        announcementsExcluded: !rolloverAnnouncements
+        announcementsExcluded: true // Announcements & forums are cohort-specific and permanently excluded from rollover
     };
 }
 
