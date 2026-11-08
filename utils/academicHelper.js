@@ -502,30 +502,25 @@ async function previewContentRollover(db, sourceSyId) {
         [sourceSyId]
     );
 
-    // 2. Learning materials count under these subjects
+    // 2. Learning materials count under sourceSyId
     const [[matRow]] = await db.query(`
         SELECT COUNT(lm.material_id) as mat_count
         FROM learning_materials lm
-        JOIN topics t ON t.topic_id = lm.topic_id
-        JOIN quarters q ON q.quarter_id = t.quarter_id
-        WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+        WHERE lm.sy_id = ?
     `, [sourceSyId]);
 
-    // 3. Question bank items count
+    // 3. Question bank items count under sourceSyId
     const [[qbRow]] = await db.query(`
-        SELECT COUNT(qb.question_id) as qb_count
-        FROM question_bank qb
-        JOIN topics t ON t.topic_id = qb.topic_id
-        JOIN quarters q ON q.quarter_id = t.quarter_id
-        WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+        SELECT COUNT(eq.question_id) as qb_count
+        FROM elementa_questions eq
+        WHERE eq.sy_id = ? AND eq.is_active = 1
     `, [sourceSyId]);
 
-    // 4. Past assessments count (to confirm exclusion/retention)
+    // 4. Past assessments count under sourceSyId
     const [[assRow]] = await db.query(`
         SELECT COUNT(a.assessment_id) as ass_count
         FROM assessments a
-        JOIN quarters q ON q.quarter_id = a.quarter_id
-        WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+        WHERE a.sy_id = ?
     `, [sourceSyId]);
 
     // 5. Announcements to exclude
@@ -617,32 +612,70 @@ async function executeContentRollover(db, options) {
         }
     }
 
-    // 2. Learning Materials Visibility
+    // 2. Learning Materials Rollover (Clone to targetSyId with defaultVisibility)
     let materialsUpdated = 0;
     if (rolloverMaterials) {
         const lockValue = defaultVisibility === 'hidden' ? 1 : 0;
-        const [updateRes] = await db.query(`
-            UPDATE learning_materials lm
-            JOIN topics t ON t.topic_id = lm.topic_id
-            JOIN quarters q ON q.quarter_id = t.quarter_id
-            SET lm.is_locked = ?
-            WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
-        `, [lockValue, sourceSyId]);
-        materialsUpdated = updateRes.affectedRows || 0;
+        const [sourceMats] = await db.query(`
+            SELECT topic_id, title, material_type, file_path_or_url, uploaded_by,
+                   ai_summary, ai_flashcards, ai_status
+            FROM learning_materials
+            WHERE sy_id = ?
+        `, [sourceSyId]);
+
+        for (const m of sourceMats) {
+            const [[existingMat]] = await db.query(`
+                SELECT material_id FROM learning_materials
+                WHERE sy_id = ? AND topic_id = ? AND title = ?
+            `, [targetSyId, m.topic_id, m.title]);
+
+            if (!existingMat) {
+                await db.query(`
+                    INSERT INTO learning_materials (
+                        sy_id, topic_id, title, material_type, file_path_or_url,
+                        is_locked, uploaded_by, ai_summary, ai_flashcards, ai_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    targetSyId, m.topic_id, m.title, m.material_type, m.file_path_or_url,
+                    lockValue, m.uploaded_by, m.ai_summary, m.ai_flashcards, m.ai_status
+                ]);
+                materialsUpdated++;
+            }
+        }
     }
 
-    // 3. Question Bank items retention
+    // 3. Question Bank items retention (Clone to targetSyId as verified)
     let questionsRetained = 0;
     if (rolloverQuestionBank) {
-        // Base table for question bank is elementa_questions
-        const [qbRes] = await db.query(`
-            UPDATE elementa_questions eq
-            JOIN topics t ON t.topic_id = eq.topic_id
-            JOIN quarters q ON q.quarter_id = t.quarter_id
-            SET eq.verification_status = 'verified'
-            WHERE q.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE sy_id = ?)
+        const [sourceQs] = await db.query(`
+            SELECT teacher_id, question_code, level_number, topic_id, topic,
+                   machine_name, machine_id, difficulty, prompt, answer_text, steps_json,
+                   time_limit_s, points, display_order
+            FROM elementa_questions
+            WHERE sy_id = ? AND is_active = 1
         `, [sourceSyId]);
-        questionsRetained = qbRes.affectedRows || 0;
+
+        for (const q of sourceQs) {
+            const [[existingQ]] = await db.query(`
+                SELECT question_id FROM elementa_questions
+                WHERE sy_id = ? AND prompt = ?
+            `, [targetSyId, q.prompt]);
+
+            if (!existingQ) {
+                await db.query(`
+                    INSERT INTO elementa_questions (
+                        sy_id, teacher_id, question_code, level_number, topic_id, topic,
+                        machine_name, machine_id, difficulty, prompt, answer_text, steps_json,
+                        time_limit_s, points, display_order, is_active, verification_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'Approved')
+                `, [
+                    targetSyId, q.teacher_id, q.question_code, q.level_number, q.topic_id, q.topic,
+                    q.machine_name, q.machine_id, q.difficulty, q.prompt, q.answer_text, q.steps_json,
+                    q.time_limit_s, q.points, q.display_order
+                ]);
+                questionsRetained++;
+            }
+        }
     }
 
     // 4. Assessments Rollover (Clone to targetSyId with is_unlocked = 0)

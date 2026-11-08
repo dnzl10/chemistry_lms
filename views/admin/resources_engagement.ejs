@@ -3562,10 +3562,12 @@ async function submitAddMaterial() {
         }
 
         try {
-            var res  = await fetch('/admin/re/materials', {
+            var curSyId = (typeof window.getAdminCurrentSY === 'function' ? window.getAdminCurrentSY() : null) || new URLSearchParams(window.location.search).get('sy_id');
+            var syParam = curSyId ? '?sy_id=' + encodeURIComponent(curSyId) : '';
+            var res  = await fetch('/admin/re/materials' + syParam, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: title, topic_id: topicId, material_type: type, file_path_or_url: url, is_locked: locked })
+                body: JSON.stringify({ title: title, topic_id: topicId, material_type: type, file_path_or_url: url, is_locked: locked, sy_id: curSyId })
             });
             var data = await res.json();
             if (data.success) {
@@ -3628,8 +3630,12 @@ async function submitAddMaterial() {
         fd.append('is_locked', locked);
         fd.append('material_file', file);
 
+        var curSyId = (typeof window.getAdminCurrentSY === 'function' ? window.getAdminCurrentSY() : null) || new URLSearchParams(window.location.search).get('sy_id');
+        var syParam = curSyId ? '?sy_id=' + encodeURIComponent(curSyId) : '';
+        if (curSyId) fd.append('sy_id', curSyId);
+
         try {
-            var res  = await fetch('/admin/re/materials', { method: 'POST', body: fd });
+            var res  = await fetch('/admin/re/materials' + syParam, { method: 'POST', body: fd });
             var data = await res.json();
             if (data.success) {
                 showToast('Material uploaded successfully!', 'ok');

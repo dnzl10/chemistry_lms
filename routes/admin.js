@@ -139,7 +139,7 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
         const [[adminRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Admin'`);
         const [[subjRow]]     = await db.query(`SELECT COUNT(*) AS cnt FROM subjects`);
         const [[assessRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE sy_id = ?`, [selectedSY.sy_id]);
-        const [[qbRow]]       = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1`);
+        const [[qbRow]]       = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND sy_id = ?`, [selectedSY.sy_id]);
         const [[pendInvRow]]  = await db.query(
             `SELECT COUNT(*) AS cnt FROM account_invitations WHERE is_used = 0 AND (expires_at IS NULL OR expires_at > NOW())`
         );
@@ -3310,6 +3310,9 @@ router.get('/am/subjects/:id/quarters', requireAdmin, async (req, res) => {
 
         await topicScheduleService.evaluateNow();
 
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSyId = syContext?.selectedSY?.sy_id;
+
         const [quarters] = await db.query(
             `SELECT quarter_id, quarter_number, is_locked
              FROM quarters WHERE subject_id = ? ORDER BY quarter_number ASC`,
@@ -3329,9 +3332,9 @@ router.get('/am/subjects/:id/quarters', requireAdmin, async (req, res) => {
                 const [mats] = await db.query(
                     `SELECT material_id, topic_id, title, material_type, file_path_or_url, is_locked, uploaded_by
                      FROM learning_materials
-                     WHERE topic_id = ?
+                     WHERE topic_id = ? AND sy_id = ?
                      ORDER BY material_id ASC`,
-                    [t.topic_id]
+                    [t.topic_id, targetSyId]
                 );
                 t.materials = mats;
             }
@@ -5549,7 +5552,7 @@ router.get(['/gaming_question_bank', '/gaming_qbank'], requireAdmin, async (req,
         const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
 
         const [[aTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE sy_id = ?`, [selectedSY.sy_id]);
-        const [[qTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1`);
+        const [[qTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND sy_id = ?`, [selectedSY.sy_id]);
         const [[mTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM button_mappings`);
         const [[rTot]] = await db.query(`SELECT COUNT(*) AS cnt FROM remediation_materials`);
 
@@ -5618,9 +5621,9 @@ router.get(['/gaming_question_bank', '/gaming_qbank'], requireAdmin, async (req,
             LEFT JOIN subjects s ON q.subject_id = s.subject_id
             LEFT JOIN users vu ON eq.verified_by = vu.user_id
             LEFT JOIN users tu ON eq.teacher_id = tu.user_id
-            WHERE eq.is_active = 1
+            WHERE eq.is_active = 1 AND eq.sy_id = ?
             ORDER BY eq.level_number ASC, eq.question_id DESC
-        `);
+        `, [selectedSY.sy_id]);
 
         const [buttonMappings] = await db.query(
             `SELECT mapping_id, button_pin, element_symbol, player_side
@@ -5640,7 +5643,8 @@ router.get(['/gaming_question_bank', '/gaming_qbank'], requireAdmin, async (req,
 
         const [materials] = await db.query(
             `SELECT material_id, title, material_type, topic_id
-             FROM learning_materials ORDER BY title ASC`
+             FROM learning_materials WHERE sy_id = ? ORDER BY title ASC`,
+            [selectedSY.sy_id]
         );
 
         const [remediationList] = await db.query(`
@@ -5676,11 +5680,11 @@ router.get(['/gaming_question_bank', '/gaming_qbank'], requireAdmin, async (req,
             LEFT JOIN topics t ON t.topic_id = eq.topic_id
             LEFT JOIN users teacher  ON teacher.user_id  = eq.teacher_id
             LEFT JOIN users verifier ON verifier.user_id = eq.verified_by
-            WHERE eq.is_active = 1
+            WHERE eq.is_active = 1 AND eq.sy_id = ?
             ORDER BY
                 FIELD(eq.verification_status, 'Pending', 'Approved', 'Rejected'),
                 eq.question_id DESC
-        `);
+        `, [selectedSY.sy_id]);
 
         const [interactionLog] = await db.query(`
             SELECT
@@ -5794,6 +5798,9 @@ router.get('/gqb/topics/:topic_id/questions-pool', requireAdmin, async (req, res
         const topicId = parseInt(req.params.topic_id, 10);
         if (isNaN(topicId)) return res.json({ success: false, message: 'Invalid topic ID.' });
 
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSyId = syContext?.selectedSY?.sy_id;
+
         const levelNumber = await resolveLevelForTopicId(db, topicId);
 
         const [questions] = await db.query(`
@@ -5803,8 +5810,9 @@ router.get('/gqb/topics/:topic_id/questions-pool', requireAdmin, async (req, res
             FROM elementa_questions
             WHERE (topic_id = ? OR (level_number IS NOT NULL AND level_number = ?))
               AND is_active = 1 AND verification_status = 'Approved'
+              AND sy_id = ?
             ORDER BY display_order ASC, question_id ASC
-        `, [topicId, levelNumber]);
+        `, [topicId, levelNumber, targetSyId]);
 
         return res.json({
             success: true,
@@ -6098,6 +6106,8 @@ async function _upsertElementaQuestion(req, qId) {
     let questionId;
     if (!qId) {
         const creatorId = teacher_id ? parseInt(teacher_id, 10) : req.user.user_id;
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body.sy_id || req.query.sy_id);
+        const targetSyId = syContext?.selectedSY?.sy_id || null;
         const [[maxOrderRow]] = await db.query(
             `SELECT COALESCE(MAX(display_order), 0) + 1 AS next_order FROM elementa_questions WHERE level_number = ?`,
             [actualLevel]
@@ -6105,11 +6115,12 @@ async function _upsertElementaQuestion(req, qId) {
         const nextDisplayOrder = Number(maxOrderRow?.next_order) || 1;
         const [result] = await db.query(`
             INSERT INTO elementa_questions
-                (teacher_id, question_code, level_number, topic_id, topic,
+                (sy_id, teacher_id, question_code, level_number, topic_id, topic,
                  machine_name, machine_id, prompt, answer_text, steps_json,
                  time_limit_s, points, difficulty, display_order, verification_status, verified_by, verified_at, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
         `, [
+            targetSyId,
             creatorId,
             qCode,
             actualLevel,
@@ -6681,6 +6692,9 @@ router.post('/gqb/questions/bulk-import', requireAdmin, uploadBulk.single('file'
     try {
         if (!req.file) return res.json({ success: false, message: 'No file uploaded.' });
 
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body.sy_id || req.query.sy_id);
+        const targetSyId = syContext?.selectedSY?.sy_id || null;
+
         const wb   = XLSX.read(req.file.buffer, { type: 'buffer' });
         const ws   = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
@@ -6784,11 +6798,12 @@ router.post('/gqb/questions/bulk-import', requireAdmin, uploadBulk.single('file'
 
                 const [result] = await db.query(`
                     INSERT INTO elementa_questions
-                        (topic_id, topic, teacher_id, prompt,
+                        (sy_id, topic_id, topic, teacher_id, prompt,
                          machine_name, difficulty, base_score, time_limit_s,
                          answer_text, is_active, verification_status, verified_by, verified_at)
-                    VALUES (?, (SELECT topic_name FROM topics WHERE topic_id = ?), ?, ?, ?, ?, ?, ?, ?, 1, 'Approved', ?, NOW())
+                    VALUES (?, ?, (SELECT topic_name FROM topics WHERE topic_id = ?), ?, ?, ?, ?, ?, ?, ?, 1, 'Approved', ?, NOW())
                 `, [
+                    targetSyId,
                     topicId,
                     topicId,
                     req.user.user_id,
@@ -6997,7 +7012,7 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
         const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
 
         // ── KPI stats ──────────────────────────────────────────────────────────
-        const [[mRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM learning_materials`);
+        const [[mRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM learning_materials WHERE sy_id = ?`, [selectedSY.sy_id]);
         const [[fRow]] = await db.query(`
             SELECT COUNT(*) AS cnt 
             FROM forum_topics ft
@@ -7079,10 +7094,10 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
                     LEFT JOIN quarters q ON q.quarter_id = t.quarter_id
                     LEFT JOIN classes c ON c.subject_id = q.subject_id
                     LEFT JOIN users tu ON tu.user_id = c.teacher_id
-                    WHERE lm.topic_id = ?
+                    WHERE lm.topic_id = ? AND lm.sy_id = ?
                     GROUP BY lm.material_id
                     ORDER BY lm.created_at DESC, lm.material_id DESC
-                `, [t.topic_id]);
+                `, [t.topic_id, selectedSY.sy_id]);
                 topicsWithMats.push({ ...t, materials });
             }
 
@@ -7192,8 +7207,8 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
 
         // ── Engagement Milestone Logic: Calculate student interaction percentages (Materials vs Games)
         const [[{ totalUnlockedMaterials = 1 } = {}]] = await db.query(`
-            SELECT COUNT(*) AS totalUnlockedMaterials FROM learning_materials WHERE is_locked = 0
-        `);
+            SELECT COUNT(*) AS totalUnlockedMaterials FROM learning_materials WHERE is_locked = 0 AND sy_id = ?
+        `, [selectedSY.sy_id]);
         const [[{ totalArcadeAssessmentsPlayed = 1 } = {}]] = await db.query(`
             SELECT COUNT(DISTINCT assessment_id) AS totalArcadeAssessmentsPlayed FROM elementa_game_sessions WHERE assessment_id IS NOT NULL
         `);
@@ -7604,10 +7619,13 @@ router.post('/re/materials', requireAdmin, (req, res, next) => {
             file_path_or_url = req.file.filename;  // stored filename only; path prefix added in EJS
         }
 
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body.sy_id || req.query.sy_id);
+        const targetSyId = syContext?.selectedSY?.sy_id || null;
+
         const [result] = await db.query(`
-            INSERT INTO learning_materials (topic_id, title, material_type, file_path_or_url, is_locked, uploaded_by)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `, [topic_id, title, material_type, file_path_or_url, is_locked, req.user.user_id]);
+            INSERT INTO learning_materials (sy_id, topic_id, title, material_type, file_path_or_url, is_locked, uploaded_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [targetSyId, topic_id, title, material_type, file_path_or_url, is_locked, req.user.user_id]);
 
         await logActivity(req.user.user_id, 'Admin', 'CREATE_MATERIAL',
             `Uploaded material: "${title}" (${material_type}) → topic ID ${topic_id}`);
@@ -8478,8 +8496,8 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             WHERE c.sy_id = ?
         `, [selectedSY.sy_id]);
         const [[aRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE sy_id = ?`, [selectedSY.sy_id]);
-        const [[qRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1`);
-        const [[mRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM learning_materials`);
+        const [[qRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND sy_id = ?`, [selectedSY.sy_id]);
+        const [[mRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM learning_materials WHERE sy_id = ?`, [selectedSY.sy_id]);
 
         const [[asgtRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE assessment_type = 'Assignment' AND sy_id = ?`, [selectedSY.sy_id]);
         const [asgtCategories] = await db.query(`
@@ -8536,11 +8554,11 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             FROM quarters q
             JOIN subjects s ON s.subject_id = q.subject_id
             LEFT JOIN topics t           ON t.quarter_id    = q.quarter_id
-            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id
+            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id AND lm.sy_id = ?
             LEFT JOIN assessments a       ON a.topic_id     = t.topic_id AND a.sy_id = ?
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name ASC, q.quarter_number ASC, t.topic_id ASC
-        `, [selectedSY.sy_id]);
+        `, [selectedSY.sy_id, selectedSY.sy_id]);
 
         // Group into quarters
         const curriculumMap = {};
@@ -8737,6 +8755,9 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
 // ── EXPORT: CURRICULUM PROGRESS — Excel ─────────────────────────────────────
 router.get('/rm/export/curriculum', requireAdmin, async (req, res) => {
     try {
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const { selectedSY } = syContext;
+
         const [rows] = await db.query(`
             SELECT
                 s.subject_name,
@@ -8747,11 +8768,11 @@ router.get('/rm/export/curriculum', requireAdmin, async (req, res) => {
             FROM quarters q
             JOIN subjects s ON s.subject_id = q.subject_id
             LEFT JOIN topics t            ON t.quarter_id   = q.quarter_id
-            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id
-            LEFT JOIN assessments a         ON a.topic_id   = t.topic_id
+            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id AND lm.sy_id = ?
+            LEFT JOIN assessments a         ON a.topic_id   = t.topic_id AND a.sy_id = ?
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name, q.quarter_number, t.topic_id
-        `);
+        `, [selectedSY.sy_id, selectedSY.sy_id]);
 
         const auditRef = generateAuditRef('CUR');
         const wb = new ExcelJS.Workbook();
@@ -9792,16 +9813,16 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
         `);
 
         // ── 8. QUESTION BANK AUDIT (Arcade Challenges) ─────────────────────────
-        const [[qTotalRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1`);
-        const [[qPendingRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND verification_status = 'Pending'`);
-        const [[qApprovedRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND verification_status = 'Approved'`);
-        const [[qRejectedRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND verification_status = 'Rejected'`);
+        const [[qTotalRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND sy_id = ?`, [selectedSY.sy_id]);
+        const [[qPendingRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND verification_status = 'Pending' AND sy_id = ?`, [selectedSY.sy_id]);
+        const [[qApprovedRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND verification_status = 'Approved' AND sy_id = ?`, [selectedSY.sy_id]);
+        const [[qRejectedRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1 AND verification_status = 'Rejected' AND sy_id = ?`, [selectedSY.sy_id]);
 
         const questionStats = {
-            total    : qTotalRow.cnt,
-            pending  : qPendingRow.cnt,
-            approved : qApprovedRow.cnt,
-            rejected : qRejectedRow.cnt,
+            total    : qTotalRow ? qTotalRow.cnt : 0,
+            pending  : qPendingRow ? qPendingRow.cnt : 0,
+            approved : qApprovedRow ? qApprovedRow.cnt : 0,
+            rejected : qRejectedRow ? qRejectedRow.cnt : 0,
         };
 
         // Questions still pending — show up to 20
@@ -9813,10 +9834,10 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
             FROM elementa_questions eq
             LEFT JOIN topics  t ON t.topic_id   = eq.topic_id
             LEFT JOIN users   u ON u.user_id     = eq.teacher_id
-            WHERE eq.is_active = 1 AND eq.verification_status = 'Pending'
+            WHERE eq.is_active = 1 AND eq.verification_status = 'Pending' AND eq.sy_id = ?
             ORDER BY eq.question_id DESC
             LIMIT 20
-        `);
+        `, [selectedSY.sy_id]);
 
         // ── 9. ACTIVE / RECENT ARCADE SESSIONS ────────────────────────────────
         const [[sessTotalRow]]    = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions`);

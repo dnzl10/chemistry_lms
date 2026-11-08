@@ -1056,11 +1056,11 @@
                         </div>
                     </div>
 
-                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                    <div id="rolloverRetentionControlsSection" class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3 transition-opacity duration-200 opacity-40 pointer-events-none">
                         <h4 class="text-xs font-black text-slate-700 uppercase tracking-wider mb-2">Content Retention Controls</h4>
 
                         <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition">
-                            <input type="checkbox" id="addRolloverMaterials" name="rollover_materials" value="1" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 mt-0.5">
+                            <input type="checkbox" id="addRolloverMaterials" name="rollover_materials" value="1" disabled class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 mt-0.5">
                             <div>
                                 <span class="text-xs font-bold text-slate-800 block">Retain Learning Materials / Handouts <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.2 rounded-full ml-1">Recommended</span></span>
                                 <span class="text-[11px] text-slate-500 leading-snug block">Keeps lecture slides, module files, reading PDFs, and reference links accessible for Chemistry 1 &amp; 2.</span>
@@ -1068,7 +1068,7 @@
                         </label>
 
                         <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition">
-                            <input type="checkbox" id="addRolloverAssessments" name="rollover_assessments" value="1" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                            <input type="checkbox" id="addRolloverAssessments" name="rollover_assessments" value="1" disabled class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
                             <div>
                                 <span class="text-xs font-bold text-slate-800 block">Retain Assessments &amp; Quizzes <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.2 rounded-full ml-1">Disabled by default</span></span>
                                 <span class="text-[11px] text-slate-500 leading-snug block">Kept unchecked to exclude previous exams, student submissions, and scores so assessment rosters remain clean.</span>
@@ -1076,7 +1076,7 @@
                         </label>
 
                         <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 transition">
-                            <input type="checkbox" id="addRolloverQB" name="rollover_question_bank" value="1" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
+                            <input type="checkbox" id="addRolloverQB" name="rollover_question_bank" value="1" disabled class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5">
                             <div>
                                 <span class="text-xs font-bold text-slate-800 block">Retain Question Bank as Drafts <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.2 rounded-full ml-1">Optional</span></span>
                                 <span class="text-[11px] text-slate-500 leading-snug block">Copies questions into internal question banks so instructors can easily pull items when building new quizzes.</span>
@@ -1084,9 +1084,9 @@
                         </label>
                     </div>
 
-                    <div>
+                    <div id="rolloverVisibilitySection" class="transition-opacity duration-200 opacity-40 pointer-events-none">
                         <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Default Rollover Visibility</label>
-                        <select id="addRolloverVisibility" name="default_rollover_visibility" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500">
+                        <select id="addRolloverVisibility" name="default_rollover_visibility" disabled class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500">
                             <option value="visible" selected>Visible immediately to enrolled students</option>
                             <option value="hidden">Set to Hidden / Draft status first (Require instructor review)</option>
                         </select>
@@ -1921,6 +1921,12 @@ function toggleSidebar() {
 function openModal(id) {
     document.getElementById(id).classList.add('open');
     document.body.style.overflow = 'hidden';
+    if (id === 'modalAddSY') {
+        const form = document.getElementById('addSYForm');
+        if (form) form.reset();
+        switchAddSYTab(1);
+        onSourceSYChange('');
+    }
 }
 function closeModal(id) {
     document.getElementById(id).classList.remove('open');
@@ -2095,27 +2101,53 @@ function switchEditSYTab(tabNum) {
 
 async function onSourceSYChange(sourceId) {
     const box = document.getElementById('rolloverPreviewBox');
-    if (!box) return;
+    const retentionSec = document.getElementById('rolloverRetentionControlsSection');
+    const visSec = document.getElementById('rolloverVisibilitySection');
+    const chkMaterials = document.getElementById('addRolloverMaterials');
+    const chkAssessments = document.getElementById('addRolloverAssessments');
+    const chkQB = document.getElementById('addRolloverQB');
+    const selVisibility = document.getElementById('addRolloverVisibility');
+
     if (!sourceId) {
-        box.classList.add('hidden');
+        if (box) box.classList.add('hidden');
+        // Uncheck all retention options and lock
+        if (chkMaterials) { chkMaterials.checked = false; chkMaterials.disabled = true; }
+        if (chkAssessments) { chkAssessments.checked = false; chkAssessments.disabled = true; }
+        if (chkQB) { chkQB.checked = false; chkQB.disabled = true; }
+        // Lock Default Rollover Visibility dropdown
+        if (selVisibility) { selVisibility.disabled = true; }
+        // Visually indicate locked / not applicable state
+        if (retentionSec) retentionSec.classList.add('opacity-40', 'pointer-events-none');
+        if (visSec) visSec.classList.add('opacity-40', 'pointer-events-none');
         return;
     }
-    box.classList.remove('hidden');
-    document.getElementById('rolloverPreviewStatus').textContent = 'Analyzing...';
-    try {
-        const res = await fetch(`/admin/am/school-years/${sourceId}/rollover-preview`);
-        const data = await res.json();
-        if (data.success) {
-            document.getElementById('rolloverPreviewStatus').textContent = 'Ready to Rollover';
-            document.getElementById('prevClassCount').textContent = `${data.classesCount} section(s)`;
-            document.getElementById('prevMatCount').textContent = `${data.materialsCount} material(s)`;
-            document.getElementById('prevQBCount').textContent = `${data.questionBankCount} items`;
-        } else {
-            document.getElementById('rolloverPreviewStatus').textContent = 'Preview unavailable';
+
+    // Preceding cohort selected -> unlock controls
+    if (chkMaterials) { chkMaterials.disabled = false; chkMaterials.checked = true; }
+    if (chkAssessments) { chkAssessments.disabled = false; chkAssessments.checked = false; }
+    if (chkQB) { chkQB.disabled = false; chkQB.checked = false; }
+    if (selVisibility) { selVisibility.disabled = false; }
+    if (retentionSec) retentionSec.classList.remove('opacity-40', 'pointer-events-none');
+    if (visSec) visSec.classList.remove('opacity-40', 'pointer-events-none');
+
+    if (box) {
+        box.classList.remove('hidden');
+        document.getElementById('rolloverPreviewStatus').textContent = 'Analyzing...';
+        try {
+            const res = await fetch(`/admin/am/school-years/${sourceId}/rollover-preview`);
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('rolloverPreviewStatus').textContent = 'Ready to Rollover';
+                document.getElementById('prevClassCount').textContent = `${data.classesCount} section(s)`;
+                document.getElementById('prevMatCount').textContent = `${data.materialsCount} material(s)`;
+                document.getElementById('prevQBCount').textContent = `${data.questionBankCount} items`;
+            } else {
+                document.getElementById('rolloverPreviewStatus').textContent = 'Preview unavailable';
+            }
+        } catch (e) {
+            console.error('Failed to preview rollover:', e);
+            document.getElementById('rolloverPreviewStatus').textContent = 'Error loading preview';
         }
-    } catch (e) {
-        console.error('Failed to preview rollover:', e);
-        document.getElementById('rolloverPreviewStatus').textContent = 'Error loading preview';
     }
 }
 
@@ -2173,10 +2205,18 @@ async function submitAddSY(e) {
     if (payload.is_active === 1) payload.status = 'Current';
 
     payload.enforce_prerequisite = document.getElementById('addEnforcePrereq').checked ? 1 : 0;
-    payload.rollover_materials = document.getElementById('addRolloverMaterials').checked ? 1 : 0;
-    payload.rollover_assessments = document.getElementById('addRolloverAssessments').checked ? 1 : 0;
-    payload.rollover_question_bank = document.getElementById('addRolloverQB').checked ? 1 : 0;
-    payload.rollover_announcements = 0; // Announcements & forums are cohort-specific and permanently non-reusable
+    if (!payload.source_sy_id) {
+        payload.rollover_materials = 0;
+        payload.rollover_assessments = 0;
+        payload.rollover_question_bank = 0;
+        payload.rollover_announcements = 0;
+        payload.default_rollover_visibility = 'visible';
+    } else {
+        payload.rollover_materials = document.getElementById('addRolloverMaterials').checked ? 1 : 0;
+        payload.rollover_assessments = document.getElementById('addRolloverAssessments').checked ? 1 : 0;
+        payload.rollover_question_bank = document.getElementById('addRolloverQB').checked ? 1 : 0;
+        payload.rollover_announcements = 0; // Announcements & forums are cohort-specific and permanently non-reusable
+    }
 
     const data = await apiPost('/admin/am/school-years', payload);
     if (data.success) {
@@ -2500,7 +2540,9 @@ async function loadQuarters() {
     const container = document.getElementById('quartersContainer');
     container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-indigo-300 text-2xl"></i></div>`;
     try {
-        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/quarters`);
+        const curSyId = (typeof window.getAdminCurrentSY === 'function' ? window.getAdminCurrentSY() : null) || new URLSearchParams(window.location.search).get('sy_id');
+        const syParam = curSyId ? `?sy_id=${encodeURIComponent(curSyId)}` : '';
+        const res  = await fetch(`/admin/am/subjects/${activeDrillSubjectId}/quarters${syParam}`);
         const data = await res.json();
         if (!data.success) { container.innerHTML = `<p class="text-rose-500 text-sm">${data.message}</p>`; return; }
         const quarters = data.quarters;
