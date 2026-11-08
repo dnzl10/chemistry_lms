@@ -1794,7 +1794,7 @@ router.post('/api/material', isTeacher, (req, res) => {
     materialUpload.single('file')(req, res, async (uploadErr) => {
         if (uploadErr) return res.status(400).json({ success: false, error: uploadErr.message });
         try {
-            const { topic_id, title, material_type, file_path_or_url, is_locked } = req.body;
+            const { topic_id, title, material_type, file_path_or_url, is_locked, sy_id } = req.body;
             if (!topic_id) throw new Error('topic_id is required');
             if (!title) throw new Error('title is required');
             if (!material_type) throw new Error('material_type is required');
@@ -1809,9 +1809,15 @@ router.post('/api/material', isTeacher, (req, res) => {
                 throw new Error('Either upload a file or provide a URL.');
             }
 
+            let resolvedSyId = sy_id ? parseInt(sy_id, 10) : null;
+            if (!resolvedSyId || isNaN(resolvedSyId)) {
+                const currentSY = await academicHelper.getCurrentSchoolYear(db);
+                resolvedSyId = currentSY ? currentSY.sy_id : null;
+            }
+
             const [result] = await db.execute(
-                `INSERT INTO learning_materials (topic_id, title, material_type, file_path_or_url, is_locked, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)`,
-                [topic_id, title, material_type, savedPath, is_locked === '1' || is_locked === 1 ? 1 : 0, req.user.user_id]
+                `INSERT INTO learning_materials (topic_id, sy_id, title, material_type, file_path_or_url, is_locked, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [topic_id, resolvedSyId, title, material_type, savedPath, is_locked === '1' || is_locked === 1 ? 1 : 0, req.user.user_id]
             );
 
             const materialId = result.insertId;
@@ -1857,7 +1863,7 @@ router.post('/api/material', isTeacher, (req, res) => {
                 console.error('[Material Upload Notification Error]', notifErr.message);
             }
 
-            res.json({ success: true, file_path_or_url: savedPath });
+            res.json({ success: true, material_id: materialId, file_path_or_url: savedPath });
         } catch (e) {
             if (req.file) fs.unlink(req.file.path, () => { });
             console.error('[MATERIAL POST]', e.message);
@@ -1872,12 +1878,12 @@ router.put('/api/material/:mid', isTeacher, (req, res) => {
     materialUpload.single('file')(req, res, async (uploadErr) => {
         if (uploadErr) return res.status(400).json({ success: false, error: uploadErr.message });
         try {
-            const { title, material_type, file_path_or_url, is_locked } = req.body;
+            const { title, material_type, file_path_or_url, is_locked, sy_id } = req.body;
             const mid = req.params.mid;
             if (!title) throw new Error('title is required');
 
             const [[existing]] = await db.execute(
-                `SELECT file_path_or_url FROM learning_materials WHERE material_id = ?`, [mid]
+                `SELECT file_path_or_url, sy_id FROM learning_materials WHERE material_id = ?`, [mid]
             );
             if (!existing) return res.status(404).json({ success: false, error: 'Material not found' });
 
@@ -1901,11 +1907,17 @@ router.put('/api/material/:mid', isTeacher, (req, res) => {
                 savedPath = existing.file_path_or_url; // keep existing
             }
 
+            let resolvedSyId = sy_id ? parseInt(sy_id, 10) : existing.sy_id;
+            if (!resolvedSyId || isNaN(resolvedSyId)) {
+                const currentSY = await academicHelper.getCurrentSchoolYear(db);
+                resolvedSyId = currentSY ? currentSY.sy_id : null;
+            }
+
             await db.execute(
-                `UPDATE learning_materials SET title = ?, material_type = ?, file_path_or_url = ?, is_locked = ? WHERE material_id = ?`,
-                [title, material_type, savedPath, is_locked === '1' || is_locked === 1 ? 1 : 0, mid]
+                `UPDATE learning_materials SET title = ?, material_type = ?, file_path_or_url = ?, is_locked = ?, sy_id = COALESCE(?, sy_id) WHERE material_id = ?`,
+                [title, material_type, savedPath, is_locked === '1' || is_locked === 1 ? 1 : 0, resolvedSyId, mid]
             );
-            res.json({ success: true, file_path_or_url: savedPath });
+            res.json({ success: true, material_id: mid, file_path_or_url: savedPath });
         } catch (e) {
             if (req.file) fs.unlink(req.file.path, () => { });
             console.error('[MATERIAL PUT]', e.message);

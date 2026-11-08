@@ -3383,11 +3383,11 @@ router.get('/am/subjects/:id/quarters', requireAdmin, async (req, res) => {
             );
             for (const t of topics) {
                 const [mats] = await db.query(
-                    `SELECT material_id, topic_id, title, material_type, file_path_or_url, is_locked, uploaded_by
+                    `SELECT material_id, topic_id, sy_id, title, material_type, file_path_or_url, is_locked, uploaded_by
                      FROM learning_materials
-                     WHERE topic_id = ? AND sy_id = ?
+                     WHERE topic_id = ? ${targetSyId ? 'AND (sy_id = ? OR sy_id IS NULL)' : ''}
                      ORDER BY material_id ASC`,
-                    [t.topic_id, targetSyId]
+                    targetSyId ? [t.topic_id, targetSyId] : [t.topic_id]
                 );
                 t.materials = mats;
             }
@@ -8688,7 +8688,7 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             FROM quarters q
             JOIN subjects s ON s.subject_id = q.subject_id
             LEFT JOIN topics t           ON t.quarter_id    = q.quarter_id
-            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id AND lm.sy_id = ?
+            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id AND (lm.sy_id = ? OR lm.sy_id IS NULL)
             LEFT JOIN assessments a       ON a.topic_id     = t.topic_id AND a.sy_id = ?
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name ASC, q.quarter_number ASC, t.topic_id ASC
@@ -8902,7 +8902,7 @@ router.get('/rm/export/curriculum', requireAdmin, async (req, res) => {
             FROM quarters q
             JOIN subjects s ON s.subject_id = q.subject_id
             LEFT JOIN topics t            ON t.quarter_id   = q.quarter_id
-            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id AND lm.sy_id = ?
+            LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id AND (lm.sy_id = ? OR lm.sy_id IS NULL)
             LEFT JOIN assessments a         ON a.topic_id   = t.topic_id AND a.sy_id = ?
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name, q.quarter_number, t.topic_id

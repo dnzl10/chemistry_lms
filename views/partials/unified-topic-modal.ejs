@@ -1439,10 +1439,12 @@
         window.switchUtmMaterialMode('file');
 
         // Existing materials (from options or live fetch in Edit mode)
-        window.utmExistingMaterials = Array.isArray(options.materials) ? [...options.materials] : [];
+        window.utmExistingMaterials = Array.isArray(options.materials) && options.materials.length > 0 
+            ? [...options.materials] 
+            : [];
         window.renderUtmExistingMaterials();
 
-        if (isEdit && (!options.materials || !Array.isArray(options.materials))) {
+        if (isEdit && window.utmExistingMaterials.length === 0) {
             try {
                 const res = await fetch(`/teacher/api/topic/${topicId}/materials`);
                 const data = await res.json();
@@ -1644,6 +1646,11 @@
         }
         if (cancelBtn) cancelBtn.disabled = true;
 
+        const progWrap = document.getElementById('utmSaveUploadProgressWrap');
+        const progBar = document.getElementById('utmSaveUploadProgressBar');
+        const progPct = document.getElementById('utmSaveUploadProgressPct');
+        const progLbl = document.getElementById('utmSaveUploadProgressLabel');
+
         try {
             // Step 1: Save Topic metadata + schedule
             const res = await fetch(window.pendingTopicPayload.url, {
@@ -1661,39 +1668,75 @@
             // Step 2: Upload any queued learning materials to /teacher/api/material
             const queued = window.utmQueuedMaterials || [];
             if (queued.length > 0 && targetTopicId) {
-                const progWrap = document.getElementById('utmSaveUploadProgressWrap');
-                const progBar = document.getElementById('utmSaveUploadProgressBar');
-                const progPct = document.getElementById('utmSaveUploadProgressPct');
-                const progLbl = document.getElementById('utmSaveUploadProgressLabel');
                 if (progWrap) progWrap.classList.remove('hidden');
+                if (progBar) progBar.style.width = '0%';
+                if (progPct) progPct.textContent = '0%';
+
+                const currentSyId = (typeof window.getAdminCurrentSY === 'function' ? window.getAdminCurrentSY() : null)
+                    || (window.currentSY ? window.currentSY.sy_id : null)
+                    || new URLSearchParams(window.location.search).get('sy_id')
+                    || '';
+
+                // Helper for progress-enabled multipart upload with timeout protection
+                const uploadSingleMaterial = (formData, onProgress) => {
+                    return new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('POST', '/teacher/api/material');
+                        xhr.responseType = 'json';
+                        if (xhr.upload) {
+                            xhr.upload.onprogress = (e) => {
+                                if (e.lengthComputable && typeof onProgress === 'function') {
+                                    const pct = Math.round((e.loaded / e.total) * 100);
+                                    onProgress(pct);
+                                }
+                            };
+                        }
+                        xhr.onload = () => {
+                            let resp = xhr.response;
+                            if (typeof resp === 'string') {
+                                try { resp = JSON.parse(resp); } catch (_) {}
+                            }
+                            if (xhr.status >= 200 && xhr.status < 300 && resp && resp.success !== false) {
+                                resolve(resp);
+                            } else {
+                                const err = (resp && (resp.error || resp.message)) || `Server returned status ${xhr.status}`;
+                                reject(new Error(err));
+                            }
+                        };
+                        xhr.onerror = () => reject(new Error('Network connection error during material upload.'));
+                        xhr.ontimeout = () => reject(new Error('Material upload timed out (120s limit exceeded).'));
+                        xhr.timeout = 120000;
+                        xhr.send(formData);
+                    });
+                };
 
                 for (let i = 0; i < queued.length; i++) {
                     const item = queued[i];
-                    if (progLbl) progLbl.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>Uploading material ${i + 1} of ${queued.length}: ${window.utmEscapeHtml(item.title)}...`;
+                    if (progLbl) progLbl.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>Uploading material ${i + 1} of ${queued.length}: <b>${window.utmEscapeHtml(item.title)}</b>...`;
 
                     const fd = new FormData();
                     fd.append('topic_id', String(targetTopicId));
                     fd.append('title', item.title.trim());
                     fd.append('material_type', item.material_type);
                     fd.append('is_locked', item.is_locked ? '1' : '0');
+                    if (currentSyId) {
+                        fd.append('sy_id', String(currentSyId));
+                    }
                     if (item.sourceMode === 'file' && item.file) {
                         fd.append('file', item.file);
                     } else {
                         fd.append('file_path_or_url', item.url);
                     }
 
-                    const matRes = await fetch('/teacher/api/material', {
-                        method: 'POST',
-                        body: fd
+                    await uploadSingleMaterial(fd, (itemPct) => {
+                        const overallPct = Math.min(99, Math.round(((i + (itemPct / 100)) / queued.length) * 100));
+                        if (progBar) progBar.style.width = overallPct + '%';
+                        if (progPct) progPct.textContent = overallPct + '%';
                     });
-                    const matData = await matRes.json().catch(() => ({}));
-                    if (!matRes.ok || matData.success === false) {
-                        throw new Error(matData.error || `Failed to upload material "${item.title}".`);
-                    }
 
-                    const pct = Math.round(((i + 1) / queued.length) * 100);
-                    if (progBar) progBar.style.width = pct + '%';
-                    if (progPct) progPct.textContent = pct + '%';
+                    const completedPct = Math.round(((i + 1) / queued.length) * 100);
+                    if (progBar) progBar.style.width = completedPct + '%';
+                    if (progPct) progPct.textContent = completedPct + '%';
                 }
             }
 
@@ -1718,6 +1761,7 @@
                 }
             }
 
+            if (progWrap) progWrap.classList.add('hidden');
             window.utmCloseModal('topicSaveConfirmModal');
             window.utmCloseModal('topicModal');
             window.topicInitialState = null;
@@ -1732,6 +1776,7 @@
                 await window.loadQuarters();
             }
         } catch (err) {
+            if (progWrap) progWrap.classList.add('hidden');
             window.utmToast(err.message || 'Failed to save topic. Please try again.', 'error');
         } finally {
             if (btn) {

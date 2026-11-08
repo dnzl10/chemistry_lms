@@ -2537,6 +2537,7 @@ function confirmDeleteSubject(subjectId, name, qCount, tCount) {
 
 // ─── Quarters ─────────────────────────────────────────────────────────────────
 async function loadQuarters() {
+    window.loadQuarters = loadQuarters;
     if (!activeDrillSubjectId) return;
     const container = document.getElementById('quartersContainer');
     container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-indigo-300 text-2xl"></i></div>`;
@@ -3150,6 +3151,7 @@ function openAddTopic(quarterId) {
         materials: []
     });
 }
+window.openAddTopic = openAddTopic;
 
 function openEditTopicModal(t) {
     if (typeof t === 'string') t = JSON.parse(t);
@@ -3168,6 +3170,7 @@ function openEditTopicModal(t) {
         }
     );
 }
+window.openEditTopicModal = openEditTopicModal;
 
 async function toggleTopicLock(topicId, isLocked) {
     const data = await apiPost(`/admin/am/topics/${topicId}/toggle-lock`, { is_locked: isLocked ? 0 : 1 });
