@@ -24,6 +24,7 @@ const ExcelJS = require('exceljs');
 const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const topicScheduleService = require('../services/topicScheduleService');
 const academicHelper = require('../utils/academicHelper');
+const gradebookHelper = require('../utils/gradebookHelper');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MIDDLEWARE
@@ -9300,16 +9301,8 @@ router.get('/rm/export/class/:id', requireAdmin, async (req, res) => {
         const classId = parseInt(req.params.id, 10);
         if (isNaN(classId)) return res.status(400).send('Invalid class ID.');
 
-        const [[cls]] = await db.query(`
-            SELECT c.class_name, c.subject_id,
-                   CONCAT(u.first_name,' ',u.last_name) AS teacher_name,
-                   s.subject_name
-            FROM classes c
-            LEFT JOIN users u ON u.user_id = c.teacher_id
-            LEFT JOIN subjects s ON s.subject_id = c.subject_id
-            WHERE c.class_id = ?
-        `, [classId]);
-        if (!cls) {
+        const gradebookResult = await gradebookHelper.computeClassGradebookData(db, classId, null, {});
+        if (!gradebookResult.classes || gradebookResult.classes.length === 0) {
             return res.status(404).render('404', {
                 title: 'Class Not Found | Elementa LMS',
                 user: req.user,
@@ -9319,23 +9312,10 @@ router.get('/rm/export/class/:id', requireAdmin, async (req, res) => {
             });
         }
 
-        // Students enrolled + their scores for this subject
-        const [students] = await db.query(`
-            SELECT
-                u.first_name, u.last_name, u.lrn_number, u.grade_level, u.section,
-                u.current_level, u.total_exp,
-                COUNT(DISTINCT smi.interaction_id) AS interactionCount,
-                AVG(sg.grade_percent) AS avgScore
-            FROM class_students cs
-            JOIN users u ON u.user_id = cs.student_id
-            LEFT JOIN student_material_interactions smi ON smi.student_id = u.user_id
-            LEFT JOIN elementa_student_grades sg
-                ON sg.student_id = u.user_id
-                AND sg.class_id = ?
-            WHERE cs.class_id = ?
-            GROUP BY u.user_id
-            ORDER BY u.last_name ASC, u.first_name ASC
-        `, [classId, classId]);
+        const classReport = gradebookResult.classes[0];
+        const cls = classReport.classInfo;
+        const students = classReport.students;
+        const kpis = classReport.kpis;
 
         const auditRef = generateAuditRef('CLS-DET');
         const doc      = new PDFDocument({ size: 'A4', margin: 40, bufferPages: true });
