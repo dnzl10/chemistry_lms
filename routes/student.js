@@ -1479,7 +1479,7 @@ router.get('/api/my-game-stats', async (req, res) => {
     }
 });
 
-// GET /home - Listahan ng mga subjects na pwedeng pasukan
+// GET /home - Institutional DepEd Curriculum Showcase & Enrollment Catalog
 router.get('/home', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
@@ -1489,151 +1489,91 @@ router.get('/home', async (req, res) => {
         const activeSY = await academicHelper.getCurrentSchoolYear(db);
         const currentSyId = activeSY ? activeSY.sy_id : null;
 
-        // Kunin ang subjects na HINDI pa naka-enroll ang student para sa CURRENT school year
-        const [rawSubjects] = await db.query(`
-            SELECT s.*, u.first_name, u.last_name, u.profile_pic,
-                   c.class_id, c.class_name, c.max_capacity, c.enrolled_count, c.sy_id
+        // 1. Fetch all curriculum subjects
+        const [allSubjects] = await db.query(`
+            SELECT s.*
             FROM subjects s
-            LEFT JOIN classes c ON s.subject_id = c.subject_id ${currentSyId ? 'AND c.sy_id = ' + Number(currentSyId) : ''}
-            LEFT JOIN users u ON c.teacher_id = u.user_id
-            WHERE s.subject_id NOT IN (
-                SELECT c2.subject_id 
-                FROM class_students cs2 
-                JOIN classes c2 ON cs2.class_id = c2.class_id 
-                WHERE cs2.student_id = ? ${currentSyId ? 'AND c2.sy_id = ' + Number(currentSyId) : ''}
-            )
             ORDER BY s.semester ASC, s.subject_id ASC
+        `);
+
+        // 2. Fetch official section enrollments for this student in the active school year
+        const [enrolledRows] = await db.query(`
+            SELECT cs.class_id, c.subject_id, c.class_name, c.max_capacity, c.enrolled_count,
+                   u.first_name AS teacher_first_name, u.last_name AS teacher_last_name, u.profile_pic AS teacher_profile_pic
+            FROM class_students cs
+            JOIN classes c ON cs.class_id = c.class_id
+            LEFT JOIN users u ON c.teacher_id = u.user_id
+            WHERE cs.student_id = ? ${currentSyId ? 'AND (cs.sy_id = ' + Number(currentSyId) + ' OR c.sy_id = ' + Number(currentSyId) + ')' : ''}
         `, [studentId]);
 
-        // Deduplicate subjects if a subject has multiple class sections
-        const subjectMap = new Map();
-        for (const subj of rawSubjects) {
-            if (!subjectMap.has(subj.subject_id)) {
-                subj.enrollmentStatus = academicHelper.isSemesterEnrollmentOpen(activeSY, subj.semester);
-                subj.prerequisite = await academicHelper.checkStudentPrerequisite(db, studentId, subj.subject_id, activeSY);
-                subj.sy_range = activeSY ? activeSY.sy_range : null;
-                subjectMap.set(subj.subject_id, subj);
+        const enrolledBySubject = new Map();
+        enrolledRows.forEach(row => {
+            if (!enrolledBySubject.has(row.subject_id)) {
+                enrolledBySubject.set(row.subject_id, row);
             }
-        }
+        });
 
-        const subjects = Array.from(subjectMap.values());
+        // 3. Fetch default/representative section info for subjects the student is not yet enrolled in
+        const [generalClasses] = await db.query(`
+            SELECT c.class_id, c.subject_id, c.class_name, c.max_capacity, c.enrolled_count,
+                   u.first_name AS teacher_first_name, u.last_name AS teacher_last_name, u.profile_pic AS teacher_profile_pic
+            FROM classes c
+            LEFT JOIN users u ON c.teacher_id = u.user_id
+            WHERE 1=1 ${currentSyId ? 'AND c.sy_id = ' + Number(currentSyId) : ''}
+            ORDER BY c.class_id ASC
+        `);
+
+        const generalBySubject = new Map();
+        generalClasses.forEach(row => {
+            if (!generalBySubject.has(row.subject_id)) {
+                generalBySubject.set(row.subject_id, row);
+            }
+        });
+
+        // 4. Build consolidated subject list with institutional enrollment & prerequisite checks
+        const subjects = [];
+        for (const s of allSubjects) {
+            const enrolled = enrolledBySubject.get(s.subject_id);
+            const gen = generalBySubject.get(s.subject_id);
+            const isEnrolled = Boolean(enrolled);
+            const activeClass = enrolled || gen || {};
+
+            const enrollmentStatus = academicHelper.isSemesterEnrollmentOpen(activeSY, s.semester);
+            const prerequisite = await academicHelper.checkStudentPrerequisite(db, studentId, s.subject_id, activeSY);
+
+            subjects.push({
+                ...s,
+                is_enrolled: isEnrolled,
+                class_id: activeClass.class_id || null,
+                class_name: isEnrolled ? activeClass.class_name : (gen ? gen.class_name : null),
+                max_capacity: activeClass.max_capacity || null,
+                enrolled_count: activeClass.enrolled_count || null,
+                first_name: activeClass.teacher_first_name || null,
+                last_name: activeClass.teacher_last_name || null,
+                profile_pic: activeClass.teacher_profile_pic || null,
+                sy_range: activeSY ? activeSY.sy_range : null,
+                enrollmentStatus,
+                prerequisite
+            });
+        }
 
         res.render('home-student', { user: req.user, subjects, activeSY, currentSY: activeSY });
     } catch (err) {
-        console.error(err);
+        console.error('[Student Home Route Error]', err);
         res.status(500).send("Server Error");
     }
 });
 
-// POST /enroll - Logic para sa pag-enroll gamit ang code with multi-gate validation
+// POST /enroll - Decommissioned / Retired static self-enrollment gate
 router.post('/enroll', async (req, res) => {
-
-    const { subject_id, enrollment_code } = req.body;
-    const student_id = req.user.user_id; // Passport.js req.user
-
-    try {
-        const activeSY = await academicHelper.getCurrentSchoolYear(db);
-        const currentSyId = activeSY ? activeSY.sy_id : null;
-
-        // 1. I-verify ang Code at kunin ang Course at Class details para sa CURRENT school year
-        const [subjectData] = await db.query(`
-            SELECT s.enrollment_code, s.semester, s.subject_name,
-                   c.class_id, c.max_capacity, c.enrolled_count, c.sy_id 
-            FROM subjects s
-            LEFT JOIN classes c ON s.subject_id = c.subject_id ${currentSyId ? 'AND c.sy_id = ' + Number(currentSyId) : ''}
-            WHERE s.subject_id = ?
-            ORDER BY c.class_id DESC
-            LIMIT 1
-        `, [subject_id]);
-
-        if (subjectData.length === 0 || subjectData[0].enrollment_code !== (enrollment_code || '').trim()) {
-            return res.send("<script>alert('Maling Enrollment Code!'); window.location='/home';</script>");
-        }
-
-        const course = subjectData[0];
-        const class_id = course.class_id;
-
-        // Gate 1: Check Semestral Enrollment Window
-        const windowCheck = academicHelper.isSemesterEnrollmentOpen(activeSY, course.semester);
-        if (!windowCheck.isOpen) {
-            const escapedMsg = (windowCheck.message || 'Enrollment is currently closed.').replace(/'/g, "\\'");
-            return res.send(`<script>alert('Enrollment Closed: ${escapedMsg}'); window.location='/home';</script>`);
-        }
-
-        // Gate 2: Check Prerequisite (Chemistry 1 passing mark required for Chemistry 2)
-        const prereqCheck = await academicHelper.checkStudentPrerequisite(db, student_id, subject_id, activeSY);
-        if (!prereqCheck.eligible) {
-            const escapedPrereqMsg = (prereqCheck.reason || 'Prerequisite requirement not met.').replace(/'/g, "\\'");
-            return res.send(`<script>alert('${escapedPrereqMsg}'); window.location='/home';</script>`);
-        }
-
-        // Gate 3: Check Class Capacity (if section has capacity limit)
-        if (course.max_capacity && course.enrolled_count !== null && course.enrolled_count >= course.max_capacity) {
-            return res.send("<script>alert('Section is currently full (maximum capacity reached). Please contact your instructor.'); window.location='/home';</script>");
-        }
-
-        // 2. I-check kung enrolled na sa subject na ito para sa CURRENT school year
-        const [existing] = await db.query(`
-            SELECT cs.class_id 
-            FROM class_students cs
-            JOIN classes c ON cs.class_id = c.class_id
-            WHERE cs.student_id = ? AND c.subject_id = ? ${currentSyId ? 'AND c.sy_id = ' + Number(currentSyId) : ''}
-        `, [student_id, subject_id]);
-
-        if (existing.length > 0) {
-            return res.send("<script>alert('Enrolled ka na rito sa kasalukuyang taon!'); window.location='/dashboard';</script>");
-        }
-
-        // 3. TRANSACTION: Mag-insert sa dalawang table nang sabay
-        // Para siguradong lalabas sa Dashboard (class_students) at may progress tracking (student_progress)
-        const [existingProgress] = await db.query(
-            "SELECT * FROM student_progress WHERE student_id = ? AND subject_id = ?",
-            [student_id, subject_id]
-        );
-        if (existingProgress.length === 0) {
-            await db.query("INSERT INTO student_progress (student_id, subject_id, progress_percent) VALUES (?, ?, 0)", [student_id, subject_id]);
-        }
-        
-        if (class_id) {
-            const syId = currentSyId || (course.sy_id || null);
-            await db.query("INSERT INTO class_students (class_id, student_id, sy_id) VALUES (?, ?, ?)", [class_id, student_id, syId]);
-            // Increment enrolled_count
-            await db.query("UPDATE classes SET enrolled_count = COALESCE(enrolled_count, 0) + 1 WHERE class_id = ?", [class_id]);
-
-            // T-24: Notify Teacher of new student enrollment
-            try {
-                const [[clsInfo]] = await db.query(
-                    `SELECT c.teacher_id, c.class_name, s.subject_name
-                     FROM classes c
-                     LEFT JOIN subjects s ON c.subject_id = s.subject_id
-                     WHERE c.class_id = ?`,
-                    [class_id]
-                );
-                if (clsInfo && clsInfo.teacher_id) {
-                    const studentName = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || 'A student';
-                    await notificationService.dispatch({
-                        recipientIds: clsInfo.teacher_id,
-                        actorId: student_id,
-                        role: 'Teacher',
-                        category: 'academic',
-                        priority: 'normal',
-                        eventType: 'student_enrolled',
-                        title: `New Student Enrolled: ${clsInfo.class_name}`,
-                        message: `${studentName} joined ${clsInfo.class_name} (${clsInfo.subject_name || 'Course'}).`,
-                        targetUrl: `/teacher/class/${class_id}?tab=students`,
-                        metadata: { classId: class_id, studentId: student_id }
-                    });
-                }
-            } catch (enrollNotifErr) {
-                console.error('[Student Enroll Notification Error]', enrollNotifErr.message);
-            }
-        }
-
-        res.send("<script>alert('Enrollment Successful!'); window.location='/dashboard';</script>");
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Enrollment Failed");
-    }
+    // Institutional Policy: Direct self-enrollment via static access codes has been decommissioned.
+    // Class section roster placements are managed centrally by the Academic Administrator and Registrar.
+    return res.send(`
+        <script>
+            alert('Institutional Notice: Direct course self-enrollment using static access codes has been decommissioned in compliance with DepEd curriculum policies.\\n\\nSection assignments and roster enrollment are managed centrally by the Academic Administrator / Registrar. Please consult your school administration or class adviser for section assignment.');
+            window.location = '/home';
+        </script>
+    `);
 });
 
 // GET Events Page
