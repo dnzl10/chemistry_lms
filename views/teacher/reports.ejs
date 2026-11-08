@@ -3001,17 +3001,6 @@
                 const url = `/teacher/reports/export/gradebook/${format}?${params.toString()}`;
                 window.open(url, '_blank');
             }
-                params.set('w_sim', String(wSim));
-                params.set('w_syllabus', String(wSyllabus));
-                params.set('w_lms', String(wLms));
-                params.set('w_att', String(wAtt));
-
-                const docTypeLabel = format === 'pdf' ? 'Landscape PDF' : 'DepEd Excel';
-                rpToast(`Generating ${docTypeLabel} Master Gradebook…`);
-
-                const url = `/teacher/reports/export/gradebook/${format}?${params.toString()}`;
-                window.open(url, '_blank');
-            }
 
             /* ── Class-to-Subject & Quarters Registry ── */
             const CLASS_METADATA_MAP = _initialReportsData.classMetadataMap || {};
