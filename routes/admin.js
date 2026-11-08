@@ -8408,20 +8408,27 @@ router.get('/re/leaderboard-history', requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/reports_monitoring', requireAdmin, async (req, res) => {
     try {
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
 
         // ── KPI stats ──────────────────────────────────────────────────────────
-        const [[sRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE role = 'Student'`);
-        const [[aRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments`);
+        const [[sRow]] = await db.query(`
+            SELECT COUNT(DISTINCT cs.student_id) AS cnt 
+            FROM class_students cs 
+            JOIN classes c ON c.class_id = cs.class_id 
+            WHERE c.sy_id = ?
+        `, [selectedSY.sy_id]);
+        const [[aRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE sy_id = ?`, [selectedSY.sy_id]);
         const [[qRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_questions WHERE is_active = 1`);
         const [[mRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM learning_materials`);
 
-        const [[asgtRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE assessment_type = 'Assignment'`);
+        const [[asgtRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM assessments WHERE assessment_type = 'Assignment' AND sy_id = ?`, [selectedSY.sy_id]);
         const [asgtCategories] = await db.query(`
             SELECT category, COUNT(*) as cnt 
             FROM assessments 
-            WHERE assessment_type = 'Assignment' 
+            WHERE assessment_type = 'Assignment' AND sy_id = ?
             GROUP BY category
-        `);
+        `, [selectedSY.sy_id]);
         let asgtSubmissions = { totalSubmissions: 0, gradedSubmissions: 0, pendingSubmissions: 0, groupSubmissions: 0 };
         try {
             const [[subRow]] = await db.query(`
@@ -8432,16 +8439,16 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
                     COUNT(CASE WHEN ss.group_id IS NOT NULL THEN 1 END) as groupSubmissions
                 FROM student_scores ss
                 JOIN assessments a ON ss.assessment_id = a.assessment_id
-                WHERE a.assessment_type = 'Assignment'
-            `);
+                WHERE a.assessment_type = 'Assignment' AND a.sy_id = ?
+            `, [selectedSY.sy_id]);
             if (subRow) asgtSubmissions = subRow;
         } catch (_) {}
 
         const rmStats = {
-            totalStudents   : sRow.cnt,
-            totalAssessments: aRow.cnt,
-            totalQuestions  : qRow.cnt,
-            totalMaterials  : mRow.cnt,
+            totalStudents   : sRow ? sRow.cnt : 0,
+            totalAssessments: aRow ? aRow.cnt : 0,
+            totalQuestions  : qRow ? qRow.cnt : 0,
+            totalMaterials  : mRow ? mRow.cnt : 0,
             totalAssignments: asgtRow ? asgtRow.cnt : 0
         };
 
@@ -8471,10 +8478,10 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             JOIN subjects s ON s.subject_id = q.subject_id
             LEFT JOIN topics t           ON t.quarter_id    = q.quarter_id
             LEFT JOIN learning_materials lm ON lm.topic_id  = t.topic_id
-            LEFT JOIN assessments a       ON a.topic_id     = t.topic_id
+            LEFT JOIN assessments a       ON a.topic_id     = t.topic_id AND a.sy_id = ?
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name ASC, q.quarter_number ASC, t.topic_id ASC
-        `);
+        `, [selectedSY.sy_id]);
 
         // Group into quarters
         const curriculumMap = {};
@@ -8523,9 +8530,10 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             LEFT JOIN class_students cs ON cs.class_id = c.class_id
             LEFT JOIN elementa_student_grades sg
                 ON (sg.class_id = c.class_id OR sg.student_id = cs.student_id)
+            WHERE c.sy_id = ?
             GROUP BY c.class_id
             ORDER BY s.subject_name ASC, c.class_name ASC
-        `);
+        `, [selectedSY.sy_id]);
 
         // ─────────────────────────────────────────────────────────────────────
         // TAB 3 — STUDENT DOSSIER
@@ -8543,12 +8551,14 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
                 AVG(sg.grade_percent) AS avgScore,
                 COUNT(DISTINCT smi.interaction_id) AS interactionCount
             FROM users u
-            LEFT JOIN elementa_student_grades sg ON sg.student_id = u.user_id
-            LEFT JOIN student_material_interactions smi ON smi.student_id = u.user_id
+            JOIN class_students cs ON cs.student_id = u.user_id
+            JOIN classes c ON c.class_id = cs.class_id AND c.sy_id = ?
+            LEFT JOIN elementa_student_grades sg ON sg.student_id = u.user_id AND (sg.class_id = c.class_id OR sg.class_id IS NULL)
+            LEFT JOIN student_material_interactions smi ON smi.student_id = u.user_id AND smi.interacted_at >= ? AND smi.interacted_at <= ?
             WHERE u.role = 'Student'
             GROUP BY u.user_id
             ORDER BY u.last_name ASC, u.first_name ASC
-        `);
+        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
 
         // ─────────────────────────────────────────────────────────────────────
         // TAB 4 — TEST PAPER QUESTION BANK (Arcade Single Source of Truth)
@@ -8590,10 +8600,11 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
                 0 AS countA, 0 AS countB, 0 AS countC, 0 AS countD
             FROM elementa_customer_attempts ca
             LEFT JOIN elementa_questions eq ON eq.question_id = ca.question_id
+            WHERE ca.attempted_at >= ? AND ca.attempted_at <= ?
             GROUP BY ca.question_id, eq.prompt, ca.question_snapshot, eq.answer_text
             ORDER BY totalAttempts DESC
             LIMIT 50
-        `);
+        `, [selectedSY.start_date, selectedSY.end_date]);
 
         const itemAnalysis = rawDistractors.map(row => ({
             question_id   : row.question_id,
@@ -8618,14 +8629,16 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
                 sg.grade_percent AS scorePct,
                 EXISTS (
                     SELECT 1 FROM student_material_interactions smi
-                    WHERE smi.student_id = u.user_id
+                    WHERE smi.student_id = u.user_id AND smi.interacted_at >= ? AND smi.interacted_at <= ?
                 ) AS hasMaterialView
             FROM elementa_student_grades sg
             JOIN users u ON u.user_id = sg.student_id
+            JOIN class_students cs ON cs.student_id = u.user_id
+            JOIN classes c ON c.class_id = cs.class_id AND c.sy_id = ?
             WHERE sg.grade_percent < 75
             ORDER BY scorePct ASC
             LIMIT 100
-        `);
+        `, [selectedSY.start_date, selectedSY.end_date, selectedSY.sy_id]);
 
         // ─────────────────────────────────────────────────────────────────────
         // AUDIT SIDEBAR — latest 20 activity logs with actor name
@@ -8637,9 +8650,10 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
                 CONCAT(u.first_name,' ',u.last_name) AS actor_name
             FROM activity_logs al
             LEFT JOIN users u ON u.user_id = al.actor_id
+            WHERE al.created_at >= ? AND al.created_at <= ?
             ORDER BY al.created_at DESC
             LIMIT 20
-        `);
+        `, [selectedSY.start_date, selectedSY.end_date]);
 
         // ─────────────────────────────────────────────────────────────────────
         // DROPDOWN FILTERS (subjects, quarters, topics)
@@ -8670,6 +8684,12 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             quarters,
             topics,
             questionBank,
+            selectedSY,
+            currentSY,
+            allSchoolYears,
+            isCurrentSY,
+            isHistoricalSY,
+            isDraftSY
         });
 
     } catch (err) {
@@ -9574,6 +9594,9 @@ ${questionsHtml}
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/system_audit', requireAdmin, async (req, res) => {
     try {
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const { selectedSY, currentSY, allSchoolYears, isCurrentSY, isHistoricalSY, isDraftSY } = syContext;
+
         // ── Pagination & filters from query string ─────────────────────────────
         const PAGE_SIZE  = 50;
         const currentPage = Math.max(1, parseInt(req.query.page) || 1);
@@ -9604,25 +9627,31 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
         if (filterFrom) {
             whereClauses.push('DATE(al.created_at) >= ?');
             whereParams.push(filterFrom);
+        } else if (selectedSY && selectedSY.start_date) {
+            whereClauses.push('DATE(al.created_at) >= ?');
+            whereParams.push(selectedSY.start_date);
         }
         if (filterTo) {
             whereClauses.push('DATE(al.created_at) <= ?');
             whereParams.push(filterTo);
+        } else if (selectedSY && selectedSY.end_date) {
+            whereClauses.push('DATE(al.created_at) <= ?');
+            whereParams.push(selectedSY.end_date);
         }
 
         const whereSQL = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
 
         // ── 1. KPI COUNTS ──────────────────────────────────────────────────────
         const [[totalRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM activity_logs al ${whereSQL}`, whereParams);
-        const [[adminRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM activity_logs WHERE actor_role = 'Admin'`);
-        const [[teacherRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM activity_logs WHERE actor_role = 'Teacher'`);
-        const [[studentRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM activity_logs WHERE actor_role = 'Student'`);
+        const [[adminRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM activity_logs WHERE actor_role = 'Admin' AND created_at >= ? AND created_at <= ?`, [selectedSY.start_date, selectedSY.end_date]);
+        const [[teacherRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM activity_logs WHERE actor_role = 'Teacher' AND created_at >= ? AND created_at <= ?`, [selectedSY.start_date, selectedSY.end_date]);
+        const [[studentRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM activity_logs WHERE actor_role = 'Student' AND created_at >= ? AND created_at <= ?`, [selectedSY.start_date, selectedSY.end_date]);
 
         const auditStats = {
-            totalLogs      : totalRow.cnt,
-            adminActions   : adminRow.cnt,
-            teacherActions : teacherRow.cnt,
-            studentActions : studentRow.cnt,
+            totalLogs      : totalRow ? totalRow.cnt : 0,
+            adminActions   : adminRow ? adminRow.cnt : 0,
+            teacherActions : teacherRow ? teacherRow.cnt : 0,
+            studentActions : studentRow ? studentRow.cnt : 0,
         };
 
         const totalPages = Math.max(1, Math.ceil(totalRow.cnt / PAGE_SIZE));
@@ -9820,17 +9849,26 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
             LEFT JOIN subjects    s  ON s.subject_id = c.subject_id
             LEFT JOIN users       u  ON u.user_id    = c.teacher_id
             LEFT JOIN class_students cs ON cs.class_id = c.class_id
+            WHERE c.sy_id = ?
             GROUP BY c.class_id
             ORDER BY c.class_name ASC
-        `);
+        `, [selectedSY.sy_id]);
 
         // ── 13. MATERIAL INTERACTION LOG ──────────────────────────────────────
-        const [[viewRow]]     = await db.query(`SELECT COUNT(*) AS cnt FROM student_material_interactions WHERE interaction_type = 'viewed'`);
-        const [[downloadRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM student_material_interactions WHERE interaction_type = 'downloaded'`);
+        const [[viewRow]]     = await db.query(`
+            SELECT COUNT(*) AS cnt 
+            FROM student_material_interactions 
+            WHERE interaction_type = 'viewed' AND interacted_at >= ? AND interacted_at <= ?
+        `, [selectedSY.start_date, selectedSY.end_date]);
+        const [[downloadRow]] = await db.query(`
+            SELECT COUNT(*) AS cnt 
+            FROM student_material_interactions 
+            WHERE interaction_type = 'downloaded' AND interacted_at >= ? AND interacted_at <= ?
+        `, [selectedSY.start_date, selectedSY.end_date]);
 
         const materialStats = {
-            totalViews     : viewRow.cnt,
-            totalDownloads : downloadRow.cnt,
+            totalViews     : viewRow ? viewRow.cnt : 0,
+            totalDownloads : downloadRow ? downloadRow.cnt : 0,
         };
 
         const [materialInteractions] = await db.query(`
@@ -9841,13 +9879,25 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
             FROM student_material_interactions smi
             JOIN users             u  ON u.user_id    = smi.student_id
             JOIN learning_materials lm ON lm.material_id = smi.material_id
+            WHERE smi.interacted_at >= ? AND smi.interacted_at <= ?
             ORDER BY smi.interacted_at DESC
             LIMIT 50
-        `);
+        `, [selectedSY.start_date, selectedSY.end_date]);
 
         // ── 14. FORUM ACTIVITY ─────────────────────────────────────────────────
-        const [[forumTopicsRow]]   = await db.query(`SELECT COUNT(*) AS cnt FROM forum_topics`);
-        const [[forumRepliesRow]]  = await db.query(`SELECT COUNT(*) AS cnt FROM forum_replies`);
+        const [[forumTopicsRow]]   = await db.query(`
+            SELECT COUNT(*) AS cnt 
+            FROM forum_topics ft
+            LEFT JOIN classes c ON c.class_id = ft.class_id
+            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
+        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+        const [[forumRepliesRow]]  = await db.query(`
+            SELECT COUNT(*) AS cnt 
+            FROM forum_replies fr
+            JOIN forum_topics ft ON ft.forum_id = fr.topic_id
+            LEFT JOIN classes c ON c.class_id = ft.class_id
+            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
+        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
 
         const [recentForumReplies] = await db.query(`
             SELECT
@@ -9857,13 +9907,15 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
             FROM forum_replies fr
             JOIN users        u  ON u.user_id  = fr.user_id
             JOIN forum_topics ft ON ft.forum_id = fr.topic_id
+            LEFT JOIN classes c ON c.class_id = ft.class_id
+            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
             ORDER BY fr.created_at DESC
             LIMIT 15
-        `);
+        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
 
         const forumStats = {
-            totalTopics  : forumTopicsRow.cnt,
-            totalReplies : forumRepliesRow.cnt,
+            totalTopics  : forumTopicsRow ? forumTopicsRow.cnt : 0,
+            totalReplies : forumRepliesRow ? forumRepliesRow.cnt : 0,
             recentReplies: recentForumReplies,
         };
 
@@ -9928,6 +9980,12 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
 
             // Forum
             forumStats,
+            selectedSY,
+            currentSY,
+            allSchoolYears,
+            isCurrentSY,
+            isHistoricalSY,
+            isDraftSY
         });
 
     } catch (err) {

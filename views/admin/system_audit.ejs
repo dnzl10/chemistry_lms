@@ -208,6 +208,9 @@
             </div>
 
             <div class="flex items-center gap-3 md:gap-6">
+                <!-- Dynamic School Year Context Selector -->
+                <%- include('../partials/admin_sy_selector') %>
+
                 <!-- Notification bell -->
                 <div id="notifBellBtn" class="relative cursor-pointer p-2 hover:bg-cyan-50 rounded-full transition" onclick="toggleNotifPanel()">
                     <i class="far fa-bell text-xl text-cyan-600"></i>
@@ -233,6 +236,9 @@
         <!-- SCROLLABLE CONTENT -->
         <div id="adminMainContent" class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
             <div class="p-4 md:p-8 flex-1 fade-in">
+
+                <!-- Dynamic Academic Context Warning Banner (Archive / Draft) -->
+                <%- include('../partials/admin_sy_banner') %>
 
                 <!-- ══════════════════════════════════════════
                      PAGE HEADER
