@@ -6505,18 +6505,31 @@ router.post('/api/assessment/:asgnId/submit', (req, res) => {
             try {
                 const studentName = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || 'A student';
                 const [teacherClasses] = await db.query(
-                    `SELECT DISTINCT c.teacher_id, c.class_id, c.class_name, sg.group_name
+                    `SELECT DISTINCT c.teacher_id, c.class_id, c.class_name
                      FROM classes c
                      JOIN class_students cs ON cs.class_id = c.class_id
-                     LEFT JOIN student_group_members sgm ON sgm.student_id = cs.student_id
-                     LEFT JOIN student_groups sg ON sg.group_id = sgm.group_id AND sg.class_id = c.class_id
                      WHERE cs.student_id = ? AND c.subject_id = ? AND c.teacher_id IS NOT NULL`,
                     [studentId, asgn.subject_id]
                 );
 
+                let groupName = null;
+                if (asgn.is_group_assignment && asgn.group_set_id) {
+                    const [grpRows] = await db.query(
+                        `SELECT sg.group_name 
+                         FROM group_members gm 
+                         JOIN student_groups sg ON gm.group_id = sg.group_id 
+                         WHERE gm.student_id = ? AND sg.group_set_id = ? 
+                         LIMIT 1`,
+                        [studentId, asgn.group_set_id]
+                    );
+                    if (grpRows.length > 0) {
+                        groupName = grpRows[0].group_name;
+                    }
+                }
+
                 const recipients = teacherClasses.length > 0
-                    ? teacherClasses
-                    : (asgn.teacher_id ? [{ teacher_id: asgn.teacher_id, class_id: null, class_name: 'Course', group_name: null }] : []);
+                    ? teacherClasses.map(tc => ({ ...tc, group_name: groupName }))
+                    : (asgn.teacher_id ? [{ teacher_id: asgn.teacher_id, class_id: null, class_name: 'Course', group_name: groupName }] : []);
 
                 for (const r of recipients) {
                     let eventType = 'submission_created';

@@ -16817,10 +16817,14 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
         const filename = req.file.filename;
         const duration = parseInt(req.body.duration) || 0;
         const { student_id, assessment_id } = req.body;
+        const assessmentId = assessment_id || req.body.assessmentId || null;
 
         // Check quarter grading deadline
         const activeSY = await academicHelper.getActiveSchoolYear(db);
-        const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId, scoreId });
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, {
+            assessmentId,
+            scoreId: (scoreId === 'new' || scoreId === '0') ? null : scoreId
+        });
         const gradingCheck = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
         if (!gradingCheck.isAllowed) {
             return res.status(403).json({
@@ -16941,6 +16945,7 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
     try {
         let scoreId = req.params.scoreId;
         const { score, feedback, rubric_scores, student_id, assessment_id, group_id, is_group_submission } = req.body;
+        const assessmentId = assessment_id || req.body.assessmentId || null;
 
         let targetStudentId = student_id;
         if (!targetStudentId && group_id) {
@@ -16950,7 +16955,10 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
 
         // Check quarter grading deadline
         const activeSY = await academicHelper.getActiveSchoolYear(db);
-        const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId, scoreId });
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, {
+            assessmentId,
+            scoreId: (scoreId === 'new' || scoreId === '0') ? null : scoreId
+        });
         const gradingCheck = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
         if (!gradingCheck.isAllowed) {
             return res.status(403).json({
