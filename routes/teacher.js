@@ -2282,6 +2282,10 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
             if (firstSet) parsedGroupSetId = firstSet.group_set_id;
         }
 
+        const cleanTargetAudience = (target_audience === 'sections' || target_audience === 'students')
+            ? target_audience
+            : 'everyone';
+
         const insertParams = [
             quarter_id || null,
             topic_id,
@@ -2299,7 +2303,7 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
             sampleFileName || null,
             allowed_extensions || '.pdf,.docx,.doc,.xlsx,.pptx,.zip,.png,.jpg',
             Number(max_file_size_mb) || 25,
-            target_audience || 'everyone',
+            cleanTargetAudience,
             isGroup,
             (parsedGroupSetId && !isNaN(parsedGroupSetId)) ? Number(parsedGroupSetId) : null,
             subMode || 'one_per_group',
@@ -2329,12 +2333,12 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
         const assignmentId = result.insertId;
 
         // Populate assignment_audiences junction table
-        if (target_audience === 'sections' && target_sections) {
+        if (cleanTargetAudience === 'sections' && target_sections) {
             const secIds = Array.isArray(target_sections) ? target_sections : String(target_sections).split(',').map(s => s.trim()).filter(Boolean);
             for (const sid of secIds) {
                 await db.execute(`INSERT INTO assignment_audiences (assessment_id, class_id) VALUES (?, ?)`, [assignmentId, sid]);
             }
-        } else if (target_audience === 'students' && target_students) {
+        } else if (cleanTargetAudience === 'students' && target_students) {
             const stuIds = Array.isArray(target_students) ? target_students : String(target_students).split(',').map(s => s.trim()).filter(Boolean);
             for (const sid of stuIds) {
                 await db.execute(`INSERT INTO assignment_audiences (assessment_id, student_id) VALUES (?, ?)`, [assignmentId, sid]);
@@ -2497,6 +2501,10 @@ router.put('/api/assignment/:aid', isTeacher, assignmentAssetUpload.fields([
             if (firstSet) parsedGroupSetId = firstSet.group_set_id;
         }
 
+        const cleanTargetAudience = (target_audience === 'sections' || target_audience === 'students')
+            ? target_audience
+            : 'everyone';
+
         const updateParams = [
             assessment_name,
             Number(total_items) || 100,
@@ -2511,7 +2519,7 @@ router.put('/api/assignment/:aid', isTeacher, assignmentAssetUpload.fields([
             sampleFileName || null,
             allowed_extensions || '.pdf,.docx,.doc,.xlsx,.pptx,.zip,.png,.jpg',
             Number(max_file_size_mb) || 25,
-            target_audience || 'everyone',
+            cleanTargetAudience,
             isGroup,
             (parsedGroupSetId && !isNaN(parsedGroupSetId)) ? Number(parsedGroupSetId) : null,
             subMode || 'one_per_group',
@@ -2542,12 +2550,12 @@ router.put('/api/assignment/:aid', isTeacher, assignmentAssetUpload.fields([
 
         // Update target audiences
         await db.execute(`DELETE FROM assignment_audiences WHERE assessment_id = ?`, [aid]);
-        if (target_audience === 'sections' && target_sections) {
+        if (cleanTargetAudience === 'sections' && target_sections) {
             const secIds = Array.isArray(target_sections) ? target_sections : String(target_sections).split(',').map(s => s.trim()).filter(Boolean);
             for (const sid of secIds) {
                 await db.execute(`INSERT INTO assignment_audiences (assessment_id, class_id) VALUES (?, ?)`, [aid, sid]);
             }
-        } else if (target_audience === 'students' && target_students) {
+        } else if (cleanTargetAudience === 'students' && target_students) {
             const stuIds = Array.isArray(target_students) ? target_students : String(target_students).split(',').map(s => s.trim()).filter(Boolean);
             for (const sid of stuIds) {
                 await db.execute(`INSERT INTO assignment_audiences (assessment_id, student_id) VALUES (?, ?)`, [aid, sid]);
@@ -9647,21 +9655,24 @@ router.get('/reports', isTeacher, async (req, res) => {
             if (found) subjectId = found.subject_id;
         }
 
-        // ── Parallel data fetch ────────────────────────────────────────────
+        // Helper to safely execute telemetry queries with graceful fallbacks (guards against remote connection ETIMEDOUT)
+        const safeQuery = async (queryPromise, fallback = []) => {
+            try {
+                const res = await queryPromise;
+                return res;
+            } catch (err) {
+                console.warn('[Teacher Reports Telemetry Warning]', err.message);
+                return [fallback];
+            }
+        };
+
+        // ── Batch 1: Core Academic & Student Performance (5 queries) ──────
         const [
             [statsRows],
             [studentRows],
             topicRemediationRows,
             [completionRateRows],
-            [scoreDistRows],
-            [winLossRows],
-            [lbHistoryRows],
-            [itemAnalysisRows],
-            [arcadeRows],
-            [arcadeByStudentRows],
-            [heatmapTopicRows],
-            [heatmapScoreRows],
-            [seqErrorRows],
+            [scoreDistRows]
         ] = await Promise.all([
 
             // Stats summary (Fixed duplicate counting in multi-player matches)
@@ -9718,7 +9729,10 @@ router.get('/reports', isTeacher, async (req, res) => {
             ),
 
             // Restructured Class Topic Remediation Analysis
-            computeClassTopicRemediation(db, selectedClassId, teacherId, subjectId),
+            computeClassTopicRemediation(db, selectedClassId, teacherId, subjectId).catch(err => {
+                console.warn('[Remediation Warning]', err.message);
+                return [];
+            }),
 
             // Completion rates per class
             db.execute(`
@@ -9773,10 +9787,23 @@ router.get('/reports', isTeacher, async (req, res) => {
                 GROUP BY label
                 ORDER BY FIELD(label,'90-100','75-89','60-74','40-59','0-39')`,
                 selectedClassId ? [teacherId, selectedClassId, teacherId, selectedClassId] : [teacherId, teacherId]
-            ),
+            )
+        ]);
+
+        // ── Batch 2: Gamification Telemetry, Leaderboards & Heatmaps (8 queries) ──
+        const [
+            [winLossRows],
+            [lbHistoryRows],
+            [itemAnalysisRows],
+            [arcadeRows],
+            [arcadeByStudentRows],
+            [heatmapTopicRows],
+            [heatmapScoreRows],
+            [seqErrorRows]
+        ] = await Promise.all([
 
             // Win/loss (top winners)
-            db.execute(`
+            safeQuery(db.execute(`
                 SELECT u.user_id, u.first_name, u.last_name,
                        COUNT(egs.session_id) AS wins
                 FROM elementa_game_sessions egs
@@ -9792,10 +9819,10 @@ router.get('/reports', isTeacher, async (req, res) => {
                 ORDER BY wins DESC
                 LIMIT 10`,
                 selectedClassId ? [teacherId, selectedClassId] : [teacherId]
-            ),
+            )),
 
             // EXP growth (sessions over time)
-            db.execute(`
+            safeQuery(db.execute(`
                 SELECT
                     u.first_name, u.last_name, u.user_id,
                     DATE_FORMAT(egs.started_at, '%Y-%m-%d') AS snap_date,
@@ -9809,10 +9836,10 @@ router.get('/reports', isTeacher, async (req, res) => {
                 ORDER BY egs.started_at ASC
                 LIMIT 500`,
                 selectedClassId ? [teacherId, selectedClassId] : [teacherId]
-            ),
+            )),
 
             // Item analysis (failure rate per question — single-counted per student)
-            db.execute(`
+            safeQuery(db.execute(`
                 SELECT
                     eq.question_id, eq.prompt AS question_text, eq.difficulty,
                     COALESCE(eq.topic, elr.level_topic, 'General Chemistry') AS topic_name,
@@ -9831,10 +9858,10 @@ router.get('/reports', isTeacher, async (req, res) => {
                 ORDER BY (SUM(eca.is_correct = 0) / COUNT(eca.attempt_id)) DESC
                 LIMIT 50`,
                 selectedClassId ? [teacherId, selectedClassId] : [teacherId]
-            ),
+            )),
 
             // Arcade utilization aggregate (Distinct session counting)
-            db.execute(`
+            safeQuery(db.execute(`
                 SELECT
                     COUNT(DISTINCT egs.session_id) AS total,
                     COUNT(DISTINCT CASE WHEN egs.play_mode = 'Solo' THEN egs.session_id END) AS single_mode,
@@ -9845,10 +9872,10 @@ router.get('/reports', isTeacher, async (req, res) => {
                 WHERE c.teacher_id = ?
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}`,
                 selectedClassId ? [teacherId, selectedClassId] : [teacherId]
-            ),
+            )),
 
             // Arcade utilization per student
-            db.execute(`
+            safeQuery(db.execute(`
                 SELECT
                     u.user_id, u.first_name, u.last_name,
                     SUM(egs.play_mode = 'Solo')   AS single_sessions,
@@ -9863,10 +9890,10 @@ router.get('/reports', isTeacher, async (req, res) => {
                 GROUP BY u.user_id, u.first_name, u.last_name
                 ORDER BY total_sessions DESC`,
                 selectedClassId ? [teacherId, selectedClassId] : [teacherId]
-            ),
+            )),
 
             // Heatmap — topic list
-            db.execute(`
+            safeQuery(db.execute(`
                 SELECT DISTINCT t.topic_id, t.topic_name
                 FROM topics t
                 JOIN quarters q ON t.quarter_id = q.quarter_id
@@ -9877,10 +9904,10 @@ router.get('/reports', isTeacher, async (req, res) => {
                 ORDER BY t.topic_id ASC
                 LIMIT 12`,
                 selectedClassId ? [teacherId, selectedClassId] : [teacherId]
-            ),
+            )),
 
             // Heatmap — per-student per-topic accuracy
-            db.execute(`
+            safeQuery(db.execute(`
                 SELECT
                     u.user_id, u.first_name, u.last_name,
                     t.topic_id,
@@ -9898,10 +9925,10 @@ router.get('/reports', isTeacher, async (req, res) => {
                 GROUP BY u.user_id, t.topic_id
                 ORDER BY u.last_name, u.first_name`,
                 selectedClassId ? [teacherId, selectedClassId] : [teacherId]
-            ),
+            )),
 
             // Sequence error analysis (Arcade Machine Failure Modes — accurate student matching)
-            db.execute(`
+            safeQuery(db.execute(`
                 SELECT
                     eca.question_id,
                     COALESCE(eq.prompt, eca.question_snapshot, 'Arcade Question') AS question_text,
@@ -9925,7 +9952,7 @@ router.get('/reports', isTeacher, async (req, res) => {
                 ORDER BY wrong_count DESC
                 LIMIT 200`,
                 selectedClassId ? [teacherId, selectedClassId] : [teacherId]
-            ),
+            ))
         ]);
 
         // ── Post-process stats ────────────────────────────────────────────
@@ -9938,7 +9965,7 @@ router.get('/reports', isTeacher, async (req, res) => {
 
         // ── Post-process EXP Growth into Chart.js datasets ───────────────
         const expGrowth = { labels: [], datasets: [] };
-        if (lbHistoryRows.length) {
+        if (lbHistoryRows && lbHistoryRows.length) {
             const dateSet = [...new Set(lbHistoryRows.map(r => r.snap_date))].sort();
             const studentMap = {};
             lbHistoryRows.forEach(r => {
@@ -9957,13 +9984,13 @@ router.get('/reports', isTeacher, async (req, res) => {
         // ── Post-process Score Distribution (ensure all buckets present) ──
         const allBuckets = ['90-100', '75-89', '60-74', '40-59', '0-39'];
         const scoreDistribution = allBuckets.map(lbl => {
-            const found = scoreDistRows.find(r => r.label === lbl);
+            const found = (scoreDistRows || []).find(r => r.label === lbl);
             return { label: lbl, count: found ? Number(found.count) : 0 };
         });
 
         // ── Post-process Heatmap ─────────────────────────────────────────
         const heatmap = { topics: [], rows: [] };
-        if (heatmapTopicRows.length && heatmapScoreRows.length) {
+        if (heatmapTopicRows && heatmapTopicRows.length && heatmapScoreRows && heatmapScoreRows.length) {
             heatmap.topics = heatmapTopicRows.map(t => t.topic_name);
             const topicIds = heatmapTopicRows.map(t => t.topic_id);
             const studentIds = [...new Set(heatmapScoreRows.map(r => r.user_id))];
@@ -9983,7 +10010,7 @@ router.get('/reports', isTeacher, async (req, res) => {
 
         // ── Post-process Sequence Errors (group by question) ─────────────
         const seqMap = {};
-        seqErrorRows.forEach(r => {
+        (seqErrorRows || []).forEach(r => {
             if (!seqMap[r.question_id]) {
                 seqMap[r.question_id] = {
                     question_text: r.question_text,

@@ -8,9 +8,12 @@ const poolConfig = {
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit: Number(process.env.DB_POOL_LIMIT) || 10,
+    connectionLimit: Number(process.env.DB_POOL_LIMIT) || 20,
+    connectTimeout: 30000,
     enableKeepAlive: true,
-    keepAliveInitialDelay: 10000
+    keepAliveInitialDelay: 0,
+    idleTimeout: 30000,
+    maxIdle: 10
 };
 
 // Automatically enable TLS/SSL when connecting to Cloud MySQL (TiDB Cloud, Aiven, etc.)
