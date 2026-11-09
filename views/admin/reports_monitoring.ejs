@@ -613,13 +613,26 @@
                                 <div class="flex flex-col md:flex-row gap-3 mb-4 justify-between items-start md:items-center">
                                     <div>
                                         <h3 class="font-black text-indigo-900 text-base">Individual Student Dossier</h3>
-                                        <p class="text-xs text-slate-400 mt-0.5">Detailed profile export per student. Sensitive fields excluded.</p>
+                                        <p class="text-xs text-slate-400 mt-0.5">Granular academic &amp; gamification profile export per student, categorized by class.</p>
                                     </div>
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <div class="relative">
+                                            <select id="dossierClassFilter" onchange="filterDossier()"
+                                                class="fi text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 pr-8 focus:ring-2 focus:ring-sky-500 shadow-sm">
+                                                <option value="all">All Classes &amp; Sections</option>
+                                                <% if (typeof dossierClasses !== 'undefined' && dossierClasses && dossierClasses.length > 0) { %>
+                                                    <% dossierClasses.forEach(function(dc) { %>
+                                                        <option value="<%= dc.class_id %>">
+                                                            <%= dc.class_name %> · <%= dc.subject_name %> <%= Number(dc.semester) === 1 ? '(Sem 1)' : '(Sem 2)' %> (<%= dc.teacher_name || 'No Teacher' %>)
+                                                        </option>
+                                                    <% }); %>
+                                                <% } %>
+                                            </select>
+                                        </div>
+                                        <div class="relative">
                                             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                                             <input id="dossierSearch" type="text" placeholder="Search student…"
-                                                class="fi pl-8 w-48 text-sm" oninput="filterDossier()">
+                                                class="fi pl-8 w-44 text-xs" oninput="filterDossier()">
                                         </div>
                                         <button onclick="exportAllStudentsPDF()"
                                             class="flex items-center gap-2 text-xs font-bold bg-sky-600 text-white px-4 py-2 rounded-xl hover:bg-sky-700 transition shadow-md whitespace-nowrap">
@@ -638,13 +651,12 @@
                                 <div class="tbl-wrap rounded-xl border border-slate-100">
                                     <table class="data-table w-full text-sm">
                                         <thead>
-                                            <tr class="border-b border-slate-100">
-                                                <th class="p-3 text-left">Student</th>
+                                            <tr class="border-b border-slate-100 bg-slate-50/75 text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                                                <th class="p-3 text-left">Student Name &amp; Class</th>
                                                 <th class="p-3 text-left hidden md:table-cell">Email</th>
                                                 <th class="p-3 text-left hidden lg:table-cell">Level / EXP</th>
-                                                <th class="p-3 text-left hidden lg:table-cell">Avg Score</th>
                                                 <th class="p-3 text-left hidden xl:table-cell">Interactions</th>
-                                                <th class="p-3 text-left hidden md:table-cell">Status</th>
+                                                <th class="p-3 text-center hidden md:table-cell">Status</th>
                                                 <th class="p-3 text-center">Export</th>
                                             </tr>
                                         </thead>
@@ -652,61 +664,76 @@
                                         <% if (students && students.length > 0) { %>
                                         <% students.forEach(function(s) { %>
                                         <%
-                                            var avgPct = s.avgScore != null ? parseFloat(s.avgScore) : null;
-                                            var isPassing = avgPct != null ? (avgPct >= 75) : null;
-                                            var statusClass = isPassing == null ? '' : (isPassing ? 'pass' : 'fail');
+                                            var compAvg = s.compositeAvg != null ? parseFloat(s.compositeAvg) : null;
+                                            var isPassing = compAvg != null ? (compAvg >= 75) : null;
+                                            var statusClass = isPassing == null ? 'pending' : (isPassing ? 'pass' : 'fail');
                                         %>
-                                        <tr class="border-b border-slate-50 dossier-row" data-status="<%= statusClass %>"
-                                            data-search="<%= (s.first_name + ' ' + s.last_name + ' ' + (s.email || '')).toLowerCase() %>">
+                                        <tr class="border-b border-slate-50 dossier-row hover:bg-slate-50/60 transition"
+                                            data-status="<%= statusClass %>"
+                                            data-class-id="<%= s.class_id || '' %>"
+                                            data-search="<%= ((s.first_name || '') + ' ' + (s.last_name || '') + ' ' + (s.email || '') + ' ' + (s.lrn_number || '') + ' ' + (s.class_name || '')).toLowerCase() %>">
                                             <td class="p-3">
-                                                <div class="flex items-center gap-2">
+                                                <div class="flex items-center gap-2.5">
                                                     <img src="/profile_uploads/<%= s.profile_pic || 'default_avatar.png' %>"
-                                                         class="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                                                         class="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-sm"
                                                          onerror="this.src='/profile_uploads/default_avatar.png'">
                                                     <div>
-                                                        <p class="font-bold text-slate-800 text-sm leading-tight">
-                                                            <%= s.first_name %> <%= s.last_name %>
+                                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                                            <p class="font-bold text-slate-800 text-sm leading-tight">
+                                                                <%= s.first_name %> <%= s.last_name %>
+                                                            </p>
+                                                            <% if (s.class_name) { %>
+                                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                                    <%= s.class_name %>
+                                                                </span>
+                                                            <% } %>
+                                                        </div>
+                                                        <p class="text-[10px] text-slate-400 mt-0.5 font-medium">
+                                                            LRN: <span class="font-mono text-slate-500"><%= s.lrn_number || '—' %></span> · <%= s.grade_level || 'Grade 12' %> - <%= s.section || 'STEM' %>
                                                         </p>
-                                                        <p class="text-[10px] text-slate-400"><%= s.grade_level %> · <%= s.section || '—' %></p>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td class="p-3 hidden md:table-cell text-xs text-slate-500"><%= s.email %></td>
+                                            <td class="p-3 hidden md:table-cell text-xs text-slate-500 font-mono"><%= s.email %></td>
                                             <td class="p-3 hidden lg:table-cell text-xs">
-                                                <span class="font-bold text-indigo-700">Lv.<%= s.current_level %></span>
-                                                <span class="text-slate-400 ml-1"><%= (s.total_exp || 0).toLocaleString() %> EXP</span>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                        Lv.<%= s.current_level || 1 %>
+                                                    </span>
+                                                    <span class="text-slate-500 font-semibold"><%= (s.total_exp || 0).toLocaleString() %> EXP</span>
+                                                </div>
                                             </td>
-                                            <td class="p-3 hidden lg:table-cell">
-                                                <% if (avgPct != null) { %>
-                                                <span class="font-black text-sm <%= isPassing ? 'text-emerald-600' : 'text-rose-500' %>">
-                                                    <%= avgPct.toFixed(1) %>%
+                                            <td class="p-3 hidden xl:table-cell text-xs font-bold text-sky-600">
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-100">
+                                                    <i class="fas fa-eye text-sky-500 text-[10px]"></i> <%= s.interactionCount || 0 %> views
                                                 </span>
-                                                <% } else { %>
-                                                <span class="text-xs text-slate-300">No scores</span>
-                                                <% } %>
                                             </td>
-                                            <td class="p-3 hidden xl:table-cell text-xs font-bold text-blue-600">
-                                                <i class="fas fa-eye mr-1 text-slate-400"></i><%= s.interactionCount || 0 %>
-                                            </td>
-                                            <td class="p-3 hidden md:table-cell">
+                                            <td class="p-3 hidden md:table-cell text-center">
                                                 <% if (isPassing == null) { %>
-                                                <span class="badge bg-slate-100 text-slate-400">N/A</span>
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                        <i class="fas fa-clock text-[10px]"></i> Pending
+                                                    </span>
                                                 <% } else if (isPassing) { %>
-                                                <span class="badge badge-pass">Passing</span>
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                                                        <i class="fas fa-check-circle text-emerald-500 text-[10px]"></i> Passed
+                                                    </span>
                                                 <% } else { %>
-                                                <span class="badge badge-fail">Failing</span>
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
+                                                        <i class="fas fa-exclamation-circle text-rose-500 text-[10px]"></i> Failed
+                                                    </span>
                                                 <% } %>
                                             </td>
                                             <td class="p-3 text-center">
-                                                <button onclick="exportStudentDossier(<%= s.user_id %>, '<%= (s.first_name + ' ' + s.last_name).replace(/'/g, '') %>')"
-                                                    class="text-xs font-bold text-sky-600 border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-50 transition">
-                                                    <i class="fas fa-file-pdf mr-1"></i>PDF
+                                                <button onclick="exportStudentDossier(<%= s.user_id %>, '<%= s.class_id || '' %>', '<%= (s.first_name + ' ' + s.last_name).replace(/'/g, '') %>')"
+                                                    title="Export Landscape A4 Individual Student Dossier PDF"
+                                                    class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-600 hover:text-white transition shadow-sm">
+                                                    <i class="fas fa-file-pdf"></i> PDF
                                                 </button>
                                             </td>
                                         </tr>
                                         <% }) %>
                                         <% } else { %>
-                                        <tr><td colspan="7" class="p-8 text-center text-slate-400 text-sm">No student data available.</td></tr>
+                                        <tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">No student data available.</td></tr>
                                         <% } %>
                                         </tbody>
                                     </table>
@@ -961,13 +988,18 @@ function filterDossier() {
 
 function applyDossierFilters() {
     var q = document.getElementById('dossierSearch').value.toLowerCase().trim();
+    var classEl = document.getElementById('dossierClassFilter');
+    var selectedClass = classEl ? classEl.value : 'all';
     var n = 0;
+
     document.querySelectorAll('.dossier-row').forEach(function(r) {
         var matchSearch = !q || r.dataset.search.includes(q);
         var matchStatus = _dossierFilter === 'all' ||
             (_dossierFilter === 'pass' && r.dataset.status === 'pass') ||
             (_dossierFilter === 'fail' && r.dataset.status === 'fail');
-        var show = matchSearch && matchStatus;
+        var matchClass = selectedClass === 'all' || r.dataset.classId === selectedClass;
+
+        var show = matchSearch && matchStatus && matchClass;
         r.style.display = show ? '' : 'none';
         if (show) n++;
     });
@@ -989,8 +1021,12 @@ function exportClassDetail(classId, className) {
     window.open('/admin/rm/export/class/' + classId + '?name=' + encodeURIComponent(className), '_blank');
 }
 
-function exportStudentDossier(userId, name) {
-    window.open('/admin/rm/export/student/' + userId + '?name=' + encodeURIComponent(name), '_blank');
+function exportStudentDossier(userId, classId, name) {
+    var url = '/admin/rm/export/student/' + userId + '?name=' + encodeURIComponent(name);
+    if (classId) {
+        url += '&class_id=' + encodeURIComponent(classId);
+    }
+    window.open(url, '_blank');
 }
 
 function exportAllStudentsPDF() {
