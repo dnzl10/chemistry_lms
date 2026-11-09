@@ -8953,7 +8953,7 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
 
         // ─────────────────────────────────────────────────────────────────────
         // TAB 3 — STUDENT DOSSIER
-        // students: full list with avgScore and interactionCount
+        // Categorized by class with DepEd composite performance and interaction counts
         // ─────────────────────────────────────────────────────────────────────
         const [students] = await db.query(`
             SELECT
@@ -8964,17 +8964,38 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
                 u.profile_pic, u.created_at,
                 u.lrn_number, u.faculty_id,
                 u.sex, u.birthdate, u.mobile_number,
-                AVG(sg.grade_percent) AS avgScore,
-                COUNT(DISTINCT smi.interaction_id) AS interactionCount
+                c.class_id, c.class_name,
+                s.subject_name, s.semester,
+                CONCAT(t.first_name, ' ', t.last_name) AS teacher_name,
+                COUNT(DISTINCT smi.interaction_id) AS interactionCount,
+                AVG(COALESCE(sg.grade_percent, (ss.score_obtained / NULLIF(ss.total_possible_score, 0)) * 100)) AS compositeAvg
             FROM users u
             JOIN class_students cs ON cs.student_id = u.user_id
             JOIN classes c ON c.class_id = cs.class_id AND c.sy_id = ?
+            JOIN subjects s ON s.subject_id = c.subject_id
+            LEFT JOIN users t ON t.user_id = c.teacher_id
             LEFT JOIN elementa_student_grades sg ON sg.student_id = u.user_id AND (sg.class_id = c.class_id OR sg.class_id IS NULL)
+            LEFT JOIN student_scores ss ON ss.student_id = u.user_id AND ss.score_obtained IS NOT NULL
             LEFT JOIN student_material_interactions smi ON smi.student_id = u.user_id AND smi.interacted_at >= ? AND smi.interacted_at <= ?
             WHERE u.role = 'Student'
-            GROUP BY u.user_id
-            ORDER BY u.last_name ASC, u.first_name ASC
+            GROUP BY u.user_id, c.class_id, s.subject_id, t.user_id
+            ORDER BY c.class_name ASC, u.last_name ASC, u.first_name ASC
         `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+
+        // Unique classes for Student Dossier filtering
+        const dossierClassesMap = new Map();
+        students.forEach(s => {
+            if (s.class_id && !dossierClassesMap.has(s.class_id)) {
+                dossierClassesMap.set(s.class_id, {
+                    class_id: s.class_id,
+                    class_name: s.class_name,
+                    subject_name: s.subject_name,
+                    semester: s.semester,
+                    teacher_name: s.teacher_name
+                });
+            }
+        });
+        const dossierClasses = Array.from(dossierClassesMap.values());
 
         // ─────────────────────────────────────────────────────────────────────
         // TAB 4 — ITEM ANALYSIS & REMEDIATION (Arcade Micro-Telemetry)
@@ -9068,6 +9089,7 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
             curriculumData,
             classMapping,
             students,
+            dossierClasses,
             itemAnalysis,
             remediationAudit,
             activityLogs,
@@ -9579,48 +9601,21 @@ router.get('/rm/export/student/:id', requireAdmin, async (req, res) => {
     try {
         const userId = parseInt(req.params.id, 10);
         if (isNaN(userId)) return res.status(400).send('Invalid user ID.');
+        const classId = req.query.class_id ? parseInt(req.query.class_id, 10) : null;
 
-        // Personal info (masked sensitive fields for privacy protection)
-        const [[student]] = await db.query(`
-            SELECT
-                first_name, last_name, email, role, created_at,
-                grade_level, section, strand, lrn_number,
-                current_level, total_exp, sex, birthdate,
-                mobile_number, city_town
-            FROM users
-            WHERE user_id = ? AND role = 'Student'
-        `, [userId]);
-        if (!student) {
+        const dossierData = await gradebookHelper.computeStudentGranularDossier(db, userId, classId, {});
+        if (!dossierData) {
             return res.status(404).render('404', {
                 title: 'Student Not Found | Elementa LMS',
                 user: req.user,
                 role: req.user ? req.user.role : 'Admin',
                 requestedPath: req.originalUrl,
-                customMessage: 'The requested student profile could not be found in the registry.'
+                customMessage: 'The requested student profile could not be found in the academic repository.'
             });
         }
 
-        // Academic scores - from elementa_student_grades
-        const [scores] = await db.query(`
-            SELECT
-                COALESCE(a.assessment_name, CONCAT('Level ', sg.assessment_number, ' - ', sg.level_topic)) AS assessment_name,
-                COALESCE(a.assessment_type, 'Arcade Challenge') AS assessment_type,
-                sg.points_earned AS score_obtained,
-                sg.points_possible AS total_items,
-                sg.points_earned AS exp_gained,
-                sg.started_at AS date_recorded
-            FROM elementa_student_grades sg
-            LEFT JOIN assessments a ON a.assessment_id = sg.assessment_id
-            WHERE sg.student_id = ?
-            ORDER BY sg.started_at DESC
-        `, [userId]);
-
-        // Material interaction count
-        const [[intRow]] = await db.query(
-            `SELECT COUNT(*) AS cnt FROM student_material_interactions WHERE student_id = ?`,
-            [userId]
-        );
-
+        const student = dossierData.student;
+        const cls = dossierData.classInfo;
         const fullName = `${student.first_name} ${student.last_name}`;
         const auditRef = generateAuditRef('DOS');
         const doc      = new PDFDocument({ size: 'A4', margin: 40, bufferPages: true });

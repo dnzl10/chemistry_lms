@@ -48,6 +48,29 @@ const SIMULATION_QUARTER_MAP = {
     'beers-law-lab': 4
 };
 
+const SIMULATION_TITLE_MAP = {
+    'build-an-atom': 'Build an Atom (Atomic Structure & Subatomic Particles)',
+    'isotopes-and-atomic-mass': 'Isotopes and Atomic Mass (Isotopic Abundance)',
+    'models-of-the-hydrogen-atom': 'Models of the Hydrogen Atom (Quantum Emission)',
+    'rutherford-scattering': 'Rutherford Scattering (Nuclear Atom Model)',
+    'states-of-matter': 'States of Matter (Phase Transitions & Thermal Kinetic)',
+    'states-of-matter-basics': 'States of Matter: Basics (Thermal Expansion)',
+    'density': 'Density Laboratory (Mass, Volume & Buoyancy)',
+    'molecules-and-light': 'Molecules and Light (Photonic Absorption)',
+    'blackbody-spectrum': 'Blackbody Spectrum (Planck Radiation Law)',
+    'build-a-molecule': 'Build a Molecule (Covalent Bonding & Stoichiometry)',
+    'molecule-shapes': 'Molecule Shapes (VSEPR Geometry & Bond Angles)',
+    'molecule-shapes-basics': 'Molecule Shapes: Basics (Molecular Geometry)',
+    'molecule-polarity': 'Molecule Polarity (Electronegativity & Dipole)',
+    'atomic-interactions': 'Atomic Interactions (Van der Waals & London Forces)',
+    'balancing-chemical-equations': 'Balancing Chemical Equations (Conservation of Mass)',
+    'reactants-products-and-leftovers': 'Reactants, Products and Leftovers (Limiting Reagents)',
+    'acid-base-solutions': 'Acid-Base Solutions (pH Scale & Autoionization)',
+    'concentration': 'Concentration Lab (Solute Dissolution & Dilution)',
+    'molarity': 'Molarity Lab (Molar Concentration Calculations)',
+    'beers-law-lab': "Beer's Law Lab (Absorbance & Transmittance)"
+};
+
 /**
  * Shared Helper: Compute Master Class Gradebook & Assessment Summary Data
  * Evaluates comprehensive class standing across Coursework (Written Works, Performance Tasks, Forums),
@@ -863,11 +886,567 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
 }
 
 /**
- * Shared Helper: Fetch Filtered Report Data For A Student in a Class & Subject
+ * Shared Helper: Compute Comprehensive Granular Dossier for an Individual Student
+ * Tailored for Landscape A4 Student Dossier PDF and Granular Academic Profiling.
+ *
+ * @param {object} dbConn - MySQL pool or connection
+ * @param {number} studentId - Target user_id
+ * @param {number|null} classId - Optional specific class_id
+ * @param {object} options - Optional config
+ * @returns {Promise<object|null>}
  */
+async function computeStudentGranularDossier(dbConn, studentId, classId = null, options = {}) {
+    const sid = parseInt(studentId, 10);
+    if (isNaN(sid)) return null;
+
+    // 1. Fetch Student Profile
+    const [[student]] = await dbConn.query(`
+        SELECT
+            user_id, first_name, middle_name, last_name, email,
+            role, grade_level, section, strand, lrn_number,
+            current_level, total_exp, sex, birthdate,
+            mobile_number, city_town, profile_pic, created_at
+        FROM users
+        WHERE user_id = ? AND role = 'Student'
+        LIMIT 1
+    `, [sid]);
+
+    if (!student) return null;
+
+    const fullName = `${student.last_name}, ${student.first_name}${student.middle_name ? ' ' + student.middle_name[0] + '.' : ''}`;
+
+    // 2. Resolve Class Enrollment & Subject Context
+    let cls = null;
+    if (classId) {
+        const cid = parseInt(classId, 10);
+        if (!isNaN(cid)) {
+            const [[foundClass]] = await dbConn.query(`
+                SELECT c.class_id, c.class_name, c.teacher_id, c.subject_id, c.sy_id,
+                       s.subject_name, s.semester, sy.sy_range,
+                       CONCAT(t.first_name, ' ', t.last_name) AS teacher_name,
+                       t.email AS teacher_email
+                FROM classes c
+                JOIN class_students cs ON cs.class_id = c.class_id
+                JOIN subjects s ON s.subject_id = c.subject_id
+                LEFT JOIN school_years sy ON sy.sy_id = c.sy_id
+                LEFT JOIN users t ON t.user_id = c.teacher_id
+                WHERE cs.student_id = ? AND c.class_id = ?
+                LIMIT 1
+            `, [sid, cid]);
+            if (foundClass) cls = foundClass;
+        }
+    }
+
+    if (!cls) {
+        const [[foundClass]] = await dbConn.query(`
+            SELECT c.class_id, c.class_name, c.teacher_id, c.subject_id, c.sy_id,
+                   s.subject_name, s.semester, sy.sy_range,
+                   CONCAT(t.first_name, ' ', t.last_name) AS teacher_name,
+                   t.email AS teacher_email
+            FROM class_students cs
+            JOIN classes c ON c.class_id = cs.class_id
+            JOIN subjects s ON s.subject_id = c.subject_id
+            LEFT JOIN school_years sy ON sy.sy_id = c.sy_id
+            LEFT JOIN users t ON t.user_id = c.teacher_id
+            WHERE cs.student_id = ?
+            ORDER BY (sy.is_active = 1) DESC, c.class_id DESC
+            LIMIT 1
+        `, [sid]);
+        if (foundClass) cls = foundClass;
+    }
+
+    if (!cls) {
+        const [[defaultSubj]] = await dbConn.query(`
+            SELECT s.subject_id, s.subject_name, s.semester,
+                   (SELECT sy_range FROM school_years WHERE is_active = 1 LIMIT 1) AS sy_range,
+                   (SELECT sy_id FROM school_years WHERE is_active = 1 LIMIT 1) AS sy_id
+            FROM subjects s
+            WHERE s.subject_name LIKE '%Chemistry%'
+            ORDER BY s.subject_id ASC
+            LIMIT 1
+        `);
+        cls = {
+            class_id: null,
+            class_name: student.section || 'General Class',
+            teacher_id: null,
+            teacher_name: 'Subject Teacher',
+            teacher_email: '',
+            subject_id: defaultSubj ? defaultSubj.subject_id : 1,
+            subject_name: defaultSubj ? defaultSubj.subject_name : 'General Chemistry 1',
+            semester: defaultSubj ? defaultSubj.semester : 1,
+            sy_id: defaultSubj ? defaultSubj.sy_id : null,
+            sy_range: defaultSubj ? defaultSubj.sy_range : 'Current SY'
+        };
+    }
+
+    const isSem1 = Number(cls.semester) === 1 || (cls.subject_name && cls.subject_name.toLowerCase().includes('chemistry 1'));
+    const targetQuarters = isSem1 ? [1, 2] : [3, 4];
+
+    // 3. Fetch Syllabus Progress & Interactions Count
+    const [[progRow]] = await dbConn.query(
+        `SELECT progress_percent FROM student_progress WHERE student_id = ? AND subject_id = ? LIMIT 1`,
+        [sid, cls.subject_id]
+    );
+    const syllabusProgress = progRow ? Number(progRow.progress_percent || 0) : 0;
+
+    const [[intRow]] = await dbConn.query(
+        `SELECT COUNT(*) AS cnt FROM student_material_interactions WHERE student_id = ?`,
+        [sid]
+    );
+    const interactionCount = intRow ? Number(intRow.cnt || 0) : 0;
+
+    // 4. Fetch All Quarters and Topics for this Subject
+    const [quartersRaw] = await dbConn.query(
+        `SELECT quarter_id, quarter_number FROM quarters WHERE subject_id = ? ORDER BY quarter_number ASC`,
+        [cls.subject_id]
+    );
+    const quarterIdMap = new Map();
+    quartersRaw.forEach(q => quarterIdMap.set(q.quarter_number, q.quarter_id));
+
+    const quarterResults = {};
+    const validQuarterGrades = [];
+
+    for (const qNum of targetQuarters) {
+        const qId = quarterIdMap.get(qNum);
+        if (!qId) {
+            quarterResults[qNum] = {
+                quarter_number: qNum,
+                quarter_name: `Quarter ${qNum}`,
+                quarter_grade: null,
+                standing: 'Incomplete',
+                is_passed: false,
+                kpis: { quarter_grade: null, written_works_pct: null, performance_tasks_pct: null, forums_pct: null, virtual_labs_pct: null, progress_pct: syllabusProgress, level: student.current_level || 1, total_exp: student.total_exp || 0 },
+                writtenWorks: [],
+                performanceTasks: [],
+                forums: [],
+                simulations: []
+            };
+            continue;
+        }
+
+        // 4a. Topics for Quarter
+        const [topics] = await dbConn.query(
+            `SELECT topic_id, topic_name FROM topics WHERE quarter_id = ? ORDER BY topic_id ASC`,
+            [qId]
+        );
+        const topicIds = topics.map(t => t.topic_id);
+
+        let asmtsRaw = [];
+        let forumsRaw = [];
+
+        if (topicIds.length > 0) {
+            const [asmtList] = await dbConn.query(`
+                SELECT a.assessment_id, a.quarter_id, a.topic_id, a.assessment_name,
+                       a.assessment_type, a.total_items, a.due_date, a.allow_grace,
+                       a.grace_period_minutes, a.created_at, t.topic_name
+                FROM assessments a
+                JOIN topics t ON a.topic_id = t.topic_id
+                WHERE a.topic_id IN (?) AND (a.sy_id = ? OR a.sy_id IS NULL)
+                ORDER BY a.assessment_id ASC
+            `, [topicIds, cls.sy_id]);
+            asmtsRaw = asmtList;
+
+            const [forumList] = await dbConn.query(`
+                SELECT ft.forum_id, ft.title AS topic_title, ft.topic_id, t.quarter_id, t.topic_name, ft.created_at
+                FROM forum_topics ft
+                JOIN topics t ON ft.topic_id = t.topic_id
+                WHERE (? IS NULL OR ft.class_id = ? OR ft.class_id IS NULL) AND t.quarter_id = ?
+                ORDER BY ft.forum_id ASC
+            `, [cls.class_id, cls.class_id, qId]);
+            forumsRaw = forumList;
+        }
+
+        const asmtIds = asmtsRaw.map(a => a.assessment_id);
+
+        // 4b. Fetch Student Scores for this quarter's assessments
+        let scoresMap = new Map();
+        let arcadeMap = new Map();
+
+        if (asmtIds.length > 0) {
+            const [scores] = await dbConn.query(`
+                SELECT ss.assessment_id, ss.score_obtained, ss.total_possible_score,
+                       ss.total_items, ss.exp_gained, ss.feedback, ss.submitted_at,
+                       ss.date_recorded, ss.is_grace_period, ss.attempt_number,
+                       ss.original_filename
+                FROM student_scores ss
+                WHERE ss.student_id = ? AND ss.assessment_id IN (?)
+            `, [sid, asmtIds]);
+            scores.forEach(s => scoresMap.set(s.assessment_id, s));
+
+            const [arcScores] = await dbConn.query(`
+                SELECT esg.assessment_id, esg.correct_answers AS score_obtained,
+                       esg.points_possible AS total_items, esg.points_earned AS exp_gained,
+                       esg.grade_percent, esg.started_at
+                FROM elementa_student_grades esg
+                WHERE esg.student_id = ? AND esg.assessment_id IN (?) AND esg.run_status = 'Completed'
+            `, [sid, asmtIds]);
+            arcScores.forEach(a => arcadeMap.set(a.assessment_id, a));
+        }
+
+        // 4c. Fetch Forum completions & replies
+        const forumIds = forumsRaw.map(f => f.forum_id);
+        const forumDoneMap = new Map();
+        const forumReplyMap = new Map();
+
+        if (forumIds.length > 0) {
+            const [fDone] = await dbConn.query(`
+                SELECT sfd.forum_id, sfd.exp_awarded, sfd.done_at AS created_at
+                FROM student_forum_done sfd
+                WHERE sfd.student_id = ? AND sfd.forum_id IN (?)
+            `, [sid, forumIds]);
+            fDone.forEach(fd => forumDoneMap.set(fd.forum_id, fd));
+
+            const [fReplies] = await dbConn.query(`
+                SELECT fr.topic_id AS forum_id, COUNT(*) AS cnt
+                FROM forum_replies fr
+                WHERE fr.user_id = ? AND fr.topic_id IN (?)
+                GROUP BY fr.topic_id
+            `, [sid, forumIds]);
+            fReplies.forEach(fr => forumReplyMap.set(fr.forum_id, Number(fr.cnt || 0)));
+        }
+
+        // 4d. Fetch Virtual Simulations for Quarter Q
+        const quarterSimSlugs = Object.entries(SIMULATION_QUARTER_MAP)
+            .filter(([_, q]) => q === qNum)
+            .map(([slug, _]) => slug);
+
+        let simSubmissionsMap = new Map();
+        if (quarterSimSlugs.length > 0) {
+            const [simSubs] = await dbConn.query(`
+                SELECT esqs.quiz_id, esqs.simulation_slug, esqs.score, esqs.total_questions,
+                       esqs.percentage, esqs.exp_earned, esqs.submitted_at
+                FROM elementa_simulation_quiz_submissions esqs
+                WHERE esqs.student_id = ? AND esqs.simulation_slug IN (?)
+                ORDER BY esqs.submitted_at DESC
+            `, [sid, quarterSimSlugs]);
+            simSubs.forEach(s => {
+                if (!simSubmissionsMap.has(s.simulation_slug)) {
+                    simSubmissionsMap.set(s.simulation_slug, s);
+                }
+            });
+        }
+
+        // ── Synthesize Written Works ─────────────────────────────────────────
+        const writtenWorks = [];
+        let asmtScoreSum = 0;
+        let asmtTotalSum = 0;
+        let asmtExpSum = 0;
+        let asmtTakenCount = 0;
+
+        asmtsRaw.filter(a => a.assessment_type !== 'Assignment').forEach((asmt, idx) => {
+            const sc = scoresMap.get(asmt.assessment_id);
+            const arc = arcadeMap.get(asmt.assessment_id);
+            const totalItems = Number(asmt.total_items) || (sc ? Number(sc.total_possible_score || sc.total_items) : 10);
+
+            let score = null;
+            let scorePct = null;
+            let dateTaken = null;
+            let exp = 0;
+            let status = 'UNTAKEN';
+
+            if (sc && sc.score_obtained !== null) {
+                score = Number(sc.score_obtained);
+                scorePct = totalItems > 0 ? Math.round((score / totalItems) * 1000) / 10 : 0;
+                dateTaken = sc.submitted_at || sc.date_recorded;
+                exp = Number(sc.exp_gained || 0);
+                status = scorePct >= 75 ? 'PASSED' : 'FAILED';
+                asmtScoreSum += score;
+                asmtTotalSum += totalItems;
+                asmtExpSum += exp;
+                asmtTakenCount++;
+            } else if (arc && arc.score_obtained !== null) {
+                score = Number(arc.score_obtained);
+                scorePct = Number(arc.grade_percent || 0);
+                dateTaken = arc.started_at;
+                exp = Number(arc.exp_gained || 0);
+                status = scorePct >= 75 ? 'PASSED' : 'FAILED';
+                asmtScoreSum += score;
+                asmtTotalSum += totalItems;
+                asmtExpSum += exp;
+                asmtTakenCount++;
+            }
+
+            writtenWorks.push({
+                index: idx + 1,
+                assessment_id: asmt.assessment_id,
+                assessment_name: asmt.assessment_name,
+                topic_name: asmt.topic_name,
+                date_taken: dateTaken ? new Date(dateTaken).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+                score_obtained: score,
+                total_items: totalItems,
+                score_pct: scorePct,
+                status,
+                exp_gained: exp
+            });
+        });
+
+        // ── Synthesize Performance Tasks (Assignments) ──────────────────────
+        const performanceTasks = [];
+        let asgnScoreSum = 0;
+        let asgnTotalSum = 0;
+        let asgnExpSum = 0;
+        let asgnTakenCount = 0;
+
+        asmtsRaw.filter(a => a.assessment_type === 'Assignment').forEach((asgn, idx) => {
+            const sc = scoresMap.get(asgn.assessment_id);
+            const totalItems = Number(asgn.total_items) || (sc ? Number(sc.total_possible_score || sc.total_items) : 100);
+
+            let score = null;
+            let scorePct = null;
+            let submittedAt = null;
+            let attemptNumber = 1;
+            let isGrace = false;
+            let exp = 0;
+            let status = 'UNSUBMITTED';
+            let originalFilename = null;
+
+            if (sc) {
+                attemptNumber = sc.attempt_number || 1;
+                isGrace = sc.is_grace_period === 1 || sc.is_grace_period === true;
+                originalFilename = sc.original_filename || null;
+                submittedAt = sc.submitted_at || sc.date_recorded;
+
+                if (sc.score_obtained !== null) {
+                    score = Number(sc.score_obtained);
+                    scorePct = totalItems > 0 ? Math.round((score / totalItems) * 1000) / 10 : 0;
+                    exp = Number(sc.exp_gained || 0);
+                    status = scorePct >= 75 ? 'PASSED' : 'FAILED';
+                    asgnScoreSum += score;
+                    asgnTotalSum += totalItems;
+                    asgnExpSum += exp;
+                    asgnTakenCount++;
+                } else if (submittedAt) {
+                    status = 'PENDING_GRADING';
+                }
+            }
+
+            performanceTasks.push({
+                index: idx + 1,
+                assessment_id: asgn.assessment_id,
+                assessment_name: asgn.assessment_name,
+                topic_name: asgn.topic_name,
+                due_date: asgn.due_date ? new Date(asgn.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+                submitted_at: submittedAt ? new Date(submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+                attempt_number: attemptNumber,
+                is_grace_period: isGrace,
+                original_filename: originalFilename,
+                score_obtained: score,
+                total_items: totalItems,
+                score_pct: scorePct,
+                status,
+                exp_gained: exp
+            });
+        });
+
+        // ── Synthesize Forums ────────────────────────────────────────────────
+        const forums = [];
+        let forumsDoneCount = 0;
+        let forumExpSum = 0;
+
+        forumsRaw.forEach((f, idx) => {
+            const fd = forumDoneMap.get(f.forum_id);
+            const replies = forumReplyMap.get(f.forum_id) || 0;
+            const isDone = !!fd;
+            const exp = fd ? Number(fd.exp_awarded || 0) : 0;
+            if (isDone) {
+                forumsDoneCount++;
+                forumExpSum += exp;
+            }
+
+            forums.push({
+                index: idx + 1,
+                forum_id: f.forum_id,
+                topic_title: f.topic_title,
+                topic_name: f.topic_name,
+                is_completed: isDone,
+                reply_count: replies,
+                exp_awarded: exp,
+                completed_at: fd && fd.created_at ? new Date(fd.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+                status: isDone ? 'COMPLETED' : 'PENDING'
+            });
+        });
+
+        // ── Synthesize Virtual Simulations ──────────────────────────────────
+        const simulations = [];
+        let simPctSum = 0;
+        let simTakenCount = 0;
+        let simExpSum = 0;
+
+        quarterSimSlugs.forEach((slug, idx) => {
+            const title = SIMULATION_TITLE_MAP[slug] || slug.replace(/-/g, ' ').toUpperCase();
+            const sub = simSubmissionsMap.get(slug);
+
+            let score = null;
+            let totalQ = null;
+            let pct = null;
+            let exp = 0;
+            let completedAt = null;
+            let status = 'UNTAKEN';
+
+            if (sub) {
+                score = Number(sub.score || 0);
+                totalQ = Number(sub.total_questions || 5);
+                pct = Number(sub.percentage != null ? sub.percentage : (totalQ > 0 ? (score / totalQ) * 100 : 0));
+                pct = Math.round(pct * 10) / 10;
+                exp = Number(sub.exp_earned || 0);
+                completedAt = sub.submitted_at;
+                status = pct >= 90 ? 'MASTERY' : (pct >= 75 ? 'PASSED' : 'RETRY');
+                simPctSum += pct;
+                simTakenCount++;
+                simExpSum += exp;
+            }
+
+            simulations.push({
+                index: idx + 1,
+                simulation_slug: slug,
+                simulation_title: title,
+                score,
+                total_questions: totalQ || 5,
+                percentage: pct,
+                exp_earned: exp,
+                completed_at: completedAt ? new Date(completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+                status
+            });
+        });
+
+        // ── DepEd Quarter Grade Computation ──────────────────────────────────
+        const asmtPct = asmtTotalSum > 0 ? (asmtScoreSum / asmtTotalSum) * 100 : null;
+        const asgnPct = asgnTotalSum > 0 ? (asgnScoreSum / asgnTotalSum) * 100 : null;
+        const forumPct = forumsRaw.length > 0 ? (forumsDoneCount / forumsRaw.length) * 100 : null;
+        const simAvg = simTakenCount > 0 ? simPctSum / simTakenCount : null;
+
+        // Weighting: 70% Coursework + 30% Simulation
+        const courseworkComponents = [asmtPct, asgnPct, forumPct].filter(p => p !== null);
+        const courseworkPct = courseworkComponents.length > 0
+            ? courseworkComponents.reduce((a, b) => a + b, 0) / courseworkComponents.length
+            : null;
+
+        let finalQuarterGrade = null;
+        if (courseworkPct !== null && simAvg !== null) {
+            finalQuarterGrade = Math.round(((courseworkPct * 0.70) + (simAvg * 0.30)) * 10) / 10;
+        } else if (courseworkPct !== null) {
+            finalQuarterGrade = Math.round(courseworkPct * 10) / 10;
+        } else if (simAvg !== null) {
+            finalQuarterGrade = Math.round(simAvg * 10) / 10;
+        }
+
+        const isPassed = finalQuarterGrade !== null && finalQuarterGrade >= 75;
+        const standing = finalQuarterGrade === null ? 'Incomplete' : (isPassed ? 'Passed' : 'At-Risk');
+
+        if (finalQuarterGrade !== null) {
+            validQuarterGrades.push(finalQuarterGrade);
+        }
+
+        quarterResults[qNum] = {
+            quarter_number: qNum,
+            quarter_name: `Quarter ${qNum}`,
+            quarter_grade: finalQuarterGrade,
+            standing,
+            is_passed: isPassed,
+            kpis: {
+                quarter_grade: finalQuarterGrade,
+                written_works_pct: asmtPct !== null ? Math.round(asmtPct * 10) / 10 : null,
+                performance_tasks_pct: asgnPct !== null ? Math.round(asgnPct * 10) / 10 : null,
+                forums_pct: forumPct !== null ? Math.round(forumPct * 10) / 10 : null,
+                virtual_labs_pct: simAvg !== null ? Math.round(simAvg * 10) / 10 : null,
+                progress_pct: syllabusProgress,
+                level: student.current_level || 1,
+                total_exp: student.total_exp || (asmtExpSum + asgnExpSum + forumExpSum + simExpSum)
+            },
+            summaries: {
+                asmt: { score: asmtScoreSum, total: asmtTotalSum, count: asmtsRaw.filter(a => a.assessment_type !== 'Assignment').length, submitted: asmtTakenCount, exp: asmtExpSum },
+                asgn: { score: asgnScoreSum, total: asgnTotalSum, count: asmtsRaw.filter(a => a.assessment_type === 'Assignment').length, submitted: asgnTakenCount, exp: asgnExpSum },
+                forum: { completed: forumsDoneCount, total: forumsRaw.length, exp: forumExpSum },
+                sim: { count: simTakenCount, total: quarterSimSlugs.length, avg: simAvg !== null ? Math.round(simAvg * 10) / 10 : null, exp: simExpSum }
+            },
+            writtenWorks,
+            performanceTasks,
+            forums,
+            simulations
+        };
+    }
+
+    // 5. Compute Semestral Composite Grade & Chemistry 2 Prerequisite Gate
+    const semestralGrade = validQuarterGrades.length > 0
+        ? Math.round((validQuarterGrades.reduce((a, b) => a + b, 0) / validQuarterGrades.length) * 10) / 10
+        : null;
+
+    let chem2Eligibility = null;
+    if (isSem1) {
+        if (semestralGrade !== null) {
+            const isEligible = semestralGrade >= 75.0;
+            chem2Eligibility = {
+                status: isEligible ? 'ELIGIBLE' : 'INELIGIBLE',
+                threshold: 75.0,
+                chem1Grade: semestralGrade,
+                reason: isEligible
+                    ? `Prerequisite Satisfied: Student achieved a cumulative final average of ${semestralGrade}% in General Chemistry 1, meeting the DepEd minimum passing threshold of 75.0% required for General Chemistry 2.`
+                    : `Prerequisite Requirement Not Met: Cumulative final average in General Chemistry 1 is ${semestralGrade}%, which is below the DepEd 75.0% passing threshold.`
+            };
+        } else {
+            chem2Eligibility = {
+                status: 'PENDING_QUARTERS',
+                threshold: 75.0,
+                chem1Grade: null,
+                reason: 'Prerequisite Gate Evaluation Pending: Quarter grades for General Chemistry 1 are currently in progress.'
+            };
+        }
+    } else {
+        chem2Eligibility = {
+            status: semestralGrade !== null ? (semestralGrade >= 75 ? 'COMPLETED' : 'AT-RISK') : 'PENDING_QUARTERS',
+            threshold: 75.0,
+            chem1Grade: semestralGrade,
+            reason: semestralGrade !== null
+                ? `Senior High Chemistry Standing: Cumulative semester final grade is ${semestralGrade}%.`
+                : 'Evaluation Pending: Semester 2 grading is in progress.'
+        };
+    }
+
+    return {
+        student: {
+            user_id: student.user_id,
+            lrn_number: student.lrn_number || '—',
+            first_name: student.first_name,
+            middle_name: student.middle_name,
+            last_name: student.last_name,
+            full_name: fullName,
+            email: student.email || '—',
+            grade_level: student.grade_level || 'Grade 12',
+            section: student.section || 'STEM',
+            strand: student.strand || 'STEM',
+            sex: student.sex || '—',
+            birthdate: student.birthdate ? new Date(student.birthdate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+            mobile_number: student.mobile_number || '—',
+            city_town: student.city_town || '—',
+            current_level: student.current_level || 1,
+            total_exp: student.total_exp || 0,
+            profile_pic: student.profile_pic || 'default_avatar.png',
+            interaction_count: interactionCount
+        },
+        classInfo: {
+            class_id: cls.class_id,
+            class_name: cls.class_name,
+            teacher_id: cls.teacher_id,
+            teacher_name: cls.teacher_name,
+            teacher_email: cls.teacher_email,
+            subject_id: cls.subject_id,
+            subject_name: cls.subject_name,
+            semester: cls.semester,
+            sy_id: cls.sy_id,
+            sy_range: cls.sy_range,
+            is_sem1: isSem1
+        },
+        targetQuarters,
+        quarters: quarterResults,
+        semestral_grade: semestralGrade,
+        chem2_eligibility: chem2Eligibility
+    };
+}
 
 module.exports = {
     SIMULATION_QUARTER_MAP,
+    SIMULATION_TITLE_MAP,
     computeClassGradebookData,
+    computeStudentGranularDossier,
     sanitizeGradebookQueryParams
 };
