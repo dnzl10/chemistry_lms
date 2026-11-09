@@ -634,6 +634,7 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
                     asgnPct: qAsgnPct,
                     forumPct: qForumPct,
                     simPct: qSimAvg,
+                    simCount: qSims.length,
                     lmsAvg: qLmsAvg,
                     finalGrade: qFinalGrade
                 };

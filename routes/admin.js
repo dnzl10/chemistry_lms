@@ -9319,17 +9319,12 @@ router.get('/rm/export/class/:id', requireAdmin, async (req, res) => {
 
         // Subject & Semester context determination
         const isSem1 = Number(cls.semester) === 1 || (cls.subject_name && cls.subject_name.toLowerCase().includes('chemistry 1'));
-        const qA_label = isSem1 ? 'Q1 Grade' : 'Q3 Grade';
-        const qB_label = isSem1 ? 'Q2 Grade' : 'Q4 Grade';
-        const qA_num = isSem1 ? 1 : 3;
-        const qB_num = isSem1 ? 2 : 4;
-        const gateLabel = isSem1 ? 'Chem 2 Prerequisite Gate' : 'SHS Chem Standing';
+        const targetQuarters = isSem1 ? [1, 2] : [3, 4];
+        const gateLabel = isSem1 ? 'Chemistry 2 Prerequisite Gate' : 'Senior High Chem Standing';
 
-        // Compute Quarter A and B class means from active student quarter grades
-        const qA_scores = students.map(s => s.quarter_grades && s.quarter_grades[qA_num] ? s.quarter_grades[qA_num].finalGrade : null).filter(g => g !== null && g !== undefined);
-        const qB_scores = students.map(s => s.quarter_grades && s.quarter_grades[qB_num] ? s.quarter_grades[qB_num].finalGrade : null).filter(g => g !== null && g !== undefined);
-        const qA_Mean = qA_scores.length > 0 ? (Math.round((qA_scores.reduce((a, b) => a + b, 0) / qA_scores.length) * 10) / 10) : null;
-        const qB_Mean = qB_scores.length > 0 ? (Math.round((qB_scores.reduce((a, b) => a + b, 0) / qB_scores.length) * 10) / 10) : null;
+        // Semestral GWA Mean across students
+        const semScores = students.map(s => s.semestral_grade).filter(g => g !== null && g !== undefined);
+        const semMean = semScores.length > 0 ? (Math.round((semScores.reduce((a, b) => a + b, 0) / semScores.length) * 10) / 10) : null;
 
         // Prerequisite Gate Counts for Chemistry 1
         const eligibleCount = students.filter(s => s.chem2_eligibility && s.chem2_eligibility.status === 'ELIGIBLE').length;
@@ -9348,207 +9343,223 @@ router.get('/rm/export/class/:id', requireAdmin, async (req, res) => {
         setExportHttpHeaders(res, `class_performance_${safeClassName}_${auditRef}.pdf`, 'application/pdf');
         doc.pipe(res);
 
-        // Header matching header.docx institutional letterhead
-        drawPdfDocumentHeader(doc, {
-            title: `CLASS PERFORMANCE REPORT — ${cls.class_name.toUpperCase()}`,
-            scope: `Teacher: ${cls.teacher_name || '—'}   |   Subject: ${cls.subject_name || 'General Chemistry'} (${isSem1 ? 'Semester 1' : 'Semester 2'})   |   Academic Year: ${cls.sy_range || 'Current SY'}`,
-            user: req.user,
-            role: 'Admin',
-            classification: 'RESTRICTED — ADMIN EYES ONLY',
-            auditRef,
-            layout: 'landscape'
-        });
-
-        // ═════════════════════════════════════════════════════════════════════
-        // EXECUTIVE CLASS KPI SNAPSHOT BAR (6 CARDS ACROSS 770pt)
-        // ═════════════════════════════════════════════════════════════════════
         const startX = 36;
-        let curY = doc.y + 2;
         const cardW = 121;
         const cardH = 38;
         const gap = 8.8;
 
-        const kpiCards = [
-            {
-                label: 'TOTAL ENROLLED',
-                val: `${kpis.totalEnrolled}`,
-                sub: `${cls.class_name} Active Roster`,
-                color: '#0f172a'
-            },
-            {
-                label: 'CLASS PASSING RATE',
-                val: `${kpis.passingRate}%`,
-                sub: `${kpis.passedCount}/${kpis.totalEnrolled} Students (≥75%)`,
-                color: '#059669'
-            },
-            {
-                label: 'AT-RISK / INTERVENTION',
-                val: `${kpis.atRiskRate}%`,
-                sub: `${kpis.atRiskCount}/${kpis.totalEnrolled} In Danger (<75%)`,
-                color: kpis.atRiskCount > 0 ? '#dc2626' : '#059669'
-            },
-            {
-                label: `${qA_label.toUpperCase()} CLASS MEAN`,
-                val: qA_Mean !== null ? `${qA_Mean}%` : '—',
-                sub: `${qA_scores.length}/${kpis.totalEnrolled} Encoded`,
-                color: '#1e1b4b'
-            },
-            {
-                label: `${qB_label.toUpperCase()} CLASS MEAN`,
-                val: qB_Mean !== null ? `${qB_Mean}%` : '—',
-                sub: `${qB_scores.length}/${kpis.totalEnrolled} Encoded`,
-                color: '#1e1b4b'
-            },
-            {
-                label: isSem1 ? 'CHEM 2 GATE ELIGIBLE' : 'SHS CHEM COMPLETED',
-                val: isSem1 ? `${eligibleCount}` : `${kpis.passedCount}`,
-                sub: isSem1 ? `${blockedCount} Blocked for Chem 2` : `${kpis.passedCount}/${kpis.totalEnrolled} Completed`,
-                color: isSem1 ? (blockedCount > 0 ? '#d97706' : '#059669') : '#059669'
+        targetQuarters.forEach((qNum, qIdx) => {
+            if (qIdx > 0) {
+                doc.addPage();
             }
-        ];
 
-        let kpiX = startX;
-        for (const card of kpiCards) {
-            doc.roundedRect(kpiX, curY, cardW, cardH, 5).fillAndStroke('#f8fafc', '#cbd5e1');
-            doc.fontSize(6).font('Helvetica-Bold').fillColor('#64748b')
-               .text(card.label, kpiX + 3, curY + 4, { width: cardW - 6, align: 'center' });
-            doc.fontSize(11).font('Helvetica-Bold').fillColor(card.color)
-               .text(card.val, kpiX + 3, curY + 14, { width: cardW - 6, align: 'center' });
-            doc.fontSize(5.5).font('Helvetica').fillColor('#64748b')
-               .text(card.sub, kpiX + 2, curY + 27, { width: cardW - 4, align: 'center' });
-            kpiX += cardW + gap;
-        }
+            // Quarter Specific Metrics
+            const qScores = students.map(s => s.quarter_grades && s.quarter_grades[qNum] ? s.quarter_grades[qNum].finalGrade : null).filter(g => g !== null && g !== undefined);
+            const qPassed = students.filter(s => s.quarter_grades && s.quarter_grades[qNum] && s.quarter_grades[qNum].finalGrade >= 75);
+            const qAtRisk = students.filter(s => s.quarter_grades && s.quarter_grades[qNum] && s.quarter_grades[qNum].finalGrade !== null && s.quarter_grades[qNum].finalGrade < 75);
+            const qMean = qScores.length > 0 ? (Math.round((qScores.reduce((a, b) => a + b, 0) / qScores.length) * 10) / 10) : null;
+            const qPassingRate = kpis.totalEnrolled > 0 ? Math.round((qPassed.length / kpis.totalEnrolled) * 100) : 0;
+            const qAtRiskRate = kpis.totalEnrolled > 0 ? Math.round((qAtRisk.length / kpis.totalEnrolled) * 100) : 0;
 
-        curY += cardH + 10;
-
-        // ═════════════════════════════════════════════════════════════════════
-        // DYNAMIC STUDENT ROSTER TABLE (770pt)
-        // ═════════════════════════════════════════════════════════════════════
-        const COLS = [
-            { id: 'num',      title: '#',                      width: 20,  align: 'center' },
-            { id: 'lrn',      title: 'LRN Number',             width: 75,  align: 'left' },
-            { id: 'name',     title: 'Student Full Name',      width: 135, align: 'left' },
-            { id: 'sex',      title: 'Sex',                    width: 30,  align: 'center' },
-            { id: 'asmt',     title: 'Written Works',          width: 55,  align: 'center' },
-            { id: 'asgn',     title: 'Perf. Tasks',            width: 55,  align: 'center' },
-            { id: 'sim',      title: 'Sim Labs',               width: 50,  align: 'center' },
-            { id: 'qA',       title: qA_label,                 width: 50,  align: 'center' },
-            { id: 'qB',       title: qB_label,                 width: 50,  align: 'center' },
-            { id: 'sem',      title: 'Sem. Final',             width: 55,  align: 'center' },
-            { id: 'exp',      title: 'Level & EXP',            width: 65,  align: 'center' },
-            { id: 'gate',     title: gateLabel,                width: 130, align: 'center' }
-        ];
-
-        function drawTableHeader(yPos) {
-            const hH = 20;
-            doc.rect(startX, yPos, 770, hH).fill('#1e1b4b');
-            doc.rect(startX, yPos + hH - 1.5, 770, 1.5).fill('#06b6d4');
-            doc.font('Helvetica-Bold').fontSize(7).fillColor('#ffffff');
-
-            let hX = startX;
-            for (const col of COLS) {
-                const pad = col.align === 'left' ? 4 : 0;
-                doc.text(col.title, hX + pad, yPos + 6, {
-                    width: col.width - (pad * 2),
-                    align: col.align
-                });
-                hX += col.width;
-            }
-            return yPos + hH;
-        }
-
-        curY = drawTableHeader(curY);
-
-        if (students.length === 0) {
-            curY += 15;
-            doc.roundedRect(startX, curY, 770, 60, 6).fillAndStroke('#f8fafc', '#e2e8f0');
-            doc.fontSize(10).font('Helvetica-Bold').fillColor('#64748b')
-               .text(`No students are currently enrolled in Section "${cls.class_name}" for this academic cycle.`, startX + 10, curY + 20, { width: 750, align: 'center' });
-            doc.fontSize(8).font('Helvetica').fillColor('#94a3b8')
-               .text(`Enroll students into ${cls.subject_name} via Academic Management or User Access Control to populate performance analytics.`, startX + 10, curY + 35, { width: 750, align: 'center' });
-        } else {
-            const rowH = 15;
-            students.forEach((s, idx) => {
-                if (curY > 520) {
-                    doc.addPage();
-                    drawPdfDocumentHeader(doc, {
-                        title: `CLASS PERFORMANCE REPORT — ${cls.class_name.toUpperCase()}`,
-                        user: req.user,
-                        role: 'Admin',
-                        auditRef,
-                        isContinuation: true,
-                        layout: 'landscape'
-                    });
-                    curY = drawTableHeader(doc.y + 4);
-                }
-
-                if (idx % 2 === 0) {
-                    doc.rect(startX, curY, 770, rowH).fill('#f8fafc');
-                }
-
-                const qA_val = s.quarter_grades && s.quarter_grades[qA_num] ? s.quarter_grades[qA_num].finalGrade : null;
-                const qB_val = s.quarter_grades && s.quarter_grades[qB_num] ? s.quarter_grades[qB_num].finalGrade : null;
-                const sem_val = s.semestral_grade;
-
-                let gateText = 'N/A';
-                let gateColor = '#475569';
-                if (isSem1) {
-                    if (s.chem2_eligibility && s.chem2_eligibility.status === 'ELIGIBLE') {
-                        gateText = 'ELIGIBLE (Chem 2)';
-                        gateColor = '#065f46';
-                    } else if (s.chem2_eligibility && s.chem2_eligibility.status === 'INELIGIBLE') {
-                        gateText = 'BLOCKED (Remedial)';
-                        gateColor = '#991b1b';
-                    } else {
-                        gateText = 'PENDING QUARTERS';
-                        gateColor = '#d97706';
-                    }
-                } else {
-                    if (s.standing === 'Passed') {
-                        gateText = 'PASSED (SHS Chem)';
-                        gateColor = '#065f46';
-                    } else if (s.standing === 'At-Risk') {
-                        gateText = 'FAILED / AT-RISK';
-                        gateColor = '#991b1b';
-                    } else {
-                        gateText = 'INCOMPLETE';
-                        gateColor = '#64748b';
-                    }
-                }
-
-                const simText = s.sim ? `${s.sim.count || 0} Labs` : '0 Labs';
-                const expText = `Lv.${s.current_level || 1} (${Number(s.total_platform_exp || 0).toLocaleString()})`;
-
-                const rowValues = [
-                    { val: `${idx + 1}`, align: 'center', color: '#64748b' },
-                    { val: s.lrn_number || '—', align: 'left', color: '#1e293b' },
-                    { val: (s.full_name || `${s.last_name}, ${s.first_name}`).substring(0, 24), align: 'left', color: '#0f172a', bold: true },
-                    { val: s.sex ? s.sex.substring(0, 1).toUpperCase() : '—', align: 'center', color: '#64748b' },
-                    { val: s.asmt && s.asmt.pct !== null ? `${s.asmt.pct}%` : '—', align: 'center', color: '#1e293b' },
-                    { val: s.asgn && s.asgn.pct !== null ? `${s.asgn.pct}%` : '—', align: 'center', color: '#1e293b' },
-                    { val: simText, align: 'center', color: '#4f46e5' },
-                    { val: qA_val !== null && qA_val !== undefined ? `${qA_val}%` : '—', align: 'center', color: (qA_val !== null && qA_val >= 75) ? '#065f46' : '#991b1b' },
-                    { val: qB_val !== null && qB_val !== undefined ? `${qB_val}%` : '—', align: 'center', color: (qB_val !== null && qB_val >= 75) ? '#065f46' : '#991b1b' },
-                    { val: sem_val !== null && sem_val !== undefined ? `${sem_val}%` : '—', align: 'center', color: (sem_val !== null && sem_val >= 75) ? '#065f46' : '#991b1b', bold: true },
-                    { val: expText, align: 'center', color: '#334155' },
-                    { val: gateText, align: 'center', color: gateColor, bold: true }
-                ];
-
-                let rX = startX;
-                rowValues.forEach((cell, cIdx) => {
-                    const colDef = COLS[cIdx];
-                    const pad = colDef.align === 'left' ? 4 : 0;
-                    doc.font(cell.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(6.5).fillColor(cell.color)
-                       .text(cell.val, rX + pad, curY + 4, {
-                           width: colDef.width - (pad * 2),
-                           align: colDef.align
-                       });
-                    rX += colDef.width;
-                });
-
-                curY += rowH;
+            // Header matching header.docx institutional letterhead
+            drawPdfDocumentHeader(doc, {
+                title: `CLASS PERFORMANCE REPORT — ${cls.class_name.toUpperCase()} (QUARTER ${qNum})`,
+                scope: `Teacher: ${cls.teacher_name || '—'}   |   Subject: ${cls.subject_name || 'General Chemistry'} (${isSem1 ? 'Semester 1' : 'Semester 2'})   |   Quarter: Quarter ${qNum}   |   Academic Year: ${cls.sy_range || 'Current SY'}`,
+                user: req.user,
+                role: 'Admin',
+                classification: 'RESTRICTED — ADMIN EYES ONLY',
+                auditRef,
+                layout: 'landscape'
             });
-        }
+
+            let curY = doc.y + 2;
+
+            // ═════════════════════════════════════════════════════════════════════
+            // EXECUTIVE CLASS KPI SNAPSHOT BAR (6 CARDS ACROSS 770pt)
+            // ═════════════════════════════════════════════════════════════════════
+            const kpiCards = [
+                {
+                    label: 'TOTAL ENROLLED',
+                    val: `${kpis.totalEnrolled}`,
+                    sub: `${cls.class_name} Active Roster`,
+                    color: '#0f172a'
+                },
+                {
+                    label: `Q${qNum} PASSING RATE`,
+                    val: `${qPassingRate}%`,
+                    sub: `${qPassed.length}/${kpis.totalEnrolled} Students (≥75%)`,
+                    color: qPassingRate >= 75 ? '#065f46' : '#991b1b'
+                },
+                {
+                    label: 'AT-RISK / INTERVENTION',
+                    val: `${qAtRiskRate}%`,
+                    sub: `${qAtRisk.length}/${kpis.totalEnrolled} In Danger (<75%)`,
+                    color: qAtRisk.length > 0 ? '#991b1b' : '#065f46'
+                },
+                {
+                    label: `Q${qNum} CLASS MEAN`,
+                    val: qMean !== null ? `${qMean}%` : '—',
+                    sub: `${qScores.length}/${kpis.totalEnrolled} Encoded`,
+                    color: qMean !== null && qMean >= 75 ? '#065f46' : '#991b1b'
+                },
+                {
+                    label: 'SEMESTRAL GWA MEAN',
+                    val: semMean !== null ? `${semMean}%` : '—',
+                    sub: 'All Quarters Average',
+                    color: semMean !== null && semMean >= 75 ? '#065f46' : '#991b1b'
+                },
+                {
+                    label: isSem1 ? 'CHEM 2 GATE ELIGIBLE' : 'SHS CHEM PASSED',
+                    val: isSem1 ? `${eligibleCount}` : `${kpis.passedCount}`,
+                    sub: isSem1 ? `${blockedCount} Blocked for Chem 2` : 'Senior High Completion',
+                    color: isSem1 && blockedCount > 0 ? '#991b1b' : '#065f46'
+                }
+            ];
+
+            let kpiX = startX;
+            for (const card of kpiCards) {
+                doc.roundedRect(kpiX, curY, cardW, cardH, 5).fillAndStroke('#f8fafc', '#cbd5e1');
+                doc.fontSize(6).font('Helvetica-Bold').fillColor('#64748b')
+                   .text(card.label, kpiX + 3, curY + 4, { width: cardW - 6, align: 'center' });
+                doc.fontSize(11).font('Helvetica-Bold').fillColor(card.color)
+                   .text(card.val, kpiX + 3, curY + 14, { width: cardW - 6, align: 'center' });
+                doc.fontSize(5.5).font('Helvetica').fillColor('#64748b')
+                   .text(card.sub, kpiX + 2, curY + 27, { width: cardW - 4, align: 'center' });
+                kpiX += cardW + gap;
+            }
+
+            curY += cardH + 10;
+
+            // ═════════════════════════════════════════════════════════════════════
+            // DYNAMIC STUDENT ROSTER TABLE (770pt) — QUARTER-SPECIFIC SEQUENCE
+            // ═════════════════════════════════════════════════════════════════════
+            const COLS = [
+                { id: 'num',      title: '#',                          width: 20,  align: 'center' },
+                { id: 'lrn',      title: 'LRN Number',                 width: 75,  align: 'left' },
+                { id: 'name',     title: 'Student Name',               width: 120, align: 'left' },
+                { id: 'asmt',     title: 'Assessments',                width: 55,  align: 'center' },
+                { id: 'asgn',     title: 'Assignments',                width: 55,  align: 'center' },
+                { id: 'forum',    title: 'Forums',                     width: 45,  align: 'center' },
+                { id: 'sim',      title: 'Simulation Quizzes',         width: 65,  align: 'center' },
+                { id: 'progress', title: 'Progress',                   width: 45,  align: 'center' },
+                { id: 'exp',      title: 'Level and EXP',              width: 65,  align: 'center' },
+                { id: 'qGrade',   title: `Q${qNum} Grade`,             width: 50,  align: 'center' },
+                { id: 'sem',      title: 'Sem Final Grade',            width: 55,  align: 'center' },
+                { id: 'gate',     title: gateLabel,                    width: 120, align: 'center' }
+            ];
+
+            function drawTableHeader(yPos) {
+                const hH = 20;
+                doc.rect(startX, yPos, 770, hH).fill('#1e1b4b');
+                doc.rect(startX, yPos + hH - 1.5, 770, 1.5).fill('#06b6d4');
+                doc.font('Helvetica-Bold').fontSize(6.8).fillColor('#ffffff');
+
+                let hX = startX;
+                for (const col of COLS) {
+                    const pad = col.align === 'left' ? 4 : 0;
+                    doc.text(col.title, hX + pad, yPos + 6, {
+                        width: col.width - (pad * 2),
+                        align: col.align
+                    });
+                    hX += col.width;
+                }
+                return yPos + hH;
+            }
+
+            curY = drawTableHeader(curY);
+
+            if (students.length === 0) {
+                curY += 15;
+                doc.roundedRect(startX, curY, 770, 60, 6).fillAndStroke('#f8fafc', '#e2e8f0');
+                doc.fontSize(10).font('Helvetica-Bold').fillColor('#64748b')
+                   .text(`No students are currently enrolled in Section "${cls.class_name}" for this academic cycle.`, startX + 10, curY + 20, { width: 750, align: 'center' });
+                doc.fontSize(8).font('Helvetica').fillColor('#94a3b8')
+                   .text(`Enroll students into ${cls.subject_name} via Academic Management or User Access Control to populate Quarter ${qNum} performance analytics.`, startX + 10, curY + 35, { width: 750, align: 'center' });
+            } else {
+                const rowH = 15;
+                students.forEach((s, idx) => {
+                    if (curY > 520) {
+                        doc.addPage();
+                        drawPdfDocumentHeader(doc, {
+                            title: `CLASS PERFORMANCE REPORT — ${cls.class_name.toUpperCase()} (QUARTER ${qNum})`,
+                            user: req.user,
+                            role: 'Admin',
+                            auditRef,
+                            isContinuation: true,
+                            layout: 'landscape'
+                        });
+                        curY = drawTableHeader(doc.y + 4);
+                    }
+
+                    if (idx % 2 === 0) {
+                        doc.rect(startX, curY, 770, rowH).fill('#f8fafc');
+                    }
+
+                    const qG = s.quarter_grades && s.quarter_grades[qNum] ? s.quarter_grades[qNum] : null;
+                    const qVal = qG ? qG.finalGrade : null;
+                    const sem_val = s.semestral_grade;
+
+                    let gateText = 'N/A';
+                    let gateColor = '#475569';
+                    if (isSem1) {
+                        if (s.chem2_eligibility && s.chem2_eligibility.status === 'ELIGIBLE') {
+                            gateText = 'ELIGIBLE (Chem 2)';
+                            gateColor = '#065f46';
+                        } else if (s.chem2_eligibility && s.chem2_eligibility.status === 'INELIGIBLE') {
+                            gateText = 'BLOCKED (Remedial)';
+                            gateColor = '#991b1b';
+                        } else {
+                            gateText = 'PENDING QUARTERS';
+                            gateColor = '#d97706';
+                        }
+                    } else {
+                        if (s.standing === 'Passed') {
+                            gateText = 'PASSED (SHS Chem)';
+                            gateColor = '#065f46';
+                        } else if (s.standing === 'At-Risk') {
+                            gateText = 'FAILED / AT-RISK';
+                            gateColor = '#991b1b';
+                        } else {
+                            gateText = 'INCOMPLETE';
+                            gateColor = '#64748b';
+                        }
+                    }
+
+                    const simText = (qG && qG.simPct !== null && qG.simPct !== undefined) ? `${qG.simPct}%` : '—';
+                    const expText = `Lv.${s.current_level || 1} (${Number(s.total_platform_exp || 0).toLocaleString()})`;
+                    const progText = (s.syllabus_progress !== null && s.syllabus_progress !== undefined) ? `${s.syllabus_progress}%` : '0%';
+
+                    const rowValues = [
+                        { val: `${idx + 1}`, align: 'center', color: '#64748b' },
+                        { val: s.lrn_number || '—', align: 'left', color: '#1e293b' },
+                        { val: (s.full_name || `${s.last_name}, ${s.first_name}`).substring(0, 22), align: 'left', color: '#0f172a', bold: true },
+                        { val: (qG && qG.asmtPct !== null && qG.asmtPct !== undefined) ? `${qG.asmtPct}%` : '—', align: 'center', color: '#1e293b' },
+                        { val: (qG && qG.asgnPct !== null && qG.asgnPct !== undefined) ? `${qG.asgnPct}%` : '—', align: 'center', color: '#1e293b' },
+                        { val: (qG && qG.forumPct !== null && qG.forumPct !== undefined) ? `${qG.forumPct}%` : '—', align: 'center', color: '#1e293b' },
+                        { val: simText, align: 'center', color: '#4f46e5' },
+                        { val: progText, align: 'center', color: '#0f172a' },
+                        { val: expText, align: 'center', color: '#334155' },
+                        { val: qVal !== null && qVal !== undefined ? `${qVal}%` : '—', align: 'center', color: (qVal !== null && qVal >= 75) ? '#065f46' : '#991b1b' },
+                        { val: sem_val !== null && sem_val !== undefined ? `${sem_val}%` : '—', align: 'center', color: (sem_val !== null && sem_val >= 75) ? '#065f46' : '#991b1b', bold: true },
+                        { val: gateText, align: 'center', color: gateColor, bold: true }
+                    ];
+
+                    let rX = startX;
+                    rowValues.forEach((cell, cIdx) => {
+                        const colDef = COLS[cIdx];
+                        const pad = colDef.align === 'left' ? 4 : 0;
+                        doc.font(cell.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(6.5).fillColor(cell.color)
+                           .text(cell.val, rX + pad, curY + 4, {
+                               width: colDef.width - (pad * 2),
+                               align: colDef.align
+                           });
+                        rX += colDef.width;
+                    });
+
+                    curY += rowH;
+                });
+            }
+        });
 
         attachPdfFooters(doc, auditRef, 'RESTRICTED — ADMIN EYES ONLY');
         doc.end();
