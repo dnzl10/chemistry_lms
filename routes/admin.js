@@ -9685,8 +9685,10 @@ router.get('/rm/export/student/:id', requireAdmin, async (req, res) => {
                 },
                 {
                     label: 'VIRTUAL SIMULATIONS',
-                    val: summaries.sim && summaries.sim.count > 0 ? `${summaries.sim.count} / ${summaries.sim.total} Labs (${kpis.virtual_labs_pct !== null ? kpis.virtual_labs_pct + '%' : '—'})` : `${summaries.sim ? summaries.sim.total : 0} Labs Scheduled`,
-                    sub: summaries.sim && summaries.sim.exp > 0 ? `+${summaries.sim.exp} Laboratory EXP` : 'Elementa / PhET Labs',
+                    val: summaries.sim && summaries.sim.total > 0
+                        ? (summaries.sim.count > 0 ? `${summaries.sim.count} / ${summaries.sim.total} Labs (${kpis.virtual_labs_pct !== null ? kpis.virtual_labs_pct + '%' : '—'})` : `0 / ${summaries.sim.total} Labs (0%)`)
+                        : '0 Labs Configured',
+                    sub: summaries.sim && summaries.sim.exp > 0 ? `+${summaries.sim.exp} Laboratory EXP` : (summaries.sim && summaries.sim.total > 0 ? 'PhET / Elementa Labs' : 'No Lab Quizzes Configured'),
                     color: kpis.virtual_labs_pct !== null && kpis.virtual_labs_pct >= 75 ? '#065f46' : '#1e293b'
                 },
                 {
@@ -9855,7 +9857,7 @@ router.get('/rm/export/student/:id', requireAdmin, async (req, res) => {
             if (qData.simulations.length === 0) {
                 doc.rect(startX, curY, tableW, 12).fill('#ffffff');
                 doc.fontSize(6).font('Helvetica').fillColor('#94a3b8')
-                   .text('No interactive virtual labs mapped to this quarter.', startX, curY + 3, { width: tableW, align: 'center' });
+                   .text('No virtual simulation quizzes configured for this quarter.', startX, curY + 3, { width: tableW, align: 'center' });
                 curY += 12;
             } else {
                 qData.simulations.forEach((row, rIdx) => {

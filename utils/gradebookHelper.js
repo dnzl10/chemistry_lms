@@ -1110,8 +1110,26 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
             .filter(([_, q]) => q === qNum)
             .map(([slug, _]) => slug);
 
+        let activeQuizzesMap = new Map();
         let simSubmissionsMap = new Map();
+
         if (quarterSimSlugs.length > 0) {
+            // Only fetch simulation quizzes that actually have questions created!
+            const [activeQuizzes] = await dbConn.query(`
+                SELECT q.simulation_slug, q.quiz_id, q.title, COUNT(ques.question_id) AS question_count
+                FROM elementa_simulation_custom_quizzes q
+                JOIN elementa_simulation_custom_questions ques ON ques.quiz_id = q.quiz_id
+                WHERE q.simulation_slug IN (?) AND q.is_active = 1
+                GROUP BY q.quiz_id, q.simulation_slug
+                HAVING question_count > 0
+            `, [quarterSimSlugs]);
+
+            activeQuizzes.forEach(aq => {
+                if (!activeQuizzesMap.has(aq.simulation_slug)) {
+                    activeQuizzesMap.set(aq.simulation_slug, aq);
+                }
+            });
+
             const [simSubs] = await dbConn.query(`
                 SELECT esqs.quiz_id, esqs.simulation_slug, esqs.score, esqs.total_questions,
                        esqs.percentage, esqs.exp_earned, esqs.submitted_at
@@ -1119,12 +1137,16 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
                 WHERE esqs.student_id = ? AND esqs.simulation_slug IN (?)
                 ORDER BY esqs.submitted_at DESC
             `, [sid, quarterSimSlugs]);
+
             simSubs.forEach(s => {
                 if (!simSubmissionsMap.has(s.simulation_slug)) {
                     simSubmissionsMap.set(s.simulation_slug, s);
                 }
             });
         }
+
+        // Filter quarter simulations: ONLY include simulations that have custom questions created OR student submissions!
+        const configuredSimSlugs = quarterSimSlugs.filter(slug => activeQuizzesMap.has(slug) || simSubmissionsMap.has(slug));
 
         // ── Synthesize Written Works ─────────────────────────────────────────
         const writtenWorks = [];
@@ -1267,17 +1289,19 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
         });
 
         // ── Synthesize Virtual Simulations ──────────────────────────────────
+        // Only include simulations that have active custom questions created or student submissions
         const simulations = [];
         let simPctSum = 0;
         let simTakenCount = 0;
         let simExpSum = 0;
 
-        quarterSimSlugs.forEach((slug, idx) => {
+        configuredSimSlugs.forEach((slug, idx) => {
             const title = SIMULATION_TITLE_MAP[slug] || slug.replace(/-/g, ' ').toUpperCase();
             const sub = simSubmissionsMap.get(slug);
+            const qInfo = activeQuizzesMap.get(slug);
 
             let score = null;
-            let totalQ = null;
+            let totalQ = qInfo ? Number(qInfo.question_count) : (sub ? Number(sub.total_questions || 1) : 1);
             let pct = null;
             let exp = 0;
             let completedAt = null;
@@ -1285,7 +1309,7 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
 
             if (sub) {
                 score = Number(sub.score || 0);
-                totalQ = Number(sub.total_questions || 5);
+                totalQ = Number(sub.total_questions || totalQ);
                 pct = Number(sub.percentage != null ? sub.percentage : (totalQ > 0 ? (score / totalQ) * 100 : 0));
                 pct = Math.round(pct * 10) / 10;
                 exp = Number(sub.exp_earned || 0);
@@ -1301,7 +1325,7 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
                 simulation_slug: slug,
                 simulation_title: title,
                 score,
-                total_questions: totalQ || 5,
+                total_questions: totalQ,
                 percentage: pct,
                 exp_earned: exp,
                 completed_at: completedAt ? new Date(completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
@@ -1357,7 +1381,7 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
                 asmt: { score: asmtScoreSum, total: asmtTotalSum, count: asmtsRaw.filter(a => a.assessment_type !== 'Assignment').length, submitted: asmtTakenCount, exp: asmtExpSum },
                 asgn: { score: asgnScoreSum, total: asgnTotalSum, count: asmtsRaw.filter(a => a.assessment_type === 'Assignment').length, submitted: asgnTakenCount, exp: asgnExpSum },
                 forum: { completed: forumsDoneCount, total: forumsRaw.length, exp: forumExpSum },
-                sim: { count: simTakenCount, total: quarterSimSlugs.length, avg: simAvg !== null ? Math.round(simAvg * 10) / 10 : null, exp: simExpSum }
+                sim: { count: simTakenCount, total: configuredSimSlugs.length, avg: simAvg !== null ? Math.round(simAvg * 10) / 10 : null, exp: simExpSum }
             },
             writtenWorks,
             performanceTasks,
