@@ -9616,146 +9616,326 @@ router.get('/rm/export/student/:id', requireAdmin, async (req, res) => {
 
         const student = dossierData.student;
         const cls = dossierData.classInfo;
-        const fullName = `${student.first_name} ${student.last_name}`;
-        const auditRef = generateAuditRef('DOS');
-        const doc      = new PDFDocument({ size: 'A4', margin: 40, bufferPages: true });
+        const targetQuarters = dossierData.targetQuarters;
+        const fullName = student.full_name;
+        const auditRef = generateAuditRef('DOS-DET');
+
+        const doc = new PDFDocument({
+            size: 'A4',
+            layout: 'landscape',
+            margin: 36,
+            bufferPages: true
+        });
         doc._currentAuditRef = auditRef;
 
-        setExportHttpHeaders(res, `dossier_${fullName.replace(/[^a-z0-9]/gi, '_')}_${auditRef}.pdf`, 'application/pdf');
+        const safeStudentName = (fullName || 'Student').replace(/[^a-zA-Z0-9_-]/g, '_');
+        setExportHttpHeaders(res, `student_dossier_${safeStudentName}_${auditRef}.pdf`, 'application/pdf');
         doc.pipe(res);
 
-        // Header matching header.docx institutional letterhead
-        drawPdfDocumentHeader(doc, {
-            title: 'Student Academic Dossier & Cumulative Profile',
-            scope: `Student: ${fullName}   |   LRN: ${student.lrn_number || '—'}`,
-            user: req.user,
-            role: 'Admin',
-            classification: 'RESTRICTED — ADMIN EYES ONLY',
-            auditRef
-        });
+        const startX = 36;
+        const tableW = 770;
+        const cardW = 121;
+        const cardH = 36;
+        const gap = 8.8;
 
-        const drawSectionHeader = (title, yPos) => {
-            doc.rect(40, yPos, doc.page.width - 80, 18).fill('#eef2ff');
-            doc.fillColor('#4338ca').fontSize(9.5).font('Helvetica-Bold')
-               .text(title, 48, yPos + 4);
-            doc.fillColor('#000000');
-        };
+        targetQuarters.forEach((qNum, qIdx) => {
+            if (qIdx > 0) doc.addPage();
 
-        // Mask minor's mobile number: 0917-***-1234
-        const rawMobile = student.mobile_number || '';
-        const maskedMobile = rawMobile.length >= 7
-            ? `${rawMobile.slice(0, 4)}-***-${rawMobile.slice(-4)}`
-            : (rawMobile || '—');
+            const qData = dossierData.quarters[qNum];
+            const kpis = qData.kpis;
+            const summaries = qData.summaries || {};
 
-        let curY = doc.y;
-        drawSectionHeader('PERSONAL INFORMATION (PROTECTED)', curY);
-        curY += 24;
-        doc.font('Helvetica').fontSize(9);
-        const infoRows = [
-            ['Full Name',      fullName],
-            ['Email',          student.email || '—'],
-            ['Grade Level',    student.grade_level || '—'],
-            ['Section',        student.section     || '—'],
-            ['Strand',         student.strand      || '—'],
-            ['LRN',            student.lrn_number  || '—'],
-            ['Sex',            student.sex         || '—'],
-            ['Birthdate',      student.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'],
-            ['Contact Mobile', maskedMobile],
-            ['City / Town',    student.city_town   || '—'],
-            ['Enrolled Since', student.created_at ? new Date(student.created_at).toLocaleDateString('en-PH') : '—'],
-        ];
-        infoRows.forEach(([label, value]) => {
-            doc.fillColor('#64748b').text(label + ':', 48, curY, { width: 110, continued: false });
-            doc.fillColor('#1e293b').text(value, 165, curY);
-            curY += 14;
-        });
-
-        // ── Arcade Status ────────────────────────────────────────────────
-        curY += 6;
-        drawSectionHeader('ARCADE STATUS & ENGAGEMENT', curY);
-        curY += 24;
-        doc.font('Helvetica').fontSize(9);
-        [
-            ['Current Level', `Level ${student.current_level || 1}`],
-            ['Total EXP',     (student.total_exp || 0).toLocaleString() + ' EXP'],
-            ['Material Interactions', String(intRow ? intRow.cnt : 0)],
-        ].forEach(([label, value]) => {
-            doc.fillColor('#64748b').text(label + ':', 48, curY, { width: 150 });
-            doc.fillColor('#1e293b').text(value, 205, curY);
-            curY += 14;
-        });
-
-        // ── Academic Scores ──────────────────────────────────────────────
-        curY += 8;
-        if (curY > 660) {
-            doc.addPage();
             drawPdfDocumentHeader(doc, {
-                title: 'Student Academic Dossier & Cumulative Profile',
+                title: `INDIVIDUAL STUDENT DOSSIER — ACADEMIC & GAMIFICATION PROFILE (QUARTER ${qNum})`,
+                scope: `Student: ${student.full_name}   |   LRN: ${student.lrn_number}   |   Grade & Section: ${student.grade_level} - ${student.section}   |   Class: ${cls.class_name}   |   Teacher: ${cls.teacher_name || '—'}   |   Subject: ${cls.subject_name}   |   Academic Year: ${cls.sy_range}`,
                 user: req.user,
                 role: 'Admin',
+                classification: 'RESTRICTED — ADMIN EYES ONLY',
                 auditRef,
-                isContinuation: true
+                layout: 'landscape'
             });
-            curY = doc.y;
-        }
-        drawSectionHeader('ASSESSMENT SCORES RECORD', curY);
-        curY += 24;
 
-        if (scores.length === 0) {
-            doc.fontSize(9).fillColor('#64748b').text('No assessment records found.', 48, curY);
-        } else {
-            const sCols = [215, 100, 110, 90];
-            const sHdrs = ['Assessment', 'Type', 'Score', 'EXP'];
-            doc.rect(40, curY, sCols.reduce((a, b) => a + b, 0), 16).fill('#312E81');
-            doc.fillColor('white').fontSize(8).font('Helvetica-Bold');
-            let sx = 40;
-            sHdrs.forEach((h, i) => { doc.text(h, sx + 4, curY + 4, { width: sCols[i] - 6 }); sx += sCols[i]; });
-            curY += 16;
-            doc.font('Helvetica').fontSize(8);
+            let curY = doc.y + 2;
 
-            scores.forEach((sc, idx) => {
-                if (curY > 760) {
+            // 6 Executive KPI Snapshot Cards
+            const kpiCards = [
+                {
+                    label: `Q${qNum} GRADE`,
+                    val: qData.quarter_grade !== null ? `${qData.quarter_grade}%` : '—',
+                    sub: qData.is_passed ? 'PASSED (≥75%)' : (qData.quarter_grade !== null ? 'AT-RISK (<75%)' : 'In Progress'),
+                    color: qData.is_passed ? '#065f46' : (qData.quarter_grade !== null ? '#991b1b' : '#64748b')
+                },
+                {
+                    label: 'WRITTEN WORKS',
+                    val: summaries.asmt && summaries.asmt.total > 0 ? `${summaries.asmt.score} / ${summaries.asmt.total} (${kpis.written_works_pct !== null ? kpis.written_works_pct + '%' : '—'})` : '—',
+                    sub: summaries.asmt ? `${summaries.asmt.submitted} / ${summaries.asmt.count} Submissions` : 'DepEd Component 1',
+                    color: kpis.written_works_pct !== null && kpis.written_works_pct >= 75 ? '#065f46' : '#1e293b'
+                },
+                {
+                    label: 'PERFORMANCE TASKS',
+                    val: summaries.asgn && summaries.asgn.total > 0 ? `${summaries.asgn.score} / ${summaries.asgn.total} (${kpis.performance_tasks_pct !== null ? kpis.performance_tasks_pct + '%' : '—'})` : '—',
+                    sub: summaries.asgn ? `${summaries.asgn.submitted} / ${summaries.asgn.count} Deliverables` : 'DepEd Component 2',
+                    color: kpis.performance_tasks_pct !== null && kpis.performance_tasks_pct >= 75 ? '#065f46' : '#1e293b'
+                },
+                {
+                    label: 'DISCUSSION FORUMS',
+                    val: summaries.forum ? `${summaries.forum.completed} / ${summaries.forum.total} Completed` : '—',
+                    sub: summaries.forum ? `+${summaries.forum.exp} Participation EXP` : 'Scientific Discussions',
+                    color: '#1e293b'
+                },
+                {
+                    label: 'VIRTUAL SIMULATIONS',
+                    val: summaries.sim && summaries.sim.count > 0 ? `${summaries.sim.count} / ${summaries.sim.total} Labs (${kpis.virtual_labs_pct !== null ? kpis.virtual_labs_pct + '%' : '—'})` : `${summaries.sim ? summaries.sim.total : 0} Labs Scheduled`,
+                    sub: summaries.sim && summaries.sim.exp > 0 ? `+${summaries.sim.exp} Laboratory EXP` : 'Elementa / PhET Labs',
+                    color: kpis.virtual_labs_pct !== null && kpis.virtual_labs_pct >= 75 ? '#065f46' : '#1e293b'
+                },
+                {
+                    label: 'PROGRESS & LEVEL',
+                    val: `${kpis.progress_pct}% Progress`,
+                    sub: `Lv. ${kpis.level} (${(kpis.total_exp || 0).toLocaleString()} EXP)`,
+                    color: '#4338ca'
+                }
+            ];
+
+            let kpiX = startX;
+            for (const card of kpiCards) {
+                doc.roundedRect(kpiX, curY, cardW, cardH, 4).fillAndStroke('#f8fafc', '#cbd5e1');
+                doc.fontSize(5.5).font('Helvetica-Bold').fillColor('#64748b')
+                   .text(card.label, kpiX + 3, curY + 3.5, { width: cardW - 6, align: 'center' });
+                doc.fontSize(10).font('Helvetica-Bold').fillColor(card.color)
+                   .text(card.val, kpiX + 3, curY + 13, { width: cardW - 6, align: 'center' });
+                doc.fontSize(5).font('Helvetica').fillColor('#64748b')
+                   .text(card.sub, kpiX + 2, curY + 25.5, { width: cardW - 4, align: 'center' });
+                kpiX += cardW + gap;
+            }
+            curY += cardH + 7;
+
+            const drawSectionTitle = (title, countInfo) => {
+                if (curY > 520) {
                     doc.addPage();
                     drawPdfDocumentHeader(doc, {
-                        title: 'Student Academic Dossier & Cumulative Profile',
+                        title: `INDIVIDUAL STUDENT DOSSIER — ACADEMIC & GAMIFICATION PROFILE (QUARTER ${qNum})`,
+                        scope: `Student: ${student.full_name}   |   LRN: ${student.lrn_number}   |   Subject: ${cls.subject_name}   |   Quarter: Quarter ${qNum}`,
                         user: req.user,
                         role: 'Admin',
                         auditRef,
+                        layout: 'landscape',
                         isContinuation: true
                     });
-                    curY = doc.y;
-                    doc.rect(40, curY, sCols.reduce((a, b) => a + b, 0), 16).fill('#312E81');
-                    doc.fillColor('white').fontSize(8).font('Helvetica-Bold');
-                    let nsx = 40;
-                    sHdrs.forEach((h, i) => { doc.text(h, nsx + 4, curY + 4, { width: sCols[i] - 6 }); nsx += sCols[i]; });
-                    curY += 16;
-                    doc.font('Helvetica').fontSize(8);
+                    curY = doc.y + 4;
                 }
-                if (idx % 2 === 0) doc.rect(40, curY, sCols.reduce((a, b) => a + b, 0), 14).fill('#f8fafc');
-                const pct     = sc.total_items > 0 ? ((sc.score_obtained / sc.total_items) * 100).toFixed(0) : 0;
-                const passing = parseInt(pct, 10) >= 75;
-                doc.fillColor(passing ? '#065f46' : '#991b1b');
-                const cells = [
-                    (sc.assessment_name || 'Unnamed').substring(0, 32),
-                    sc.assessment_type  || '—',
-                    `${sc.score_obtained}/${sc.total_items} (${pct}%)`,
-                    `+${sc.exp_gained || 0}`,
-                ];
-                sx = 40;
-                cells.forEach((cell, i) => {
-                    if (i !== 2) doc.fillColor('#1e293b');
-                    doc.text(cell, sx + 4, curY + 3, { width: sCols[i] - 6 });
-                    sx += sCols[i];
+                doc.rect(startX, curY, tableW, 13).fill('#e0e7ff');
+                doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#3730a3')
+                   .text(title, startX + 6, curY + 3.5);
+                if (countInfo) {
+                    doc.fontSize(6).font('Helvetica-Bold').fillColor('#4338ca')
+                       .text(countInfo, startX, curY + 3.5, { width: tableW - 8, align: 'right' });
+                }
+                curY += 13;
+            };
+
+            const drawTableHeader = (cols, headers) => {
+                doc.rect(startX, curY, tableW, 13).fill('#1e1b4b');
+                doc.fillColor('white').fontSize(5.8).font('Helvetica-Bold');
+                let hX = startX;
+                headers.forEach((h, i) => {
+                    doc.text(h, hX + 2, curY + 3.5, { width: cols[i] - 4, align: i === 0 || i >= 3 ? 'center' : 'left' });
+                    hX += cols[i];
                 });
-                curY += 14;
-            });
-        }
+                curY += 13;
+            };
+
+            // 1. Written Works Table
+            const wwCols = [25, 230, 185, 85, 75, 60, 60, 50];
+            const wwHdrs = ['#', 'ASSESSMENT TITLE', 'TOPIC / CONCEPT', 'DATE TAKEN', 'SCORE / ITEMS', 'SCORE %', 'STATUS', 'EXP'];
+            drawSectionTitle('1. WRITTEN WORKS & DIAGNOSTIC ASSESSMENTS (DepEd Component 1)', `${qData.writtenWorks.length} Item(s)`);
+            drawTableHeader(wwCols, wwHdrs);
+
+            if (qData.writtenWorks.length === 0) {
+                doc.rect(startX, curY, tableW, 12).fill('#ffffff');
+                doc.fontSize(6).font('Helvetica').fillColor('#94a3b8')
+                   .text('No written works or diagnostic quizzes recorded for this quarter.', startX, curY + 3, { width: tableW, align: 'center' });
+                curY += 12;
+            } else {
+                qData.writtenWorks.forEach((row, rIdx) => {
+                    const rowBg = rIdx % 2 === 0 ? '#f8fafc' : '#ffffff';
+                    doc.rect(startX, curY, tableW, 12).fill(rowBg);
+                    doc.fontSize(6).font('Helvetica').fillColor('#1e293b');
+
+                    const statusColor = row.status === 'PASSED' ? '#065f46' : (row.status === 'FAILED' ? '#991b1b' : '#94a3b8');
+                    let rX = startX;
+
+                    doc.text(String(row.index), rX, curY + 3, { width: wwCols[0], align: 'center' }); rX += wwCols[0];
+                    doc.font('Helvetica-Bold').text(row.assessment_name || '—', rX + 2, curY + 3, { width: wwCols[1] - 4, ellipsis: true }); rX += wwCols[1];
+                    doc.font('Helvetica').text(row.topic_name || 'General', rX + 2, curY + 3, { width: wwCols[2] - 4, ellipsis: true }); rX += wwCols[2];
+                    doc.text(row.date_taken || '—', rX, curY + 3, { width: wwCols[3], align: 'center' }); rX += wwCols[3];
+                    doc.text(row.score_obtained !== null ? `${row.score_obtained} / ${row.total_items}` : `— / ${row.total_items}`, rX, curY + 3, { width: wwCols[4], align: 'center' }); rX += wwCols[4];
+                    doc.text(row.score_pct !== null ? `${row.score_pct}%` : '—', rX, curY + 3, { width: wwCols[5], align: 'center' }); rX += wwCols[5];
+                    doc.font('Helvetica-Bold').fillColor(statusColor).text(row.status, rX, curY + 3, { width: wwCols[6], align: 'center' }); rX += wwCols[6];
+                    doc.font('Helvetica').fillColor('#4338ca').text(row.exp_gained ? `+${row.exp_gained} XP` : '0 XP', rX, curY + 3, { width: wwCols[7] - 4, align: 'right' });
+
+                    curY += 12;
+                });
+            }
+            curY += 4;
+
+            // 2. Performance Tasks Table
+            const ptCols = [25, 220, 170, 85, 55, 75, 55, 85];
+            const ptHdrs = ['#', 'DELIVERABLE TITLE', 'TOPIC / MODULE', 'SUBMITTED AT', 'ATTEMPT', 'SCORE / ITEMS', 'SCORE %', 'STATUS / REMARKS'];
+            drawSectionTitle('2. PERFORMANCE TASKS & ASSIGNMENTS (DepEd Component 2)', `${qData.performanceTasks.length} Deliverable(s)`);
+            drawTableHeader(ptCols, ptHdrs);
+
+            if (qData.performanceTasks.length === 0) {
+                doc.rect(startX, curY, tableW, 12).fill('#ffffff');
+                doc.fontSize(6).font('Helvetica').fillColor('#94a3b8')
+                   .text('No performance tasks or deliverables assigned for this quarter.', startX, curY + 3, { width: tableW, align: 'center' });
+                curY += 12;
+            } else {
+                qData.performanceTasks.forEach((row, rIdx) => {
+                    const rowBg = rIdx % 2 === 0 ? '#f8fafc' : '#ffffff';
+                    doc.rect(startX, curY, tableW, 12).fill(rowBg);
+                    doc.fontSize(6).font('Helvetica').fillColor('#1e293b');
+
+                    const statusColor = row.status === 'PASSED' ? '#065f46' : (row.status === 'FAILED' ? '#991b1b' : (row.status === 'PENDING_GRADING' ? '#d97706' : '#94a3b8'));
+                    let rX = startX;
+
+                    doc.text(String(row.index), rX, curY + 3, { width: ptCols[0], align: 'center' }); rX += ptCols[0];
+                    doc.font('Helvetica-Bold').text(row.assessment_name || '—', rX + 2, curY + 3, { width: ptCols[1] - 4, ellipsis: true }); rX += ptCols[1];
+                    doc.font('Helvetica').text(row.topic_name || 'General', rX + 2, curY + 3, { width: ptCols[2] - 4, ellipsis: true }); rX += ptCols[2];
+                    doc.text(row.submitted_at || '—', rX, curY + 3, { width: ptCols[3], align: 'center' }); rX += ptCols[3];
+                    doc.text(`Attempt #${row.attempt_number || 1}`, rX, curY + 3, { width: ptCols[4], align: 'center' }); rX += ptCols[4];
+                    doc.text(row.score_obtained !== null ? `${row.score_obtained} / ${row.total_items}` : `— / ${row.total_items}`, rX, curY + 3, { width: ptCols[5], align: 'center' }); rX += ptCols[5];
+                    doc.text(row.score_pct !== null ? `${row.score_pct}%` : '—', rX, curY + 3, { width: ptCols[6], align: 'center' }); rX += ptCols[6];
+                    doc.font('Helvetica-Bold').fillColor(statusColor).text(row.is_grace_period ? `${row.status} (Grace)` : row.status, rX, curY + 3, { width: ptCols[7], align: 'center' });
+
+                    curY += 12;
+                });
+            }
+            curY += 4;
+
+            // 3. Discussion Forums Table
+            const fCols = [25, 260, 195, 90, 70, 65, 65];
+            const fHdrs = ['#', 'FORUM DISCUSSION TOPIC', 'TOPIC / CURRICULUM MODULE', 'STUDENT CONTRIBUTIONS', 'STATUS', 'EXP AWARDED', 'COMPLETION DATE'];
+            drawSectionTitle('3. CLASSROOM DISCUSSION FORUMS & SCIENTIFIC INQUIRY', `${qData.forums.length} Topic(s)`);
+            drawTableHeader(fCols, fHdrs);
+
+            if (qData.forums.length === 0) {
+                doc.rect(startX, curY, tableW, 12).fill('#ffffff');
+                doc.fontSize(6).font('Helvetica').fillColor('#94a3b8')
+                   .text('No discussion forums scheduled for this quarter.', startX, curY + 3, { width: tableW, align: 'center' });
+                curY += 12;
+            } else {
+                qData.forums.forEach((row, rIdx) => {
+                    const rowBg = rIdx % 2 === 0 ? '#f8fafc' : '#ffffff';
+                    doc.rect(startX, curY, tableW, 12).fill(rowBg);
+                    doc.fontSize(6).font('Helvetica').fillColor('#1e293b');
+
+                    const statusColor = row.status === 'COMPLETED' ? '#065f46' : '#d97706';
+                    let rX = startX;
+
+                    doc.text(String(row.index), rX, curY + 3, { width: fCols[0], align: 'center' }); rX += fCols[0];
+                    doc.font('Helvetica-Bold').text(row.topic_title || '—', rX + 2, curY + 3, { width: fCols[1] - 4, ellipsis: true }); rX += fCols[1];
+                    doc.font('Helvetica').text(row.topic_name || 'General', rX + 2, curY + 3, { width: fCols[2] - 4, ellipsis: true }); rX += fCols[2];
+                    doc.text(`${row.reply_count} Replies / Posts`, rX, curY + 3, { width: fCols[3], align: 'center' }); rX += fCols[3];
+                    doc.font('Helvetica-Bold').fillColor(statusColor).text(row.status, rX, curY + 3, { width: fCols[4], align: 'center' }); rX += fCols[4];
+                    doc.font('Helvetica').fillColor('#4338ca').text(row.exp_awarded ? `+${row.exp_awarded} XP` : '0 XP', rX, curY + 3, { width: fCols[5], align: 'center' }); rX += fCols[5];
+                    doc.fillColor('#1e293b').text(row.completed_at || '—', rX, curY + 3, { width: fCols[6], align: 'center' });
+
+                    curY += 12;
+                });
+            }
+            curY += 4;
+
+            // 4. Virtual Simulations Table
+            const simCols = [25, 295, 100, 90, 70, 85, 105];
+            const simHdrs = ['#', 'SIMULATION LABORATORY NAME', 'LAB QUIZ SCORE / TOTAL', 'LABORATORY SCORE %', 'BONUS EXP', 'MASTERY STATUS', 'COMPLETED DATE'];
+            drawSectionTitle('4. INTERACTIVE VIRTUAL SIMULATIONS & EXPERIMENTS', `${qData.simulations.length} Lab(s)`);
+            drawTableHeader(simCols, simHdrs);
+
+            if (qData.simulations.length === 0) {
+                doc.rect(startX, curY, tableW, 12).fill('#ffffff');
+                doc.fontSize(6).font('Helvetica').fillColor('#94a3b8')
+                   .text('No interactive virtual labs mapped to this quarter.', startX, curY + 3, { width: tableW, align: 'center' });
+                curY += 12;
+            } else {
+                qData.simulations.forEach((row, rIdx) => {
+                    const rowBg = rIdx % 2 === 0 ? '#f8fafc' : '#ffffff';
+                    doc.rect(startX, curY, tableW, 12).fill(rowBg);
+                    doc.fontSize(6).font('Helvetica').fillColor('#1e293b');
+
+                    const statusColor = row.status === 'MASTERY' ? '#065f46' : (row.status === 'PASSED' ? '#047857' : (row.status === 'RETRY' ? '#991b1b' : '#94a3b8'));
+                    let rX = startX;
+
+                    doc.text(String(row.index), rX, curY + 3, { width: simCols[0], align: 'center' }); rX += simCols[0];
+                    doc.font('Helvetica-Bold').text(row.simulation_title || '—', rX + 2, curY + 3, { width: simCols[1] - 4, ellipsis: true }); rX += simCols[1];
+                    doc.font('Helvetica').text(row.score !== null ? `${row.score} / ${row.total_questions}` : `— / ${row.total_questions}`, rX, curY + 3, { width: simCols[2], align: 'center' }); rX += simCols[2];
+                    doc.text(row.percentage !== null ? `${row.percentage}%` : '—', rX, curY + 3, { width: simCols[3], align: 'center' }); rX += simCols[3];
+                    doc.fillColor('#4338ca').text(row.exp_earned ? `+${row.exp_earned} XP` : '0 XP', rX, curY + 3, { width: simCols[4], align: 'center' }); rX += simCols[4];
+                    doc.font('Helvetica-Bold').fillColor(statusColor).text(row.status, rX, curY + 3, { width: simCols[5], align: 'center' }); rX += simCols[5];
+                    doc.font('Helvetica').fillColor('#1e293b').text(row.completed_at || '—', rX, curY + 3, { width: simCols[6], align: 'center' });
+
+                    curY += 12;
+                });
+            }
+            curY += 6;
+
+            // Concluding Page Prerequisite Gate Banner and Signatures
+            if (qIdx === targetQuarters.length - 1) {
+                if (curY > 480) {
+                    doc.addPage();
+                    drawPdfDocumentHeader(doc, {
+                        title: `INDIVIDUAL STUDENT DOSSIER — ACADEMIC & GAMIFICATION PROFILE (SUMMARY)`,
+                        scope: `Student: ${student.full_name}   |   LRN: ${student.lrn_number}   |   Subject: ${cls.subject_name}`,
+                        user: req.user,
+                        role: 'Admin',
+                        auditRef,
+                        layout: 'landscape',
+                        isContinuation: true
+                    });
+                    curY = doc.y + 4;
+                }
+
+                // Cumulative Semestral Grade & Prerequisite Gate Banner
+                const gate = dossierData.chem2_eligibility;
+                const isEligible = gate.status === 'ELIGIBLE' || gate.status === 'COMPLETED';
+                const isBlocked = gate.status === 'INELIGIBLE' || gate.status === 'AT-RISK';
+                const bannerBg = isEligible ? '#f0fdf4' : (isBlocked ? '#fef2f2' : '#fffbeb');
+                const bannerBorder = isEligible ? '#86efac' : (isBlocked ? '#fca5a5' : '#fde68a');
+                const bannerText = isEligible ? '#166534' : (isBlocked ? '#991b1b' : '#92400e');
+
+                doc.roundedRect(startX, curY, tableW, 32, 4).fillAndStroke(bannerBg, bannerBorder);
+                doc.fontSize(7.5).font('Helvetica-Bold').fillColor(bannerText)
+                   .text(`CUMULATIVE SEMESTER FINAL GRADE: ${dossierData.semestral_grade !== null ? dossierData.semestral_grade + '%' : 'PENDING'}   |   DEPED MINIMUM PASSING THRESHOLD: 75.0%`, startX + 10, curY + 5);
+
+                const gateBadge = cls.is_sem1 ? `CHEMISTRY 2 PREREQUISITE GATE: [ ${gate.status} ]` : `SENIOR HIGH CHEMISTRY COMPLETION: [ ${gate.status} ]`;
+                doc.fontSize(7.5).font('Helvetica-Bold').fillColor(bannerText)
+                   .text(gateBadge, startX + 10, curY + 5, { width: tableW - 20, align: 'right' });
+
+                doc.fontSize(6).font('Helvetica').fillColor('#475569')
+                   .text(gate.reason, startX + 10, curY + 18, { width: tableW - 20 });
+                curY += 40;
+
+                // Institutional Signature Strip
+                const sigW = 300;
+                doc.strokeColor('#cbd5e1').lineWidth(0.8)
+                   .moveTo(startX + 20, curY + 22).lineTo(startX + 20 + sigW, curY + 22).stroke()
+                   .moveTo(tableW + startX - 20 - sigW, curY + 22).lineTo(tableW + startX - 20, curY + 22).stroke();
+
+                doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#1e293b')
+                   .text(`PREPARED & VERIFIED BY: ${cls.teacher_name || 'Subject Teacher'}`, startX + 20, curY + 26, { width: sigW, align: 'center' })
+                   .text(`ATTESTED & CERTIFIED BY: High School Department Principal`, tableW + startX - 20 - sigW, curY + 26, { width: sigW, align: 'center' });
+
+                doc.fontSize(5.5).font('Helvetica').fillColor('#64748b')
+                   .text('Subject Teacher / Senior High Science Faculty', startX + 20, curY + 36, { width: sigW, align: 'center' })
+                   .text('Mabini Colleges High School Department Administration', tableW + startX - 20 - sigW, curY + 36, { width: sigW, align: 'center' });
+            }
+        });
 
         attachPdfFooters(doc, auditRef, 'RESTRICTED — ADMIN EYES ONLY');
         doc.end();
 
         await logActivity(req.user.user_id, 'Admin', 'EXPORT_STUDENT_DOSSIER',
-            `Exported dossier PDF for student: ${fullName} (ID: ${userId}) (Ref: ${auditRef})`);
+            `Exported granular dossier PDF for student: ${fullName} (ID: ${userId}) (Ref: ${auditRef})`);
 
     } catch (err) {
         console.error('[RM Export Student Dossier Error]', err);
@@ -9777,16 +9957,19 @@ router.get('/rm/export/students-all', requireAdmin, async (req, res) => {
             SELECT
                 u.user_id, u.first_name, u.last_name, u.email,
                 u.grade_level, u.section, u.current_level, u.total_exp,
-                u.lrn_number,
-                AVG(sg.grade_percent) AS avgPct,
+                u.lrn_number, c.class_name,
+                AVG(COALESCE(sg.grade_percent, (ss.score_obtained / NULLIF(ss.total_possible_score, 0)) * 100)) AS avgPct,
                 COUNT(DISTINCT smi.interaction_id) AS interactionCount
             FROM users u
+            LEFT JOIN class_students cs ON cs.student_id = u.user_id
+            LEFT JOIN classes c ON c.class_id = cs.class_id
             LEFT JOIN elementa_student_grades sg ON sg.student_id = u.user_id
+            LEFT JOIN student_scores ss ON ss.student_id = u.user_id AND ss.score_obtained IS NOT NULL
             LEFT JOIN student_material_interactions smi ON smi.student_id = u.user_id
             WHERE u.role = 'Student'
-            GROUP BY u.user_id
+            GROUP BY u.user_id, c.class_id
             ${havingClause}
-            ORDER BY u.last_name ASC, u.first_name ASC
+            ORDER BY c.class_name ASC, u.last_name ASC, u.first_name ASC
         `);
 
         const auditRef = generateAuditRef('STU-ALL');
@@ -9808,13 +9991,13 @@ router.get('/rm/export/students-all', requireAdmin, async (req, res) => {
             layout: 'landscape'
         });
 
-        const colW   = [160, 140, 95, 65, 75, 80, 70, 75];
-        const hdrs   = ['Student Name', 'Email', 'LRN', 'Grade', 'Section', 'Avg Score', 'Level', 'Status'];
+        const colW   = [150, 140, 90, 60, 90, 85, 75, 70];
+        const hdrs   = ['Student Name', 'Email', 'LRN', 'Grade', 'Class / Section', 'Level / EXP', 'Interactions', 'Status'];
         const startX = 40;
         let   y      = doc.y;
 
         const drawLandscapeHeader = (curY) => {
-            doc.rect(startX, curY, colW.reduce((a, b) => a + b, 0), 18).fill('#312E81');
+            doc.rect(startX, curY, colW.reduce((a, b) => a + b, 0), 18).fill('#1e1b4b');
             doc.fillColor('white').fontSize(8).font('Helvetica-Bold');
             let hx = startX;
             hdrs.forEach((h, i) => { doc.text(h, hx + 4, curY + 5, { width: colW[i] - 6 }); hx += colW[i]; });
@@ -9846,10 +10029,10 @@ router.get('/rm/export/students-all', requireAdmin, async (req, res) => {
                 (s.email         || '—').substring(0, 24),
                 s.lrn_number     || '—',
                 s.grade_level    || '—',
-                s.section        || '—',
-                s.avgPct != null ? `${avg.toFixed(1)}%` : '—',
-                `Lv.${s.current_level}`,
-                s.avgPct != null ? (passing ? 'Passing' : 'Failing') : 'N/A',
+                (s.class_name    || s.section || '—').substring(0, 16),
+                `Lv.${s.current_level} (${(s.total_exp || 0).toLocaleString()} XP)`,
+                `${s.interactionCount || 0} views`,
+                s.avgPct != null ? (passing ? 'Passed' : 'Failed') : 'Pending',
             ];
             let x = startX;
             cells.forEach((cell, i) => {
