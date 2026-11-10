@@ -1125,7 +1125,7 @@ router.post('/leaderboard/upsert', verifyCabinetSignature, async (req, res) => {
 // OFFLINE SPOOL BATCH INGESTION (Recovers buffered offline runs)
 // ===================================================================
 router.post('/sync-spool', verifyCabinetSignature, async (req, res) => {
-    const packets = req.body.packets || [];
+    const packets = req.body.packets || req.body.events || [];
     if (!Array.isArray(packets) || packets.length === 0) {
         return res.json({ success: true, processedCount: 0 });
     }
@@ -1133,8 +1133,10 @@ router.post('/sync-spool', verifyCabinetSignature, async (req, res) => {
     let processed = 0;
     for (const pkt of packets) {
         try {
-            if (pkt.endpoint === '/attempt' && pkt.data) {
-                const d = pkt.data;
+            const endpoint = (pkt.endpoint || '').trim();
+            const d = pkt.data || pkt.payload || {};
+
+            if (endpoint === '/attempt' && d.run_id) {
                 let resolvedQId = d.question_id || null;
                 if (!resolvedQId && d.question_snapshot) {
                     try {
@@ -1162,6 +1164,66 @@ router.post('/sync-spool', verifyCabinetSignature, async (req, res) => {
                     ]
                 );
                 processed++;
+            } else if (endpoint === '/click' && d.run_id && d.element_symbol) {
+                await pool.query(
+                    `INSERT INTO elementa_element_clicks
+                        (attempt_id, run_id, player_number, element_symbol, atomic_number, click_source, clicked_at)
+                     VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+                    [d.attempt_id || null, d.run_id, d.player_number || 1, d.element_symbol, d.atomic_number || null, d.click_source || 'PeriodicPopup']
+                );
+                processed++;
+            } else if ((endpoint === '/machine' || endpoint === '/machine-event') && d.run_id && d.machine_type) {
+                await pool.query(
+                    `INSERT INTO elementa_machine_interactions
+                        (run_id, attempt_id, player_number, machine_type, event_type, event_at)
+                     VALUES (?, ?, ?, ?, ?, NOW())`,
+                    [d.run_id, d.attempt_id || null, d.player_number || 1, d.machine_type, d.event_type || 'Opened']
+                );
+                processed++;
+            } else if ((endpoint.startsWith('/session') && endpoint.endsWith('/end')) || endpoint === '/session/end') {
+                const match = endpoint.match(/\/session\/(\d+)\/end/);
+                const sId = match ? parseInt(match[1], 10) : (d.session_id || null);
+                if (sId) {
+                    await pool.query(
+                        `UPDATE elementa_game_sessions SET
+                            session_status = 'Completed',
+                            ended_at = NOW(),
+                            total_duration_s = COALESCE(?, total_duration_s),
+                            final_score_p1 = COALESCE(?, final_score_p1),
+                            final_score_p2 = COALESCE(?, final_score_p2),
+                            winner = COALESCE(?, winner),
+                            highest_level_reached = COALESCE(?, highest_level_reached)
+                         WHERE session_id = ?`,
+                        [d.total_duration_s, d.final_score_p1, d.final_score_p2, d.winner, d.highest_level_reached, sId]
+                    );
+                    try {
+                        await arcadeGradeSyncService.syncSessionToGradebook(sId);
+                    } catch (syncErr) {
+                        console.warn('[SyncSpool:GradeSyncWarn]', syncErr.message);
+                    }
+                    processed++;
+                }
+            } else if (endpoint.startsWith('/leaderboard')) {
+                if (d.student_id && d.session_id) {
+                    await pool.query(
+                        `INSERT INTO elementa_leaderboard
+                            (student_id, session_id, assessment_id, score_total, level_reached,
+                             customers_correct, customers_played, accuracy_pct, avg_response_time_s, recorded_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                         ON DUPLICATE KEY UPDATE
+                            score_total = GREATEST(score_total, VALUES(score_total)),
+                            accuracy_pct = VALUES(accuracy_pct),
+                            level_reached = GREATEST(level_reached, VALUES(level_reached)),
+                            recorded_at = NOW()`,
+                        [
+                            d.student_id, d.session_id, d.assessment_id || null,
+                            d.score_total || 0, d.level_reached || 1,
+                            d.customers_correct || 0, d.customers_played || 0,
+                            d.accuracy_pct || 0, d.avg_response_time_s || 0
+                        ]
+                    );
+                    processed++;
+                }
             }
         } catch (spoolErr) {
             console.warn('[SyncSpool Item Skip]', spoolErr.message);
