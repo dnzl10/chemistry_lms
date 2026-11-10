@@ -7,8 +7,39 @@
  */
 
 const express = require('express');
+const db = require('../db');
+const academicHelper = require('../utils/academicHelper');
 const { ensureAuthenticated, requireRole } = require('../middleware/auth');
 const simulationQuizService = require('../services/simulationQuizService');
+
+/**
+ * Strictly fetches the active 'Current' School Year (never falling back to Draft/Archive).
+ */
+async function resolveStrictCurrentSY() {
+    const [[currentSY]] = await db.query(`
+        SELECT *
+        FROM school_years
+        WHERE status = 'Current' OR is_active = 1
+        ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
+        LIMIT 1
+    `);
+    return currentSY || null;
+}
+
+/**
+ * Formats simulation quiz telemetry submissions as a CSV string.
+ */
+function buildSubmissionsCsv(data) {
+    let csv = 'Student Name,LRN,Section,Submitted At,Score,Total Items,Correct,Incorrect,Percentage,EXP Earned,Student Total EXP,Cadet Level\r\n';
+    (data.submissions || []).forEach(sub => {
+        const name = `"${(sub.first_name + ' ' + sub.last_name).replace(/"/g, '""')}"`;
+        const lrn = `"${(sub.lrn_number || 'N/A').replace(/"/g, '""')}"`;
+        const section = `"${(sub.section || 'All').replace(/"/g, '""')}"`;
+        const date = `"${new Date(sub.submitted_at).toLocaleString().replace(/"/g, '""')}"`;
+        csv += `${name},${lrn},${section},${date},${sub.score},${sub.total_questions},${sub.correct_count},${sub.incorrect_count},${sub.percentage}%,+${sub.exp_earned},${sub.current_profile_exp || 0},Level ${sub.current_level || 1}\r\n`;
+    });
+    return csv;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. PUBLIC / STUDENT SIMULATION API ROUTER (Mounts at /api/simulation)
@@ -107,15 +138,21 @@ teacherRouter.use(requireRole(['Teacher', 'Admin']));
 
 /**
  * GET /teacher/simulation-quizzes
- * Main management page: displays all 20 simulations with status cards and quiz creator.
+ * Main management page: displays all 20 simulations scoped strictly to the Current School Year.
  */
 teacherRouter.get('/', async (req, res) => {
     try {
-        const simulations = await simulationQuizService.getAllSimulationsWithQuizStatus();
+        const currentSY = await resolveStrictCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const simulations = await simulationQuizService.getAllSimulationsWithQuizStatus({ syId: currentSyId });
         return res.render('teacher/simulation_quizzes', {
             user: req.user,
             activeNav: 'simulation_quizzes',
             simulations: simulations,
+            currentSY,
+            selectedSY: currentSY,
+            isHistoricalSY: false,
+            isDraftSY: false,
             pageTitle: 'Simulation Assessment Quizzes'
         });
     } catch (err) {
@@ -126,119 +163,123 @@ teacherRouter.get('/', async (req, res) => {
 
 /**
  * GET /teacher/simulation-quizzes/api/simulations
- * Returns JSON list of all 20 simulations with quiz statuses.
+ * Returns JSON list of all 20 simulations with Current School Year quiz statuses.
  */
 teacherRouter.get('/api/simulations', async (req, res) => {
     try {
-        const simulations = await simulationQuizService.getAllSimulationsWithQuizStatus();
-        return res.json({ success: true, simulations });
+        const currentSY = await resolveStrictCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const simulations = await simulationQuizService.getAllSimulationsWithQuizStatus({ syId: currentSyId });
+        return res.json({ success: true, simulations, currentSY });
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 /**
  * GET /teacher/simulation-quizzes/api/quiz/:quiz_id
- * Returns quiz details and its complete questions for editing.
+ * Returns quiz details and its complete questions for editing (strictly Current SY).
  */
 teacherRouter.get('/api/quiz/:quiz_id', async (req, res) => {
     try {
-        const analytics = await simulationQuizService.getQuizAnalytics(parseInt(req.params.quiz_id, 10));
+        const currentSY = await resolveStrictCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const analytics = await simulationQuizService.getQuizAnalytics(parseInt(req.params.quiz_id, 10), { syId: currentSyId });
         return res.json({
             success: true,
             quiz: analytics.quiz,
             questions: analytics.questions
         });
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 /**
  * POST /teacher/simulation-quizzes/save
- * Creates or updates custom quiz questions for a simulation.
+ * Creates or updates custom quiz questions for a simulation strictly within Current SY.
  */
 teacherRouter.post('/save', async (req, res) => {
     try {
         const creatorId = req.user.user_id;
-        const result = await simulationQuizService.saveCustomQuiz(creatorId, req.body);
+        const currentSY = await resolveStrictCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const result = await simulationQuizService.saveCustomQuiz(creatorId, req.body, currentSyId);
         return res.json(result);
     } catch (err) {
         console.error('[Teacher /simulation-quizzes/save]', err);
-        return res.status(400).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 400).json({ success: false, error: err.message });
     }
 });
 
 /**
  * POST /teacher/simulation-quizzes/toggle
- * Toggles a quiz's active state.
+ * Toggles a quiz's active state strictly within Current SY.
  */
 teacherRouter.post('/toggle', async (req, res) => {
     try {
         const { quiz_id, is_active } = req.body;
-        const result = await simulationQuizService.toggleQuizStatus(quiz_id, is_active);
+        const currentSY = await resolveStrictCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const result = await simulationQuizService.toggleQuizStatus(quiz_id, is_active, currentSyId);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 400).json({ success: false, error: err.message });
     }
 });
 
 /**
  * POST /teacher/simulation-quizzes/delete
- * Deletes a custom quiz.
+ * Deletes a custom quiz strictly within Current SY.
  */
 teacherRouter.post('/delete', async (req, res) => {
     try {
         const { quiz_id } = req.body;
-        const result = await simulationQuizService.deleteCustomQuiz(quiz_id);
+        const currentSY = await resolveStrictCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const result = await simulationQuizService.deleteCustomQuiz(quiz_id, currentSyId);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 400).json({ success: false, error: err.message });
     }
 });
 
 /**
  * GET /teacher/simulation-quizzes/api/analytics/:quiz_id
  * Telemetry endpoint: returns submission logs, timestamps, score breakdowns,
- * EXP earned, student profile total EXP, and per-question accuracy.
+ * EXP earned, student profile total EXP, and per-question accuracy strictly for Current SY.
  */
 teacherRouter.get('/api/analytics/:quiz_id', async (req, res) => {
     try {
-        const analytics = await simulationQuizService.getQuizAnalytics(parseInt(req.params.quiz_id, 10));
+        const currentSY = await resolveStrictCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const analytics = await simulationQuizService.getQuizAnalytics(parseInt(req.params.quiz_id, 10), { syId: currentSyId });
         return res.json({ success: true, ...analytics });
     } catch (err) {
         console.error('[Teacher /simulation-quizzes/api/analytics]', err);
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 /**
  * GET /teacher/simulation-quizzes/export-csv/:quiz_id
- * Generates and downloads DepEd-aligned CSV telemetry report
+ * Generates and downloads DepEd-aligned CSV telemetry report strictly for Current SY
  */
 teacherRouter.get('/export-csv/:quiz_id', async (req, res) => {
     try {
         const quizId = parseInt(req.params.quiz_id, 10);
-        const data = await simulationQuizService.getQuizAnalytics(quizId);
+        const currentSY = await resolveStrictCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const data = await simulationQuizService.getQuizAnalytics(quizId, { syId: currentSyId });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${data.quiz.simulation_slug}_quiz_${quizId}_telemetry.csv"`);
 
-        let csv = 'Student Name,LRN,Section,Submitted At,Score,Total Items,Correct,Incorrect,Percentage,EXP Earned,Student Total EXP,Cadet Level\r\n';
-
-        data.submissions.forEach(sub => {
-            const name = `"${(sub.first_name + ' ' + sub.last_name).replace(/"/g, '""')}"`;
-            const lrn = `"${(sub.lrn_number || 'N/A').replace(/"/g, '""')}"`;
-            const section = `"${(sub.section || 'All').replace(/"/g, '""')}"`;
-            const date = `"${new Date(sub.submitted_at).toLocaleString().replace(/"/g, '""')}"`;
-            csv += `${name},${lrn},${section},${date},${sub.score},${sub.total_questions},${sub.correct_count},${sub.incorrect_count},${sub.percentage}%,+${sub.exp_earned},${sub.current_profile_exp || 0},Level ${sub.current_level || 1}\r\n`;
-        });
-
-        return res.send(csv);
+        return res.send(buildSubmissionsCsv(data));
     } catch (err) {
         console.error('[CSV Export Error]', err);
-        return res.status(500).send('Error generating CSV telemetry report: ' + err.message);
+        return res.status(err.statusCode || 500).send('Error generating CSV telemetry report: ' + err.message);
     }
 });
 
@@ -251,11 +292,18 @@ adminRouter.use(requireRole(['Admin']));
 
 adminRouter.get('/', async (req, res) => {
     try {
-        const simulations = await simulationQuizService.getAllSimulationsWithQuizStatus();
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSyId = syContext.selectedSY ? Number(syContext.selectedSY.sy_id) : null;
+        const simulations = await simulationQuizService.getAllSimulationsWithQuizStatus({ syId: targetSyId });
         return res.render('teacher/simulation_quizzes', {
             user: req.user,
             activeNav: 'simulation_quizzes',
             simulations: simulations,
+            currentSY: syContext.currentSY,
+            selectedSY: syContext.selectedSY,
+            allSchoolYears: syContext.allSchoolYears,
+            isHistoricalSY: syContext.isHistoricalSY,
+            isDraftSY: syContext.isDraftSY,
             pageTitle: 'Admin - Simulation Assessment Quizzes'
         });
     } catch (err) {
@@ -265,88 +313,92 @@ adminRouter.get('/', async (req, res) => {
 
 adminRouter.get('/api/simulations', async (req, res) => {
     try {
-        const simulations = await simulationQuizService.getAllSimulationsWithQuizStatus();
-        return res.json({ success: true, simulations });
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSyId = syContext.selectedSY ? Number(syContext.selectedSY.sy_id) : null;
+        const simulations = await simulationQuizService.getAllSimulationsWithQuizStatus({ syId: targetSyId });
+        return res.json({ success: true, simulations, selectedSY: syContext.selectedSY });
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 adminRouter.get('/api/analytics/:quiz_id', async (req, res) => {
     try {
-        const analytics = await simulationQuizService.getQuizAnalytics(parseInt(req.params.quiz_id, 10));
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSyId = syContext.selectedSY ? Number(syContext.selectedSY.sy_id) : null;
+        const analytics = await simulationQuizService.getQuizAnalytics(parseInt(req.params.quiz_id, 10), { syId: targetSyId });
         return res.json({ success: true, ...analytics });
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 adminRouter.get('/api/quiz/:quiz_id', async (req, res) => {
     try {
-        const analytics = await simulationQuizService.getQuizAnalytics(parseInt(req.params.quiz_id, 10));
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSyId = syContext.selectedSY ? Number(syContext.selectedSY.sy_id) : null;
+        const analytics = await simulationQuizService.getQuizAnalytics(parseInt(req.params.quiz_id, 10), { syId: targetSyId });
         return res.json({
             success: true,
             quiz: analytics.quiz,
             questions: analytics.questions
         });
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 adminRouter.post('/save', async (req, res) => {
     try {
         const creatorId = req.user.user_id;
-        const result = await simulationQuizService.saveCustomQuiz(creatorId, req.body);
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body?.sy_id || req.query.sy_id);
+        const targetSyId = syContext.selectedSY ? Number(syContext.selectedSY.sy_id) : null;
+        const result = await simulationQuizService.saveCustomQuiz(creatorId, req.body, targetSyId);
         return res.json(result);
     } catch (err) {
         console.error('[Admin /simulation-quizzes/save]', err);
-        return res.status(400).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 400).json({ success: false, error: err.message });
     }
 });
 
 adminRouter.post('/toggle', async (req, res) => {
     try {
         const { quiz_id, is_active } = req.body;
-        const result = await simulationQuizService.toggleQuizStatus(quiz_id, is_active);
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body?.sy_id || req.query.sy_id);
+        const targetSyId = syContext.selectedSY ? Number(syContext.selectedSY.sy_id) : null;
+        const result = await simulationQuizService.toggleQuizStatus(quiz_id, is_active, targetSyId);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 400).json({ success: false, error: err.message });
     }
 });
 
 adminRouter.post('/delete', async (req, res) => {
     try {
         const { quiz_id } = req.body;
-        const result = await simulationQuizService.deleteCustomQuiz(quiz_id);
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body?.sy_id || req.query.sy_id);
+        const targetSyId = syContext.selectedSY ? Number(syContext.selectedSY.sy_id) : null;
+        const result = await simulationQuizService.deleteCustomQuiz(quiz_id, targetSyId);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ success: false, error: err.message });
+        return res.status(err.statusCode || 400).json({ success: false, error: err.message });
     }
 });
 
 adminRouter.get('/export-csv/:quiz_id', async (req, res) => {
     try {
         const quizId = parseInt(req.params.quiz_id, 10);
-        const data = await simulationQuizService.getQuizAnalytics(quizId);
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const targetSyId = syContext.selectedSY ? Number(syContext.selectedSY.sy_id) : null;
+        const data = await simulationQuizService.getQuizAnalytics(quizId, { syId: targetSyId });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${data.quiz.simulation_slug}_quiz_${quizId}_telemetry.csv"`);
 
-        let csv = 'Student Name,LRN,Section,Submitted At,Score,Total Items,Correct,Incorrect,Percentage,EXP Earned,Student Total EXP,Cadet Level\r\n';
-
-        data.submissions.forEach(sub => {
-            const name = `"${(sub.first_name + ' ' + sub.last_name).replace(/"/g, '""')}"`;
-            const lrn = `"${(sub.lrn_number || 'N/A').replace(/"/g, '""')}"`;
-            const section = `"${(sub.section || 'All').replace(/"/g, '""')}"`;
-            const date = `"${new Date(sub.submitted_at).toLocaleString().replace(/"/g, '""')}"`;
-            csv += `${name},${lrn},${section},${date},${sub.score},${sub.total_questions},${sub.correct_count},${sub.incorrect_count},${sub.percentage}%,+${sub.exp_earned},${sub.current_profile_exp || 0},Level ${sub.current_level || 1}\r\n`;
-        });
-
-        return res.send(csv);
+        return res.send(buildSubmissionsCsv(data));
     } catch (err) {
         console.error('[Admin CSV Export Error]', err);
-        return res.status(500).send('Error generating CSV telemetry report: ' + err.message);
+        return res.status(err.statusCode || 500).send('Error generating CSV telemetry report: ' + err.message);
     }
 });
 

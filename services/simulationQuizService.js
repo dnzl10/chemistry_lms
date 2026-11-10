@@ -9,6 +9,25 @@
 
 const pool = require('../db');
 const levelProgressionService = require('./levelProgressionService');
+const academicHelper = require('../utils/academicHelper');
+
+/**
+ * Resolves an explicit syId or strictly fetches the live Current School Year's sy_id
+ * (never falling back to Draft or Archive).
+ */
+async function resolveTargetSyId(syId = null, dbConn = pool) {
+    const parsed = parseInt(syId, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+
+    const [[currentSY]] = await dbConn.query(`
+        SELECT sy_id
+        FROM school_years
+        WHERE status = 'Current' OR is_active = 1
+        ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
+        LIMIT 1
+    `);
+    return currentSY ? Number(currentSY.sy_id) : null;
+}
 
 /**
  * Authoritative registry of the 20 Elementa Interactive Simulations
@@ -75,20 +94,38 @@ function isNumericMatch(studentVal, correctVal, tolerance = 0.01) {
  * Retrieves the active custom quiz status for a given simulation and student.
  * Anti-Cheat Guarantee: Correct answers are NEVER returned to the client.
  */
-async function getQuizStatus(simSlug, studentId = null) {
+async function getQuizStatus(simSlug, studentId = null, syId = null) {
     const slug = String(simSlug).trim().toLowerCase();
-    
-    // Find active quiz for simulation
+
+    let targetSyId = syId ? parseInt(syId, 10) : null;
+    if (!targetSyId && studentId) {
+        const syCtx = await academicHelper.resolveStudentSchoolYearContext(pool, studentId);
+        targetSyId = syCtx.targetSyId;
+    }
+    if (!targetSyId) {
+        targetSyId = await resolveTargetSyId(null);
+    }
+    if (!targetSyId) {
+        return {
+            success: true,
+            has_bonus: false,
+            already_completed: false,
+            is_expired: false,
+            quiz: null
+        };
+    }
+
+    // Find active quiz for simulation strictly within the target School Year
     const [quizRows] = await pool.query(`
-        SELECT q.quiz_id, q.simulation_slug, q.title, q.description, q.exp_per_question,
+        SELECT q.quiz_id, q.sy_id, q.simulation_slug, q.title, q.description, q.exp_per_question,
                q.total_bonus_exp, q.expires_at, q.is_active, q.created_at,
                u.first_name, u.last_name
         FROM elementa_simulation_custom_quizzes q
         JOIN users u ON q.created_by = u.user_id
-        WHERE q.simulation_slug = ? AND q.is_active = 1
+        WHERE q.simulation_slug = ? AND q.is_active = 1 AND q.sy_id = ?
         ORDER BY q.quiz_id DESC
         LIMIT 1
-    `, [slug]);
+    `, [slug, targetSyId]);
 
     if (quizRows.length === 0) {
         return {
@@ -123,9 +160,9 @@ async function getQuizStatus(simSlug, studentId = null) {
             SELECT submission_id, score, total_questions, correct_count, incorrect_count,
                    percentage, exp_earned, submitted_at
             FROM elementa_simulation_quiz_submissions
-            WHERE quiz_id = ? AND student_id = ?
+            WHERE quiz_id = ? AND student_id = ? AND sy_id = ?
             LIMIT 1
-        `, [quiz.quiz_id, studentId]);
+        `, [quiz.quiz_id, studentId, quiz.sy_id]);
 
         if (subRows.length > 0) {
             return {
@@ -192,7 +229,7 @@ async function getQuizStatus(simSlug, studentId = null) {
  * Evaluates student answers, enforces expiration, prevents duplicate claims,
  * atomically records submission, and increments student total_exp and level.
  */
-async function gradeAndSubmitQuiz(simSlug, studentId, quizId, submittedAnswers) {
+async function gradeAndSubmitQuiz(simSlug, studentId, quizId, submittedAnswers, syId = null) {
     if (!studentId) {
         throw new Error('Authentication required to submit assessment quiz.');
     }
@@ -203,7 +240,7 @@ async function gradeAndSubmitQuiz(simSlug, studentId, quizId, submittedAnswers) 
 
         // 1. Fetch and lock quiz header
         const [quizRows] = await conn.query(`
-            SELECT quiz_id, simulation_slug, title, exp_per_question, total_bonus_exp,
+            SELECT quiz_id, sy_id, simulation_slug, title, exp_per_question, total_bonus_exp,
                    expires_at, is_active
             FROM elementa_simulation_custom_quizzes
             WHERE quiz_id = ? AND is_active = 1
@@ -220,6 +257,25 @@ async function gradeAndSubmitQuiz(simSlug, studentId, quizId, submittedAnswers) 
         }
 
         const quiz = quizRows[0];
+        const explicitSyId = syId ? parseInt(syId, 10) : null;
+        if (explicitSyId && Number(quiz.sy_id) !== explicitSyId) {
+            await conn.rollback();
+            return {
+                success: false,
+                is_locked: true,
+                message: 'Assessment quiz does not belong to the active School Year.'
+            };
+        }
+
+        const syCtx = await academicHelper.resolveStudentSchoolYearContext(conn, studentId);
+        if (syCtx.syMode !== 'unenrolled' && syCtx.targetSyId && Number(quiz.sy_id) !== Number(syCtx.targetSyId)) {
+            await conn.rollback();
+            return {
+                success: false,
+                is_locked: true,
+                message: 'Assessment quiz does not belong to your enrolled School Year.'
+            };
+        }
 
         // 2. Check Expiration
         if (new Date(quiz.expires_at).getTime() <= Date.now()) {
@@ -413,14 +469,15 @@ async function gradeAndSubmitQuiz(simSlug, studentId, quizId, submittedAnswers) 
         const score = correctCount;
         const percentage = Math.round((correctCount / totalQuestions) * 100);
 
-        // 6. Record in elementa_simulation_quiz_submissions
+        // 6. Record in elementa_simulation_quiz_submissions (stamped with quiz.sy_id)
         await conn.query(`
             INSERT INTO elementa_simulation_quiz_submissions
-                (quiz_id, student_id, simulation_slug, score, total_questions, correct_count,
+                (quiz_id, sy_id, student_id, simulation_slug, score, total_questions, correct_count,
                  incorrect_count, percentage, exp_earned, answers_payload, submitted_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
             quizId,
+            quiz.sy_id,
             studentId,
             simSlug,
             score,
@@ -482,7 +539,7 @@ async function gradeAndSubmitQuiz(simSlug, studentId, quizId, submittedAnswers) 
 /**
  * Creates or updates a customized assessment quiz for a simulation.
  */
-async function saveCustomQuiz(creatorId, quizData) {
+async function saveCustomQuiz(creatorId, quizData, syId = null) {
     const {
         quiz_id,
         simulation_slug,
@@ -513,15 +570,20 @@ async function saveCustomQuiz(creatorId, quizData) {
     try {
         await conn.beginTransaction();
 
+        const targetSyId = await resolveTargetSyId(syId || quizData.sy_id, conn);
+        if (!targetSyId) {
+            throw new Error('No active Current School Year found. Cannot save quiz.');
+        }
+
         let targetQuizId = quiz_id ? parseInt(quiz_id, 10) : null;
 
         if (targetQuizId) {
-            // Update existing quiz header
-            await conn.query(`
+            // Update existing quiz header strictly within targetSyId
+            const [updRes] = await conn.query(`
                 UPDATE elementa_simulation_custom_quizzes
                 SET simulation_slug = ?, title = ?, description = ?, section = ?,
                     exp_per_question = ?, total_bonus_exp = ?, expires_at = ?, is_active = ?
-                WHERE quiz_id = ?
+                WHERE quiz_id = ? AND sy_id = ?
             `, [
                 simulation_slug,
                 title,
@@ -531,30 +593,38 @@ async function saveCustomQuiz(creatorId, quizData) {
                 totalBonusExp,
                 new Date(expires_at),
                 is_active !== undefined ? (is_active ? 1 : 0) : 1,
-                targetQuizId
+                targetQuizId,
+                targetSyId
             ]);
+
+            if (!updRes.affectedRows) {
+                const err = new Error('Quiz not found in the active School Year.');
+                err.statusCode = 403;
+                throw err;
+            }
 
             // Clear old questions to replace with updated list
             await conn.query(`DELETE FROM elementa_simulation_custom_questions WHERE quiz_id = ?`, [targetQuizId]);
         } else {
-            // Deactivate any existing active quizzes for this simulation so only one is active at a time
+            // Deactivate any existing active quizzes for this simulation strictly within targetSyId
             await conn.query(`
                 UPDATE elementa_simulation_custom_quizzes
                 SET is_active = 0
-                WHERE simulation_slug = ?
-            `, [simulation_slug]);
+                WHERE simulation_slug = ? AND sy_id = ?
+            `, [simulation_slug, targetSyId]);
 
-            // Insert new quiz header
+            // Insert new quiz header stamped with targetSyId
             const [insertResult] = await conn.query(`
                 INSERT INTO elementa_simulation_custom_quizzes
-                    (simulation_slug, title, description, created_by, section, exp_per_question,
+                    (simulation_slug, title, description, created_by, sy_id, section, exp_per_question,
                      total_bonus_exp, expires_at, is_active, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             `, [
                 simulation_slug,
                 title,
                 description || null,
                 creatorId,
+                targetSyId,
                 section || null,
                 expPerQ,
                 totalBonusExp,
@@ -604,27 +674,52 @@ async function saveCustomQuiz(creatorId, quizData) {
 /**
  * Toggles a custom quiz's active state.
  */
-async function toggleQuizStatus(quizId, isActive) {
-    await pool.query(`
+async function toggleQuizStatus(quizId, isActive, syId = null) {
+    const targetSyId = await resolveTargetSyId(syId);
+    if (!targetSyId) throw new Error('No active School Year found.');
+
+    const [res] = await pool.query(`
         UPDATE elementa_simulation_custom_quizzes
         SET is_active = ?
-        WHERE quiz_id = ?
-    `, [isActive ? 1 : 0, quizId]);
+        WHERE quiz_id = ? AND sy_id = ?
+    `, [isActive ? 1 : 0, quizId, targetSyId]);
+    if (!res.affectedRows) {
+        const err = new Error('Quiz not found in the active School Year.');
+        err.statusCode = 403;
+        throw err;
+    }
     return { success: true };
 }
 
 /**
- * Deletes a custom quiz.
+ * Deletes a custom quiz strictly within the target School Year.
  */
-async function deleteCustomQuiz(quizId) {
-    await pool.query(`DELETE FROM elementa_simulation_custom_quizzes WHERE quiz_id = ?`, [quizId]);
+async function deleteCustomQuiz(quizId, syId = null) {
+    const targetSyId = await resolveTargetSyId(syId);
+    if (!targetSyId) throw new Error('No active School Year found.');
+
+    const [res] = await pool.query(
+        `DELETE FROM elementa_simulation_custom_quizzes WHERE quiz_id = ? AND sy_id = ?`,
+        [quizId, targetSyId]
+    );
+    if (!res.affectedRows) {
+        const err = new Error('Quiz not found in the active School Year.');
+        err.statusCode = 403;
+        throw err;
+    }
     return { success: true };
 }
 
 /**
- * Retrieves full telemetry analytics for a specific quiz.
+ * Retrieves full telemetry analytics for a specific quiz, strictly scoped to the target School Year
+ * and students officially enrolled in that School Year.
  */
-async function getQuizAnalytics(quizId) {
+async function getQuizAnalytics(quizId, options = {}) {
+    const targetSyId = await resolveTargetSyId(options.syId || null);
+    if (!targetSyId) {
+        throw new Error('No active School Year found.');
+    }
+
     const [quizRows] = await pool.query(`
         SELECT q.*, u.first_name, u.last_name
         FROM elementa_simulation_custom_quizzes q
@@ -633,9 +728,17 @@ async function getQuizAnalytics(quizId) {
     `, [quizId]);
 
     if (quizRows.length === 0) {
-        throw new Error('Quiz not found.');
+        const err = new Error('Quiz not found.');
+        err.statusCode = 404;
+        throw err;
     }
     const quiz = quizRows[0];
+
+    if (Number(quiz.sy_id) !== Number(targetSyId)) {
+        const err = new Error('Forbidden: Quiz does not belong to the selected School Year.');
+        err.statusCode = 403;
+        throw err;
+    }
 
     // Fetch questions
     const [questions] = await pool.query(`
@@ -644,15 +747,43 @@ async function getQuizAnalytics(quizId) {
         ORDER BY order_index ASC
     `, [quizId]);
 
-    // Fetch submissions with student info
+    // Fetch submissions strictly for this School Year and students enrolled in targetSyId
     const [submissions] = await pool.query(`
-        SELECT s.*, u.first_name, u.last_name, u.lrn_number, u.section,
-               u.total_exp AS current_profile_exp, u.current_level, u.profile_pic
+        SELECT s.*,
+               u.first_name,
+               u.last_name,
+               u.lrn_number,
+               COALESCE(
+                   NULLIF(
+                       (
+                           SELECT GROUP_CONCAT(DISTINCT c2.class_name ORDER BY c2.class_name SEPARATOR ', ')
+                           FROM class_students cs2
+                           JOIN classes c2 ON cs2.class_id = c2.class_id
+                           WHERE cs2.student_id = s.student_id
+                             AND c2.sy_id = ?
+                             AND (cs2.sy_id IS NULL OR cs2.sy_id = c2.sy_id)
+                       ),
+                       ''
+                   ),
+                   u.section
+               ) AS section,
+               u.total_exp AS current_profile_exp,
+               u.current_level,
+               u.profile_pic
         FROM elementa_simulation_quiz_submissions s
         JOIN users u ON s.student_id = u.user_id
         WHERE s.quiz_id = ?
+          AND s.sy_id = ?
+          AND EXISTS (
+              SELECT 1
+              FROM class_students cs
+              JOIN classes c ON cs.class_id = c.class_id
+              WHERE cs.student_id = s.student_id
+                AND c.sy_id = ?
+                AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+          )
         ORDER BY s.submitted_at DESC
-    `, [quizId]);
+    `, [targetSyId, quizId, targetSyId, targetSyId]);
 
     // Calculate Question-Level Accuracy
     const questionStats = questions.map(q => {
@@ -706,17 +837,42 @@ async function getQuizAnalytics(quizId) {
 }
 
 /**
- * Lists all 20 simulations along with their current active or latest custom quiz status.
+ * Lists all 20 simulations along with their active or latest custom quiz status
+ * strictly scoped to the specified (or Current) School Year and enrolled students.
  */
-async function getAllSimulationsWithQuizStatus() {
+async function getAllSimulationsWithQuizStatus(options = {}) {
+    const targetSyId = await resolveTargetSyId(options.syId || null);
+
+    if (!targetSyId) {
+        return SIMULATIONS_REGISTRY.map(sim => ({
+            ...sim,
+            status: 'none',
+            quiz: null
+        }));
+    }
+
     const [quizzes] = await pool.query(`
         SELECT q.*, u.first_name, u.last_name,
-               (SELECT COUNT(*) FROM elementa_simulation_quiz_submissions s WHERE s.quiz_id = q.quiz_id) AS submissions_count,
+               (
+                   SELECT COUNT(*)
+                   FROM elementa_simulation_quiz_submissions s
+                   WHERE s.quiz_id = q.quiz_id
+                     AND s.sy_id = ?
+                     AND EXISTS (
+                         SELECT 1
+                         FROM class_students cs
+                         JOIN classes c ON cs.class_id = c.class_id
+                         WHERE cs.student_id = s.student_id
+                           AND c.sy_id = ?
+                           AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                     )
+               ) AS submissions_count,
                (SELECT COUNT(*) FROM elementa_simulation_custom_questions cq WHERE cq.quiz_id = q.quiz_id) AS question_count
         FROM elementa_simulation_custom_quizzes q
         JOIN users u ON q.created_by = u.user_id
-        ORDER BY q.created_at DESC
-    `);
+        WHERE q.sy_id = ?
+        ORDER BY (q.is_active = 1) DESC, q.created_at DESC
+    `, [targetSyId, targetSyId, targetSyId]);
 
     // Group by simulation_slug
     const quizMap = {};
@@ -748,6 +904,7 @@ async function getAllSimulationsWithQuizStatus() {
             status,
             quiz: customQuiz ? {
                 quiz_id: customQuiz.quiz_id,
+                sy_id: customQuiz.sy_id,
                 title: customQuiz.title,
                 description: customQuiz.description,
                 creator_name: `${customQuiz.first_name} ${customQuiz.last_name}`,
@@ -766,6 +923,7 @@ module.exports = {
     SIMULATIONS_REGISTRY,
     normalizeText,
     isNumericMatch,
+    resolveTargetSyId,
     getQuizStatus,
     gradeAndSubmitQuiz,
     saveCustomQuiz,

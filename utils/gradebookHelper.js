@@ -336,14 +336,16 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
             forumDoneRecords = fd;
         }
 
-        // 7. Fetch Simulation Laboratory Quiz Submissions (Scoped to Effective Quarter or Class Subject's Valid Quarters)
+        // 7. Fetch Simulation Laboratory Quiz Submissions (Scoped to Class SY & Effective Quarter)
         if (studentIds.length > 0) {
+            const clsSyId = cls.sy_id || null;
             const [sims] = await dbConn.query(`
                 SELECT esqs.student_id, esqs.quiz_id, esqs.simulation_slug, esqs.score, esqs.total_questions,
                        esqs.percentage, esqs.exp_earned
                 FROM elementa_simulation_quiz_submissions esqs
                 WHERE esqs.student_id IN (?)
-            `, [studentIds]);
+                  AND (? IS NULL OR esqs.sy_id = ?)
+            `, [studentIds, clsSyId, clsSyId]);
 
             if (effectiveQuarter) {
                 simSubmissions = sims.filter(s => SIMULATION_QUARTER_MAP[s.simulation_slug] === effectiveQuarter);
@@ -983,9 +985,10 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
     const targetQuarters = isSem1 ? [1, 2] : [3, 4];
 
     // 3. Fetch Syllabus Progress & Interactions Count
+    const clsSyId = cls.sy_id || null;
     const [[progRow]] = await dbConn.query(
-        `SELECT progress_percent FROM student_progress WHERE student_id = ? AND subject_id = ? LIMIT 1`,
-        [sid, cls.subject_id]
+        `SELECT progress_percent FROM student_progress WHERE student_id = ? AND subject_id = ? AND (? IS NULL OR sy_id = ?) LIMIT 1`,
+        [sid, cls.subject_id, clsSyId, clsSyId]
     );
     const syllabusProgress = progRow ? Number(progRow.progress_percent || 0) : 0;
 
@@ -1114,15 +1117,17 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
         let simSubmissionsMap = new Map();
 
         if (quarterSimSlugs.length > 0) {
-            // Only fetch simulation quizzes that actually have questions created!
+            // Only fetch simulation quizzes for this class's School Year that actually have questions created!
             const [activeQuizzes] = await dbConn.query(`
                 SELECT q.simulation_slug, q.quiz_id, q.title, COUNT(ques.question_id) AS question_count
                 FROM elementa_simulation_custom_quizzes q
                 JOIN elementa_simulation_custom_questions ques ON ques.quiz_id = q.quiz_id
-                WHERE q.simulation_slug IN (?) AND q.is_active = 1
+                WHERE q.simulation_slug IN (?)
+                  AND q.is_active = 1
+                  AND (? IS NULL OR q.sy_id = ?)
                 GROUP BY q.quiz_id, q.simulation_slug
                 HAVING question_count > 0
-            `, [quarterSimSlugs]);
+            `, [quarterSimSlugs, clsSyId, clsSyId]);
 
             activeQuizzes.forEach(aq => {
                 if (!activeQuizzesMap.has(aq.simulation_slug)) {
@@ -1134,9 +1139,11 @@ async function computeStudentGranularDossier(dbConn, studentId, classId = null, 
                 SELECT esqs.quiz_id, esqs.simulation_slug, esqs.score, esqs.total_questions,
                        esqs.percentage, esqs.exp_earned, esqs.submitted_at
                 FROM elementa_simulation_quiz_submissions esqs
-                WHERE esqs.student_id = ? AND esqs.simulation_slug IN (?)
+                WHERE esqs.student_id = ?
+                  AND esqs.simulation_slug IN (?)
+                  AND (? IS NULL OR esqs.sy_id = ?)
                 ORDER BY esqs.submitted_at DESC
-            `, [sid, quarterSimSlugs]);
+            `, [sid, quarterSimSlugs, clsSyId, clsSyId]);
 
             simSubs.forEach(s => {
                 if (!simSubmissionsMap.has(s.simulation_slug)) {

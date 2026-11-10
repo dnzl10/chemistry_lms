@@ -5554,7 +5554,7 @@ async function handleGetStudentDetailedScores(req, res) {
             ORDER BY sfd.done_at DESC
         `, [studentId, effSubjectId]);
 
-        // 8. Fetch student's interactive simulation quiz submissions
+        // 8. Fetch student's interactive simulation quiz submissions (scoped to student's class SY)
         const [simulationSubmissions] = await db.query(`
             SELECT esqs.submission_id, esqs.quiz_id, esqs.student_id, esqs.simulation_slug,
                    esqs.score, esqs.total_questions, esqs.correct_count, esqs.incorrect_count,
@@ -5563,8 +5563,9 @@ async function handleGetStudentDetailedScores(req, res) {
             FROM elementa_simulation_quiz_submissions esqs
             JOIN elementa_simulation_custom_quizzes q ON esqs.quiz_id = q.quiz_id
             WHERE esqs.student_id = ?
+              AND (? IS NULL OR (esqs.sy_id = ? AND q.sy_id = ?))
             ORDER BY esqs.submitted_at DESC
-        `, [studentId]);
+        `, [studentId, effSyId, effSyId, effSyId]);
 
         // 9. Deduplicate per assessment_id (pick highest score obtained)
         const scoreMap = new Map();
@@ -10293,12 +10294,13 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
         WHERE q.subject_id = ? AND sfd.student_id IN (?)
     `, [effSubjectId, studentIds]);
 
-    // Fetch simulation bonus exp
+    // Fetch simulation bonus exp (scoped to class SY)
     const [simSubmissions] = await db.query(`
         SELECT esqs.student_id, COALESCE(esqs.exp_earned, 0) AS exp_earned
         FROM elementa_simulation_quiz_submissions esqs
         WHERE esqs.student_id IN (?)
-    `, [studentIds]);
+          AND (? IS NULL OR esqs.sy_id = ?)
+    `, [studentIds, effSyId, effSyId]);
 
     // Map scores
     const studentScoreMap = new Map();
@@ -10775,13 +10777,25 @@ async function computeStudentSubjectSummary(studentId, subjectId) {
         WHERE sfd.student_id = ? AND ft.subject_id = ?
     `, [studentId, subjectId]);
 
-    // 5. Fetch simulation quiz submissions
+    // 5. Fetch simulation quiz submissions (scoped to student's active/enrolled SY for subjectId)
+    const [[enrollSyRow]] = await db.query(`
+        SELECT c.sy_id
+        FROM class_students cs
+        JOIN classes c ON cs.class_id = c.class_id
+        JOIN school_years sy ON c.sy_id = sy.sy_id
+        WHERE cs.student_id = ? AND c.subject_id = ? AND sy.status <> 'Draft'
+        ORDER BY (sy.status = 'Current') DESC, sy.start_date DESC, c.class_id ASC
+        LIMIT 1
+    `, [studentId, subjectId]);
+    const effSimSyId = enrollSyRow ? enrollSyRow.sy_id : null;
+
     const [simSubmissions] = await db.query(`
         SELECT esqs.submission_id, esqs.quiz_id, esqs.simulation_slug,
                esqs.score, esqs.total_questions, esqs.exp_earned, esqs.percentage
         FROM elementa_simulation_quiz_submissions esqs
         WHERE esqs.student_id = ?
-    `, [studentId]);
+          AND (? IS NULL OR esqs.sy_id = ?)
+    `, [studentId, effSimSyId, effSimSyId]);
 
     // Build deduplicated best score map
     const scoreMap = new Map();
@@ -11463,14 +11477,16 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
             forumDoneRecords = fd;
         }
 
-        // 7. Fetch Simulation Laboratory Quiz Submissions (Scoped to Effective Quarter or Class Subject's Valid Quarters)
+        // 7. Fetch Simulation Laboratory Quiz Submissions (Scoped to Class SY & Effective Quarter)
         if (studentIds.length > 0) {
+            const clsSyId = cls.sy_id || null;
             const [sims] = await dbConn.query(`
                 SELECT esqs.student_id, esqs.quiz_id, esqs.simulation_slug, esqs.score, esqs.total_questions,
                        esqs.percentage, esqs.exp_earned
                 FROM elementa_simulation_quiz_submissions esqs
                 WHERE esqs.student_id IN (?)
-            `, [studentIds]);
+                  AND (? IS NULL OR esqs.sy_id = ?)
+            `, [studentIds, clsSyId, clsSyId]);
 
             if (effectiveQuarter) {
                 simSubmissions = sims.filter(s => SIMULATION_QUARTER_MAP[s.simulation_slug] === effectiveQuarter);
@@ -12240,9 +12256,14 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
         }));
     }
 
-    // 8. Component: Simulation Quizzes
+    // 8. Component: Simulation Quizzes (scoped to class SY)
     let simulationQuizzes = [];
     if (filters.inc_sim !== '0' && filters.inc_sim !== false) {
+        let targetClassSyId = filters.sy_id ? parseInt(filters.sy_id, 10) : null;
+        if (!targetClassSyId && classId) {
+            const [[clsSyRow]] = await db.query(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [classId]);
+            if (clsSyRow && clsSyRow.sy_id) targetClassSyId = clsSyRow.sy_id;
+        }
         let sql = `
             SELECT esqs.submission_id, esqs.quiz_id, esqs.simulation_slug,
                    esqs.score, esqs.total_questions, esqs.percentage, esqs.exp_earned,
@@ -12253,6 +12274,11 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
             WHERE esqs.student_id = ?
         `;
         const params = [studentId];
+
+        if (targetClassSyId) {
+            sql += ' AND esqs.sy_id = ? AND q.sy_id = ?';
+            params.push(targetClassSyId, targetClassSyId);
+        }
 
         if (filters.sim_slugs) {
             const slugsArr = Array.isArray(filters.sim_slugs) ? filters.sim_slugs : filters.sim_slugs.split(',').map(s => s.trim()).filter(Boolean);

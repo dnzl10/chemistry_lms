@@ -1,6 +1,9 @@
 <% const isAdmin=(typeof user !=='undefined' && user && (user.role==='Admin' || user.role==='admin' )); const
     dashboardUrl=isAdmin ? '/admin/dashboard' : '/teacher/dashboard' ; const apiBase=isAdmin
-    ? '/admin/simulation-quizzes' : '/teacher/simulation-quizzes' ; %>
+    ? '/admin/simulation-quizzes' : '/teacher/simulation-quizzes' ; const activeSY=(typeof selectedSY !=='undefined' &&
+    selectedSY) ? selectedSY : ((typeof currentSY !=='undefined' && currentSY) ? currentSY : null); const
+    isHistorical=(typeof isHistoricalSY !=='undefined' && isHistoricalSY); const isDraft=(typeof isDraftSY
+    !=='undefined' && isDraftSY); %>
     <!DOCTYPE html>
     <html lang="en">
 
@@ -181,9 +184,19 @@
                                                 <i class="fas fa-bars text-xl"></i>
                                             </button>
                                             <div class="hidden sm:block">
-                                                <h1
-                                                    class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">
-                                                    Simulation Quizzes</h1>
+                                                <div class="flex items-center gap-2.5 flex-wrap">
+                                                    <h1
+                                                        class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">
+                                                        Simulation Quizzes</h1>
+                                                    <% if (activeSY) { %>
+                                                        <span
+                                                            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black border shadow-2xs <%= (isHistorical || isDraft) ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' %>">
+                                                            <span
+                                                                class="w-1.5 h-1.5 rounded-full <%= (isHistorical || isDraft) ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse' %>"></span>
+                                                            <span>S.Y. <%= activeSY.sy_range %><%= isHistorical ? ' · Archived' : (isDraft ? ' · Draft' : '') %></span>
+                                                        </span>
+                                                    <% } %>
+                                                </div>
                                                 <p class="text-xs text-slate-600 font-medium">
                                                     <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
                                                     Customize assessment questions, set EXP bonus deadlines &amp;
@@ -775,6 +788,10 @@
                             // Global State
                             let SIMULATIONS = JSON.parse(document.getElementById('sim-quizzes-sync-data').textContent || '[]');
                             const API_BASE = '<%= apiBase %>';
+                            const ACTIVE_SY_ID = <%- JSON.stringify(activeSY ? activeSY.sy_id : null) %>;
+                            const ACTIVE_SY_RANGE = <%- JSON.stringify(activeSY ? activeSY.sy_range : null) %>;
+                            const IS_ADMIN_PORTAL = <%= isAdmin ? 'true' : 'false' %>;
+                            const SY_QUERY = (IS_ADMIN_PORTAL && ACTIVE_SY_ID) ? `?sy_id=${encodeURIComponent(ACTIVE_SY_ID)}` : '';
                             let questionsList = [];
 
                             function showToast(msg, icon = 'fa-circle-check', color = 'text-emerald-500') {
@@ -842,7 +859,7 @@
                                 if (quizId) {
                                     // Load existing quiz details from API
                                     try {
-                                        const res = await fetch(`${API_BASE}/api/quiz/${quizId}`);
+                                        const res = await fetch(`${API_BASE}/api/quiz/${quizId}${SY_QUERY}`);
                                         const data = await res.json();
                                         if (data.success && data.quiz) {
                                             document.getElementById('editQuizTitle').value = data.quiz.title;
@@ -1081,6 +1098,7 @@
 
                                 const payload = {
                                     quiz_id: document.getElementById('editQuizId').value || null,
+                                    sy_id: ACTIVE_SY_ID,
                                     simulation_slug: document.getElementById('editSimSlug').value,
                                     title: document.getElementById('editQuizTitle').value,
                                     description: document.getElementById('editDescription').value,
@@ -1158,11 +1176,11 @@
                             // Opens Telemetry & Student Analytics modal
                             async function openTelemetryModal(quizId, simTitle) {
                                 document.getElementById('telemetryModalTitle').textContent = `Student Telemetry: ${simTitle}`;
-                                document.getElementById('btnExportCsv').href = `${API_BASE}/export-csv/${quizId}`;
+                                document.getElementById('btnExportCsv').href = `${API_BASE}/export-csv/${quizId}${SY_QUERY}`;
                                 openModal('telemetryModal');
 
                                 try {
-                                    const res = await fetch(`${API_BASE}/api/analytics/${quizId}`);
+                                    const res = await fetch(`${API_BASE}/api/analytics/${quizId}${SY_QUERY}`);
                                     const data = await res.json();
                                     if (!data.success) {
                                         alert(data.error || 'Failed to load telemetry analytics.');
@@ -1214,7 +1232,8 @@
                                     tbody.innerHTML = '';
 
                                     if (data.submissions.length === 0) {
-                                        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500 italic">No student submissions recorded yet.</td></tr>`;
+                                        const syLabel = ACTIVE_SY_RANGE ? ` for S.Y. ${escapeHtml(ACTIVE_SY_RANGE)}` : '';
+                                        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500 italic">No student submissions recorded${syLabel} yet.</td></tr>`;
                                     } else {
                                         data.submissions.forEach(sub => {
                                             const subDate = new Date(sub.submitted_at).toLocaleString();
