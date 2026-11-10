@@ -1300,9 +1300,8 @@ router.post('/heartbeat', async (req, res) => {
         const {
             kiosk_id = req.body.cabinet_id || 'KIOSK-01',
             cabinet_id,
-            ip_address = req.ip,
             status = 'Online',
-            ping_ms = 4,
+            ping_ms = 15,
             scanner_status = 'Connected',
             gpio_status = 'Operational',
             active_session_id = null,
@@ -1310,6 +1309,12 @@ router.post('/heartbeat', async (req, res) => {
         } = req.body;
 
         const effectiveId = (kiosk_id || cabinet_id || 'KIOSK-01').trim();
+        const clientIp = req.headers['x-forwarded-for'] 
+            ? req.headers['x-forwarded-for'].split(',')[0].trim() 
+            : (req.ip || '127.0.0.1');
+        const resolvedIp = (req.body.ip_address && req.body.ip_address !== '127.0.0.1') 
+            ? req.body.ip_address 
+            : clientIp;
         const pausedFlag = Number(is_proctor_paused) === 1 ? 1 : 0;
 
         await pool.query(
@@ -1325,7 +1330,7 @@ router.post('/heartbeat', async (req, res) => {
                 active_session_id = VALUES(active_session_id),
                 is_proctor_paused = VALUES(is_proctor_paused),
                 last_heartbeat = NOW()`,
-            [effectiveId, ip_address, status, ping_ms, scanner_status, gpio_status, active_session_id, pausedFlag]
+            [effectiveId, resolvedIp, status, ping_ms, scanner_status, gpio_status, active_session_id, pausedFlag]
         );
 
         // Check if there is a pending remote proctor command for this kiosk
