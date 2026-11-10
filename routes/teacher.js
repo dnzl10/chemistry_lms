@@ -545,10 +545,13 @@ router.get('/dashboard', isTeacher, async (req, res) => {
             JOIN topics t ON a.topic_id = t.topic_id 
             JOIN quarters q ON t.quarter_id = q.quarter_id
             JOIN classes c ON q.subject_id = c.subject_id
-            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND a.due_date >= CURDATE()
+            WHERE c.teacher_id = ? 
+              AND (? IS NULL OR c.sy_id = ?) 
+              AND (? IS NULL OR a.sy_id = ?)
+              AND a.due_date >= CURDATE()
             ORDER BY a.due_date ASC
             LIMIT 10
-        `, [teacherId, currentSyId, currentSyId]),
+        `, [teacherId, currentSyId, currentSyId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT u.first_name, u.last_name, u.profile_pic, sp.progress_percent, s.subject_name, s.subject_id
@@ -556,6 +559,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 JOIN users u ON sp.student_id = u.user_id
                 JOIN subjects s ON sp.subject_id = s.subject_id
                 JOIN classes c ON s.subject_id = c.subject_id
+                JOIN class_students cs ON c.class_id = cs.class_id AND cs.student_id = u.user_id
                 WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND sp.progress_percent < 50 
                 GROUP BY u.user_id, s.subject_id`, [teacherId, currentSyId, currentSyId]),
 
@@ -596,14 +600,14 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                             JOIN topics t ON a.topic_id = t.topic_id
                             JOIN quarters q ON t.quarter_id = q.quarter_id
                             JOIN classes c2 ON q.subject_id = c2.subject_id AND c2.class_id = cs.class_id
-                            WHERE ss.student_id = u.user_id AND (? IS NULL OR c2.sy_id = ?)),
-                           u.total_exp, 0
+                            WHERE ss.student_id = u.user_id AND (? IS NULL OR c2.sy_id = ?) AND (? IS NULL OR a.sy_id = ?)),
+                           0
                        ) AS total_points
                 FROM users u
                 JOIN class_students cs ON u.user_id = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
                 WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND u.role = 'Student'
-                GROUP BY u.user_id ORDER BY total_points DESC LIMIT 5`, [currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
+                GROUP BY u.user_id ORDER BY total_points DESC LIMIT 5`, [currentSyId, currentSyId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
 
             db.query(`
                 SELECT ROUND(AVG(eca.is_correct) * 100, 1) as avg_accuracy
@@ -631,11 +635,11 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 LEFT JOIN class_students cs ON c.class_id = cs.class_id
                 LEFT JOIN quarters q ON s.subject_id = q.subject_id
                 LEFT JOIN topics t ON q.quarter_id = t.quarter_id
-                LEFT JOIN assessments a ON t.topic_id = a.topic_id
+                LEFT JOIN assessments a ON t.topic_id = a.topic_id AND (? IS NULL OR a.sy_id = ?)
                 LEFT JOIN elementa_student_grades esg ON (a.assessment_id = esg.assessment_id AND esg.student_id = cs.student_id)
                 WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                 GROUP BY s.subject_id, s.subject_name, s.subject_code
-                ORDER BY completion_percent ASC`, [teacherId, currentSyId, currentSyId]),
+                ORDER BY completion_percent ASC`, [currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
 
             /* Weekly Performance Trends for Performance Overview line chart */
             db.query(`
@@ -659,6 +663,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                     JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id
                     WHERE ss.score_obtained IS NOT NULL AND ss.total_items > 0
+                      AND (? IS NULL OR a.sy_id = ?)
 
                     UNION ALL
 
@@ -674,7 +679,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
                 ) all_attempts
                 GROUP BY weekday_idx, day_name
-                ORDER BY weekday_idx ASC`, [teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
+                ORDER BY weekday_idx ASC`, [teacherId, currentSyId, currentSyId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
         ]);
 
         // Build Weekly Trends 7-day data (Mon=0, Tue=1, ..., Sun=6)
