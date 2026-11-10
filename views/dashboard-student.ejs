@@ -1,8 +1,9 @@
 <%
     var user = locals.user || {};
+    var enrolledSY = locals.enrolledSY || locals.currentSY || null;
+    var syMode = locals.syMode || 'current';
     var announcements = locals.announcements || [];
     var upcomingTasks = locals.upcomingTasks || [];
-    var timeline = locals.timeline || [];
     var subjects = locals.subjects || [];
     var events = locals.events || [];
     var calendarDays = locals.calendarDays || [];
@@ -560,11 +561,18 @@
                                         </div>
                                         <span class="uppercase tracking-wider">Enrolled Subjects</span>
                                     </h2>
-                                    <% if (typeof currentSY !== 'undefined' && currentSY) { %>
-                                    <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-[11px] font-black text-emerald-800 shadow-xs">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        <span>S.Y. <%= currentSY.sy_range %></span>
-                                    </div>
+                                    <% if (enrolledSY) { %>
+                                        <% if (syMode === 'archived') { %>
+                                            <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-[11px] font-black text-amber-800 shadow-xs">
+                                                <i class="fas fa-box-archive text-amber-600 text-[10px]"></i>
+                                                <span>S.Y. <%= enrolledSY.sy_range %> &middot; Archived</span>
+                                            </div>
+                                        <% } else { %>
+                                            <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-[11px] font-black text-emerald-800 shadow-xs">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                <span>S.Y. <%= enrolledSY.sy_range %></span>
+                                            </div>
+                                        <% } %>
                                     <% } %>
                                 </div>
 
@@ -646,40 +654,6 @@
                                             <i class="fas fa-arrow-right text-[10px]"></i>
                                         </a>
                                     </div>
-                                <% } %>
-
-                                <!-- Collapsible Academic History / Past School Years Drawer -->
-                                <% if (typeof archivedSubjects !== 'undefined' && archivedSubjects && archivedSubjects.length > 0) { %>
-                                <div class="mt-6 pt-5 border-t border-slate-100">
-                                    <details class="group bg-slate-50/70 rounded-2xl border border-slate-200/80 p-4 transition-all">
-                                        <summary class="flex items-center justify-between cursor-pointer list-none select-none">
-                                            <div class="flex items-center gap-2.5 text-xs font-bold text-slate-700">
-                                                <i class="fas fa-box-archive text-slate-400 group-open:text-indigo-600 transition-colors"></i>
-                                                <span>Completed Courses / Academic History</span>
-                                                <span class="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full"><%= archivedSubjects.length %> archived</span>
-                                            </div>
-                                            <i class="fas fa-chevron-down text-slate-400 text-xs transition-transform duration-200 group-open:rotate-180"></i>
-                                        </summary>
-                                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                                            <% archivedSubjects.forEach(arch => { %>
-                                                <div class="p-3.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-3 shadow-2xs">
-                                                    <div>
-                                                        <div class="flex items-center gap-1.5 mb-1">
-                                                            <span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"><%= arch.sy_range %></span>
-                                                            <span class="text-[10px] font-bold text-slate-400 uppercase"><%= arch.subject_code %></span>
-                                                        </div>
-                                                        <h4 class="text-xs font-bold text-slate-800"><%= arch.subject_name %></h4>
-                                                        <p class="text-[11px] text-slate-400 mt-0.5"><%= arch.class_name %></p>
-                                                    </div>
-                                                    <div class="text-right flex flex-col items-end gap-1">
-                                                        <span class="text-xs font-black text-slate-700"><%= arch.progress_percent %>%</span>
-                                                        <a href="/subjects/open/<%= arch.subject_id %>" class="text-[10px] font-bold text-indigo-600 hover:underline">Review</a>
-                                                    </div>
-                                                </div>
-                                            <% }); %>
-                                        </div>
-                                    </details>
-                                </div>
                                 <% } %>
                             </section>
 

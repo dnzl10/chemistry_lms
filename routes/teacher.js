@@ -2881,7 +2881,7 @@ router.post('/api/announcement', isTeacher, announcementUpload.single('attachmen
 
         // RBAC / IDOR Protection: Verify teacher teaches this class OR user is Admin
         const [[cls]] = await db.query(
-            `SELECT class_id, class_name, teacher_id FROM classes WHERE class_id = ?`,
+            `SELECT class_id, class_name, teacher_id, subject_id, sy_id FROM classes WHERE class_id = ?`,
             [class_id]
         );
         if (!cls) {
@@ -2895,6 +2895,9 @@ router.post('/api/announcement', isTeacher, announcementUpload.single('attachmen
             return res.status(403).json({ error: 'Unauthorized: You are not assigned to this class.' });
         }
 
+        const currentSY = !cls.sy_id ? await academicHelper.getCurrentSchoolYear(db) : null;
+        const targetSyId = cls.sy_id || (currentSY ? currentSY.sy_id : null);
+
         let attachment_url = null;
         let attachment_name = null;
         let attachment_type = null;
@@ -2906,11 +2909,13 @@ router.post('/api/announcement', isTeacher, announcementUpload.single('attachmen
         }
 
         const [insertRes] = await db.execute(
-            `INSERT INTO announcements (class_id, teacher_id, title, content, is_priority, is_critical, due_date, attachment_url, attachment_name, attachment_type)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO announcements (class_id, teacher_id, sy_id, subject_id, title, content, is_priority, is_critical, due_date, attachment_url, attachment_name, attachment_type)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 class_id,
                 req.user.user_id,
+                targetSyId,
+                cls.subject_id || null,
                 title.trim(),
                 content.trim(),
                 is_priority ? 1 : 0,
@@ -4466,16 +4471,27 @@ router.get('/api/attendance/:classId/student/:studentId/history', isTeacher, asy
 
 router.post('/events/add', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
-    const { subject_id, event_title, event_description, event_type, event_date,
+    const { subject_id, class_id, sy_id, event_title, event_description, event_type, event_date,
         duration_type, start_date, end_date, duration_minutes, is_repeatable, repeat_cycle } = req.body;
     const isAjax = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest' || (req.headers.accept && req.headers.accept.includes('application/json'));
     try {
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const parsedClassId = class_id ? parseInt(class_id, 10) : null;
+        let targetSyId = sy_id ? parseInt(sy_id, 10) : null;
+        if (!targetSyId && parsedClassId) {
+            const [[clsRow]] = await db.query(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [parsedClassId]);
+            if (clsRow && clsRow.sy_id) targetSyId = clsRow.sy_id;
+        }
+        if (!targetSyId) {
+            targetSyId = currentSY ? currentSY.sy_id : null;
+        }
+
         const [result] = await db.query(`
             INSERT INTO calendar_events 
-            (teacher_id, subject_id, event_title, event_description, event_type, 
+            (teacher_id, subject_id, class_id, sy_id, event_title, event_description, event_type, 
              event_date, duration_type, start_date, end_date, duration_minutes, is_repeatable, repeat_cycle) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [teacherId, subject_id, event_title, event_description, event_type, event_date, duration_type,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [teacherId, subject_id || null, parsedClassId, targetSyId, event_title, event_description, event_type, event_date, duration_type,
                 start_date || null, end_date || null, duration_minutes || null,
                 is_repeatable === 'on' ? 1 : 0, is_repeatable === 'on' ? repeat_cycle : null]
         );
@@ -4494,27 +4510,41 @@ router.post('/events/add', isTeacher, async (req, res) => {
 
 router.post('/api/calendar-event', isTeacher, async (req, res) => {
     try {
-        const { subject_id, event_title, event_type, event_date, duration_type,
+        const { subject_id, class_id, sy_id, event_title, event_type, event_date, duration_type,
             start_date, end_date, duration_minutes, event_location, event_description,
             is_repeatable, repeat_cycle } = req.body;
         if (!event_title) throw new Error('event_title missing');
         if (!event_date) throw new Error('event_date missing');
+
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const parsedClassId = class_id ? parseInt(class_id, 10) : null;
+        let targetSyId = sy_id ? parseInt(sy_id, 10) : null;
+        if (!targetSyId && parsedClassId) {
+            const [[clsRow]] = await db.query(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [parsedClassId]);
+            if (clsRow && clsRow.sy_id) targetSyId = clsRow.sy_id;
+        }
+        if (!targetSyId) {
+            targetSyId = currentSY ? currentSY.sy_id : null;
+        }
+
         const [calResult] = await db.execute(
-            `INSERT INTO calendar_events (subject_id, teacher_id, event_title, event_type, event_date, duration_type, start_date, end_date, duration_minutes, event_location, event_description, is_repeatable, repeat_cycle)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [subject_id, req.user.user_id, event_title, event_type || 'Material', event_date,
+            `INSERT INTO calendar_events (subject_id, class_id, sy_id, teacher_id, event_title, event_type, event_date, duration_type, start_date, end_date, duration_minutes, event_location, event_description, is_repeatable, repeat_cycle)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [subject_id || null, parsedClassId, targetSyId, req.user.user_id, event_title, event_type || 'Material', event_date,
                 duration_type || 'None', start_date || null, end_date || null, duration_minutes || null,
                 event_location || 'TBA', event_description || null, is_repeatable ? 1 : 0, repeat_cycle || 'None']
         );
 
-        // Notify enrolled students in this subject
+        // Notify enrolled students in this subject & school year
         try {
             const [students] = await db.query(`
                 SELECT cs.student_id
                 FROM classes c
                 JOIN class_students cs ON c.class_id = cs.class_id
                 WHERE c.subject_id = ?
-            `, [subject_id]);
+                  AND (? IS NULL OR c.sy_id = ?)
+                  AND (? IS NULL OR c.class_id = ?)
+            `, [subject_id, targetSyId, targetSyId, parsedClassId, parsedClassId]);
 
             if (students.length > 0) {
                 const studentIds = [...new Set(students.map(s => s.student_id))];
@@ -7824,10 +7854,14 @@ router.post('/api/forum', isTeacher, handleForumUpload, async (req, res) => {
         if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required.' });
         if (!subject_id) return res.status(400).json({ error: 'subject_id is required.' });
 
-        // Verify teacher owns a class for this subject
+        // Verify teacher owns a class for this subject (preferring current SY or specified class_id)
+        const currentSY = await academicHelper.getCurrentSchoolYear(db);
         const [chk] = await db.execute(
-            `SELECT class_id FROM classes WHERE teacher_id = ? AND subject_id = ? LIMIT 1`,
-            [teacherId, subject_id]
+            `SELECT class_id, sy_id FROM classes
+             WHERE teacher_id = ? AND subject_id = ?
+             ORDER BY (? IS NOT NULL AND sy_id = ?) DESC, sy_id DESC
+             LIMIT 1`,
+            [teacherId, subject_id, currentSY ? currentSY.sy_id : null, currentSY ? currentSY.sy_id : null]
         );
         if (!chk.length) return res.status(403).json({ error: 'You do not teach this subject.' });
 
@@ -7861,17 +7895,27 @@ router.post('/api/forum', isTeacher, handleForumUpload, async (req, res) => {
         const parsedAllowAnonymous = (allow_anonymous === '0' || allow_anonymous === 0 || allow_anonymous === false || allow_anonymous === 'false') ? 0 : 1;
         const parsedIsPinned = (is_pinned === '1' || is_pinned === 1 || is_pinned === true || is_pinned === 'true') ? 1 : 0;
 
+        let forumSyId = req.body.sy_id ? parseInt(req.body.sy_id, 10) : null;
+        if (!forumSyId && parsedClassId) {
+            const [[targetCls]] = await db.execute(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [parsedClassId]);
+            if (targetCls && targetCls.sy_id) forumSyId = targetCls.sy_id;
+        }
+        if (!forumSyId) {
+            forumSyId = (currentSY && currentSY.sy_id) ? currentSY.sy_id : (chk[0].sy_id || null);
+        }
+
         const [result] = await db.execute(`
             INSERT INTO forum_topics (
-                topic_id, subject_id, class_id, teacher_id, title, forum_content,
+                topic_id, subject_id, class_id, sy_id, teacher_id, title, forum_content,
                 due_date, base_exp, post_before_viewing, allow_anonymous,
                 attachment_path, attachment_name, is_pinned, banner_image
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 parsedTopicId,
                 subject_id,
                 parsedClassId,
+                forumSyId,
                 teacherId,
                 title.trim().slice(0, 255),
                 forum_content ? forum_content.trim() : null,

@@ -5195,26 +5195,58 @@ router.get('/am/subjects/:id/announcements', requireAdmin, async (req, res) => {
     }
 });
 
+function parseAnnouncementFlag(val) {
+    if (val === true || val === 1) return true;
+    if (typeof val === 'string') {
+        const clean = val.trim().toLowerCase();
+        return clean === '1' || clean === 'true' || clean === 'on' || clean === 'yes';
+    }
+    return false;
+}
+
+function extractAnnouncementAttachment(file) {
+    if (!file) {
+        return { attachment_url: null, attachment_name: null, attachment_type: null };
+    }
+    return {
+        attachment_url: '/announcement_uploads/' + file.filename,
+        attachment_name: file.originalname,
+        attachment_type: file.mimetype.startsWith('image/')
+            ? 'image'
+            : (file.mimetype === 'application/pdf' ? 'pdf' : 'document')
+    };
+}
+
+function handleAnnouncementUpload(req, res, next) {
+    announcementUpload.single('attachment')(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ success: false, message: err.message || 'Attachment upload failed.' });
+        }
+        next();
+    });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /admin/am/announcements
 // Create a new announcement for a subject/class, strictly stamped with current/selected SY.
-// Body: { title, content, class_id, subject_id, is_priority, teacher_id, sy_id }
+// Supports both JSON and multipart/form-data (FormData with optional attachment).
 // Returns: { success: true } | { success: false, message }
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/am/announcements', requireAdmin, async (req, res) => {
+router.post('/am/announcements', requireAdmin, handleAnnouncementUpload, async (req, res) => {
     try {
-        let { title, content, class_id, subject_id, is_priority, is_critical, due_date, forward_webhook, teacher_id, sy_id } = req.body;
+        let { title, content, class_id, subject_id, is_priority, is_critical, due_date, forward_webhook, teacher_id, sy_id } = (req.body || {});
 
-        if (!title   || !title.trim())   return res.json({ success: false, message: 'Title is required.' });
-        if (!content || !content.trim()) return res.json({ success: false, message: 'Content is required.' });
+        if (!title   || !String(title).trim())   return res.json({ success: false, message: 'Title is required.' });
+        if (!content || !String(content).trim()) return res.json({ success: false, message: 'Content is required.' });
 
-        title       = title.trim();
-        content     = content.trim();
-        class_id    = class_id   ? parseInt(class_id, 10)   : null;
-        subject_id  = subject_id ? parseInt(subject_id, 10) : null;
-        teacher_id  = teacher_id ? parseInt(teacher_id, 10) : req.user.user_id;
-        is_priority = is_priority ? 1 : 0;
-        is_critical = is_critical ? 1 : 0;
+        title           = String(title).trim();
+        content         = String(content).trim();
+        class_id        = class_id   ? parseInt(class_id, 10)   : null;
+        subject_id      = subject_id ? parseInt(subject_id, 10) : null;
+        teacher_id      = teacher_id ? parseInt(teacher_id, 10) : req.user.user_id;
+        is_priority     = parseAnnouncementFlag(is_priority) ? 1 : 0;
+        is_critical     = parseAnnouncementFlag(is_critical) ? 1 : 0;
+        const doWebhook = parseAnnouncementFlag(forward_webhook);
 
         // Resolve School Year Context
         const syContext = await academicHelper.resolveAdminSchoolYearContext(db, sy_id || req.query.sy_id);
@@ -5237,13 +5269,16 @@ router.post('/am/announcements', requireAdmin, async (req, res) => {
             targetSubjId = cls.subject_id;
         }
 
+        const annScope = class_id ? 'class' : 'subject';
+        const { attachment_url, attachment_name, attachment_type } = extractAnnouncementAttachment(req.file);
+
         const [result] = await db.query(
-            `INSERT INTO announcements (class_id, teacher_id, sy_id, subject_id, title, content, is_priority, is_critical, due_date) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [class_id, teacher_id, targetSyId, targetSubjId, title, content, is_priority, is_critical, due_date || null]
+            `INSERT INTO announcements (class_id, scope, teacher_id, sy_id, subject_id, title, content, is_priority, is_critical, due_date, attachment_url, attachment_name, attachment_type) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [class_id, annScope, teacher_id, targetSyId, targetSubjId, title, content, is_priority, is_critical, due_date || null, attachment_url, attachment_name, attachment_type]
         );
 
-        if (forward_webhook) {
+        if (doWebhook) {
             const authorName = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || 'Administrator';
             dispatchAnnouncementWebhook({
                 announcement: {
@@ -5251,7 +5286,8 @@ router.post('/am/announcements', requireAdmin, async (req, res) => {
                     content,
                     is_critical: Boolean(is_critical),
                     due_date: due_date || null,
-                    scope: class_id ? 'class' : 'subject'
+                    scope: annScope,
+                    attachment_url
                 },
                 classId: class_id,
                 authorName,
@@ -5309,26 +5345,21 @@ router.post('/am/announcements', requireAdmin, async (req, res) => {
 // POST /admin/api/broadcast/global
 // System-Wide Emergency / Campus Broadcast
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/api/broadcast/global', requireAdmin, announcementUpload.single('attachment'), async (req, res) => {
+router.post('/api/broadcast/global', requireAdmin, handleAnnouncementUpload, async (req, res) => {
     try {
-        const { title, content, is_critical, due_date, forward_webhook, sy_id } = req.body;
-        if (!title || !title.trim() || !content || !content.trim()) {
+        const { title, content, is_critical, due_date, forward_webhook, sy_id } = (req.body || {});
+        if (!title || !String(title).trim() || !content || !String(content).trim()) {
             return res.status(400).json({ success: false, message: 'Title and content are required.' });
         }
+
+        const isCriticalFlag = parseAnnouncementFlag(is_critical);
+        const doWebhook = parseAnnouncementFlag(forward_webhook);
 
         // Resolve School Year Context
         const syContext = await academicHelper.resolveAdminSchoolYearContext(db, sy_id || req.query.sy_id);
         const targetSY  = syContext.selectedSY;
 
-        let attachment_url = null;
-        let attachment_name = null;
-        let attachment_type = null;
-
-        if (req.file) {
-            attachment_url = '/announcement_uploads/' + req.file.filename;
-            attachment_name = req.file.originalname;
-            attachment_type = req.file.mimetype.startsWith('image/') ? 'image' : (req.file.mimetype === 'application/pdf' ? 'pdf' : 'document');
-        }
+        const { attachment_url, attachment_name, attachment_type } = extractAnnouncementAttachment(req.file);
 
         const [result] = await db.query(
             `INSERT INTO announcements (class_id, scope, teacher_id, sy_id, title, content, is_priority, is_critical, due_date, attachment_url, attachment_name, attachment_type)
@@ -5336,9 +5367,9 @@ router.post('/api/broadcast/global', requireAdmin, announcementUpload.single('at
             [
                 req.user.user_id,
                 targetSY.sy_id,
-                title.trim(),
-                content.trim(),
-                is_critical ? 1 : 0,
+                String(title).trim(),
+                String(content).trim(),
+                isCriticalFlag ? 1 : 0,
                 due_date || null,
                 attachment_url,
                 attachment_name,
@@ -5346,13 +5377,13 @@ router.post('/api/broadcast/global', requireAdmin, announcementUpload.single('at
             ]
         );
 
-        if (forward_webhook) {
+        if (doWebhook) {
             const authorName = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || 'System Administrator';
             dispatchAnnouncementWebhook({
                 announcement: {
-                    title: title.trim(),
-                    content: content.trim(),
-                    is_critical: Boolean(is_critical),
+                    title: String(title).trim(),
+                    content: String(content).trim(),
+                    is_critical: isCriticalFlag,
                     due_date: due_date || null,
                     scope: 'global',
                     attachment_url
@@ -5364,7 +5395,7 @@ router.post('/api/broadcast/global', requireAdmin, announcementUpload.single('at
         }
 
         await logActivity(req.user.user_id, 'Admin', 'GLOBAL_BROADCAST',
-            `Published global broadcast: "${title}" (Critical: ${Boolean(is_critical)})`);
+            `Published global broadcast: "${title}" (Critical: ${isCriticalFlag})`);
 
         // T-27: Dispatch Global Broadcast Notification to all Teachers and Students
         try {
@@ -8110,8 +8141,11 @@ router.post('/re/forums', requireAdmin, async (req, res) => {
         if (!topic)
             return res.json({ success: false, message: `Topic ID ${topic_id} not found.` });
 
-        // forum_topics has: forum_id, topic_id, is_pinned, subject_id, teacher_id, title, forum_content, created_at
-        // subject_id — derive from topic chain
+        // forum_topics has: forum_id, topic_id, is_pinned, subject_id, sy_id, teacher_id, title, forum_content, created_at
+        // subject_id — derive from topic chain; sy_id — resolve from selected/active school year context
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body.sy_id || req.query.sy_id);
+        const targetSyId = syContext && syContext.selectedSY ? syContext.selectedSY.sy_id : null;
+
         const [[topicFull]] = await db.query(`
             SELECT t.topic_id, q.subject_id
             FROM topics t JOIN quarters q ON q.quarter_id = t.quarter_id
@@ -8119,12 +8153,13 @@ router.post('/re/forums', requireAdmin, async (req, res) => {
         `, [topic_id]);
 
         const [result] = await db.query(`
-            INSERT INTO forum_topics (topic_id, is_pinned, subject_id, teacher_id, title, forum_content)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO forum_topics (topic_id, is_pinned, subject_id, sy_id, teacher_id, title, forum_content)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `, [
             topic_id,
             is_pinned,
             topicFull ? topicFull.subject_id : null,
+            targetSyId,
             req.user.user_id,
             title,
             forum_content,

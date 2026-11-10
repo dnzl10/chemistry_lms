@@ -734,17 +734,17 @@ const handleSessionEnd = async (req, res) => {
             );
             if (sessRow && sessRow.assessment_id) {
                 const [[asmtRow]] = await pool.query(`
-                    SELECT a.assessment_id, a.assessment_name, a.total_items, a.teacher_id AS asmt_teacher_id, q.subject_id 
+                    SELECT a.assessment_id, a.sy_id, a.assessment_name, a.total_items, a.teacher_id AS asmt_teacher_id, q.subject_id 
                     FROM assessments a
-                    JOIN topics t ON a.topic_id = t.topic_id
-                    JOIN quarters q ON t.quarter_id = q.quarter_id
+                    LEFT JOIN topics t ON a.topic_id = t.topic_id
+                    JOIN quarters q ON COALESCE(a.quarter_id, t.quarter_id) = q.quarter_id
                     WHERE a.assessment_id = ?
                 `, [sessRow.assessment_id]);
 
                 if (asmtRow && asmtRow.subject_id) {
                     const studentIds = [sessRow.student_id_p1, sessRow.student_id_p2].filter(Boolean);
                     for (const sId of studentIds) {
-                        await progressService.recalculateProgress(sId, asmtRow.subject_id);
+                        await progressService.recalculateProgress(sId, asmtRow.subject_id, asmtRow.sy_id);
                     }
 
                     // T-06 & T-07: Notify Teacher of Arcade Assessment or Competitive Duel Completion
