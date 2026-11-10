@@ -29,6 +29,22 @@ function fail(res, status, message) {
 }
 
 // -----------------------------------------------------------------
+// Cross-Origin Resource Sharing (CORS) & Preflight Handler
+// Allows browser simulations, arcade clients, and reverse proxies
+// to access /api/elementa with custom cabinet/signature headers.
+// -----------------------------------------------------------------
+router.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-cabinet-id, x-elementa-signature');
+    res.header('Access-Control-Expose-Headers', 'x-cabinet-id, x-elementa-signature');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+    next();
+});
+
+// -----------------------------------------------------------------
 // Optional HMAC Signature Verification Middleware
 // Enforces cryptographic anti-tamper signing when header is present.
 // -----------------------------------------------------------------

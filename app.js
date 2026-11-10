@@ -1093,7 +1093,7 @@ const studentRoutes = require('./routes/student');
 app.use('/', studentRoutes); 
 
 const elementaRoutes = require('./routes/elementaRoutes');
-app.use('/api/elementa', express.json(), elementaRoutes);
+app.use('/api/elementa', express.json({ limit: '10mb' }), elementaRoutes);
 
 const teacherRoutes = require('./routes/teacher');
 app.use('/teacher', teacherRoutes);
