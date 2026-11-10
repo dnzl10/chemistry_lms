@@ -339,7 +339,7 @@
                     <div class="stat-card glass-card rounded-2xl p-5 border border-amber-100 shadow-sm">
                         <div class="flex items-center justify-between mb-3">
                             <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center"><i class="fas fa-clipboard-list text-amber-600"></i></div>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Assessments (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : '' %>)</span>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Assessments (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.sy_range : '' %>)</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= gqStats.totalAssessments %></p>
                         <div class="progress-bar mt-3"><div class="progress-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div>
@@ -580,7 +580,7 @@
                                 <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 text-2xl shadow-sm">
                                     <i class="fas fa-clipboard-list"></i>
                                 </div>
-                                <p class="font-bold text-slate-700 text-base">No assessments found for <%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : 'this School Year' %></p>
+                                <p class="font-bold text-slate-700 text-base">No assessments found for <%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.sy_range : 'this School Year' %></p>
                                 <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
                                     <% if (typeof isHistoricalSY !== 'undefined' && isHistoricalSY) { %>
                                         This is an archived school year. No assessments were registered for this academic period.

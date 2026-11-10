@@ -245,7 +245,7 @@
                             <span class="text-[10px] font-black uppercase tracking-widest text-violet-400">Students</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= stats.totalStudents %></p>
-                        <p class="text-xs text-slate-400 mt-1">Enrolled (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : '' %>)</p>
+                        <p class="text-xs text-slate-400 mt-1">Enrolled (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.sy_range : '' %>)</p>
                     </div>
 
                     <!-- Teachers -->
@@ -281,7 +281,7 @@
                             <span class="text-[10px] font-black uppercase tracking-widest text-amber-400">Assessments</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= stats.totalAssessments %></p>
-                        <p class="text-xs text-slate-400 mt-1"><%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : 'Total' %></p>
+                        <p class="text-xs text-slate-400 mt-1"><%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.sy_range : 'Total' %></p>
                     </div>
 
                     <!-- Questions -->

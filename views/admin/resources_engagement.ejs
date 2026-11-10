@@ -312,7 +312,7 @@
                             <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
                                 <i class="fas fa-comments text-indigo-500"></i>
                             </div>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Forums (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : '' %>)</span>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Forums (<%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.sy_range : '' %>)</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= reStats.totalForums %></p>
                         <p class="text-xs text-slate-400 mt-1">Discussion threads</p>
@@ -335,7 +335,7 @@
                             <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Enrolled Students</span>
                         </div>
                         <p class="text-3xl font-black text-indigo-900"><%= reStats.totalStudents %></p>
-                        <p class="text-xs text-slate-400 mt-1"><%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : 'Academic Year' %></p>
+                        <p class="text-xs text-slate-400 mt-1"><%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.sy_range : 'Academic Year' %></p>
                     </div>
                 </div>
 
@@ -641,7 +641,7 @@
                                 <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-500 text-2xl shadow-sm">
                                     <i class="fas fa-comments"></i>
                                 </div>
-                                <p class="font-bold text-slate-700 text-base">No forum discussions for <%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.school_year_range : 'this School Year' %></p>
+                                <p class="font-bold text-slate-700 text-base">No forum discussions for <%= typeof selectedSY !== 'undefined' && selectedSY ? selectedSY.sy_range : 'this School Year' %></p>
                                 <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                                     Discussion boards refresh clean each school year to ensure students engage in fresh, unpolluted peer learning threads.
                                 </p>
@@ -3751,7 +3751,9 @@ async function submitAddForum() {
     if (!valid) return;
 
     try {
-        var res  = await fetch('/admin/re/forums', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ title, topic_id:topicId, forum_content:content, is_pinned:pinned }) });
+        var curSyId = (typeof window.getAdminCurrentSY === 'function' ? window.getAdminCurrentSY() : null) || new URLSearchParams(window.location.search).get('sy_id');
+        var syParam = curSyId ? '?sy_id=' + encodeURIComponent(curSyId) : '';
+        var res  = await fetch('/admin/re/forums' + syParam, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ title, topic_id:topicId, forum_content:content, is_pinned:pinned, sy_id: curSyId }) });
         var data = await res.json();
         if (data.success) {
             showToast('Forum board created!', 'ok');

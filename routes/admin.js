@@ -235,9 +235,9 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
         const [recentUsers]     = await db.query(`SELECT user_id, first_name, last_name, role, profile_pic, created_at FROM users ORDER BY created_at DESC LIMIT 5`);
         const [upcomingEvents]     = await db.query(`SELECT ce.event_id, ce.event_title, ce.event_type, ce.event_date, ce.event_location, ce.duration_type, ce.start_date, ce.end_date, ce.duration_minutes, s.subject_name FROM calendar_events ce LEFT JOIN subjects s ON s.subject_id = ce.subject_id WHERE ce.event_date >= CURDATE() AND ce.event_date <= ? ORDER BY ce.event_date ASC LIMIT 5`, [selectedSY.end_date]);
         const [allUpcomingEvents]  = await db.query(`SELECT ce.event_id, ce.event_title, ce.event_type, ce.event_date, ce.event_location, ce.event_description, ce.duration_type, ce.start_date, ce.end_date, ce.duration_minutes, ce.is_repeatable, ce.repeat_cycle, s.subject_name FROM calendar_events ce LEFT JOIN subjects s ON s.subject_id = ce.subject_id WHERE ce.event_date >= CURDATE() AND ce.event_date <= ? ORDER BY ce.event_date ASC`, [selectedSY.end_date]);
-        const [[topicsRow]]        = await db.query(`SELECT COUNT(*) AS cnt FROM forum_topics ft LEFT JOIN classes c ON c.class_id = ft.class_id WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)`, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
-        const [[repliesRow]]       = await db.query(`SELECT COUNT(*) AS cnt FROM forum_replies fr JOIN forum_topics ft ON ft.forum_id = fr.topic_id LEFT JOIN classes c ON c.class_id = ft.class_id WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)`, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
-        const [latestReplies]      = await db.query(`SELECT fr.reply_id, fr.reply_content, fr.created_at, CONCAT(u.first_name,' ',u.last_name) AS user_name, ft.title AS forum_title FROM forum_replies fr JOIN users u ON u.user_id = fr.user_id JOIN forum_topics ft ON ft.forum_id = fr.topic_id LEFT JOIN classes c ON c.class_id = ft.class_id WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?) ORDER BY fr.created_at DESC LIMIT 3`, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+        const [[topicsRow]]        = await db.query(`SELECT COUNT(*) AS cnt FROM forum_topics ft LEFT JOIN classes c ON c.class_id = ft.class_id WHERE COALESCE(ft.sy_id, c.sy_id) = ?`, [selectedSY.sy_id]);
+        const [[repliesRow]]       = await db.query(`SELECT COUNT(*) AS cnt FROM forum_replies fr JOIN forum_topics ft ON ft.forum_id = fr.topic_id LEFT JOIN classes c ON c.class_id = ft.class_id WHERE COALESCE(ft.sy_id, c.sy_id) = ?`, [selectedSY.sy_id]);
+        const [latestReplies]      = await db.query(`SELECT fr.reply_id, fr.reply_content, fr.created_at, CONCAT(u.first_name,' ',u.last_name) AS user_name, ft.title AS forum_title FROM forum_replies fr JOIN users u ON u.user_id = fr.user_id JOIN forum_topics ft ON ft.forum_id = fr.topic_id LEFT JOIN classes c ON c.class_id = ft.class_id WHERE COALESCE(ft.sy_id, c.sy_id) = ? ORDER BY fr.created_at DESC LIMIT 3`, [selectedSY.sy_id]);
         const forumStats           = { totalTopics: topicsRow ? topicsRow.cnt : 0, totalReplies: repliesRow ? repliesRow.cnt : 0, latestReplies };
         const [[totalMatchRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions WHERE play_mode = 'Versus'`);
         const [[todayMatchRow]] = await db.query(`SELECT COUNT(*) AS cnt FROM elementa_game_sessions WHERE play_mode = 'Versus' AND DATE(started_at) = CURDATE()`);
@@ -7374,8 +7374,8 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
             SELECT COUNT(*) AS cnt 
             FROM forum_topics ft
             LEFT JOIN classes c ON c.class_id = ft.class_id
-            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
-        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+            WHERE COALESCE(ft.sy_id, c.sy_id) = ?
+        `, [selectedSY.sy_id]);
         const [[iRow]] = await db.query(`
             SELECT COUNT(*) AS cnt 
             FROM student_material_interactions smi
@@ -7472,7 +7472,7 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
             SELECT
                 ft.forum_id, ft.topic_id, ft.is_pinned,
                 ft.title, ft.forum_content, ft.created_at,
-                ft.subject_id, ft.teacher_id,
+                ft.subject_id, ft.class_id, ft.sy_id, ft.teacher_id,
                 ft.status,
                 t.topic_name,
                 CONCAT(u.first_name, ' ', u.last_name) AS teacher_name,
@@ -7482,10 +7482,10 @@ router.get('/resources_engagement', requireAdmin, async (req, res) => {
             LEFT JOIN topics t  ON t.topic_id  = ft.topic_id
             LEFT JOIN users u   ON u.user_id    = ft.teacher_id
             LEFT JOIN forum_replies fr ON fr.topic_id = ft.forum_id
-            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
+            WHERE COALESCE(ft.sy_id, c.sy_id) = ?
             GROUP BY ft.forum_id
             ORDER BY ft.is_pinned DESC, ft.created_at DESC
-        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+        `, [selectedSY.sy_id]);
 
         // Attach top 30 replies per forum with endorsement, vote count, unmask status
         const forums = [];
@@ -8145,6 +8145,9 @@ router.post('/re/forums', requireAdmin, async (req, res) => {
         // subject_id — derive from topic chain; sy_id — resolve from selected/active school year context
         const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.body.sy_id || req.query.sy_id);
         const targetSyId = syContext && syContext.selectedSY ? syContext.selectedSY.sy_id : null;
+        if (!targetSyId) {
+            return res.json({ success: false, message: 'No active or selected School Year context available.' });
+        }
 
         const [[topicFull]] = await db.query(`
             SELECT t.topic_id, q.subject_id
@@ -8330,6 +8333,12 @@ router.get('/api/forum-unmask-logs', requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/api/forum-reports', requireAdmin, async (req, res) => {
     try {
+        const syContext = await academicHelper.resolveAdminSchoolYearContext(db, req.query.sy_id);
+        const selectedSyId = syContext && syContext.selectedSY ? syContext.selectedSY.sy_id : null;
+        if (!selectedSyId) {
+            return res.json({ success: true, reports: [] });
+        }
+
         const [reports] = await db.query(`
             SELECT r.report_id, r.reporter_id, r.reply_id, r.reason, r.details, r.status, r.created_at,
                    COALESCE(CONCAT(rep.first_name, ' ', rep.last_name), 'Unknown Reporter') AS reporter_name,
@@ -8341,9 +8350,11 @@ router.get('/api/forum-reports', requireAdmin, async (req, res) => {
             LEFT JOIN forum_replies fr ON r.reply_id = fr.reply_id
             LEFT JOIN users auth ON fr.user_id = auth.user_id
             LEFT JOIN forum_topics ft ON fr.topic_id = ft.forum_id
+            LEFT JOIN classes c ON c.class_id = ft.class_id
+            WHERE COALESCE(ft.sy_id, c.sy_id) = ?
             ORDER BY r.created_at DESC
             LIMIT 100
-        `);
+        `, [selectedSyId]);
         res.json({ success: true, reports: reports || [] });
     } catch (err) {
         console.error('[Admin Get Forum Reports Error]', err);
@@ -8924,11 +8935,11 @@ router.get('/reports_monitoring', requireAdmin, async (req, res) => {
                 SELECT ft_inner.forum_id, ft_inner.topic_id
                 FROM forum_topics ft_inner
                 LEFT JOIN classes cls ON cls.class_id = ft_inner.class_id
-                WHERE cls.sy_id = ? OR (ft_inner.class_id IS NULL AND ft_inner.created_at >= ? AND ft_inner.created_at <= ?)
+                WHERE COALESCE(ft_inner.sy_id, cls.sy_id) = ?
             ) ft ON ft.topic_id = t.topic_id
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name ASC, q.quarter_number ASC, t.topic_id ASC
-        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.start_date || '1970-01-01', selectedSY.end_date || '2099-12-31']);
+        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id]);
 
         // Group into quarters
         const curriculumMap = {};
@@ -9173,11 +9184,11 @@ router.get('/rm/export/curriculum', requireAdmin, async (req, res) => {
                 SELECT ft_inner.forum_id, ft_inner.topic_id
                 FROM forum_topics ft_inner
                 LEFT JOIN classes cls ON cls.class_id = ft_inner.class_id
-                WHERE cls.sy_id = ? OR (ft_inner.class_id IS NULL AND ft_inner.created_at >= ? AND ft_inner.created_at <= ?)
+                WHERE COALESCE(ft_inner.sy_id, cls.sy_id) = ?
             ) ft ON ft.topic_id = t.topic_id
             GROUP BY q.quarter_id, t.topic_id
             ORDER BY s.subject_name, q.quarter_number, t.topic_id
-        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.start_date || '1970-01-01', selectedSY.end_date || '2099-12-31']);
+        `, [selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id, selectedSY.sy_id]);
 
         const auditRef = generateAuditRef('CUR');
         const wb = new ExcelJS.Workbook();
@@ -10664,15 +10675,15 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
             SELECT COUNT(*) AS cnt 
             FROM forum_topics ft
             LEFT JOIN classes c ON c.class_id = ft.class_id
-            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
-        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+            WHERE COALESCE(ft.sy_id, c.sy_id) = ?
+        `, [selectedSY.sy_id]);
         const [[forumRepliesRow]]  = await db.query(`
             SELECT COUNT(*) AS cnt 
             FROM forum_replies fr
             JOIN forum_topics ft ON ft.forum_id = fr.topic_id
             LEFT JOIN classes c ON c.class_id = ft.class_id
-            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
-        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+            WHERE COALESCE(ft.sy_id, c.sy_id) = ?
+        `, [selectedSY.sy_id]);
 
         const [recentForumReplies] = await db.query(`
             SELECT
@@ -10683,10 +10694,10 @@ router.get('/system_audit', requireAdmin, async (req, res) => {
             JOIN users        u  ON u.user_id  = fr.user_id
             JOIN forum_topics ft ON ft.forum_id = fr.topic_id
             LEFT JOIN classes c ON c.class_id = ft.class_id
-            WHERE c.sy_id = ? OR (ft.class_id IS NULL AND ft.created_at >= ? AND ft.created_at <= ?)
+            WHERE COALESCE(ft.sy_id, c.sy_id) = ?
             ORDER BY fr.created_at DESC
             LIMIT 15
-        `, [selectedSY.sy_id, selectedSY.start_date, selectedSY.end_date]);
+        `, [selectedSY.sy_id]);
 
         const forumStats = {
             totalTopics  : forumTopicsRow ? forumTopicsRow.cnt : 0,
