@@ -38,7 +38,8 @@ async function createCompatibilityView() {
                 verified_at,
                 rejection_reason,
                 created_at,
-                updated_at
+                updated_at,
+                sy_id
             FROM elementa_questions
         `);
         console.log('Compatibility view `question_bank` created successfully!');

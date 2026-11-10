@@ -1,7 +1,7 @@
 <%
     var user = locals.user || {};
-    var enrolledSY = locals.enrolledSY || locals.currentSY || null;
-    var syMode = locals.syMode || 'current';
+    var currentSY = locals.currentSY || locals.enrolledSY || null;
+    var syMode = locals.syMode || (currentSY ? 'current' : 'unenrolled');
     var announcements = locals.announcements || [];
     var upcomingTasks = locals.upcomingTasks || [];
     var subjects = locals.subjects || [];
@@ -561,18 +561,23 @@
                                         </div>
                                         <span class="uppercase tracking-wider">Enrolled Subjects</span>
                                     </h2>
-                                    <% if (enrolledSY) { %>
-                                        <% if (syMode === 'archived') { %>
+                                    <% if (currentSY && currentSY.sy_range) { %>
+                                        <% if (syMode === 'unenrolled') { %>
                                             <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-[11px] font-black text-amber-800 shadow-xs">
-                                                <i class="fas fa-box-archive text-amber-600 text-[10px]"></i>
-                                                <span>S.Y. <%= enrolledSY.sy_range %> &middot; Archived</span>
+                                                <i class="fas fa-user-clock text-amber-600 text-[10px]"></i>
+                                                <span>S.Y. <%= currentSY.sy_range %> &middot; Not Enrolled</span>
                                             </div>
                                         <% } else { %>
                                             <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-[11px] font-black text-emerald-800 shadow-xs">
                                                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                <span>S.Y. <%= enrolledSY.sy_range %></span>
+                                                <span>S.Y. <%= currentSY.sy_range %> &middot; Current</span>
                                             </div>
                                         <% } %>
+                                    <% } else { %>
+                                        <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200/80 text-[11px] font-black text-rose-800 shadow-xs">
+                                            <i class="fas fa-circle-exclamation text-rose-600 text-[10px]"></i>
+                                            <span>No Active S.Y.</span>
+                                        </div>
                                     <% } %>
                                 </div>
 
@@ -647,12 +652,17 @@
                                         <div class="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-3 text-slate-400">
                                             <i class="fas fa-graduation-cap text-2xl"></i>
                                         </div>
-                                        <p class="text-xs font-bold text-slate-600 uppercase tracking-widest">No Enrolled Subjects</p>
-                                        <p class="text-xs font-medium text-slate-500 mt-1 italic">You are not currently enrolled in any subjects for this academic year.</p>
-                                        <a href="/home" class="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-blue-600 hover:text-blue-800 hover:border-blue-300 shadow-xs transition">
-                                            <span>Enroll in Courses</span>
-                                            <i class="fas fa-arrow-right text-[10px]"></i>
-                                        </a>
+                                        <% if (!currentSY) { %>
+                                            <p class="text-xs font-bold text-rose-700 uppercase tracking-widest">No Active School Year</p>
+                                            <p class="text-xs font-medium text-slate-500 mt-1 italic">There is currently no active Current School Year set by the administrator.</p>
+                                        <% } else { %>
+                                            <p class="text-xs font-bold text-slate-600 uppercase tracking-widest">No Current S.Y. Enrollments</p>
+                                            <p class="text-xs font-medium text-slate-500 mt-1 italic">You are not currently enrolled in any subjects for S.Y. <%= currentSY.sy_range %>.</p>
+                                            <a href="/home" class="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-blue-600 hover:text-blue-800 hover:border-blue-300 shadow-xs transition">
+                                                <span>View Current S.Y. Courses</span>
+                                                <i class="fas fa-arrow-right text-[10px]"></i>
+                                            </a>
+                                        <% } %>
                                     </div>
                                 <% } %>
                             </section>

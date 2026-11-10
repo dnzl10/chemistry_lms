@@ -15,6 +15,7 @@
  */
 
 const pool = require('../db');
+const academicHelper = require('../utils/academicHelper');
 
 /**
  * 12 Discrete Cadet Level Titles and Chemical Tier Distinctions
@@ -46,16 +47,23 @@ const CACHE_TTL_MS = 60 * 1000;
  *
  * @param {number|null} subjectId - Optional subject scope (e.g. Chemistry 1 or Chemistry 2)
  * @param {object|null} dbConn - Optional connection for transaction scope
- * @returns {Promise<{ totalMaxExp: number, bracketSize: number, topics: Array, subjectId: number|null }>}
+ * @param {number|null} syId - Optional explicit School Year scope (defaults to strict Current SY)
+ * @returns {Promise<{ totalMaxExp: number, bracketSize: number, topics: Array, subjectId: number|null, syId: number|null }>}
  */
-async function calculateTotalMaxExp(subjectId = null, dbConn = null) {
-    const cacheKey = subjectId != null ? `subj_${subjectId}` : 'curriculum_all';
+async function calculateTotalMaxExp(subjectId = null, dbConn = null, syId = null) {
+    const conn = dbConn || pool;
+    let effSyId = syId != null ? Number(syId) : null;
+    if (!effSyId) {
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(conn);
+        effSyId = currentSY ? Number(currentSY.sy_id) : -1;
+    }
+
+    const cacheKey = `${subjectId != null ? `subj_${subjectId}` : 'curriculum_all'}_sy_${effSyId}`;
     const cached = maxExpCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
         return cached.data;
     }
 
-    const conn = dbConn || pool;
     let query = '';
     const params = [];
 
@@ -80,12 +88,12 @@ async function calculateTotalMaxExp(subjectId = null, dbConn = null) {
             FROM quarters qtr
             JOIN topics t ON qtr.quarter_id = t.quarter_id
             LEFT JOIN subjects s ON qtr.subject_id = s.subject_id
-            LEFT JOIN assessments a ON t.topic_id = a.topic_id
+            LEFT JOIN assessments a ON t.topic_id = a.topic_id AND a.sy_id = ?
             WHERE qtr.subject_id = ?
             GROUP BY t.topic_id, t.topic_name, qtr.subject_id, s.subject_name
             ORDER BY t.topic_id ASC
         `;
-        params.push(subjectId);
+        params.push(effSyId, subjectId);
     } else {
         query = `
             SELECT 
@@ -107,10 +115,11 @@ async function calculateTotalMaxExp(subjectId = null, dbConn = null) {
             FROM topics t
             JOIN quarters qtr ON t.quarter_id = qtr.quarter_id
             LEFT JOIN subjects s ON qtr.subject_id = s.subject_id
-            LEFT JOIN assessments a ON t.topic_id = a.topic_id
+            LEFT JOIN assessments a ON t.topic_id = a.topic_id AND a.sy_id = ?
             GROUP BY t.topic_id, t.topic_name, qtr.subject_id, s.subject_name
             ORDER BY t.topic_id ASC
         `;
+        params.push(effSyId);
     }
 
     const [rows] = await conn.query(query, params);
@@ -145,6 +154,7 @@ async function calculateTotalMaxExp(subjectId = null, dbConn = null) {
         totalMaxExp,
         bracketSize,
         subjectId,
+        syId: effSyId > 0 ? effSyId : null,
         topicCount: formattedTopics.length,
         topics: formattedTopics
     };
@@ -200,15 +210,21 @@ function computeLevelFromExp(totalExp = 0, totalMaxExp = 12000) {
 
 /**
  * Retrieves comprehensive level stats for a student.
- * Automatically resolves the student's primary subject enrollment.
+ * Automatically resolves the student's primary subject enrollment in the Current SY.
  *
  * @param {number} studentId
  * @param {number|null} subjectId
  * @param {object|null} dbConn
+ * @param {number|null} syId
  * @returns {Promise<object>} Complete student level stats
  */
-async function getStudentLevelStats(studentId, subjectId = null, dbConn = null) {
+async function getStudentLevelStats(studentId, subjectId = null, dbConn = null, syId = null) {
     const conn = dbConn || pool;
+    let effSyId = syId != null ? Number(syId) : null;
+    if (!effSyId) {
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(conn);
+        effSyId = currentSY ? Number(currentSY.sy_id) : null;
+    }
 
     // 1. Fetch student user data
     const [[user]] = await conn.query(
@@ -221,21 +237,23 @@ async function getStudentLevelStats(studentId, subjectId = null, dbConn = null) 
         throw new Error(`Student ${studentId} not found`);
     }
 
-    // 2. Resolve subject scope if not explicitly passed
+    // 2. Resolve subject scope within strict Current SY if not explicitly passed
     let effectiveSubjectId = subjectId;
-    if (effectiveSubjectId == null) {
+    if (effectiveSubjectId == null && effSyId) {
         const [[enrolledSubj]] = await conn.query(`
             SELECT c.subject_id 
             FROM class_students cs
             JOIN classes c ON cs.class_id = c.class_id
             WHERE cs.student_id = ?
+              AND c.sy_id = ?
+              AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
             ORDER BY c.class_id ASC LIMIT 1
-        `, [studentId]);
+        `, [studentId, effSyId]);
         effectiveSubjectId = enrolledSubj?.subject_id || null;
     }
 
-    // 3. Compute Total Max EXP
-    const maxExpData = await calculateTotalMaxExp(effectiveSubjectId, conn);
+    // 3. Compute Total Max EXP scoped strictly to Current SY
+    const maxExpData = await calculateTotalMaxExp(effectiveSubjectId, conn, effSyId || -1);
 
     // 4. Calculate Level Metrics
     const levelMetrics = computeLevelFromExp(user.total_exp, maxExpData.totalMaxExp);
@@ -261,10 +279,10 @@ async function getStudentLevelStats(studentId, subjectId = null, dbConn = null) 
  * @param {object|null} dbConn - Optional connection for transaction scope
  * @returns {Promise<object>} Updated level progression stats
  */
-async function recalculateStudentLevel(studentId, dbConn = null) {
+async function recalculateStudentLevel(studentId, dbConn = null, syId = null) {
     const conn = dbConn || pool;
 
-    const stats = await getStudentLevelStats(studentId, null, conn);
+    const stats = await getStudentLevelStats(studentId, null, conn, syId);
     const newLevel = stats.calculatedLevel;
 
     // Update users table with calculated level

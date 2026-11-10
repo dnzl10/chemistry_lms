@@ -112,7 +112,11 @@
                         </h1>
                         <p class="text-xs text-slate-600 hidden sm:block font-medium">
                             <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
-                            Cognitive Mastery &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
+                            Cognitive Mastery
+                            <% if (typeof currentSY !== 'undefined' && currentSY && currentSY.sy_range) { %>
+                                &nbsp;·&nbsp; <span class="font-bold text-emerald-700">S.Y. <%= currentSY.sy_range %></span>
+                            <% } %>
+                            &nbsp;·&nbsp; <%= new Date().toLocaleDateString('en-PH', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>
                         </p>
                     </div>
                 </div>
@@ -348,6 +352,10 @@
                                         <% }) %>
                                     </select>
                                 </form>
+                            <% } else if (cohortScope === 'class' && myClasses.length === 0) { %>
+                                <span class="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl">
+                                    No Current S.Y. Class Section
+                                </span>
                             <% } %>
                         </div>
 

@@ -315,7 +315,7 @@ async function resolveAssessmentQuarter(db, { assessmentId = null, scoreId = nul
  * @returns {Promise<object>} { eligible: boolean, reason: string, chem1Grade: number|null, threshold: number }
  */
 async function checkStudentPrerequisite(db, studentId, targetSubjectId, activeSy = null) {
-    const sy = activeSy || await getActiveSchoolYear(db);
+    const sy = activeSy || await getStrictCurrentSchoolYear(db);
     const threshold = sy ? Number(sy.passing_threshold || 75.00) : 75.00;
     const isEnforced = sy ? (Number(sy.enforce_prerequisite) === 1) : true;
 
@@ -889,50 +889,47 @@ async function resolveAdminSchoolYearContext(db, reqQuerySyId = null) {
 }
 
 /**
- * Resolves the authoritative School Year context for a Student on the Student Dashboard
- * and student-facing views.
+ * Resolves the authoritative School Year context for a Student on the Student Portal
+ * and student-facing views/APIs.
  *
- * Isolation Rules:
- * - Draft school years are ALWAYS excluded.
- * - If the student is enrolled in the live Current SY, scopes strictly to that Current SY.
- * - If the student has no enrollment in the Current SY (e.g., reinstated alumni/cohort
- *   enrolled only in an Archived SY), scopes strictly to their most recent enrolled
- *   non-Draft SY (`syMode: 'archived'`).
- * - If the student has no non-Draft enrollments at all, returns `syMode: 'unenrolled'`
- *   with empty `enrolledClassIds` and `enrolledSubjectIds` (using the live Current SY
- *   only for SY-scoped global notices, never falling back to Draft/Archive).
+ * Strict Current School Year Isolation Rules:
+ * - Strictly resolves the live Current School Year via `getStrictCurrentSchoolYear(db)`.
+ * - Draft and Archived school years are ALWAYS excluded (never falls back to Archive/Draft).
+ * - If no active Current SY exists or the student has no enrollment in the Current SY,
+ *   returns `syMode: 'unenrolled'` with empty `enrolledClassIds` and `enrolledSubjectIds`
+ *   so student views and APIs fail closed.
  *
  * @param {object} db - MySQL database connection/pool
  * @param {number|string} studentId - Authenticated student's user_id
+ * @param {object|null|undefined} [preloadedCurrentSY] - Optional pre-resolved strict Current SY
  * @returns {Promise<{
  *   targetSY: object|null,
  *   targetSyId: number|null,
  *   currentSY: object|null,
- *   syMode: 'current'|'archived'|'unenrolled',
+ *   currentSyId: number|null,
+ *   syMode: 'current'|'unenrolled',
  *   enrolledClassIds: Array<number>,
- *   enrolledSubjectIds: Array<number>
+ *   enrolledSubjectIds: Array<number>,
+ *   hasEnrollments: boolean
  * }>}
  */
-async function resolveStudentSchoolYearContext(db, studentId) {
-    const [[strictCurrentSY]] = await db.query(`
-        SELECT *
-        FROM school_years
-        WHERE status = 'Current' OR is_active = 1
-        ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
-        LIMIT 1
-    `);
-
-    const currentSY = strictCurrentSY || null;
+async function resolveStudentSchoolYearContext(db, studentId, preloadedCurrentSY = undefined) {
+    const currentSY = preloadedCurrentSY !== undefined
+        ? preloadedCurrentSY
+        : await getStrictCurrentSchoolYear(db);
+    const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
     const cleanStudentId = Number(studentId);
 
-    if (!cleanStudentId || isNaN(cleanStudentId)) {
+    if (!currentSY || !currentSyId || !cleanStudentId || isNaN(cleanStudentId)) {
         return {
             targetSY: currentSY,
-            targetSyId: currentSY ? Number(currentSY.sy_id) : null,
+            targetSyId: currentSyId,
             currentSY,
+            currentSyId,
             syMode: 'unenrolled',
             enrolledClassIds: [],
-            enrolledSubjectIds: []
+            enrolledSubjectIds: [],
+            hasEnrollments: false
         };
     }
 
@@ -940,67 +937,40 @@ async function resolveStudentSchoolYearContext(db, studentId) {
         SELECT
             cs.class_id,
             c.subject_id,
-            c.sy_id,
-            sy.status AS sy_status,
-            sy.is_active AS sy_is_active,
-            sy.start_date
+            c.sy_id
         FROM class_students cs
         JOIN classes c ON cs.class_id = c.class_id
         JOIN school_years sy ON c.sy_id = sy.sy_id
         WHERE cs.student_id = ?
-          AND sy.status <> 'Draft'
+          AND c.sy_id = ?
           AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
-        ORDER BY
-            (sy.status = 'Current' AND sy.is_active = 1) DESC,
-            (sy.status = 'Current' OR sy.is_active = 1) DESC,
-            sy.start_date DESC,
-            sy.sy_id DESC,
-            c.class_id ASC
-    `, [cleanStudentId]);
+          AND (sy.status = 'Current' OR sy.is_active = 1)
+        ORDER BY c.class_id ASC
+    `, [cleanStudentId, currentSyId]);
 
-    let targetSY = null;
-    let targetSyId = null;
-    let syMode = 'unenrolled';
-
-    const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
-    const hasCurrentEnrollment = currentSyId !== null && enrollments.some(r => Number(r.sy_id) === currentSyId);
-
-    if (hasCurrentEnrollment) {
-        targetSY = currentSY;
-        targetSyId = currentSyId;
-        syMode = 'current';
-    } else if (enrollments.length > 0) {
-        const fallbackSyId = Number(enrollments[0].sy_id);
-        const [[enrolledSY]] = await db.query(
-            `SELECT * FROM school_years WHERE sy_id = ? AND status <> 'Draft' LIMIT 1`,
-            [fallbackSyId]
-        );
-        if (enrolledSY) {
-            targetSY = enrolledSY;
-            targetSyId = Number(enrolledSY.sy_id);
-            syMode = (enrolledSY.status === 'Current' || Number(enrolledSY.is_active) === 1) ? 'current' : 'archived';
-        }
-    } else {
-        targetSY = currentSY;
-        targetSyId = currentSyId;
-        syMode = 'unenrolled';
-    }
-
-    const scopedEnrollments = targetSyId !== null && syMode !== 'unenrolled'
-        ? enrollments.filter(r => Number(r.sy_id) === targetSyId)
-        : [];
-
-    const enrolledClassIds = [...new Set(scopedEnrollments.map(r => Number(r.class_id)).filter(n => !isNaN(n)))];
-    const enrolledSubjectIds = [...new Set(scopedEnrollments.map(r => Number(r.subject_id)).filter(n => !isNaN(n)))];
+    const enrolledClassIds = [...new Set(enrollments.map(r => Number(r.class_id)).filter(n => !isNaN(n)))];
+    const enrolledSubjectIds = [...new Set(enrollments.map(r => Number(r.subject_id)).filter(n => !isNaN(n)))];
+    const hasEnrollments = enrolledClassIds.length > 0 && enrolledSubjectIds.length > 0;
+    const syMode = hasEnrollments ? 'current' : 'unenrolled';
 
     return {
-        targetSY,
-        targetSyId,
+        targetSY: currentSY,
+        targetSyId: currentSyId,
         currentSY,
+        currentSyId,
         syMode,
         enrolledClassIds,
-        enrolledSubjectIds
+        enrolledSubjectIds,
+        hasEnrollments
     };
+}
+
+/**
+ * Explicit alias for strict Current School Year student enrollment resolution.
+ * Never falls back to Archived or Draft school years.
+ */
+async function resolveStrictStudentContext(db, studentId, preloadedCurrentSY = undefined) {
+    return resolveStudentSchoolYearContext(db, studentId, preloadedCurrentSY);
 }
 
 const studentLifecycleHelper = require('./studentLifecycleHelper');
@@ -1011,6 +981,7 @@ module.exports = {
     getStrictCurrentSchoolYear,
     resolveAdminSchoolYearContext,
     resolveStudentSchoolYearContext,
+    resolveStrictStudentContext,
     normalizeSchoolYearStatus,
     isSemesterEnrollmentOpen,
     checkClassEnrollmentOpen,

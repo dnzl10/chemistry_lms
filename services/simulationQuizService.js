@@ -19,13 +19,7 @@ async function resolveTargetSyId(syId = null, dbConn = pool) {
     const parsed = parseInt(syId, 10);
     if (!isNaN(parsed) && parsed > 0) return parsed;
 
-    const [[currentSY]] = await dbConn.query(`
-        SELECT sy_id
-        FROM school_years
-        WHERE status = 'Current' OR is_active = 1
-        ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
-        LIMIT 1
-    `);
+    const currentSY = await academicHelper.getStrictCurrentSchoolYear(dbConn);
     return currentSY ? Number(currentSY.sy_id) : null;
 }
 
@@ -98,12 +92,13 @@ async function getQuizStatus(simSlug, studentId = null, syId = null) {
     const slug = String(simSlug).trim().toLowerCase();
 
     let targetSyId = syId ? parseInt(syId, 10) : null;
-    if (!targetSyId && studentId) {
-        const syCtx = await academicHelper.resolveStudentSchoolYearContext(pool, studentId);
-        targetSyId = syCtx.targetSyId;
-    }
     if (!targetSyId) {
-        targetSyId = await resolveTargetSyId(null);
+        if (studentId) {
+            const syCtx = await academicHelper.resolveStrictStudentContext(pool, studentId);
+            targetSyId = syCtx.currentSyId && syCtx.hasEnrollments ? syCtx.currentSyId : null;
+        } else {
+            targetSyId = await resolveTargetSyId(null);
+        }
     }
     if (!targetSyId) {
         return {
@@ -267,13 +262,15 @@ async function gradeAndSubmitQuiz(simSlug, studentId, quizId, submittedAnswers, 
             };
         }
 
-        const syCtx = await academicHelper.resolveStudentSchoolYearContext(conn, studentId);
-        if (syCtx.syMode !== 'unenrolled' && syCtx.targetSyId && Number(quiz.sy_id) !== Number(syCtx.targetSyId)) {
+        const syCtx = await academicHelper.resolveStrictStudentContext(conn, studentId);
+        if (!syCtx.currentSyId || !syCtx.hasEnrollments || Number(quiz.sy_id) !== Number(syCtx.currentSyId)) {
             await conn.rollback();
             return {
                 success: false,
                 is_locked: true,
-                message: 'Assessment quiz does not belong to your enrolled School Year.'
+                message: !syCtx.currentSyId || !syCtx.hasEnrollments
+                    ? 'You must be enrolled in the Current School Year to submit simulation quizzes.'
+                    : 'Assessment quiz does not belong to the Current School Year.'
             };
         }
 

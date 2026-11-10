@@ -16,20 +16,22 @@ async function recalculateProgress(studentId, subjectId, syId = null) {
     try {
         let effSyId = syId ? Number(syId) : null;
         if (!effSyId) {
-            const syCtx = await academicHelper.resolveStudentSchoolYearContext(db, studentId);
-            const [[studentClassRow]] = await db.query(`
+            const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+            if (!currentSY) return 0;
+
+            const [[enrolledInSubject]] = await db.query(`
                 SELECT c.sy_id
                 FROM classes c
                 JOIN class_students cs ON c.class_id = cs.class_id
-                JOIN school_years sy ON c.sy_id = sy.sy_id
                 WHERE cs.student_id = ?
                   AND c.subject_id = ?
-                  AND sy.status <> 'Draft'
+                  AND c.sy_id = ?
                   AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
-                ORDER BY (c.sy_id = ?) DESC, (sy.status = 'Current') DESC, sy.start_date DESC, c.class_id ASC
                 LIMIT 1
-            `, [studentId, subjectId, syCtx.targetSyId || 0]);
-            effSyId = studentClassRow ? Number(studentClassRow.sy_id) : syCtx.targetSyId;
+            `, [studentId, subjectId, currentSY.sy_id]);
+
+            if (!enrolledInSubject) return 0;
+            effSyId = Number(currentSY.sy_id);
         }
 
         if (!effSyId) return 0;

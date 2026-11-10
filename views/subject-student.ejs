@@ -126,14 +126,27 @@
                 <div class="p-4 md:p-8 flex-1">
                 
                     <!-- Primary Page Header (Real <h1> for Screen Readers & Document Outline) -->
-                    <div class="mb-8">
-                        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-                            <span class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 text-white shadow-md">
-                                <i class="fas fa-book text-lg"></i>
-                            </span>
-                            My Enrolled Subjects
-                        </h1>
-                        <p class="text-slate-600 text-sm mt-1">Manage and access your course materials, activities, and virtual labs.</p>
+                    <div class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+                                <span class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 text-white shadow-md">
+                                    <i class="fas fa-book text-lg"></i>
+                                </span>
+                                My Enrolled Subjects
+                            </h1>
+                            <p class="text-slate-600 text-sm mt-1">Manage and access your course materials, activities, and virtual labs.</p>
+                        </div>
+                        <% if (typeof currentSY !== 'undefined' && currentSY && currentSY.sy_range) { %>
+                            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-xs font-black text-emerald-800 shadow-xs self-start sm:self-auto">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span>S.Y. <%= currentSY.sy_range %> &middot; Current</span>
+                            </div>
+                        <% } else { %>
+                            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-50 border border-rose-200/80 text-xs font-black text-rose-800 shadow-xs self-start sm:self-auto">
+                                <i class="fas fa-circle-exclamation text-rose-600 text-[11px]"></i>
+                                <span>No Active S.Y.</span>
+                            </div>
+                        <% } %>
                     </div>
 
                     <!-- Enrolled Subjects Grid -->
@@ -195,8 +208,17 @@
                                 <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
                                     <i class="fas fa-book-open text-2xl"></i>
                                 </div>
-                                <h2 class="text-base font-bold text-slate-800">No subjects found</h2>
-                                <p class="text-slate-500 text-xs mt-1">You are not enrolled in any subjects yet.</p>
+                                <% if (typeof currentSY === 'undefined' || !currentSY) { %>
+                                    <h2 class="text-base font-bold text-rose-700">No Active School Year</h2>
+                                    <p class="text-slate-500 text-xs mt-1">No active Current School Year is set right now.</p>
+                                <% } else { %>
+                                    <h2 class="text-base font-bold text-slate-800">Not Enrolled in S.Y. <%= currentSY.sy_range %></h2>
+                                    <p class="text-slate-500 text-xs mt-1">You are not currently enrolled in any subjects for the active Current School Year.</p>
+                                    <a href="/home" class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-cyan-700 hover:bg-cyan-50 transition">
+                                        <span>View Current S.Y. Courses</span>
+                                        <i class="fas fa-arrow-right text-[10px]"></i>
+                                    </a>
+                                <% } %>
                             </div>
                         <% } %>
                     </div>

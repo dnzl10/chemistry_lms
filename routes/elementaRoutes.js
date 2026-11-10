@@ -17,6 +17,7 @@ const arcadeAnalyticsService = require('../services/arcadeAnalyticsService');
 const progressService = require('../services/progressService');
 const notificationService = require('../services/notificationService');
 const levelProgressionService = require('../services/levelProgressionService');
+const academicHelper = require('../utils/academicHelper');
 
 const API_SECRET = process.env.ELEMENTA_API_SECRET || 'ELEMENTA_SECURE_HMAC_KEY_2026';
 
@@ -29,13 +30,7 @@ function fail(res, status, message) {
 }
 
 async function resolveStrictCurrentSyId() {
-    const [[currentSY]] = await pool.query(
-        `SELECT sy_id
-         FROM school_years
-         WHERE status = 'Current' OR is_active = 1
-         ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
-         LIMIT 1`
-    );
+    const currentSY = await academicHelper.getStrictCurrentSchoolYear(pool);
     return currentSY ? Number(currentSY.sy_id) : null;
 }
 
@@ -232,13 +227,17 @@ router.post('/ticket/validate', async (req, res) => {
         if (!ticket_code) return fail(res, 400, 'Ticket code or QR token required');
 
         const clean = ticket_code.trim();
+        const currentSyId = await resolveStrictCurrentSyId();
+        if (!currentSyId) {
+            return fail(res, 403, 'No active Current School Year found.');
+        }
 
         // 1. Fetch ticket by ticket_code or qr_token
         // Note: Evaluating expiration using MySQL NOW() & TIMESTAMPDIFF prevents timezone drift between Node and Cloud DB
         const [ticketRows] = await pool.query(
             `SELECT t.*, u.first_name, u.last_name, u.lrn_number, u.section, u.total_exp, u.current_level,
                     a.assessment_name, a.assessment_type, a.competitive_enabled, a.is_unlocked, a.start_date, a.due_date,
-                    a.total_items, a.question_selection_mode, a.timer_type, a.duration_minutes,
+                    a.sy_id AS assessment_sy_id, a.total_items, a.question_selection_mode, a.timer_type, a.duration_minutes,
                     top.topic_name, top.is_locked AS topic_is_locked,
                     (t.expires_at < NOW()) AS is_expired_in_db,
                     TIMESTAMPDIFF(SECOND, NOW(), t.expires_at) AS seconds_left,
@@ -258,6 +257,13 @@ router.post('/ticket/validate', async (req, res) => {
         }
 
         const ticket = ticketRows[0];
+
+        if (
+            Number(ticket.assessment_sy_id) !== Number(currentSyId) ||
+            (ticket.sy_id && Number(ticket.sy_id) !== Number(currentSyId))
+        ) {
+            return fail(res, 403, 'This assessment ticket does not belong to the Current School Year.');
+        }
 
         // 2. Check consumption
         if (ticket.status === 'Consumed') {
@@ -489,6 +495,10 @@ router.get('/topic-locks', async (req, res) => {
 router.get('/available-assessments/:student_id', async (req, res) => {
     try {
         const { student_id } = req.params;
+        const currentSyId = await resolveStrictCurrentSyId();
+        if (!currentSyId) {
+            return res.json({ success: true, assessments: [] });
+        }
 
         const [rows] = await pool.query(
             `SELECT
@@ -513,11 +523,14 @@ router.get('/available-assessments/:student_id', async (req, res) => {
              JOIN topics     t ON t.quarter_id = q.quarter_id
              JOIN assessments a ON a.topic_id = t.topic_id
              WHERE cs.student_id = ?
+               AND c.sy_id = ?
+               AND a.sy_id = ?
+               AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                AND a.assessment_type = 'Competitive'
                AND a.is_unlocked = 1
                AND (a.due_date IS NULL OR a.due_date >= NOW())
              ORDER BY (a.due_date IS NULL), a.due_date ASC`,
-            [student_id]
+            [student_id, currentSyId, currentSyId]
         );
 
         res.json({ success: true, assessments: rows });

@@ -64,6 +64,17 @@
             Elem<span class="text-white">enta</span>
         </span>
         <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mt-1">Student Portal</p>
+        <% if (typeof currentSY !== 'undefined' && currentSY && currentSY.sy_range) { %>
+            <span class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-[10px] font-bold text-emerald-300 tracking-wide">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                S.Y. <%= currentSY.sy_range %> &middot; Current
+            </span>
+        <% } else { %>
+            <span class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-400/30 text-[10px] font-bold text-rose-300 tracking-wide">
+                <i class="fas fa-circle-exclamation text-[9px]"></i>
+                No Active S.Y.
+            </span>
+        <% } %>
     </div>
 
     <nav id="studentNavTree" class="flex-1 px-3 mt-4 space-y-3 overflow-y-auto no-scrollbar pb-6 bg-[#06091A]" aria-label="Student Tree Navigation" role="tree">

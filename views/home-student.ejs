@@ -957,6 +957,11 @@
                                     <span>Current Academic Year: <%= activeSY.sy_range %></span>
                                     <span class="px-1.5 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-black uppercase"><%= activeSY.status || 'Current' %></span>
                                 </div>
+                            <% } else { %>
+                                <div class="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800 shadow-xs">
+                                    <i class="fas fa-circle-exclamation text-rose-500"></i>
+                                    <span>No Active Current School Year</span>
+                                </div>
                             <% } %>
                         </header>
 
@@ -1007,7 +1012,7 @@
                                                 <%= subject.semester == 1 ? '1st Semester' : '2nd Semester' %>
                                             </span>
                                             <span class="px-2.5 py-1 bg-blue-600/90 backdrop-blur text-white text-[9px] font-black rounded-lg uppercase tracking-wider shadow-sm">
-                                                SY <%= subject.sy_range || (typeof activeSY !== 'undefined' && activeSY && activeSY.sy_range) || '2026-2027' %>
+                                                SY <%= subject.sy_range || (typeof activeSY !== 'undefined' && activeSY && activeSY.sy_range) || 'No Active SY' %>
                                             </span>
                                         </div>
 
