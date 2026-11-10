@@ -13,7 +13,8 @@ const poolConfig = {
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
     idleTimeout: 30000,
-    maxIdle: 10
+    maxIdle: 10,
+    timezone: 'Z'
 };
 
 // Automatically enable TLS/SSL when connecting to Cloud MySQL (TiDB Cloud, Aiven, etc.)
@@ -32,8 +33,13 @@ if (
 
 const pool = mysql.createPool(poolConfig);
 
-// Automatically relax ONLY_FULL_GROUP_BY on every new connection so aggregation queries run smoothly in all environments
+// Align database session timezone to UTC and relax ONLY_FULL_GROUP_BY on every new connection
 pool.on('connection', (connection) => {
+    connection.query("SET SESSION time_zone = '+00:00'", (err) => {
+        if (err) {
+            // Silently fall back if time_zone table or privilege is restricted
+        }
+    });
     connection.query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))", (err) => {
         if (err) {
             // Silently fall back if already relaxed or unsupported
