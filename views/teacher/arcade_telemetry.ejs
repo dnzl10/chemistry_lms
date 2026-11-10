@@ -108,10 +108,23 @@
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 <div class="hidden sm:block">
-                    <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">Arcade Telemetry</h1>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">Arcade Telemetry</h1>
+                        <% if (typeof currentSY !== 'undefined' && currentSY) { %>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black border shadow-2xs bg-emerald-50 border-emerald-200 text-emerald-800">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span>S.Y. <%= currentSY.sy_range %> · Active</span>
+                            </span>
+                        <% } else { %>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black border shadow-2xs bg-rose-50 border-rose-200 text-rose-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                <span>No Active School Year</span>
+                            </span>
+                        <% } %>
+                    </div>
                     <p class="text-xs text-slate-600 font-medium">
                         <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
-                        Micro-Telemetry Analytics & Cognitive Diagnostic Fleet Monitor
+                        Micro-Telemetry Analytics &amp; Cognitive Diagnostic Monitor for Current School Year
                     </p>
                 </div>
             </div>
@@ -121,8 +134,9 @@
                 <!-- Class selector -->
                 <div class="relative hidden sm:block">
                     <select id="telemetryClassFilter" onchange="applyTelemetryClassFilter(this.value)"
-                            class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl px-3 py-2 pr-8 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition cursor-pointer">
-                        <option value="">All Roster Cadets</option>
+                            <%= (!classes || classes.length === 0) ? 'disabled' : '' %>
+                            class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl px-3 py-2 pr-8 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <option value="all" <%= (!selectedClassId && classes && classes.length > 0) ? 'selected' : '' %>>All Roster Cadets</option>
                         <% if (classes && classes.length) { %>
                             <% classes.forEach(c => { %>
                                 <option value="<%= c.class_id %>" <%= (selectedClassId == c.class_id) ? 'selected' : '' %>>
@@ -190,6 +204,26 @@
         <!-- ===== SCROLLABLE CONTENT BODY ===== -->
         <div id="telemetryContentBody" class="flex-1 overflow-y-auto mt-20 no-scrollbar p-4 md:p-8 space-y-6">
 
+            <% if (typeof syBlocked !== 'undefined' && syBlocked) { %>
+            <div class="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-xs">
+                <i class="fas fa-lock text-amber-600 mt-0.5"></i>
+                <div class="text-xs leading-relaxed">
+                    <p class="font-extrabold uppercase tracking-wider text-amber-800">Archived or Unassigned Class Restricted</p>
+                    <p class="font-medium mt-0.5">The requested class does not belong to you in the Current School Year (<%= currentSY ? currentSY.sy_range : 'none active' %>). Telemetry has been scoped back to your active Current School Year classes.</p>
+                </div>
+            </div>
+            <% } %>
+
+            <% if (typeof currentSY === 'undefined' || !currentSY) { %>
+            <div class="flex items-start gap-3 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 shadow-xs">
+                <i class="fas fa-calendar-times text-rose-600 mt-0.5"></i>
+                <div class="text-xs leading-relaxed">
+                    <p class="font-extrabold uppercase tracking-wider text-rose-800">No Active Current School Year</p>
+                    <p class="font-medium mt-0.5">No school year is currently marked active by the administrator. Arcade telemetry, session replays, and remediation assignments are paused until a Current School Year is activated.</p>
+                </div>
+            </div>
+            <% } %>
+
             <!-- HERO STAT STRIP -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
@@ -208,7 +242,7 @@
                     <div>
                         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Mean Dial Hesitation</p>
                         <h3 class="text-2xl font-black text-indigo-600">
-                            <%= scatter && scatter.length ? (scatter.reduce((a,c) => a + (Number(c.x !== undefined ? c.x : c.avgHesitation) || 0), 0) / scatter.length).toFixed(1) : '18.4' %>s
+                            <%= scatter && scatter.length ? (scatter.reduce((a,c) => a + (Number(c.x !== undefined ? c.x : c.avgHesitation) || 0), 0) / scatter.length).toFixed(1) : '0.0' %>s
                         </h3>
                     </div>
                 </div>
@@ -1131,14 +1165,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function applyTelemetryClassFilter(classId) {
     try {
-        const targetUrl = '/teacher/arcade-telemetry' + (classId ? ('?class_id=' + encodeURIComponent(classId)) : '');
+        const targetUrl = '/teacher/arcade-telemetry' + (classId ? ('?class_id=' + encodeURIComponent(classId)) : '?class_id=all');
         window.history.pushState({ class_id: classId }, '', targetUrl);
 
         const res = await fetch(targetUrl, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             cache: 'no-store'
         });
-        if (!res.ok) throw new Error('Failed to load telemetry filter');
+        if (!res.ok) {
+            let errMsg = 'Failed to load telemetry filter';
+            try {
+                const errJson = await res.json();
+                if (errJson && errJson.error) errMsg = errJson.error;
+            } catch (_) {}
+            throw new Error(errMsg);
+        }
         const html = await res.text();
         const parser = new DOMParser();
         const newDoc = parser.parseFromString(html, 'text/html');

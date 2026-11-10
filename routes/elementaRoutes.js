@@ -28,6 +28,17 @@ function fail(res, status, message) {
     return res.status(status).json({ success: false, valid: false, error: message });
 }
 
+async function resolveStrictCurrentSyId() {
+    const [[currentSY]] = await pool.query(
+        `SELECT sy_id
+         FROM school_years
+         WHERE status = 'Current' OR is_active = 1
+         ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
+         LIMIT 1`
+    );
+    return currentSY ? Number(currentSY.sy_id) : null;
+}
+
 // -----------------------------------------------------------------
 // Cross-Origin Resource Sharing (CORS) & Preflight Handler
 // Allows browser simulations, arcade clients, and reverse proxies
@@ -602,23 +613,46 @@ router.post('/session/start', verifyCabinetSignature, async (req, res) => {
             finalPlayMode = 'Solo';
         }
 
-        if (!finalClassId && finalP1) {
+        // Resolve target School Year (sy_id) deterministically:
+        // 1. From explicit class_id -> 2. From resolved assessment_id -> 3. Active Current SY
+        let sessionSyId = null;
+        if (finalClassId) {
+            const [[clsRow]] = await pool.query(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [finalClassId]);
+            if (clsRow && clsRow.sy_id) sessionSyId = Number(clsRow.sy_id);
+        }
+        if (!sessionSyId && finalAssessmentId) {
+            const [[asmRow]] = await pool.query(`SELECT sy_id FROM assessments WHERE assessment_id = ? LIMIT 1`, [finalAssessmentId]);
+            if (asmRow && asmRow.sy_id) sessionSyId = Number(asmRow.sy_id);
+        }
+        if (!sessionSyId) {
+            sessionSyId = await resolveStrictCurrentSyId();
+        }
+
+        if (!finalClassId && finalP1 && sessionSyId) {
             const [[cs]] = await pool.query(
-                `SELECT class_id FROM class_students WHERE student_id = ? LIMIT 1`,
-                [finalP1]
+                `SELECT cs.class_id
+                 FROM class_students cs
+                 JOIN classes c ON cs.class_id = c.class_id
+                 WHERE cs.student_id = ?
+                   AND c.sy_id = ?
+                   AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                 ORDER BY cs.class_id DESC
+                 LIMIT 1`,
+                [finalP1, sessionSyId]
             );
             if (cs) finalClassId = cs.class_id;
         }
 
         const [result] = await pool.query(
             `INSERT INTO elementa_game_sessions
-                (student_id_p1, student_id_p2, assessment_id, class_id, play_mode, cabinet_id, session_status, started_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'Ongoing', NOW())`,
+                (student_id_p1, student_id_p2, assessment_id, class_id, sy_id, play_mode, cabinet_id, session_status, started_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'Ongoing', NOW())`,
             [
-                finalP1 || null, 
-                student_id_p2 || null, 
-                finalAssessmentId || null, 
-                finalClassId || null, 
+                finalP1 || null,
+                finalP2 || null,
+                finalAssessmentId || null,
+                finalClassId || null,
+                sessionSyId || null,
                 finalPlayMode,
                 cabinet_id
             ]
@@ -1427,6 +1461,9 @@ router.post('/kiosk/:kiosk_id/command', async (req, res) => {
 // ===================================================================
 router.get('/kiosks', async (req, res) => {
     try {
+        const currentSyId = await resolveStrictCurrentSyId();
+        const safeSyId = currentSyId !== null ? currentSyId : -1;
+
         const [rows] = await pool.query(
             `SELECT k.kiosk_id, k.ip_address, k.status, k.ping_ms, k.active_session_id,
                     k.is_proctor_paused,
@@ -1438,12 +1475,13 @@ router.get('/kiosks', async (req, res) => {
                     a.assessment_name,
                     lr.level_number
              FROM elementa_kiosk_status k
-             LEFT JOIN elementa_game_sessions gs ON gs.session_id = k.active_session_id
+             LEFT JOIN elementa_game_sessions gs ON gs.session_id = k.active_session_id AND gs.sy_id = ?
              LEFT JOIN users u1 ON u1.user_id = gs.student_id_p1
              LEFT JOIN users u2 ON u2.user_id = gs.student_id_p2
              LEFT JOIN assessments a ON a.assessment_id = gs.assessment_id
              LEFT JOIN elementa_level_runs lr ON lr.session_id = gs.session_id AND lr.run_status = 'In_Progress'
-             ORDER BY k.last_heartbeat DESC`
+             ORDER BY k.last_heartbeat DESC`,
+            [safeSyId]
         );
 
         const kiosks = rows.map(k => {

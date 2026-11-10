@@ -17891,25 +17891,8 @@ router.post('/api/assessment/:aid/batch-zero', isTeacher, async (req, res) => {
 router.get('/arcade-telemetry', isTeacher, async (req, res) => {
     try {
         const teacherId = req.user.user_id;
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const currentSyId = currentSY ? currentSY.sy_id : null;
-
-        // Fetch classes taught by this teacher for active school year
-        const [classes] = await db.query(
-            `SELECT c.class_id, c.class_name, s.subject_name 
-             FROM classes c
-             LEFT JOIN subjects s ON s.subject_id = c.subject_id
-             WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
-             ORDER BY c.class_name ASC`,
-            [teacherId, currentSyId, currentSyId]
-        );
-
-        const selectedClassId = req.query.class_id ? parseInt(req.query.class_id, 10) : (classes[0] ? classes[0].class_id : null);
-
-        // Fetch analytics components
-        const heatmap = await arcadeAnalyticsService.getPeriodicTableHeatmap();
-        const scatter = await arcadeAnalyticsService.getSpeedAccuracyDistribution(selectedClassId);
-        const riskList = await arcadeAnalyticsService.getEarlyWarningRiskList(selectedClassId);
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
 
         // Fetch complete 118 periodic table elements for the matrix
         const [elementsList] = await db.query(
@@ -17918,46 +17901,149 @@ router.get('/arcade-telemetry', isTeacher, async (req, res) => {
              ORDER BY atomic_number ASC`
         );
 
-        // Fetch recent arcade sessions for this class or general within active cohort
-        let sessionSql = `
-            SELECT s.session_id, s.started_at AS played_at, s.play_mode AS game_mode, s.final_score_p1 AS final_score, s.final_score_p2, s.cabinet_id,
-                   s.winner,
-                   u.user_id, u.first_name, u.last_name, u.lrn_number, u.profile_pic,
-                   u2.user_id AS p2_user_id, u2.first_name AS p2_first_name, u2.last_name AS p2_last_name, u2.lrn_number AS p2_lrn_number, u2.profile_pic AS p2_profile_pic,
-                   COUNT(r.run_id) AS total_runs
-            FROM elementa_game_sessions s
-            JOIN users u ON u.user_id = s.student_id_p1
-            LEFT JOIN users u2 ON u2.user_id = s.student_id_p2
-            LEFT JOIN elementa_level_runs r ON r.session_id = s.session_id
-        `;
-        const sessionParams = [];
-        if (selectedClassId) {
-            sessionSql += ` JOIN class_students cs ON (cs.student_id = u.user_id OR cs.student_id = u2.user_id) WHERE cs.class_id = ? `;
-            sessionParams.push(selectedClassId);
-        } else {
-            sessionSql += ` JOIN class_students cs ON (cs.student_id = u.user_id OR cs.student_id = u2.user_id)
-                            JOIN classes c ON cs.class_id = c.class_id
-                            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) `;
-            sessionParams.push(teacherId, currentSyId, currentSyId);
-        }
-        sessionSql += ` GROUP BY s.session_id ORDER BY s.started_at DESC LIMIT 50`;
-
-        const [recentSessions] = await db.query(sessionSql, sessionParams);
-
-
-        // Fetch learning materials that teacher can assign for remediation
-        const [materials] = await db.query(
-            `SELECT material_id, title, material_type, file_path_or_url
-             FROM learning_materials
-             ORDER BY title ASC LIMIT 50`
-        );
-
         let notifications = [];
         try {
             notifications = await getTeacherNotifications(db, teacherId);
         } catch (nErr) {
             console.warn('[arcade_telemetry] Notifications fetch fallback:', nErr.message);
         }
+
+        // Fail closed when no Current School Year is active
+        if (!currentSyId) {
+            return res.render('teacher/arcade_telemetry', {
+                user: req.user,
+                currentSY: null,
+                syBlocked: Boolean(req.query.class_id && req.query.class_id !== 'all'),
+                classes: [],
+                selectedClassId: null,
+                heatmap: [],
+                scatter: [],
+                riskList: [],
+                recentSessions: [],
+                materials: [],
+                notifications,
+                kiosks: [],
+                elements: elementsList || []
+            });
+        }
+
+        // Strictly fetch classes taught by this teacher in Current School Year
+        const [classes] = await db.query(
+            `SELECT c.class_id, c.class_name, s.subject_name,
+                    COALESCE(NULLIF(s.subject_code, ''), s.subject_name) AS section
+             FROM classes c
+             LEFT JOIN subjects s ON s.subject_id = c.subject_id
+             WHERE c.teacher_id = ? AND c.sy_id = ?
+             ORDER BY c.class_name ASC`,
+            [teacherId, currentSyId]
+        );
+
+        let selectedClassId = null;
+        let syBlocked = false;
+        const rawClassParam = req.query.class_id !== undefined ? String(req.query.class_id).trim() : '';
+
+        if (rawClassParam === 'all') {
+            selectedClassId = null;
+        } else if (rawClassParam !== '') {
+            const parsedClassId = parseInt(rawClassParam, 10);
+            const ownsClassInSY = !isNaN(parsedClassId) && classes.some(c => Number(c.class_id) === parsedClassId);
+            if (!ownsClassInSY) {
+                if (req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest') {
+                    return res.status(403).json({
+                        success: false,
+                        error: 'Selected class does not belong to you in the Current School Year.'
+                    });
+                }
+                syBlocked = true;
+                selectedClassId = classes[0] ? classes[0].class_id : null;
+            } else {
+                selectedClassId = parsedClassId;
+            }
+        } else {
+            selectedClassId = classes[0] ? classes[0].class_id : null;
+        }
+
+        // Fetch analytics strictly scoped to currentSyId + teacherId (+ selectedClassId when filtered)
+        const hasTeacherClasses = classes.length > 0;
+        const [heatmap, scatter, riskList] = hasTeacherClasses
+            ? await Promise.all([
+                arcadeAnalyticsService.getPeriodicTableHeatmap(selectedClassId, null, { syId: currentSyId, teacherId }),
+                arcadeAnalyticsService.getSpeedAccuracyDistribution(selectedClassId, null, { syId: currentSyId, teacherId }),
+                arcadeAnalyticsService.getEarlyWarningRiskList(selectedClassId, { syId: currentSyId, teacherId })
+            ])
+            : [[], [], []];
+
+        // Fetch recent arcade sessions strictly scoped to currentSyId and teacher's cohort
+        let recentSessions = [];
+        if (hasTeacherClasses) {
+            let sessionSql = `
+                SELECT s.session_id, s.started_at AS played_at, s.play_mode AS game_mode, s.final_score_p1 AS final_score, s.final_score_p2, s.cabinet_id,
+                       s.winner,
+                       u.user_id, u.first_name, u.last_name, u.lrn_number, u.profile_pic,
+                       u2.user_id AS p2_user_id, u2.first_name AS p2_first_name, u2.last_name AS p2_last_name, u2.lrn_number AS p2_lrn_number, u2.profile_pic AS p2_profile_pic,
+                       COUNT(r.run_id) AS total_runs
+                FROM elementa_game_sessions s
+                JOIN users u ON u.user_id = s.student_id_p1
+                LEFT JOIN users u2 ON u2.user_id = s.student_id_p2
+                LEFT JOIN elementa_level_runs r ON r.session_id = s.session_id
+                WHERE s.sy_id = ?
+            `;
+            const sessionParams = [currentSyId];
+
+            if (selectedClassId) {
+                sessionSql += `
+                  AND (
+                      s.class_id = ?
+                      OR (
+                          s.class_id IS NULL
+                          AND EXISTS (
+                              SELECT 1 FROM class_students cs
+                              JOIN classes c ON cs.class_id = c.class_id
+                              WHERE cs.class_id = ? AND c.teacher_id = ? AND c.sy_id = ?
+                                AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                                AND (cs.student_id = u.user_id OR cs.student_id = u2.user_id)
+                          )
+                      )
+                  )
+                `;
+                sessionParams.push(selectedClassId, selectedClassId, teacherId, currentSyId);
+            } else {
+                sessionSql += `
+                  AND (
+                      s.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
+                      OR (
+                          s.class_id IS NULL
+                          AND EXISTS (
+                              SELECT 1 FROM class_students cs
+                              JOIN classes c ON cs.class_id = c.class_id
+                              WHERE c.teacher_id = ? AND c.sy_id = ?
+                                AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                                AND (cs.student_id = u.user_id OR cs.student_id = u2.user_id)
+                          )
+                      )
+                  )
+                `;
+                sessionParams.push(teacherId, currentSyId, teacherId, currentSyId);
+            }
+            sessionSql += ` GROUP BY s.session_id ORDER BY s.started_at DESC LIMIT 50`;
+
+            const [sessRows] = await db.query(sessionSql, sessionParams);
+            recentSessions = sessRows || [];
+        }
+
+        // Fetch learning materials strictly scoped to Current SY and teacher's active subjects
+        const [materials] = hasTeacherClasses
+            ? await db.query(
+                `SELECT DISTINCT lm.material_id, lm.title, lm.material_type, lm.file_path_or_url
+                 FROM learning_materials lm
+                 JOIN topics t ON lm.topic_id = t.topic_id
+                 JOIN quarters q ON t.quarter_id = q.quarter_id
+                 JOIN classes c ON q.subject_id = c.subject_id
+                 WHERE lm.sy_id = ? AND c.teacher_id = ? AND c.sy_id = ?
+                 ORDER BY lm.title ASC LIMIT 50`,
+                [currentSyId, teacherId, currentSyId]
+            )
+            : [[]];
 
         let kiosks = [];
         try {
@@ -17968,12 +18054,13 @@ router.get('/arcade-telemetry', isTeacher, async (req, res) => {
                         CONCAT(COALESCE(u2.first_name, ''), ' ', COALESCE(u2.last_name, '')) AS student_name_p2,
                         a.assessment_name, lr.level_number
                  FROM elementa_kiosk_status k
-                 LEFT JOIN elementa_game_sessions gs ON gs.session_id = k.active_session_id
+                 LEFT JOIN elementa_game_sessions gs ON gs.session_id = k.active_session_id AND gs.sy_id = ?
                  LEFT JOIN users u1 ON u1.user_id = gs.student_id_p1
                  LEFT JOIN users u2 ON u2.user_id = gs.student_id_p2
                  LEFT JOIN assessments a ON a.assessment_id = gs.assessment_id
                  LEFT JOIN elementa_level_runs lr ON lr.session_id = gs.session_id AND lr.run_status = 'In_Progress'
-                 ORDER BY k.last_heartbeat DESC`
+                 ORDER BY k.last_heartbeat DESC`,
+                [currentSyId]
             );
             kiosks = kRows || [];
         } catch (kErr) {
@@ -17982,6 +18069,8 @@ router.get('/arcade-telemetry', isTeacher, async (req, res) => {
 
         res.render('teacher/arcade_telemetry', {
             user: req.user,
+            currentSY,
+            syBlocked,
             classes,
             selectedClassId,
             heatmap,
@@ -17999,12 +18088,30 @@ router.get('/arcade-telemetry', isTeacher, async (req, res) => {
     }
 });
 
-// Replay timeline API for step-by-step modal
+// Replay timeline API for step-by-step modal (strictly Current SY & teacher-owned cohort)
 router.get('/api/arcade/replay/:sessionId', isTeacher, async (req, res) => {
     try {
+        const teacherId = req.user.user_id;
         const sessionId = req.params.sessionId;
-        const replay = await arcadeAnalyticsService.getSessionReplay(sessionId);
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+
+        if (!currentSyId) {
+            return res.status(403).json({ success: false, error: 'No active Current School Year is configured.' });
+        }
+
+        const replay = await arcadeAnalyticsService.getSessionReplay(sessionId, { syId: currentSyId, teacherId });
         if (!replay) {
+            const [[existsRow]] = await db.query(
+                `SELECT session_id FROM elementa_game_sessions WHERE session_id = ? LIMIT 1`,
+                [sessionId]
+            );
+            if (existsRow) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Access denied: this session does not belong to your Current School Year classes.'
+                });
+            }
             return res.status(404).json({ success: false, error: 'Session not found' });
         }
         res.json({ success: true, replay });
@@ -18014,30 +18121,63 @@ router.get('/api/arcade/replay/:sessionId', isTeacher, async (req, res) => {
     }
 });
 
-// 1-Click Targeted Remediation Assignment API
+// 1-Click Targeted Remediation Assignment API (strictly Current SY student & material validation)
 router.post('/api/arcade/assign-remediation', isTeacher, async (req, res) => {
     try {
+        const teacherId = req.user.user_id;
         const { student_id, material_id, custom_note, machine_name } = req.body;
         if (!student_id) {
             return res.status(400).json({ success: false, error: 'Student ID required' });
+        }
+
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) {
+            return res.status(403).json({ success: false, error: 'No active Current School Year is configured.' });
+        }
+
+        const [enrollmentRows] = await db.query(
+            `SELECT 1
+             FROM class_students cs
+             JOIN classes c ON cs.class_id = c.class_id
+             WHERE cs.student_id = ? AND c.teacher_id = ? AND c.sy_id = ?
+               AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+             LIMIT 1`,
+            [student_id, teacherId, currentSyId]
+        );
+        if (!enrollmentRows.length) {
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied: student is not enrolled in your Current School Year classes.'
+            });
         }
 
         let materialTitle = 'Chemistry Mastery Module';
         let targetUrl = '/student/materials';
 
         if (material_id) {
-            const [[mat]] = await db.query(`SELECT title, material_type, file_path_or_url FROM learning_materials WHERE material_id = ?`, [material_id]);
-            if (mat) {
-                materialTitle = mat.title;
-                if (mat.file_path_or_url) targetUrl = mat.file_path_or_url;
+            const [[mat]] = await db.query(
+                `SELECT title, material_type, file_path_or_url
+                 FROM learning_materials
+                 WHERE material_id = ? AND sy_id = ?
+                 LIMIT 1`,
+                [material_id, currentSyId]
+            );
+            if (!mat) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Selected learning material does not belong to the Current School Year.'
+                });
             }
+            materialTitle = mat.title;
+            if (mat.file_path_or_url) targetUrl = mat.file_path_or_url;
         }
 
         const noteText = custom_note || `Targeted practice assigned based on your Elementa Arcade telemetry at ${machine_name || 'Laboratory Station'}.`;
 
         await notificationService.dispatch({
             recipientIds: [student_id],
-            actorId: req.user.user_id,
+            actorId: teacherId,
             role: 'Student',
             category: 'academic',
             priority: 'high',

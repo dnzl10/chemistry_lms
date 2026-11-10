@@ -643,11 +643,71 @@ async function getStudentMistakes(userId, limit = 15) {
 }
 
 /**
- * 4. Periodic Table Distractor Heatmap Matrix (118 Elements)
- * Returns click frequency, error rates, and confusion intensity per element for a class/topic.
+ * Build SQL WHERE clauses + params scoping `elementa_game_sessions` (`gsAlias`)
+ * strictly to `syId`, optional `classId`, and optional `teacherId` ("All Roster Cadets").
+ * Fails closed (`1 = 0`) if `teacherId` is provided without `syId`.
  */
-async function getPeriodicTableHeatmap(classId = null, levelNumber = null) {
+function buildSessionScopeClauses({ gsAlias = 'gs', classId = null, syId = null, teacherId = null } = {}) {
+    const clauses = [];
+    const params = [];
+    const parsedSyId = syId !== null && syId !== undefined ? Number(syId) : null;
+    const parsedClassId = classId !== null && classId !== undefined ? Number(classId) : null;
+    const parsedTeacherId = teacherId !== null && teacherId !== undefined ? Number(teacherId) : null;
+
+    if (parsedTeacherId && !parsedSyId) {
+        clauses.push('1 = 0');
+        return { clauses, params };
+    }
+
+    if (parsedSyId) {
+        clauses.push(`${gsAlias}.sy_id = ?`);
+        params.push(parsedSyId);
+    }
+
+    if (parsedClassId) {
+        if (parsedSyId) {
+            clauses.push(`(${gsAlias}.class_id = ? OR (${gsAlias}.class_id IS NULL AND EXISTS (
+                SELECT 1 FROM class_students cs_chk
+                JOIN classes c_chk ON c_chk.class_id = cs_chk.class_id
+                WHERE cs_chk.class_id = ? AND c_chk.sy_id = ?
+                  AND (cs_chk.sy_id IS NULL OR cs_chk.sy_id = c_chk.sy_id)
+                  AND (cs_chk.student_id = ${gsAlias}.student_id_p1 OR cs_chk.student_id = ${gsAlias}.student_id_p2)
+            )))`);
+            params.push(parsedClassId, parsedClassId, parsedSyId);
+        } else {
+            clauses.push(`${gsAlias}.class_id = ?`);
+            params.push(parsedClassId);
+        }
+    } else if (parsedTeacherId && parsedSyId) {
+        clauses.push(`(
+            ${gsAlias}.class_id IN (SELECT c_t.class_id FROM classes c_t WHERE c_t.teacher_id = ? AND c_t.sy_id = ?)
+            OR (${gsAlias}.class_id IS NULL AND EXISTS (
+                SELECT 1 FROM class_students cs_t
+                JOIN classes c_t2 ON c_t2.class_id = cs_t.class_id
+                WHERE c_t2.teacher_id = ? AND c_t2.sy_id = ?
+                  AND (cs_t.sy_id IS NULL OR cs_t.sy_id = c_t2.sy_id)
+                  AND (cs_t.student_id = ${gsAlias}.student_id_p1 OR cs_t.student_id = ${gsAlias}.student_id_p2)
+            ))
+        )`);
+        params.push(parsedTeacherId, parsedSyId, parsedTeacherId, parsedSyId);
+    }
+
+    return { clauses, params };
+}
+
+/**
+ * 4. Periodic Table Misconception Heatmap
+ * Maps student clicks and errors onto the 118-element periodic table grid.
+ */
+async function getPeriodicTableHeatmap(classId = null, levelNumber = null, options = {}) {
     try {
+        const scope = buildSessionScopeClauses({
+            gsAlias: 'gs',
+            classId,
+            syId: options && options.syId !== undefined ? options.syId : null,
+            teacherId: options && options.teacherId !== undefined ? options.teacherId : null
+        });
+
         let sql = `
             SELECT 
                 ec.element_symbol,
@@ -666,10 +726,8 @@ async function getPeriodicTableHeatmap(classId = null, levelNumber = null) {
             WHERE 1=1
         `;
         const params = [];
-        if (classId) {
-            sql += ` AND gs.class_id = ?`;
-            params.push(classId);
-        }
+        scope.clauses.forEach(c => { sql += ` AND ${c}`; });
+        params.push(...scope.params);
         if (levelNumber) {
             sql += ` AND lr.level_number = ?`;
             params.push(levelNumber);
@@ -704,8 +762,15 @@ async function getPeriodicTableHeatmap(classId = null, levelNumber = null) {
  * 5. Speed-Accuracy & Cognitive Hesitation Distribution (Scatter Data)
  * Segregates students into 4 quadrants: Mastery, Deliberation, Hesitation, Rapid Guessing.
  */
-async function getSpeedAccuracyDistribution(classId = null, levelNumber = null) {
+async function getSpeedAccuracyDistribution(classId = null, levelNumber = null, options = {}) {
     try {
+        const scope = buildSessionScopeClauses({
+            gsAlias: 'gs',
+            classId,
+            syId: options && options.syId !== undefined ? options.syId : null,
+            teacherId: options && options.teacherId !== undefined ? options.teacherId : null
+        });
+
         let sql = `
             SELECT 
                 u.user_id,
@@ -722,10 +787,8 @@ async function getSpeedAccuracyDistribution(classId = null, levelNumber = null) 
             WHERE u.user_id IS NOT NULL
         `;
         const params = [];
-        if (classId) {
-            sql += ` AND gs.class_id = ?`;
-            params.push(classId);
-        }
+        scope.clauses.forEach(c => { sql += ` AND ${c}`; });
+        params.push(...scope.params);
         if (levelNumber) {
             sql += ` AND lr.level_number = ?`;
             params.push(levelNumber);
@@ -762,8 +825,24 @@ async function getSpeedAccuracyDistribution(classId = null, levelNumber = null) 
  * 6. Early Warning Academic Risk Engine
  * Computes failure probability score (0 to 100%) and vulnerable machines.
  */
-async function getEarlyWarningRiskList(classId = null) {
+async function getEarlyWarningRiskList(classId = null, options = {}) {
     try {
+        const parsedSyId = options && options.syId !== undefined && options.syId !== null ? Number(options.syId) : null;
+        const parsedTeacherId = options && options.teacherId !== undefined && options.teacherId !== null ? Number(options.teacherId) : null;
+        const parsedClassId = classId !== null && classId !== undefined ? Number(classId) : null;
+
+        if (parsedTeacherId && !parsedSyId) {
+            return [];
+        }
+
+        const subScope = buildSessionScopeClauses({
+            gsAlias: 'mgs',
+            classId: parsedClassId,
+            syId: parsedSyId,
+            teacherId: parsedTeacherId
+        });
+        const subScopeSql = subScope.clauses.length ? ` AND ${subScope.clauses.join(' AND ')}` : '';
+
         let sql = `
             SELECT 
                 u.user_id,
@@ -778,20 +857,32 @@ async function getEarlyWarningRiskList(classId = null) {
                  FROM elementa_customer_attempts mca 
                  JOIN elementa_level_runs mlr ON mlr.run_id = mca.run_id
                  JOIN elementa_game_sessions mgs ON mgs.session_id = mlr.session_id
-                 WHERE (mgs.student_id_p1 = u.user_id OR mgs.student_id_p2 = u.user_id) AND mca.is_correct = 0
+                 WHERE (mgs.student_id_p1 = u.user_id OR mgs.student_id_p2 = u.user_id)
+                   AND mca.is_correct = 0${subScopeSql}
                  GROUP BY machine_used 
                  ORDER BY COUNT(*) DESC LIMIT 1) AS top_vulnerable_machine
             FROM users u
             JOIN class_students cs ON cs.student_id = u.user_id
+            JOIN classes c ON c.class_id = cs.class_id
             LEFT JOIN elementa_game_sessions gs ON (gs.student_id_p1 = u.user_id OR gs.student_id_p2 = u.user_id)
+                ${parsedSyId ? 'AND gs.sy_id = c.sy_id' : ''}
+                AND (gs.class_id = c.class_id OR gs.class_id IS NULL)
             LEFT JOIN elementa_level_runs lr ON lr.session_id = gs.session_id
             LEFT JOIN elementa_customer_attempts ca ON ca.run_id = lr.run_id
             WHERE u.role = 'Student'
+              AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
         `;
-        const params = [];
-        if (classId) {
+        const params = [...subScope.params];
+        if (parsedSyId) {
+            sql += ` AND c.sy_id = ?`;
+            params.push(parsedSyId);
+        }
+        if (parsedClassId) {
             sql += ` AND cs.class_id = ?`;
-            params.push(classId);
+            params.push(parsedClassId);
+        } else if (parsedTeacherId && parsedSyId) {
+            sql += ` AND c.teacher_id = ?`;
+            params.push(parsedTeacherId);
         }
         sql += ` GROUP BY u.user_id, student_name, u.section, u.profile_pic HAVING total_attempts >= 5`;
 
@@ -903,18 +994,33 @@ async function getQuestionPsychometrics(levelNumber = null) {
  * Constructs a chronological timeline of interactions (periodic lookups, customer orders,
  * machine configurations, hesitation pauses, and outcomes) for teacher inspection.
  */
-async function getSessionReplay(sessionId) {
+async function getSessionReplay(sessionId, options = {}) {
     try {
-        const [[session]] = await pool.query(
-            `SELECT s.*, 
-                    u1.first_name AS p1_first, u1.last_name AS p1_last, u1.lrn_number AS p1_lrn,
-                    u2.first_name AS p2_first, u2.last_name AS p2_last
-             FROM elementa_game_sessions s
-             LEFT JOIN users u1 ON u1.user_id = s.student_id_p1
-             LEFT JOIN users u2 ON u2.user_id = s.student_id_p2
-             WHERE s.session_id = ?`,
-            [sessionId]
-        );
+        const parsedSyId = options && options.syId !== undefined && options.syId !== null ? Number(options.syId) : null;
+        const parsedTeacherId = options && options.teacherId !== undefined && options.teacherId !== null ? Number(options.teacherId) : null;
+
+        const scope = buildSessionScopeClauses({
+            gsAlias: 's',
+            classId: null,
+            syId: parsedSyId,
+            teacherId: parsedTeacherId
+        });
+
+        let sessionSql = `
+            SELECT s.*, 
+                   u1.first_name AS p1_first, u1.last_name AS p1_last, u1.lrn_number AS p1_lrn,
+                   u2.first_name AS p2_first, u2.last_name AS p2_last
+            FROM elementa_game_sessions s
+            LEFT JOIN users u1 ON u1.user_id = s.student_id_p1
+            LEFT JOIN users u2 ON u2.user_id = s.student_id_p2
+            WHERE s.session_id = ?
+        `;
+        const sessionParams = [sessionId];
+        scope.clauses.forEach(c => { sessionSql += ` AND ${c}`; });
+        sessionParams.push(...scope.params);
+        sessionSql += ` LIMIT 1`;
+
+        const [[session]] = await pool.query(sessionSql, sessionParams);
 
         if (!session) return null;
 
