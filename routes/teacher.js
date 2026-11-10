@@ -4603,6 +4603,14 @@ router.get('/api/forum-replies/:forumId', isTeacher, async (req, res) => {
     try {
         const teacherId = req.user.user_id;
         const forumId = req.params.forumId;
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId);
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ error: access.error });
+        }
+
         const [replies] = await db.execute(`
             SELECT fr.*, u.first_name, u.last_name, u.profile_pic, u.role,
                    (SELECT COUNT(*) FROM reply_votes rv WHERE rv.reply_id = fr.reply_id) AS vote_count,
@@ -4635,7 +4643,7 @@ router.get('/api/forum-replies/:forumId', isTeacher, async (req, res) => {
             JOIN users u ON ft.teacher_id = u.user_id
             LEFT JOIN topics t ON ft.topic_id = t.topic_id
             LEFT JOIN subjects s ON ft.subject_id = s.subject_id
-            WHERE ft.forum_id = ?`, [forumId]);
+            WHERE ft.forum_id = ? AND ft.sy_id = ?`, [forumId, currentSyId]);
 
         res.json({ replies, topic: topics[0] || null });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -7356,33 +7364,310 @@ const forumUpload = multer({
 
 
 // ════════════════════════════════════════════════════════════════════════════
+// STRICT CURRENT SCHOOL YEAR (sy_id) HELPERS FOR TEACHER FORUMS
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Strictly resolve the live Current School Year (`status = 'Current'` or `is_active = 1`).
+ * Never falls back to an Archive/Draft SY so forum routes fail closed when no SY is active.
+ */
+async function resolveStrictForumCurrentSY() {
+    const [[currentSY]] = await db.query(`
+        SELECT *
+        FROM school_years
+        WHERE status = 'Current' OR is_active = 1
+        ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
+        LIMIT 1
+    `);
+    return currentSY || null;
+}
+
+/**
+ * Resolve a forum and strictly enforce that it belongs to `currentSyId` and that
+ * `teacherId` is authorized to view/moderate (or own, when `requireOwnership` is true).
+ */
+async function resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId, { requireOwnership = false } = {}) {
+    const parsedForumId = parseInt(forumId, 10);
+    if (isNaN(parsedForumId) || parsedForumId <= 0) {
+        return { ok: false, statusCode: 400, code: 'invalid_id', error: 'Invalid forum ID.' };
+    }
+    if (!currentSyId) {
+        return { ok: false, statusCode: 403, code: 'no_active_sy', error: 'No active Current School Year is configured.' };
+    }
+
+    const [rows] = await db.execute(`
+        SELECT ft.*,
+               tc.sy_id AS class_sy_id,
+               tc.teacher_id AS class_teacher_id,
+               tc.class_name,
+               s.subject_name,
+               s.subject_code,
+               s.subject_image
+        FROM forum_topics ft
+        LEFT JOIN classes tc ON ft.class_id = tc.class_id
+        LEFT JOIN subjects s ON ft.subject_id = s.subject_id
+        WHERE ft.forum_id = ?
+        LIMIT 1
+    `, [parsedForumId]);
+
+    if (!rows.length) {
+        return { ok: false, statusCode: 404, code: 'not_found', error: 'Forum thread not found.' };
+    }
+
+    const forum = rows[0];
+    const targetSyId = Number(currentSyId);
+    const effectiveSyId = forum.sy_id !== null && forum.sy_id !== undefined
+        ? Number(forum.sy_id)
+        : (forum.class_sy_id !== null && forum.class_sy_id !== undefined ? Number(forum.class_sy_id) : null);
+
+    if (!effectiveSyId || effectiveSyId !== targetSyId) {
+        return {
+            ok: false,
+            statusCode: 403,
+            code: 'forbidden_sy',
+            error: 'This forum belongs to a different school year and cannot be accessed in the Current School Year.'
+        };
+    }
+
+    if (forum.class_id !== null && forum.class_id !== undefined) {
+        if (forum.class_sy_id === null || forum.class_sy_id === undefined || Number(forum.class_sy_id) !== targetSyId) {
+            return {
+                ok: false,
+                statusCode: 403,
+                code: 'forbidden_sy',
+                error: 'The target class section for this forum does not belong to the Current School Year.'
+            };
+        }
+    }
+
+    const isCreator = Number(forum.teacher_id) === Number(teacherId);
+
+    if (requireOwnership) {
+        const ownsClassIfSet = forum.class_id === null || forum.class_id === undefined || Number(forum.class_teacher_id) === Number(teacherId);
+        if (!isCreator || !ownsClassIfSet) {
+            return { ok: false, statusCode: 403, code: 'forbidden_owner', error: 'Access denied. You do not own this forum thread.' };
+        }
+        return { ok: true, forum };
+    }
+
+    if (forum.class_id !== null && forum.class_id !== undefined) {
+        const teachesTargetClass = Number(forum.class_teacher_id) === Number(teacherId);
+        if (!isCreator && !teachesTargetClass) {
+            return { ok: false, statusCode: 403, code: 'forbidden_owner', error: 'You do not have permission to access this class forum.' };
+        }
+        return { ok: true, forum };
+    }
+
+    if (!isCreator) {
+        const [subjectAccess] = await db.execute(`
+            SELECT 1
+            FROM classes c
+            WHERE c.subject_id = ? AND c.teacher_id = ? AND c.sy_id = ?
+            LIMIT 1
+        `, [forum.subject_id, teacherId, targetSyId]);
+        if (!subjectAccess.length) {
+            return { ok: false, statusCode: 403, code: 'forbidden_owner', error: 'You do not teach this subject in the Current School Year.' };
+        }
+    }
+
+    return { ok: true, forum };
+}
+
+/**
+ * Resolve the enrolled student cohort and forum completion statuses strictly within `currentSyId`.
+ * Respects `forum.class_id` when targeted to a single section, or scopes to `teacherId`'s classes
+ * for `forum.subject_id` in `currentSyId` when `forum.class_id` is NULL.
+ */
+async function getForumCohortRoster(forum, currentSyId, teacherId) {
+    if (!forum || !currentSyId) {
+        return { students: [], done: [], enrolled_count: 0, done_count: 0, completion_rate: 0 };
+    }
+
+    const targetSyId = Number(currentSyId);
+    const hasTargetClass = forum.class_id !== null && forum.class_id !== undefined;
+
+    const cohortSql = hasTargetClass
+        ? `
+            SELECT u.user_id,
+                   u.user_id AS student_id,
+                   MAX(u.first_name) AS first_name,
+                   MAX(u.last_name) AS last_name,
+                   MAX(u.email) AS email,
+                   MAX(u.profile_pic) AS profile_pic,
+                   MIN(c.class_id) AS class_id,
+                   GROUP_CONCAT(DISTINCT c.class_name ORDER BY c.class_name SEPARATOR ', ') AS class_name,
+                   MAX(sfd.done_at) AS done_at,
+                   MAX(sfd.exp_awarded) AS exp_awarded,
+                   MAX(sfd.time_tier) AS time_tier,
+                   MAX(CASE WHEN sfd.student_id IS NOT NULL THEN 1 ELSE 0 END) AS is_done,
+                   (SELECT COUNT(*) FROM forum_replies fr WHERE fr.topic_id = ? AND fr.user_id = u.user_id) AS contributions_count
+            FROM class_students cs
+            JOIN classes c ON cs.class_id = c.class_id
+            JOIN users u ON cs.student_id = u.user_id
+            LEFT JOIN student_forum_done sfd ON sfd.forum_id = ? AND sfd.student_id = u.user_id
+            WHERE c.class_id = ?
+              AND c.sy_id = ?
+              AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+              AND u.role = 'Student'
+            GROUP BY u.user_id
+            ORDER BY is_done DESC, last_name ASC, first_name ASC
+        `
+        : `
+            SELECT u.user_id,
+                   u.user_id AS student_id,
+                   MAX(u.first_name) AS first_name,
+                   MAX(u.last_name) AS last_name,
+                   MAX(u.email) AS email,
+                   MAX(u.profile_pic) AS profile_pic,
+                   MIN(c.class_id) AS class_id,
+                   GROUP_CONCAT(DISTINCT c.class_name ORDER BY c.class_name SEPARATOR ', ') AS class_name,
+                   MAX(sfd.done_at) AS done_at,
+                   MAX(sfd.exp_awarded) AS exp_awarded,
+                   MAX(sfd.time_tier) AS time_tier,
+                   MAX(CASE WHEN sfd.student_id IS NOT NULL THEN 1 ELSE 0 END) AS is_done,
+                   (SELECT COUNT(*) FROM forum_replies fr WHERE fr.topic_id = ? AND fr.user_id = u.user_id) AS contributions_count
+            FROM class_students cs
+            JOIN classes c ON cs.class_id = c.class_id
+            JOIN users u ON cs.student_id = u.user_id
+            LEFT JOIN student_forum_done sfd ON sfd.forum_id = ? AND sfd.student_id = u.user_id
+            WHERE c.subject_id = ?
+              AND c.teacher_id = ?
+              AND c.sy_id = ?
+              AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+              AND u.role = 'Student'
+            GROUP BY u.user_id
+            ORDER BY is_done DESC, last_name ASC, first_name ASC
+        `;
+
+    const params = hasTargetClass
+        ? [forum.forum_id, forum.forum_id, forum.class_id, targetSyId]
+        : [forum.forum_id, forum.forum_id, forum.subject_id, teacherId, targetSyId];
+
+    const [rows] = await db.execute(cohortSql, params);
+    const students = rows.map(r => ({
+        ...r,
+        is_done: Boolean(Number(r.is_done)),
+        has_completed: Boolean(Number(r.is_done))
+    }));
+    const done = students.filter(s => s.is_done).map(s => ({
+        student_id: s.user_id,
+        done_at: s.done_at,
+        exp_awarded: s.exp_awarded,
+        time_tier: s.time_tier
+    }));
+    const enrolled_count = students.length;
+    const done_count = done.length;
+    const completion_rate = enrolled_count > 0 ? Math.round((done_count / enrolled_count) * 100) : 0;
+
+    return { students, done, enrolled_count, done_count, completion_rate };
+}
+
+/**
+ * Validate that a target subject or class section belongs to `teacherId` within `currentSyId`.
+ */
+async function verifyTeacherSubjectOrClassInCurrentSY({ teacherId, subjectId, classId = null, currentSyId }) {
+    if (!currentSyId) {
+        return { ok: false, error: 'No active Current School Year is configured.' };
+    }
+    const targetSyId = Number(currentSyId);
+
+    if (classId !== null && classId !== undefined) {
+        const [rows] = await db.execute(`
+            SELECT class_id, subject_id, sy_id
+            FROM classes
+            WHERE class_id = ? AND teacher_id = ? AND sy_id = ?
+            LIMIT 1
+        `, [classId, teacherId, targetSyId]);
+        if (!rows.length) {
+            return { ok: false, error: 'Selected class section does not belong to you in the Current School Year.' };
+        }
+        if (subjectId && Number(rows[0].subject_id) !== Number(subjectId)) {
+            return { ok: false, error: 'Selected class section does not match the specified subject.' };
+        }
+        return { ok: true, classRow: rows[0] };
+    }
+
+    if (subjectId) {
+        const [rows] = await db.execute(`
+            SELECT class_id, subject_id, sy_id
+            FROM classes
+            WHERE teacher_id = ? AND subject_id = ? AND sy_id = ?
+            LIMIT 1
+        `, [teacherId, subjectId, targetSyId]);
+        if (!rows.length) {
+            return { ok: false, error: 'Selected subject does not have an active class assigned to you in the Current School Year.' };
+        }
+        return { ok: true, classRow: rows[0] };
+    }
+
+    return { ok: false, error: 'Subject is required.' };
+}
+
+/**
+ * Resolve a forum via a reply ID and strictly enforce Current School Year access/ownership.
+ */
+async function resolveTeacherForumByReplyInCurrentSY(replyId, teacherId, currentSyId, { requireOwnership = false } = {}) {
+    const parsedReplyId = parseInt(replyId, 10);
+    if (isNaN(parsedReplyId) || parsedReplyId <= 0) {
+        return { ok: false, statusCode: 400, code: 'invalid_id', error: 'Invalid reply ID.' };
+    }
+    const [replyRows] = await db.execute(
+        `SELECT reply_id, topic_id FROM forum_replies WHERE reply_id = ? LIMIT 1`,
+        [parsedReplyId]
+    );
+    if (!replyRows.length) {
+        return { ok: false, statusCode: 404, code: 'reply_not_found', error: 'Reply not found.' };
+    }
+    const forumAccess = await resolveTeacherForumInCurrentSY(replyRows[0].topic_id, teacherId, currentSyId, { requireOwnership });
+    if (!forumAccess.ok) {
+        return forumAccess;
+    }
+    return { ok: true, forum: forumAccess.forum, replyId: parsedReplyId };
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
 // GET /teacher/forums — Render the forums page
 // ════════════════════════════════════════════════════════════════════════════
 router.get('/forums', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     try {
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const currentSyId = currentSY ? currentSY.sy_id : null;
-        const syStartDate = currentSY && currentSY.start_date ? new Date(currentSY.start_date) : null;
-        const syEndDate = currentSY && currentSY.end_date ? new Date(currentSY.end_date) : null;
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
 
-        // 1. Fetch all subjects that belong to this teacher's active classes
+        if (!currentSyId) {
+            const notifications = await getTeacherNotifications(db, teacherId);
+            return res.render('teacher/forums', {
+                user: req.user,
+                currentSY: null,
+                syBlocked: req.query.sy_blocked === '1',
+                allForumsData: [],
+                forums: [],
+                subjects: [],
+                topics: [],
+                classes: [],
+                enrolledStudents: [],
+                notifications,
+            });
+        }
+
+        // 1. Fetch all subjects that belong to this teacher's Current SY classes
         const [subjects] = await db.execute(`
             SELECT DISTINCT s.subject_id, s.subject_name, s.subject_code, s.subject_image
             FROM subjects s
             JOIN classes c ON s.subject_id = c.subject_id
-            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
+            WHERE c.teacher_id = ? AND c.sy_id = ?
             ORDER BY s.subject_name ASC`,
-            [teacherId, currentSyId, currentSyId]
+            [teacherId, currentSyId]
         );
 
-        // Fetch active classes for section selection
+        // Fetch Current SY classes for section selection
         const [classes] = await db.execute(`
             SELECT c.class_id, c.class_name, c.subject_id
             FROM classes c
-            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
+            WHERE c.teacher_id = ? AND c.sy_id = ?
             ORDER BY c.class_name ASC`,
-            [teacherId, currentSyId, currentSyId]
+            [teacherId, currentSyId]
         );
 
         const subjectIds = subjects.map(s => s.subject_id);
@@ -7391,6 +7676,7 @@ router.get('/forums', isTeacher, async (req, res) => {
             return res.render('teacher/forums', {
                 user: req.user,
                 currentSY,
+                syBlocked: req.query.sy_blocked === '1',
                 allForumsData: [],
                 forums: [],
                 subjects: [],
@@ -7403,7 +7689,7 @@ router.get('/forums', isTeacher, async (req, res) => {
 
         const placeholders = subjectIds.map(() => '?').join(',');
 
-        // 2. All curriculum topics for those subjects (with quarter info)
+        // 2. All curriculum topics for those Current SY subjects (with quarter info)
         const [topics] = await db.execute(`
             SELECT t.topic_id, t.topic_name, t.is_locked,
                    q.quarter_id, q.quarter_number, q.subject_id
@@ -7414,13 +7700,14 @@ router.get('/forums', isTeacher, async (req, res) => {
             subjectIds
         );
 
-        // 3. All forum threads for this teacher with enriched metadata (scoped to active school year)
+        // 3. All forum threads for this teacher strictly scoped to currentSyId
         const [forums] = await db.execute(`
             SELECT
                 ft.forum_id,
                 ft.topic_id,
                 ft.subject_id,
                 ft.class_id,
+                ft.sy_id,
                 ft.teacher_id,
                 ft.title,
                 ft.forum_content,
@@ -7448,16 +7735,41 @@ router.get('/forums', isTeacher, async (req, res) => {
                 -- Last activity (most recent reply or post date)
                 (SELECT MAX(fr2.created_at) FROM forum_replies fr2 WHERE fr2.topic_id = ft.forum_id) AS last_reply_at,
 
-                -- Completion count (students who marked done)
-                (SELECT COUNT(*) FROM student_forum_done sfd WHERE sfd.forum_id = ft.forum_id) AS done_count,
-
-                -- Enrolled students count (scoped to specific class if class_id is set, else all classes of subject in active SY)
+                -- Completion count (strictly students enrolled in the forum's Current SY cohort)
                 IF(ft.class_id IS NOT NULL,
-                    (SELECT COUNT(DISTINCT cs2.student_id) FROM class_students cs2 WHERE cs2.class_id = ft.class_id),
+                    (SELECT COUNT(DISTINCT sfd.student_id)
+                     FROM student_forum_done sfd
+                     JOIN class_students cs2 ON sfd.student_id = cs2.student_id AND cs2.class_id = ft.class_id
+                     JOIN classes c2 ON cs2.class_id = c2.class_id
+                     WHERE sfd.forum_id = ft.forum_id
+                       AND c2.sy_id = ?
+                       AND (cs2.sy_id IS NULL OR cs2.sy_id = c2.sy_id)),
+                    (SELECT COUNT(DISTINCT sfd.student_id)
+                     FROM student_forum_done sfd
+                     JOIN class_students cs2 ON sfd.student_id = cs2.student_id
+                     JOIN classes c2 ON cs2.class_id = c2.class_id
+                     WHERE sfd.forum_id = ft.forum_id
+                       AND c2.subject_id = ft.subject_id
+                       AND c2.teacher_id = ?
+                       AND c2.sy_id = ?
+                       AND (cs2.sy_id IS NULL OR cs2.sy_id = c2.sy_id))
+                ) AS done_count,
+
+                -- Enrolled students count (strictly Current SY cohort for class or teacher's sections)
+                IF(ft.class_id IS NOT NULL,
+                    (SELECT COUNT(DISTINCT cs2.student_id)
+                     FROM class_students cs2
+                     JOIN classes c2 ON cs2.class_id = c2.class_id
+                     WHERE cs2.class_id = ft.class_id
+                       AND c2.sy_id = ?
+                       AND (cs2.sy_id IS NULL OR cs2.sy_id = c2.sy_id)),
                     (SELECT COUNT(DISTINCT cs.student_id)
                      FROM class_students cs
                      JOIN classes c2 ON cs.class_id = c2.class_id
-                     WHERE c2.subject_id = ft.subject_id AND (? IS NULL OR c2.sy_id = ?))
+                     WHERE c2.subject_id = ft.subject_id
+                       AND c2.teacher_id = ?
+                       AND c2.sy_id = ?
+                       AND (cs.sy_id IS NULL OR cs.sy_id = c2.sy_id))
                 ) AS enrolled_count
 
             FROM forum_topics ft
@@ -7465,16 +7777,27 @@ router.get('/forums', isTeacher, async (req, res) => {
             LEFT JOIN topics t ON ft.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
             LEFT JOIN classes c ON ft.class_id = c.class_id
-            WHERE ft.teacher_id = ?
+            WHERE ft.sy_id = ?
               AND (
-                  ft.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
-                  OR (ft.class_id IS NULL AND (? IS NULL OR (ft.created_at >= ? AND ft.created_at <= ?)))
+                  ft.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
+                  OR (
+                      ft.class_id IS NULL
+                      AND (
+                          ft.teacher_id = ?
+                          OR ft.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
+                      )
+                  )
               )
             ORDER BY ft.is_pinned DESC, ft.created_at DESC`,
             [
-                currentSyId, currentSyId,
-                teacherId, teacherId, currentSyId, currentSyId,
-                currentSyId, syStartDate, syEndDate
+                currentSyId,
+                teacherId, currentSyId,
+                currentSyId,
+                teacherId, currentSyId,
+                currentSyId,
+                teacherId, currentSyId,
+                teacherId,
+                teacherId, currentSyId
             ]
         );
 
@@ -7483,7 +7806,7 @@ router.get('/forums', isTeacher, async (req, res) => {
             f.teacher_name = `${f.teacher_first} ${f.teacher_last}`;
         });
 
-        // 4. All enrolled students in active classes
+        // 4. All enrolled students in this teacher's Current SY classes
         const [enrolledStudents] = await db.execute(`
             SELECT DISTINCT
                 u.user_id   AS student_id,
@@ -7494,16 +7817,19 @@ router.get('/forums', isTeacher, async (req, res) => {
             JOIN class_students cs ON u.user_id = cs.student_id
             JOIN classes c ON cs.class_id = c.class_id
             WHERE c.subject_id IN (${placeholders})
-              AND (? IS NULL OR c.sy_id = ?)
+              AND c.teacher_id = ?
+              AND c.sy_id = ?
+              AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
               AND u.role = 'Student'
             ORDER BY u.last_name, u.first_name ASC`,
-            [...subjectIds, currentSyId, currentSyId]
+            [...subjectIds, teacherId, currentSyId]
         );
 
         const notifications = await getTeacherNotifications(db, teacherId);
         res.render('teacher/forums', {
             user: req.user,
             currentSY,
+            syBlocked: req.query.sy_blocked === '1',
             allForumsData: forums,
             forums: forums,
             subjects,
@@ -7529,7 +7855,18 @@ const renderTeacherForumView = async (req, res) => {
     if (isNaN(forumId)) return res.redirect('/teacher/forums?error=Invalid+forum+ID');
 
     try {
-        // 1. Fetch forum details + subject + topic + quarter + teacher info
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId);
+        if (!access.ok) {
+            if (access.code === 'forbidden_sy' || access.code === 'no_active_sy') {
+                return res.redirect('/teacher/forums?sy_blocked=1');
+            }
+            return res.redirect('/teacher/forums?error=Forum+not+found+or+access+denied');
+        }
+
+        // 1. Fetch enriched forum details + subject + topic + quarter + teacher info (scoped to currentSyId)
         const [forumRows] = await db.execute(`
             SELECT ft.*,
                    s.subject_name, s.subject_code, s.subject_image,
@@ -7541,38 +7878,23 @@ const renderTeacherForumView = async (req, res) => {
             LEFT JOIN topics t ON ft.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
             JOIN users u ON ft.teacher_id = u.user_id
-            WHERE ft.forum_id = ?
-              AND (ft.teacher_id = ? OR EXISTS (
-                  SELECT 1 FROM classes c WHERE c.subject_id = ft.subject_id AND c.teacher_id = ?
-              ))
+            WHERE ft.forum_id = ? AND ft.sy_id = ?
             LIMIT 1
-        `, [forumId, teacherId, teacherId]);
+        `, [forumId, currentSyId]);
 
         if (!forumRows.length) {
-            return res.redirect('/teacher/forums?error=Forum+not+found+or+access+denied');
+            return res.redirect('/teacher/forums?sy_blocked=1');
         }
 
         const forum = forumRows[0];
         forum.teacher_name = `${forum.teacher_first} ${forum.teacher_last}`;
 
-        // 2. Fetch enrolled students and their completion status
-        const [enrolledStudents] = await db.execute(`
-            SELECT DISTINCT
-                u.user_id AS student_id,
-                u.first_name, u.last_name, u.profile_pic, u.email,
-                (SELECT sfd.done_at FROM student_forum_done sfd WHERE sfd.forum_id = ? AND sfd.student_id = u.user_id LIMIT 1) AS done_at,
-                EXISTS(SELECT 1 FROM student_forum_done sfd WHERE sfd.forum_id = ? AND sfd.student_id = u.user_id) AS is_done,
-                (SELECT COUNT(*) FROM forum_replies fr WHERE fr.topic_id = ? AND fr.user_id = u.user_id) AS contributions_count
-            FROM users u
-            JOIN class_students cs ON u.user_id = cs.student_id
-            JOIN classes c ON cs.class_id = c.class_id
-            WHERE c.subject_id = ? AND u.role = 'Student'
-            ORDER BY is_done DESC, u.last_name ASC, u.first_name ASC
-        `, [forumId, forumId, forumId, forum.subject_id]);
-
-        const enrolledCount = enrolledStudents.length;
-        const doneCount = enrolledStudents.filter(s => s.is_done).length;
-        const completionRate = enrolledCount > 0 ? Math.round((doneCount / enrolledCount) * 100) : 0;
+        // 2. Fetch enrolled students & completion status strictly for Current SY cohort
+        const roster = await getForumCohortRoster(forum, currentSyId, teacherId);
+        const enrolledStudents = roster.students;
+        const enrolledCount = roster.enrolled_count;
+        const doneCount = roster.done_count;
+        const completionRate = roster.completion_rate;
 
         // 3. Fetch root student discussion topics
         const [discussions] = await db.execute(`
@@ -7625,13 +7947,13 @@ const renderTeacherForumView = async (req, res) => {
             WHERE fr.topic_id = ? AND rep.status = 'pending'
         `, [forumId]);
 
-        // Fetch classes for this subject and teacher (for modal editing)
+        // Fetch Current SY classes for this subject and teacher (for modal editing)
         const [classes] = await db.execute(`
             SELECT c.class_id, c.class_name, c.subject_id
             FROM classes c
-            WHERE c.subject_id = ? AND c.teacher_id = ?
+            WHERE c.subject_id = ? AND c.teacher_id = ? AND c.sy_id = ?
             ORDER BY c.class_name ASC`,
-            [forum.subject_id, teacherId]
+            [forum.subject_id, teacherId, currentSyId]
         );
 
         // Fetch curriculum topics for this subject (for modal editing)
@@ -7648,6 +7970,7 @@ const renderTeacherForumView = async (req, res) => {
 
         res.render('teacher/forumview', {
             user: req.user,
+            currentSY,
             forum,
             discussions,
             enrolledStudents,
@@ -7716,16 +8039,84 @@ router.get('/api/forum-banner-presets', isTeacher, (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// GET /teacher/api/forum/repository-files — Subject/Topic Learning Materials
+// (Must be registered BEFORE /api/forum/:forumId so Express doesn't capture 'repository-files' as :forumId)
+// ════════════════════════════════════════════════════════════════════════════
+router.get('/api/forum/repository-files', isTeacher, async (req, res) => {
+    const teacherId = req.user.user_id;
+    const { subject_id, topic_id } = req.query;
+
+    try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) {
+            return res.json({ success: true, materials: [] });
+        }
+
+        let materials = [];
+        if (topic_id && !isNaN(topic_id)) {
+            const [rows] = await db.execute(`
+                SELECT DISTINCT lm.material_id, lm.title, lm.file_path_or_url, lm.material_type
+                FROM learning_materials lm
+                JOIN topics t ON lm.topic_id = t.topic_id
+                JOIN quarters q ON t.quarter_id = q.quarter_id
+                JOIN classes c ON q.subject_id = c.subject_id
+                WHERE lm.topic_id = ? AND c.teacher_id = ? AND c.sy_id = ?
+                ORDER BY lm.title ASC
+            `, [topic_id, teacherId, currentSyId]);
+            materials = rows;
+        } else if (subject_id && !isNaN(subject_id)) {
+            const [rows] = await db.execute(`
+                SELECT DISTINCT lm.material_id, lm.title, lm.file_path_or_url, lm.material_type
+                FROM learning_materials lm
+                JOIN topics t ON lm.topic_id = t.topic_id
+                JOIN quarters q ON t.quarter_id = q.quarter_id
+                JOIN classes c ON q.subject_id = c.subject_id
+                WHERE q.subject_id = ? AND c.teacher_id = ? AND c.sy_id = ?
+                ORDER BY lm.title ASC
+            `, [subject_id, teacherId, currentSyId]);
+            materials = rows;
+        } else {
+            const [rows] = await db.execute(`
+                SELECT DISTINCT lm.material_id, lm.title, lm.file_path_or_url, lm.material_type
+                FROM learning_materials lm
+                JOIN topics t ON lm.topic_id = t.topic_id
+                JOIN quarters q ON t.quarter_id = q.quarter_id
+                JOIN classes c ON q.subject_id = c.subject_id
+                WHERE c.teacher_id = ? AND c.sy_id = ?
+                ORDER BY lm.title ASC
+                LIMIT 50
+            `, [teacherId, currentSyId]);
+            materials = rows;
+        }
+
+        res.json({ success: true, materials });
+
+    } catch (err) {
+        console.error('❌ [GET /teacher/api/forum/repository-files]', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 // GET /teacher/api/forum/:forumId — Thread detail (forum + replies + completion)
 // ════════════════════════════════════════════════════════════════════════════
 router.get('/api/forum/:forumId', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     const { forumId } = req.params;
     try {
-        // 1. Forum info with all new fields
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId);
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ error: access.error });
+        }
+
+        // 1. Enriched forum info strictly scoped to Current SY
         const [forumRows] = await db.execute(`
             SELECT
-                ft.forum_id, ft.topic_id, ft.subject_id, ft.class_id, ft.teacher_id,
+                ft.forum_id, ft.topic_id, ft.subject_id, ft.class_id, ft.sy_id, ft.teacher_id,
                 ft.title, ft.forum_content, ft.due_date, ft.base_exp,
                 ft.post_before_viewing, ft.allow_anonymous,
                 ft.attachment_path, ft.attachment_name,
@@ -7736,17 +8127,15 @@ router.get('/api/forum/:forumId', isTeacher, async (req, res) => {
                 q.quarter_number,
                 c.class_name,
                 (SELECT COUNT(*) FROM forum_replies fr WHERE fr.topic_id = ft.forum_id) AS reply_count,
-                (SELECT MAX(fr2.created_at) FROM forum_replies fr2 WHERE fr2.topic_id = ft.forum_id) AS last_reply_at,
-                (SELECT COUNT(*) FROM student_forum_done sfd WHERE sfd.forum_id = ft.forum_id) AS done_count
+                (SELECT MAX(fr2.created_at) FROM forum_replies fr2 WHERE fr2.topic_id = ft.forum_id) AS last_reply_at
             FROM forum_topics ft
             JOIN users u ON ft.teacher_id = u.user_id
             LEFT JOIN topics t ON ft.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
             LEFT JOIN classes c ON ft.class_id = c.class_id
-            WHERE ft.forum_id = ? AND (ft.teacher_id = ? OR EXISTS (
-                SELECT 1 FROM classes c2 WHERE c2.subject_id = ft.subject_id AND c2.teacher_id = ?
-            ))`,
-            [forumId, teacherId, teacherId]
+            WHERE ft.forum_id = ? AND ft.sy_id = ?
+            LIMIT 1`,
+            [forumId, currentSyId]
         );
 
         if (!forumRows.length) return res.status(404).json({ error: 'Forum not found or access denied.' });
@@ -7792,44 +8181,27 @@ router.get('/api/forum/:forumId', isTeacher, async (req, res) => {
             }
         });
 
-        // 3. Students who marked as done
-        const [doneStudents] = await db.execute(`
-            SELECT sfd.student_id, sfd.done_at, sfd.exp_awarded, sfd.time_tier,
-                   u.first_name, u.last_name, u.profile_pic
-            FROM student_forum_done sfd
-            JOIN users u ON sfd.student_id = u.user_id
-            WHERE sfd.forum_id = ?`,
-            [forumId]
-        );
-
-        // 4. All students enrolled in the forum's subject (or class if scoped)
-        let enrolledStudents = [];
-        if (forum.class_id) {
-            const [rows] = await db.execute(`
-                SELECT DISTINCT
-                    u.user_id AS student_id,
-                    u.first_name, u.last_name, u.profile_pic
-                FROM users u
-                JOIN class_students cs ON u.user_id = cs.student_id
-                WHERE cs.class_id = ? AND u.role = 'Student'
-                ORDER BY u.last_name, u.first_name ASC`,
-                [forum.class_id]
-            );
-            enrolledStudents = rows;
-        } else {
-            const [rows] = await db.execute(`
-                SELECT DISTINCT
-                    u.user_id AS student_id,
-                    u.first_name, u.last_name, u.profile_pic
-                FROM users u
-                JOIN class_students cs ON u.user_id = cs.student_id
-                JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.subject_id = ? AND u.role = 'Student'
-                ORDER BY u.last_name, u.first_name ASC`,
-                [forum.subject_id]
-            );
-            enrolledStudents = rows;
-        }
+        // 3 & 4. Current SY Cohort roster & completion status
+        const roster = await getForumCohortRoster(forum, currentSyId, teacherId);
+        const enrolledStudents = roster.students.map(s => ({
+            student_id: s.student_id,
+            first_name: s.first_name,
+            last_name: s.last_name,
+            profile_pic: s.profile_pic
+        }));
+        const doneStudents = roster.students
+            .filter(s => s.is_done)
+            .map(s => ({
+                student_id: s.student_id,
+                done_at: s.done_at,
+                exp_awarded: s.exp_awarded,
+                time_tier: s.time_tier,
+                first_name: s.first_name,
+                last_name: s.last_name,
+                profile_pic: s.profile_pic
+            }));
+        forum.done_count = roster.done_count;
+        forum.enrolled_count = roster.enrolled_count;
 
         res.json({ forum, replies, done_students: doneStudents, enrolled_students: enrolledStudents });
 
@@ -7855,16 +8227,29 @@ router.post('/api/forum', isTeacher, handleForumUpload, async (req, res) => {
         if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required.' });
         if (!subject_id) return res.status(400).json({ error: 'subject_id is required.' });
 
-        // Verify teacher owns a class for this subject (preferring current SY or specified class_id)
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const [chk] = await db.execute(
-            `SELECT class_id, sy_id FROM classes
-             WHERE teacher_id = ? AND subject_id = ?
-             ORDER BY (? IS NOT NULL AND sy_id = ?) DESC, sy_id DESC
-             LIMIT 1`,
-            [teacherId, subject_id, currentSY ? currentSY.sy_id : null, currentSY ? currentSY.sy_id : null]
-        );
-        if (!chk.length) return res.status(403).json({ error: 'You do not teach this subject.' });
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) {
+            return res.status(400).json({ error: 'No active Current School Year is configured.' });
+        }
+
+        const parsedClassId = class_id && String(class_id).trim() && String(class_id).trim() !== 'all'
+            ? parseInt(class_id, 10)
+            : null;
+        if (class_id && String(class_id).trim() && String(class_id).trim() !== 'all' && isNaN(parsedClassId)) {
+            return res.status(400).json({ error: 'Invalid class_id.' });
+        }
+
+        // Strictly verify subject & class ownership within Current SY
+        const scopeCheck = await verifyTeacherSubjectOrClassInCurrentSY({
+            teacherId,
+            subjectId: parseInt(subject_id, 10),
+            classId: parsedClassId,
+            currentSyId
+        });
+        if (!scopeCheck.ok) {
+            return res.status(403).json({ error: scopeCheck.error });
+        }
 
         // Handle attachment file if present
         let attachment_path = null;
@@ -7891,19 +8276,12 @@ router.post('/api/forum', isTeacher, handleForumUpload, async (req, res) => {
         const formattedDueDate = formatMySqlDateTime(due_date);
         const parsedBaseExp = parseInt(base_exp, 10) || 100;
         const parsedTopicId = topic_id && String(topic_id).trim() ? parseInt(topic_id, 10) : null;
-        const parsedClassId = class_id && String(class_id).trim() && String(class_id).trim() !== 'all' ? parseInt(class_id, 10) : null;
         const parsedPostBeforeViewing = (post_before_viewing === '1' || post_before_viewing === 1 || post_before_viewing === true || post_before_viewing === 'true') ? 1 : 0;
         const parsedAllowAnonymous = (allow_anonymous === '0' || allow_anonymous === 0 || allow_anonymous === false || allow_anonymous === 'false') ? 0 : 1;
         const parsedIsPinned = (is_pinned === '1' || is_pinned === 1 || is_pinned === true || is_pinned === 'true') ? 1 : 0;
 
-        let forumSyId = req.body.sy_id ? parseInt(req.body.sy_id, 10) : null;
-        if (!forumSyId && parsedClassId) {
-            const [[targetCls]] = await db.execute(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [parsedClassId]);
-            if (targetCls && targetCls.sy_id) forumSyId = targetCls.sy_id;
-        }
-        if (!forumSyId) {
-            forumSyId = (currentSY && currentSY.sy_id) ? currentSY.sy_id : (chk[0].sy_id || null);
-        }
+        // Strictly stamp Current School Year sy_id
+        const forumSyId = currentSyId;
 
         const [result] = await db.execute(`
             INSERT INTO forum_topics (
@@ -7951,10 +8329,11 @@ router.post('/api/forum', isTeacher, handleForumUpload, async (req, res) => {
         }
 
         const forum = newForum[0];
+        const roster = await getForumCohortRoster(forum, currentSyId, teacherId);
         forum.teacher_name = `${forum.teacher_first} ${forum.teacher_last}`;
         forum.reply_count = 0;
-        forum.done_count = 0;
-        forum.enrolled_count = 0;
+        forum.done_count = roster.done_count;
+        forum.enrolled_count = roster.enrolled_count;
         forum.last_reply_at = null;
 
         res.json({ success: true, forum });
@@ -7982,19 +8361,33 @@ const handleForumUpdate = async (req, res) => {
 
         if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required.' });
 
-        // Check if teacher owns or teaches this forum
-        const [currRows] = await db.execute(
-            `SELECT * FROM forum_topics WHERE forum_id = ? AND teacher_id = ? LIMIT 1`,
-            [forumId, teacherId]
-        );
-        if (!currRows.length) return res.status(404).json({ error: 'Forum not found or access denied.' });
-        const curr = currRows[0];
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId, { requireOwnership: true });
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ error: access.error });
+        }
+        const curr = access.forum;
 
         // Process fields
         const formattedDueDate = due_date !== undefined ? formatMySqlDateTime(due_date) : curr.due_date;
         const parsedBaseExp = base_exp !== undefined ? (parseInt(base_exp, 10) || 100) : curr.base_exp;
         const parsedTopicId = topic_id !== undefined ? (topic_id && String(topic_id).trim() ? parseInt(topic_id, 10) : null) : curr.topic_id;
         const parsedClassId = class_id !== undefined ? (class_id && String(class_id).trim() && String(class_id).trim() !== 'all' ? parseInt(class_id, 10) : null) : curr.class_id;
+        if (class_id !== undefined && String(class_id).trim() && String(class_id).trim() !== 'all' && isNaN(parsedClassId)) {
+            return res.status(400).json({ error: 'Invalid class_id.' });
+        }
+        if (parsedClassId !== null) {
+            const classScope = await verifyTeacherSubjectOrClassInCurrentSY({
+                teacherId,
+                subjectId: curr.subject_id,
+                classId: parsedClassId,
+                currentSyId
+            });
+            if (!classScope.ok) {
+                return res.status(403).json({ error: classScope.error });
+            }
+        }
         const parsedPostBeforeViewing = post_before_viewing !== undefined
             ? ((post_before_viewing === '1' || post_before_viewing === 1 || post_before_viewing === true || post_before_viewing === 'true') ? 1 : 0)
             : curr.post_before_viewing;
@@ -8036,6 +8429,7 @@ const handleForumUpdate = async (req, res) => {
                 forum_content = ?,
                 topic_id = ?,
                 class_id = ?,
+                sy_id = ?,
                 due_date = ?,
                 base_exp = ?,
                 post_before_viewing = ?,
@@ -8044,12 +8438,13 @@ const handleForumUpdate = async (req, res) => {
                 attachment_name = ?,
                 is_pinned = ?,
                 banner_image = ?
-            WHERE forum_id = ? AND teacher_id = ?`,
+            WHERE forum_id = ? AND teacher_id = ? AND sy_id = ?`,
             [
                 title.trim().slice(0, 255),
                 forum_content ? forum_content.trim() : null,
                 parsedTopicId,
                 parsedClassId,
+                currentSyId,
                 formattedDueDate,
                 parsedBaseExp,
                 parsedPostBeforeViewing,
@@ -8059,7 +8454,8 @@ const handleForumUpdate = async (req, res) => {
                 parsedIsPinned,
                 banner_image,
                 forumId,
-                teacherId
+                teacherId,
+                currentSyId
             ]
         );
 
@@ -8074,11 +8470,18 @@ const handleForumUpdate = async (req, res) => {
             LEFT JOIN topics t ON ft.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
             LEFT JOIN classes c ON ft.class_id = c.class_id
-            WHERE ft.forum_id = ?`,
-            [forumId]
+            WHERE ft.forum_id = ? AND ft.sy_id = ?`,
+            [forumId, currentSyId]
         );
 
-        res.json({ success: true, forum: updatedRows[0] || null });
+        const updatedForum = updatedRows[0] || null;
+        if (updatedForum) {
+            const roster = await getForumCohortRoster(updatedForum, currentSyId, teacherId);
+            updatedForum.done_count = roster.done_count;
+            updatedForum.enrolled_count = roster.enrolled_count;
+        }
+
+        res.json({ success: true, forum: updatedForum });
 
     } catch (err) {
         console.error('❌ [PUT/POST /teacher/api/forum/:forumId]', err);
@@ -8097,9 +8500,16 @@ router.delete('/api/forum/:forumId', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     const { forumId } = req.params;
     try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId, { requireOwnership: true });
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ error: access.error });
+        }
+
         const [result] = await db.execute(
-            `DELETE FROM forum_topics WHERE forum_id = ? AND teacher_id = ?`,
-            [forumId, teacherId]
+            `DELETE FROM forum_topics WHERE forum_id = ? AND teacher_id = ? AND sy_id = ?`,
+            [forumId, teacherId, currentSyId]
         );
         if (!result.affectedRows) return res.status(404).json({ error: 'Forum not found or access denied.' });
         res.json({ success: true });
@@ -8121,9 +8531,16 @@ router.patch('/api/forum/:forumId/pin', isTeacher, async (req, res) => {
         const { is_pinned } = req.body;
         if (is_pinned === undefined) return res.status(400).json({ error: 'is_pinned missing.' });
 
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId, { requireOwnership: true });
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ error: access.error });
+        }
+
         const [result] = await db.execute(
-            `UPDATE forum_topics SET is_pinned = ? WHERE forum_id = ? AND teacher_id = ?`,
-            [is_pinned ? 1 : 0, forumId, teacherId]
+            `UPDATE forum_topics SET is_pinned = ? WHERE forum_id = ? AND teacher_id = ? AND sy_id = ?`,
+            [is_pinned ? 1 : 0, forumId, teacherId, currentSyId]
         );
         if (!result.affectedRows) return res.status(404).json({ error: 'Forum not found or access denied.' });
         res.json({ success: true });
@@ -8146,10 +8563,17 @@ router.patch('/api/forum/:forumId/status', isTeacher, async (req, res) => {
     }
 
     try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId, { requireOwnership: true });
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ error: access.error });
+        }
+
         const resolvedBy = (status === 'unresolved') ? null : teacherId;
         const [result] = await db.execute(
-            `UPDATE forum_topics SET status = ?, resolved_by = ? WHERE forum_id = ? AND teacher_id = ?`,
-            [status, resolvedBy, forumId, teacherId]
+            `UPDATE forum_topics SET status = ?, resolved_by = ? WHERE forum_id = ? AND teacher_id = ? AND sy_id = ?`,
+            [status, resolvedBy, forumId, teacherId, currentSyId]
         );
 
         if (!result.affectedRows) return res.status(404).json({ error: 'Forum not found or access denied.' });
@@ -8182,12 +8606,13 @@ router.post('/api/forum/reply', isTeacher, replyUploadMiddleware, async (req, re
         if (!forum_id) return res.status(400).json({ error: 'forum_id is required.' });
         if (!reply_content || !reply_content.trim()) return res.status(400).json({ error: 'Reply content is required.' });
 
-        // Verify teacher owns this forum
-        const [chk] = await db.execute(
-            `SELECT forum_id FROM forum_topics WHERE forum_id = ? AND teacher_id = ? LIMIT 1`,
-            [forum_id, teacherId]
-        );
-        if (!chk.length) return res.status(403).json({ error: 'You do not own this forum thread.' });
+        // Strictly verify teacher ownership & Current School Year
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const access = await resolveTeacherForumInCurrentSY(forum_id, teacherId, currentSyId, { requireOwnership: true });
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ error: access.error });
+        }
 
         // Validate parent reply belongs to this forum
         if (parent_reply_id) {
@@ -8337,6 +8762,13 @@ router.post('/api/forum/reply/:replyId/vote', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
 
     try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const replyAccess = await resolveTeacherForumByReplyInCurrentSY(replyId, teacherId, currentSyId);
+        if (!replyAccess.ok) {
+            return res.status(replyAccess.statusCode).json({ error: replyAccess.error });
+        }
+
         const [[replyRow]] = await db.execute(`
             SELECT fr.reply_id, fr.user_id AS author_id, ft.forum_id
             FROM forum_replies fr
@@ -8411,16 +8843,23 @@ router.patch('/api/forum/reply/:replyId/endorse', isTeacher, async (req, res) =>
 
     let conn;
     try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const replyAccess = await resolveTeacherForumByReplyInCurrentSY(replyId, teacherId, currentSyId, { requireOwnership: true });
+        if (!replyAccess.ok) {
+            return res.status(replyAccess.statusCode).json({ error: replyAccess.error });
+        }
+
         conn = await db.getConnection();
         await conn.beginTransaction();
 
-        // Verify reply belongs to forum owned by this teacher
+        // Verify reply belongs to forum owned by this teacher within Current SY
         const [rows] = await conn.execute(`
             SELECT fr.reply_id, fr.topic_id AS forum_id, fr.user_id AS reply_user_id, fr.is_endorsed, ft.teacher_id, ft.title AS topic_title
             FROM forum_replies fr
             JOIN forum_topics ft ON fr.topic_id = ft.forum_id
-            WHERE fr.reply_id = ?
-        `, [replyId]);
+            WHERE fr.reply_id = ? AND ft.sy_id = ?
+        `, [replyId, currentSyId]);
 
         if (!rows.length) {
             await conn.rollback();
@@ -8498,14 +8937,21 @@ router.post('/api/forum/reply/:replyId/reveal', isTeacher, async (req, res) => {
     }
 
     try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const replyAccess = await resolveTeacherForumByReplyInCurrentSY(replyId, teacherId, currentSyId, { requireOwnership: true });
+        if (!replyAccess.ok) {
+            return res.status(replyAccess.statusCode).json({ error: replyAccess.error });
+        }
+
         const [rows] = await db.execute(`
             SELECT fr.reply_id, fr.user_id, fr.is_anonymous, ft.teacher_id,
                    u.first_name, u.last_name, u.profile_pic
             FROM forum_replies fr
             JOIN forum_topics ft ON fr.topic_id = ft.forum_id
             JOIN users u ON fr.user_id = u.user_id
-            WHERE fr.reply_id = ?
-        `, [replyId]);
+            WHERE fr.reply_id = ? AND ft.sy_id = ?
+        `, [replyId, currentSyId]);
 
         if (!rows.length) return res.status(404).json({ error: 'Reply not found.' });
         const reply = rows[0];
@@ -8541,13 +8987,20 @@ router.delete('/api/forum/reply/:replyId', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     const { replyId } = req.params;
     try {
-        // Allow teacher to delete any reply in their own forums
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const replyAccess = await resolveTeacherForumByReplyInCurrentSY(replyId, teacherId, currentSyId, { requireOwnership: true });
+        if (!replyAccess.ok) {
+            return res.status(replyAccess.statusCode).json({ error: replyAccess.error });
+        }
+
+        // Allow teacher to delete any reply in their own Current SY forums
         const [replyRow] = await db.execute(`
             SELECT fr.reply_id, fr.file_path, fr.is_locked, fr.is_endorsed, ft.teacher_id AS forum_teacher_id
             FROM forum_replies fr
             JOIN forum_topics ft ON fr.topic_id = ft.forum_id
-            WHERE fr.reply_id = ?`,
-            [replyId]
+            WHERE fr.reply_id = ? AND ft.sy_id = ?`,
+            [replyId, currentSyId]
         );
 
         if (!replyRow.length) return res.status(404).json({ error: 'Reply not found.' });
@@ -8589,6 +9042,13 @@ router.get('/api/forum/:forumId/topics', isTeacher, async (req, res) => {
     if (isNaN(forumId)) return res.status(400).json({ success: false, error: 'Invalid forum ID' });
 
     try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId);
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ success: false, error: access.error });
+        }
+
         let query = `
             SELECT fr.*,
                    u.first_name, u.last_name, u.profile_pic, u.role, u.top_contributor,
@@ -8666,36 +9126,22 @@ router.get('/api/forum/:forumId/roster', isTeacher, async (req, res) => {
     if (isNaN(forumId)) return res.status(400).json({ success: false, error: 'Invalid forum ID' });
 
     try {
-        const [forumRows] = await db.execute(`
-            SELECT subject_id FROM forum_topics WHERE forum_id = ? LIMIT 1
-        `, [forumId]);
-        if (!forumRows.length) return res.status(404).json({ success: false, error: 'Forum not found' });
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const access = await resolveTeacherForumInCurrentSY(forumId, teacherId, currentSyId);
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ success: false, error: access.error });
+        }
 
-        const [enrolledStudents] = await db.execute(`
-            SELECT DISTINCT
-                u.user_id AS student_id,
-                u.first_name, u.last_name, u.profile_pic, u.email,
-                (SELECT sfd.done_at FROM student_forum_done sfd WHERE sfd.forum_id = ? AND sfd.student_id = u.user_id LIMIT 1) AS done_at,
-                EXISTS(SELECT 1 FROM student_forum_done sfd WHERE sfd.forum_id = ? AND sfd.student_id = u.user_id) AS is_done,
-                (SELECT COUNT(*) FROM forum_replies fr WHERE fr.topic_id = ? AND fr.user_id = u.user_id) AS contributions_count
-            FROM users u
-            JOIN class_students cs ON u.user_id = cs.student_id
-            JOIN classes c ON cs.class_id = c.class_id
-            WHERE c.subject_id = ? AND u.role = 'Student'
-            ORDER BY is_done DESC, u.last_name ASC, u.first_name ASC
-        `, [forumId, forumId, forumId, forumRows[0].subject_id]);
-
-        const enrolledCount = enrolledStudents.length;
-        const doneCount = enrolledStudents.filter(s => s.is_done).length;
-        const completionRate = enrolledCount > 0 ? Math.round((doneCount / enrolledCount) * 100) : 0;
+        const roster = await getForumCohortRoster(access.forum, currentSyId, teacherId);
 
         res.json({
             success: true,
-            enrolledStudents,
+            enrolledStudents: roster.students,
             stats: {
-                enrolled_count: enrolledCount,
-                done_count: doneCount,
-                completion_rate: completionRate
+                enrolled_count: roster.enrolled_count,
+                done_count: roster.done_count,
+                completion_rate: roster.completion_rate
             }
         });
 
@@ -8715,6 +9161,13 @@ router.get('/api/forum/discussion/:replyId', isTeacher, async (req, res) => {
     if (isNaN(replyId)) return res.status(400).json({ success: false, error: 'Invalid reply ID' });
 
     try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const replyAccess = await resolveTeacherForumByReplyInCurrentSY(replyId, teacherId, currentSyId);
+        if (!replyAccess.ok) {
+            return res.status(replyAccess.statusCode).json({ success: false, error: replyAccess.error });
+        }
+
         const [rootRows] = await db.execute(`
             SELECT fr.*,
                    ft.title AS forum_title,
@@ -8727,8 +9180,8 @@ router.get('/api/forum/discussion/:replyId', isTeacher, async (req, res) => {
             JOIN forum_topics ft ON fr.topic_id = ft.forum_id
             JOIN subjects s ON ft.subject_id = s.subject_id
             JOIN users u ON fr.user_id = u.user_id
-            WHERE fr.reply_id = ?
-        `, [teacherId, teacherId, replyId]);
+            WHERE fr.reply_id = ? AND ft.sy_id = ?
+        `, [teacherId, teacherId, replyId, currentSyId]);
 
         if (!rootRows.length) return res.status(404).json({ success: false, error: 'Discussion not found' });
 
@@ -8937,22 +9390,14 @@ const handleTeacherDiscussionTopic = (req, res) => {
         const extLink = (external_link || '').trim() || null;
 
         try {
-            // Verify teacher owns the forum or teaches the subject
-            const [chk] = await db.execute(`
-                SELECT ft.forum_id, ft.title, ft.subject_id
-                FROM forum_topics ft
-                WHERE ft.forum_id = ?
-                  AND (ft.teacher_id = ? OR EXISTS (
-                      SELECT 1 FROM classes c WHERE c.subject_id = ft.subject_id AND c.teacher_id = ?
-                  ))
-                LIMIT 1
-            `, [safeForumId, teacherId, teacherId]);
-
-            if (!chk.length) {
-                return res.status(403).json({ success: false, error: 'You do not have permission to post in this forum.' });
+            const currentSY = await resolveStrictForumCurrentSY();
+            const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+            const access = await resolveTeacherForumInCurrentSY(safeForumId, teacherId, currentSyId);
+            if (!access.ok) {
+                return res.status(access.statusCode).json({ success: false, error: access.error });
             }
 
-            const forumRow = chk[0];
+            const forumRow = access.forum;
 
             const [result] = await db.execute(`
                 INSERT INTO forum_replies
@@ -8961,16 +9406,10 @@ const handleTeacherDiscussionTopic = (req, res) => {
                 VALUES (?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, NOW())
             `, [safeForumId, teacherId, title, content, filePath, fileName, fileType, extLink]);
 
-            // Dispatch notification to enrolled students
+            // Dispatch notification strictly to enrolled students in the Current SY cohort
             try {
-                const [enrolled] = await db.execute(`
-                    SELECT DISTINCT cs.student_id
-                    FROM class_students cs
-                    JOIN classes c ON cs.class_id = c.class_id
-                    WHERE c.subject_id = ?
-                `, [forumRow.subject_id]);
-
-                const studentIds = enrolled.map(s => s.student_id);
+                const roster = await getForumCohortRoster(forumRow, currentSyId, teacherId);
+                const studentIds = roster.students.map(s => s.student_id);
                 if (studentIds.length) {
                     const senderName = `${req.user.first_name || 'Prof.'} ${req.user.last_name || ''}`.trim();
                     const snippet = title.length > 70 ? title.substring(0, 67) + '...' : title;
@@ -9045,6 +9484,13 @@ const handleTeacherSubreply = (req, res) => {
         const extLink = (external_link || '').trim() || null;
 
         try {
+            const currentSY = await resolveStrictForumCurrentSY();
+            const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+            const access = await resolveTeacherForumInCurrentSY(safeForumId, teacherId, currentSyId);
+            if (!access.ok) {
+                return res.status(access.statusCode).json({ success: false, error: access.error });
+            }
+
             // Verify parent reply belongs to this forum if provided
             if (safeParentId) {
                 const [parentChk] = await db.execute(
@@ -9105,56 +9551,6 @@ router.post('/api/forum/subreply', isTeacher, handleTeacherSubreply);
 
 
 // ════════════════════════════════════════════════════════════════════════════
-// GET /teacher/api/forum/repository-files — Subject/Topic Learning Materials
-// ════════════════════════════════════════════════════════════════════════════
-router.get('/api/forum/repository-files', isTeacher, async (req, res) => {
-    const teacherId = req.user.user_id;
-    const { subject_id, topic_id } = req.query;
-
-    try {
-        let materials = [];
-        if (topic_id && !isNaN(topic_id)) {
-            const [rows] = await db.execute(`
-                SELECT material_id, title, file_path_or_url, material_type
-                FROM learning_materials
-                WHERE topic_id = ?
-                ORDER BY title ASC
-            `, [topic_id]);
-            materials = rows;
-        } else if (subject_id && !isNaN(subject_id)) {
-            const [rows] = await db.execute(`
-                SELECT lm.material_id, lm.title, lm.file_path_or_url, lm.material_type
-                FROM learning_materials lm
-                JOIN topics t ON lm.topic_id = t.topic_id
-                JOIN quarters q ON t.quarter_id = q.quarter_id
-                WHERE q.subject_id = ?
-                ORDER BY lm.title ASC
-            `, [subject_id]);
-            materials = rows;
-        } else {
-            const [rows] = await db.execute(`
-                SELECT lm.material_id, lm.title, lm.file_path_or_url, lm.material_type
-                FROM learning_materials lm
-                JOIN topics t ON lm.topic_id = t.topic_id
-                JOIN quarters q ON t.quarter_id = q.quarter_id
-                JOIN classes c ON q.subject_id = c.subject_id
-                WHERE c.teacher_id = ?
-                ORDER BY lm.title ASC
-                LIMIT 50
-            `, [teacherId]);
-            materials = rows;
-        }
-
-        res.json({ success: true, materials });
-
-    } catch (err) {
-        console.error('❌ [GET /teacher/api/forum/repository-files]', err);
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-
-// ════════════════════════════════════════════════════════════════════════════
 // POST /teacher/api/forum-reply/:replyId/star — Teacher Bookmark Discussion
 // ════════════════════════════════════════════════════════════════════════════
 const handleTeacherStarReply = async (req, res) => {
@@ -9163,6 +9559,13 @@ const handleTeacherStarReply = async (req, res) => {
     if (isNaN(replyId)) return res.status(400).json({ success: false, error: 'Invalid reply ID' });
 
     try {
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const replyAccess = await resolveTeacherForumByReplyInCurrentSY(replyId, teacherId, currentSyId);
+        if (!replyAccess.ok) {
+            return res.status(replyAccess.statusCode).json({ success: false, error: replyAccess.error });
+        }
+
         const [existing] = await db.execute(
             'SELECT star_id FROM forum_reply_stars WHERE reply_id = ? AND user_id = ?',
             [replyId, teacherId]
@@ -9202,21 +9605,24 @@ router.post('/api/forum/report/:reportId/status', isTeacher, async (req, res) =>
     }
 
     try {
-        // Verify teacher owns the forum this report belongs to
         const [chk] = await db.execute(`
-            SELECT rep.report_id, ft.teacher_id, ft.subject_id
+            SELECT rep.report_id, ft.forum_id
             FROM forum_reports rep
             JOIN forum_replies fr ON rep.reply_id = fr.reply_id
             JOIN forum_topics ft ON fr.topic_id = ft.forum_id
             WHERE rep.report_id = ?
-              AND (ft.teacher_id = ? OR EXISTS (
-                  SELECT 1 FROM classes c WHERE c.subject_id = ft.subject_id AND c.teacher_id = ?
-              ))
             LIMIT 1
-        `, [reportId, teacherId, teacherId]);
+        `, [reportId]);
 
         if (!chk.length) {
-            return res.status(403).json({ success: false, error: 'You do not have permission to moderate this report.' });
+            return res.status(404).json({ success: false, error: 'Report not found.' });
+        }
+
+        const currentSY = await resolveStrictForumCurrentSY();
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const access = await resolveTeacherForumInCurrentSY(chk[0].forum_id, teacherId, currentSyId);
+        if (!access.ok) {
+            return res.status(access.statusCode).json({ success: false, error: access.error });
         }
 
         await db.execute(`UPDATE forum_reports SET status = ? WHERE report_id = ?`, [status, reportId]);
