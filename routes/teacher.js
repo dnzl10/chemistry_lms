@@ -2206,23 +2206,58 @@ const {
     resolveTopicIdForLevel
 } = require('../utils/elementaTopicLevelHelper');
 
-// GET available Elementa questions pool for a topic (with question shortage detection)
+async function validateManualAssessmentQuestionsInSY(dbConn, expectedSyId, selectedQuestions) {
+    if (!Array.isArray(selectedQuestions) || selectedQuestions.length === 0) return [];
+    const parsedIds = [...new Set(
+        selectedQuestions
+            .map(sq => parseInt(sq && sq.question_id, 10))
+            .filter(id => !isNaN(id) && id > 0)
+    )];
+    if (parsedIds.length === 0) {
+        const err = new Error('Selected manual questions contain invalid question IDs.');
+        err.statusCode = 400;
+        throw err;
+    }
+    const placeholders = parsedIds.map(() => '?').join(',');
+    const [validRows] = await dbConn.query(
+        `SELECT question_id
+         FROM elementa_questions
+         WHERE question_id IN (${placeholders})
+           AND sy_id = ?
+           AND is_active = 1
+           AND verification_status = 'Approved'`,
+        [...parsedIds, expectedSyId]
+    );
+    const validSet = new Set(validRows.map(r => Number(r.question_id)));
+    const invalidIds = parsedIds.filter(id => !validSet.has(id));
+    if (invalidIds.length > 0) {
+        const err = new Error('One or more selected questions belong to another School Year or are inactive/unapproved.');
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
+        throw err;
+    }
+    return parsedIds;
+}
+
+// GET available Elementa questions pool for a topic (Current School Year scoped)
 router.get('/api/topic-questions-pool/:topic_id', isTeacher, async (req, res) => {
     try {
         const topicId = parseInt(req.params.topic_id, 10);
-        await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topicId);
+        const topicMeta = await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topicId);
         const levelNumber = await resolveLevelForTopicId(db, topicId);
         const [questions] = await db.query(
             `SELECT question_id, question_code, level_number, topic, machine_name,
                     prompt, answer_text, time_limit_s, points
              FROM elementa_questions
              WHERE (topic_id = ? OR (level_number IS NOT NULL AND level_number = ?))
+               AND sy_id = ?
                AND is_active = 1 AND verification_status = 'Approved'
              ORDER BY display_order ASC, question_id ASC`,
-            [topicId, levelNumber]
+            [topicId, levelNumber, topicMeta.currentSyId]
         );
         res.json({
             success: true,
+            sy_id: topicMeta.currentSyId,
             topic_id: topicId,
             level_number: levelNumber,
             count: questions.length,
@@ -2236,7 +2271,7 @@ router.get('/api/topic-questions-pool/:topic_id', isTeacher, async (req, res) =>
 
 router.get('/api/assessment/:aid', isTeacher, async (req, res) => {
     try {
-        await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, req.params.aid);
+        const verified = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, req.params.aid);
         const [[asmt]] = await db.query(
             `SELECT a.*, t.topic_name, CONCAT('Quarter ', q.quarter_number) AS quarter_name
              FROM assessments a
@@ -2251,10 +2286,10 @@ router.get('/api/assessment/:aid', isTeacher, async (req, res) => {
             `SELECT eaq.eaq_id, eaq.question_id, eaq.sort_order, eaq.custom_points,
                     eq.question_code, eq.machine_name, eq.prompt, eq.answer_text, eq.time_limit_s, eq.points AS base_points
              FROM elementa_assessment_questions eaq
-             JOIN elementa_questions eq ON eq.question_id = eaq.question_id
+             JOIN elementa_questions eq ON eq.question_id = eaq.question_id AND eq.sy_id = ?
              WHERE eaq.assessment_id = ?
              ORDER BY eaq.sort_order ASC`,
-            [req.params.aid]
+            [verified.sy_id, req.params.aid]
         );
         asmt.manual_questions = manualQuestions || [];
 
@@ -2285,6 +2320,10 @@ router.post('/api/assessment', isTeacher, async (req, res) => {
             await verifyTeacherClassInCurrentSY(db, req.user.user_id, class_id, topicMeta.currentSyId);
         }
         const resolvedSyId = topicMeta.currentSyId;
+
+        if (question_selection_mode === 'manual') {
+            await validateManualAssessmentQuestionsInSY(db, resolvedSyId, selected_questions);
+        }
 
         const [result] = await db.execute(
             `INSERT INTO assessments 
@@ -2374,6 +2413,10 @@ router.put('/api/assessment/:aid', isTeacher, async (req, res) => {
             question_selection_mode = 'random', selected_questions = []
         } = req.body;
         if (!assessment_name) throw new Error('assessment_name missing');
+
+        if (question_selection_mode === 'manual') {
+            await validateManualAssessmentQuestionsInSY(db, prevAssessment.sy_id, selected_questions);
+        }
 
         await db.execute(
             `UPDATE assessments 

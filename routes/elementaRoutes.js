@@ -353,15 +353,17 @@ router.get('/questions/random/:level_number', async (req, res) => {
         let limit = parseInt(req.query.limit, 10) || 10;
         let questions = [];
         let isManualMode = false;
+        let targetSyId = await resolveStrictCurrentSyId();
 
-        // If an assessment_id is provided, check if it has manual questions configured
+        // If an assessment_id is provided, resolve its SY and check if manual questions are configured
         if (asmtId) {
             const [asmtRows] = await pool.query(
-                `SELECT assessment_id, total_items, question_selection_mode FROM assessments WHERE assessment_id = ?`,
+                `SELECT assessment_id, sy_id, total_items, question_selection_mode FROM assessments WHERE assessment_id = ?`,
                 [asmtId]
             );
             if (asmtRows.length > 0) {
                 const asmt = asmtRows[0];
+                if (asmt.sy_id) targetSyId = Number(asmt.sy_id);
                 if (asmt.total_items && !req.query.limit) {
                     limit = asmt.total_items;
                 }
@@ -372,9 +374,9 @@ router.get('/questions/random/:level_number', async (req, res) => {
                                 COALESCE(eaq.custom_points, eq.points, 1) AS points
                          FROM elementa_assessment_questions eaq
                          JOIN elementa_questions eq ON eq.question_id = eaq.question_id
-                         WHERE eaq.assessment_id = ? AND eq.is_active = 1 AND eq.verification_status = 'Approved'
+                         WHERE eaq.assessment_id = ? AND eq.sy_id = ? AND eq.is_active = 1 AND eq.verification_status = 'Approved'
                          ORDER BY eaq.sort_order ASC`,
-                        [asmtId]
+                        [asmtId, targetSyId]
                     );
                     if (manualRows && manualRows.length > 0) {
                         questions = manualRows;
@@ -384,28 +386,28 @@ router.get('/questions/random/:level_number', async (req, res) => {
             }
         }
 
-        // Random selection fallback if not in manual mode or no manual questions configured
-        if (!isManualMode) {
+        // Random selection fallback scoped strictly to targetSyId
+        if (!isManualMode && targetSyId) {
             [questions] = await pool.query(
                 `SELECT question_id, question_code, level_number, topic, machine_name, machine_id, 
                         prompt, answer_text, steps_json, time_limit_s, points
                  FROM elementa_questions
-                 WHERE level_number = ? AND is_active = 1 AND verification_status = 'Approved'
+                 WHERE level_number = ? AND sy_id = ? AND is_active = 1 AND verification_status = 'Approved'
                  ORDER BY RAND()
                  LIMIT ?`,
-                [levelNum, limit]
+                [levelNum, targetSyId, limit]
             );
 
-            // Fallback: If elementa_questions has fewer than requested for this level, fetch any active approved
+            // Fallback: If elementa_questions has fewer than requested for this level, fetch any active approved in the same SY
             if (!questions || questions.length === 0) {
                 [questions] = await pool.query(
                     `SELECT question_id, question_code, level_number, topic, machine_name, machine_id, 
                             prompt, answer_text, steps_json, time_limit_s, points
                      FROM elementa_questions
-                     WHERE is_active = 1 AND verification_status = 'Approved'
+                     WHERE sy_id = ? AND is_active = 1 AND verification_status = 'Approved'
                      ORDER BY RAND()
                      LIMIT ?`,
-                    [limit]
+                    [targetSyId, limit]
                 );
             }
         }
