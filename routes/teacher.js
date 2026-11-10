@@ -1037,6 +1037,8 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
 
         await topicScheduleService.evaluateNow();
 
+        const classSyId = classData[0].sy_id || null;
+
         const [quarters] = await db.execute(
             `SELECT * FROM quarters WHERE subject_id = ? ORDER BY quarter_number ASC`,
             [subjectId]
@@ -1055,15 +1057,21 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                     db.execute(`
                         SELECT lm.*, 0 AS query_count
                         FROM learning_materials lm 
-                        WHERE lm.topic_id = ?`, [t.topic_id]),
+                        WHERE lm.topic_id = ?
+                          AND (lm.sy_id = ? OR (? IS NULL AND lm.sy_id IS NULL))`, [t.topic_id, classSyId, classSyId]),
                     db.execute(`
                         SELECT a.*,
                             (SELECT COUNT(*) FROM elementa_game_sessions egs WHERE egs.assessment_id = a.assessment_id) AS submission_count,
                             (SELECT COUNT(*) FROM elementa_game_sessions egs WHERE egs.assessment_id = a.assessment_id AND egs.session_status = 'Completed') AS graded_count
                         FROM assessments a 
                         WHERE a.topic_id = ? 
-                        ORDER BY a.assessment_id ASC`, [t.topic_id]),
-                    db.execute(`SELECT * FROM forum_topics WHERE topic_id = ? ORDER BY is_pinned DESC, created_at DESC`, [t.topic_id]),
+                          AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
+                        ORDER BY a.assessment_id ASC`, [t.topic_id, classSyId, classSyId]),
+                    db.execute(`
+                        SELECT * FROM forum_topics 
+                        WHERE topic_id = ? 
+                          AND (class_id = ? OR class_id IS NULL)
+                        ORDER BY is_pinned DESC, created_at DESC`, [t.topic_id, classId]),
                 ]);
                 t.materials = mats;
                 t.assessments = asms.filter(a => a.assessment_type !== 'Assignment');
@@ -1669,12 +1677,22 @@ router.get('/api/topic/:tid/materials', isTeacher, async (req, res) => {
     try {
         const topicId = parseInt(req.params.tid, 10);
         if (isNaN(topicId)) return res.status(400).json({ success: false, error: 'Invalid topic_id' });
+        const { sy_id, class_id } = req.query;
+        let resolvedSyId = sy_id ? parseInt(sy_id, 10) : null;
+        if (!resolvedSyId && class_id) {
+            const [[cls]] = await db.query('SELECT sy_id FROM classes WHERE class_id = ?', [class_id]);
+            if (cls) resolvedSyId = cls.sy_id;
+        }
+        if (!resolvedSyId) {
+            const currentSY = await academicHelper.getCurrentSchoolYear(db);
+            resolvedSyId = currentSY ? currentSY.sy_id : null;
+        }
         const [materials] = await db.query(
             `SELECT material_id, topic_id, title, material_type, file_path_or_url, is_locked, uploaded_by
              FROM learning_materials
-             WHERE topic_id = ?
+             WHERE topic_id = ? AND (sy_id = ? OR (? IS NULL AND sy_id IS NULL))
              ORDER BY material_id ASC`,
-            [topicId]
+            [topicId, resolvedSyId, resolvedSyId]
         );
         res.json({ success: true, materials });
     } catch (e) {
@@ -2027,14 +2045,27 @@ router.post('/api/assessment', isTeacher, async (req, res) => {
             topic_id, quarter_id, assessment_name, assessment_type,
             total_items = 10, duration_minutes = 30, timer_type = 'Global',
             start_date, due_date, is_unlocked = 1, competitive_enabled = 0,
-            question_selection_mode = 'random', selected_questions = []
+            question_selection_mode = 'random', selected_questions = [],
+            sy_id, class_id
         } = req.body;
         if (!topic_id || !assessment_name || !assessment_type) throw new Error('Missing required fields');
+
+        let resolvedSyId = sy_id ? parseInt(sy_id, 10) : null;
+        if (!resolvedSyId && class_id) {
+            const [[cls]] = await db.query('SELECT sy_id FROM classes WHERE class_id = ?', [class_id]);
+            if (cls) resolvedSyId = cls.sy_id;
+        }
+        if (!resolvedSyId) {
+            const currentSY = await academicHelper.getCurrentSchoolYear(db);
+            resolvedSyId = currentSY ? currentSY.sy_id : null;
+        }
+
         const [result] = await db.execute(
             `INSERT INTO assessments 
-             (quarter_id, topic_id, assessment_name, assessment_type, total_items, duration_minutes, timer_type, is_unlocked, start_date, due_date, competitive_enabled, question_selection_mode, teacher_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (sy_id, quarter_id, topic_id, assessment_name, assessment_type, total_items, duration_minutes, timer_type, is_unlocked, start_date, due_date, competitive_enabled, question_selection_mode, teacher_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+                resolvedSyId,
                 quarter_id || null,
                 topic_id,
                 assessment_name,
@@ -2282,11 +2313,25 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
             if (firstSet) parsedGroupSetId = firstSet.group_set_id;
         }
 
+        let resolvedSyId = req.body.sy_id ? parseInt(req.body.sy_id, 10) : null;
+        if (!resolvedSyId && (req.body.class_id || target_sections)) {
+            const sec = req.body.class_id || (Array.isArray(target_sections) ? target_sections[0] : String(target_sections).split(',')[0].trim());
+            if (sec) {
+                const [[cls]] = await db.query('SELECT sy_id FROM classes WHERE class_id = ?', [sec]);
+                if (cls) resolvedSyId = cls.sy_id;
+            }
+        }
+        if (!resolvedSyId) {
+            const currentSY = await academicHelper.getCurrentSchoolYear(db);
+            resolvedSyId = currentSY ? currentSY.sy_id : null;
+        }
+
         const cleanTargetAudience = (target_audience === 'sections' || target_audience === 'students')
             ? target_audience
             : 'everyone';
 
         const insertParams = [
+            resolvedSyId,
             quarter_id || null,
             topic_id,
             assessment_name,
@@ -2319,11 +2364,11 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
 
         const [result] = await db.execute(
             `INSERT INTO assessments 
-             (quarter_id, topic_id, assessment_name, assessment_type, total_items, duration_minutes, timer_type, is_unlocked, due_date, teacher_id,
+             (sy_id, quarter_id, topic_id, assessment_name, assessment_type, total_items, duration_minutes, timer_type, is_unlocked, due_date, teacher_id,
               category, objectives, description, instructions, format_file_path, format_file_name, sample_file_path, sample_file_name,
               allowed_extensions, max_file_size_mb, target_audience, is_group_assignment, group_set_id, group_submission_mode, group_grading_mode,
               allow_resubmission, max_attempts, allow_grace, grace_period_minutes, min_word_count, max_word_count, disallow_blank_pages)
-             VALUES (?, ?, ?, 'Assignment', ?, 0, 'Global', 1, ?, ?,
+             VALUES (?, ?, ?, ?, 'Assignment', ?, 0, 'Global', 1, ?, ?,
                      ?, ?, ?, ?, ?, ?, ?, ?,
                      ?, ?, ?, ?, ?, ?, ?,
                      ?, ?, ?, ?, ?, ?, ?)`,
@@ -5360,7 +5405,7 @@ async function handleGetStudentDetailedScores(req, res) {
             SELECT u.user_id, u.first_name, u.last_name, u.middle_name, u.suffix, u.lrn_number,
                    u.grade_level, u.section, u.strand, u.profile_pic, u.current_level,
                    COALESCE(u.total_exp, 0) AS total_exp, u.email,
-                   c.class_id, c.class_name, c.subject_id, s.subject_name, s.subject_code
+                   c.class_id, c.class_name, c.subject_id, c.sy_id, s.subject_name, s.subject_code
             FROM users u
             JOIN class_students cs ON u.user_id = cs.student_id
             JOIN classes c ON cs.class_id = c.class_id
@@ -5379,6 +5424,7 @@ async function handleGetStudentDetailedScores(req, res) {
         const student = studentRows[0];
         const effSubjectId = student.subject_id;
         const effClassId = student.class_id;
+        const effSyId = student.sy_id || null;
 
         // 2. Fetch all quarters and topics for this subject
         const [topics] = await db.query(`
@@ -5403,8 +5449,9 @@ async function handleGetStudentDetailedScores(req, res) {
                 JOIN quarters q ON t.quarter_id = q.quarter_id
                 WHERE q.subject_id = ?
             )
+              AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
             ORDER BY a.topic_id ASC, a.assessment_type ASC, a.assessment_id ASC
-        `, [effSubjectId]);
+        `, [effSubjectId, effSyId, effSyId]);
 
         // 4. Fetch student's LMS scores
         const [lmsScores] = await db.query(`
@@ -10098,7 +10145,7 @@ router.get('/reports', isTeacher, async (req, res) => {
 async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole = 'Teacher') {
     const isAdmin = userRole === 'Admin';
     const [cls] = await db.query(`
-        SELECT c.class_id, c.class_name, c.subject_id, s.subject_name, s.subject_code
+        SELECT c.class_id, c.class_name, c.subject_id, c.sy_id, s.subject_name, s.subject_code
         FROM classes c
         JOIN subjects s ON c.subject_id = s.subject_id
         WHERE c.class_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}
@@ -10107,6 +10154,7 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
     if (!cls.length) return { classInfo: null, students: [] };
     const classInfo = cls[0];
     const effSubjectId = classInfo.subject_id;
+    const effSyId = classInfo.sy_id || null;
 
     const [students] = await db.query(`
         SELECT u.user_id, u.lrn_number, u.first_name, u.middle_name, u.last_name,
@@ -10146,7 +10194,8 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
             JOIN quarters q ON t.quarter_id = q.quarter_id
             WHERE q.subject_id = ?
         )
-    `, [effSubjectId]);
+          AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
+    `, [effSubjectId, effSyId, effSyId]);
 
     const totalAssignedTasks = assessments.length;
 
@@ -11298,8 +11347,9 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
             JOIN topics t ON a.topic_id = t.topic_id
             JOIN quarters q ON t.quarter_id = q.quarter_id
             WHERE q.subject_id = ?
+              AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
         `;
-        const taskParams = [curSubjectId];
+        const taskParams = [curSubjectId, cls.sy_id || null, cls.sy_id || null];
         if (effectiveQuarter) {
             taskSql += ` AND q.quarter_number = ?`;
             taskParams.push(effectiveQuarter);
@@ -16059,7 +16109,14 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
         const isNewAssessment = !assessment.assessment_id;
         let assessment_id = assessment.assessment_id || null;
 
+        let resolvedSyId = assessment.sy_id ? parseInt(assessment.sy_id, 10) : null;
+        if (!resolvedSyId) {
+            const currentSY = await academicHelper.getCurrentSchoolYear(db);
+            resolvedSyId = currentSY ? currentSY.sy_id : null;
+        }
+
         const assessmentFields = {
+            sy_id: resolvedSyId,
             quarter_id: assessment.quarter_id,
             topic_id: assessment.topic_id,
             assessment_name: assessment.assessment_name,
@@ -16075,12 +16132,13 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
         if (!assessment_id) {
             const [insertResult] = await conn.execute(
                 `INSERT INTO assessments
-                 (quarter_id, topic_id, assessment_name, assessment_type, total_items,
+                 (sy_id, quarter_id, topic_id, assessment_name, assessment_type, total_items,
                   duration_minutes, timer_type, is_unlocked, due_date, teacher_id,
                   sound_bg, sound_correct, sound_wrong, sound_result_pass, sound_result_fail,
                   speech_enabled)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
+                    assessmentFields.sy_id,
                     assessmentFields.quarter_id,
                     assessmentFields.topic_id,
                     assessmentFields.assessment_name,

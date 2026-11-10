@@ -78,6 +78,14 @@ const assignmentUpload = multer({
 async function recalculateProgress(studentId, subjectId) {
     try {
         // --- Total counts (all unlocked items linked to this subject) ---
+        const [[studentClassRow]] = await db.query(`
+            SELECT c.sy_id
+            FROM classes c
+            JOIN class_students cs ON c.class_id = cs.class_id
+            WHERE cs.student_id = ? AND c.subject_id = ?
+            LIMIT 1
+        `, [studentId, subjectId]);
+        const effSyId = studentClassRow ? studentClassRow.sy_id : null;
 
         const [[{ totalForums }]] = await db.query(`
             SELECT COUNT(*) AS totalForums
@@ -93,7 +101,8 @@ async function recalculateProgress(studentId, subjectId) {
             JOIN topics t ON a.topic_id = t.topic_id
             JOIN quarters q ON t.quarter_id = q.quarter_id
             WHERE q.subject_id = ? AND t.is_locked = 0 AND a.is_unlocked = 1
-        `, [subjectId]);
+              AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
+        `, [subjectId, effSyId, effSyId]);
 
         const [[{ totalMaterials }]] = await db.query(`
             SELECT COUNT(*) AS totalMaterials
@@ -101,7 +110,8 @@ async function recalculateProgress(studentId, subjectId) {
             JOIN topics t ON lm.topic_id = t.topic_id
             JOIN quarters q ON t.quarter_id = q.quarter_id
             WHERE q.subject_id = ? AND t.is_locked = 0 AND lm.is_locked = 0
-        `, [subjectId]);
+              AND (lm.sy_id = ? OR (? IS NULL AND lm.sy_id IS NULL))
+        `, [subjectId, effSyId, effSyId]);
 
         // --- Done counts for this specific student ---
 
@@ -1947,20 +1957,20 @@ router.get('/subjects/open/:id', async (req, res) => {
     const studentId = req.user.user_id;
 
     try {
-        // 1. SUBJECT INFO
-        const [subjectInfo] = await db.query(`
-            SELECT 
-                s.*, 
-                c.class_name, 
-                COALESCE(sy.sy_range, '2025-2026') AS sy_range, 
-                COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''), 'Instructor') AS teacher_name, 
-                u.profile_pic AS teacher_pic
-            FROM subjects s
-            JOIN classes c ON s.subject_id = c.subject_id
+        // 1. SUBJECT INFO & ENROLLED CLASS SCOPE
+        const [enrolledClassRows] = await db.query(`
+            SELECT c.class_id, c.class_name, c.sy_id, sy.sy_range, sy.status AS sy_status,
+                   COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''), 'Instructor') AS teacher_name,
+                   u.profile_pic AS teacher_pic
+            FROM classes c
+            JOIN class_students cs ON c.class_id = cs.class_id
             LEFT JOIN school_years sy ON c.sy_id = sy.sy_id
             LEFT JOIN users u ON c.teacher_id = u.user_id
-            WHERE s.subject_id = ?
-        `, [subjectId]);
+            WHERE cs.student_id = ? AND c.subject_id = ?
+            LIMIT 1
+        `, [studentId, subjectId]);
+
+        const [subjectInfo] = await db.query(`SELECT * FROM subjects WHERE subject_id = ?`, [subjectId]);
 
         if (subjectInfo.length === 0) {
             return res.status(404).render('404', {
@@ -1971,6 +1981,16 @@ router.get('/subjects/open/:id', async (req, res) => {
                 customMessage: 'The requested General Chemistry subject record does not exist or has been archived.'
             });
         }
+
+        const enrolledClass = enrolledClassRows.length > 0 ? enrolledClassRows[0] : null;
+        const activeSY = await academicHelper.getCurrentSchoolYear(db);
+        const studentSyId = (enrolledClass && enrolledClass.sy_id) ? enrolledClass.sy_id : (activeSY ? activeSY.sy_id : null);
+
+        subjectInfo[0].class_name = enrolledClass ? enrolledClass.class_name : 'General Chemistry';
+        subjectInfo[0].sy_range = (enrolledClass && enrolledClass.sy_range) ? enrolledClass.sy_range : (activeSY ? activeSY.sy_range : '2028-2029');
+        subjectInfo[0].teacher_name = enrolledClass ? enrolledClass.teacher_name : 'Instructor';
+        subjectInfo[0].teacher_pic = enrolledClass ? enrolledClass.teacher_pic : null;
+        subjectInfo[0].class_id = enrolledClass ? enrolledClass.class_id : null;
 
         // Evaluate any due automatic topic unlock/lock schedules before reading quarters and topics
         await topicScheduleService.evaluateNow();
@@ -1995,8 +2015,8 @@ router.get('/subjects/open/:id', async (req, res) => {
                 SELECT topic_id FROM topics WHERE quarter_id IN (
                     SELECT quarter_id FROM quarters WHERE subject_id = ?
                 )
-            )
-        `, [subjectId]);
+            ) AND (sy_id = ? OR (? IS NULL AND sy_id IS NULL))
+        `, [subjectId, studentSyId, studentSyId]);
 
         // 5. GET ASSESSMENTS
         const [assessmentsRaw] = await db.query(`
@@ -2004,9 +2024,9 @@ router.get('/subjects/open/:id', async (req, res) => {
             FROM assessments a
             JOIN topics t ON a.topic_id = t.topic_id
             JOIN quarters q ON t.quarter_id = q.quarter_id
-            WHERE q.subject_id = ?
+            WHERE q.subject_id = ? AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
             ORDER BY a.due_date ASC
-        `, [subjectId]);
+        `, [subjectId, studentSyId, studentSyId]);
 
         // 6. GET ANNOUNCEMENTS
         const [announcementsRaw] = await db.query(`

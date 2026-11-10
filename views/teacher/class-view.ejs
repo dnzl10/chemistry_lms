@@ -7180,7 +7180,9 @@ function submitAssessmentForm(event) {
             due_date: dueDate,
             competitive_enabled: (type === 'Competitive' || competitiveEnabled) ? 1 : 0,
             question_selection_mode: selectionMode,
-            selected_questions: selectedQuestions
+            selected_questions: selectedQuestions,
+            class_id: <%= classInfo.class_id %>,
+            sy_id: <%= schoolYear.sy_id %>
         }
     };
 
@@ -7630,6 +7632,7 @@ async function confirmExecuteMaterialSave() {
         payload.append('material_type', matType);
         payload.append('file_path_or_url', urlVal);
         payload.append('is_locked', fd.get('is_locked') ? '1' : '0');
+        payload.append('sy_id', '<%= schoolYear.sy_id %>');
 
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-sm"></i> Saving…';
@@ -7714,6 +7717,7 @@ async function confirmExecuteMaterialSave() {
         itemPayload.append('title', itemTitle);
         itemPayload.append('material_type', matType);
         itemPayload.append('is_locked', fd.get('is_locked') ? '1' : '0');
+        itemPayload.append('sy_id', '<%= schoolYear.sy_id %>');
         itemPayload.append('file', item.file);
 
         item.status = 'uploading';
@@ -8653,6 +8657,11 @@ async function confirmExecuteAssignmentSave() {
     const id = fd.get('assignment_id');
     const url = id ? '/teacher/api/assignment/' + id : '/teacher/api/assignment';
     const method = id ? 'PUT' : 'POST';
+
+    if (!id) {
+        fd.set('sy_id', '<%= schoolYear.sy_id %>');
+        fd.set('class_id', '<%= classInfo.class_id %>');
+    }
 
     // Collect allowed extensions
     const selectedExts = [];
