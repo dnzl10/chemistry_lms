@@ -223,11 +223,16 @@ router.post('/ticket/validate', async (req, res) => {
         const clean = ticket_code.trim();
 
         // 1. Fetch ticket by ticket_code or qr_token
+        // Note: Evaluating expiration using MySQL NOW() & TIMESTAMPDIFF prevents timezone drift between Node and Cloud DB
         const [ticketRows] = await pool.query(
             `SELECT t.*, u.first_name, u.last_name, u.lrn_number, u.section, u.total_exp, u.current_level,
                     a.assessment_name, a.assessment_type, a.competitive_enabled, a.is_unlocked, a.start_date, a.due_date,
                     a.total_items, a.question_selection_mode, a.timer_type, a.duration_minutes,
-                    top.topic_name, top.is_locked AS topic_is_locked
+                    top.topic_name, top.is_locked AS topic_is_locked,
+                    (t.expires_at < NOW()) AS is_expired_in_db,
+                    TIMESTAMPDIFF(SECOND, NOW(), t.expires_at) AS seconds_left,
+                    TIMESTAMPDIFF(SECOND, NOW(), a.start_date) AS seconds_until_start,
+                    TIMESTAMPDIFF(SECOND, NOW(), a.due_date) AS seconds_until_due
              FROM elementa_assessment_tickets t
              JOIN users u ON u.user_id = t.student_id
              JOIN assessments a ON a.assessment_id = t.assessment_id
@@ -252,8 +257,13 @@ router.post('/ticket/validate', async (req, res) => {
         }
 
         // 3. Check expiration (1 hour validity)
-        const now = new Date();
-        if (new Date(ticket.expires_at) < now || ticket.status === 'Expired') {
+        // Rely directly on the database engine timestamps (is_expired_in_db / seconds_left)
+        // to remain fully immune to timezone drift across server environments
+        const isExpired = ticket.status === 'Expired' ||
+                          Number(ticket.is_expired_in_db) === 1 ||
+                          (ticket.seconds_left !== null && ticket.seconds_left !== undefined && Number(ticket.seconds_left) <= 0);
+
+        if (isExpired) {
             await pool.query(`UPDATE elementa_assessment_tickets SET status = 'Expired' WHERE ticket_id = ?`, [ticket.ticket_id]);
             return fail(res, 400, 'Assessment ticket has expired (validity is 1 hour). Please generate a new ticket from your LMS portal.');
         }
@@ -267,10 +277,10 @@ router.post('/ticket/validate', async (req, res) => {
         if (ticket.is_unlocked === 0) {
             return fail(res, 403, 'This assessment is locked by the instructor.');
         }
-        if (ticket.start_date && now < new Date(ticket.start_date)) {
+        if (ticket.start_date && (Number(ticket.seconds_until_start) > 0 || (ticket.seconds_until_start === null && new Date() < new Date(ticket.start_date)))) {
             return fail(res, 403, `This assessment has not opened yet. Starts at ${new Date(ticket.start_date).toLocaleString()}.`);
         }
-        if (ticket.due_date && now > new Date(ticket.due_date)) {
+        if (ticket.due_date && (Number(ticket.seconds_until_due) < 0 || (ticket.seconds_until_due === null && new Date() > new Date(ticket.due_date)))) {
             return fail(res, 403, 'The deadline for this assessment has passed.');
         }
 
