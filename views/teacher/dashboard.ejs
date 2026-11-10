@@ -208,6 +208,16 @@
             <div class="flex-1 overflow-y-auto mt-20 no-scrollbar flex flex-col">
                 <div class="p-4 md:p-6 lg:p-7 flex-1 fade-in">
 
+                    <% if (typeof syBlocked !== 'undefined' && syBlocked) { %>
+                    <div class="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-xs">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fas fa-shield-alt text-amber-600 text-sm"></i>
+                            <span>Action blocked: You can only view or modify classes, assessments, events, and student records belonging to the currently active School Year.</span>
+                        </div>
+                        <a href="/teacher/dashboard" class="text-amber-700 hover:text-amber-900 font-bold whitespace-nowrap">Dismiss</a>
+                    </div>
+                    <% } %>
+
                     <!-- Active Academic Year Banner -->
                     <% if (typeof currentSY !== 'undefined' && currentSY) { %>
                     <div class="mb-5 flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-cyan-500/10 border border-emerald-200/80 shadow-xs">
@@ -223,8 +233,23 @@
                         </div>
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-600">
                             <a href="/teacher/classes" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition text-xs shadow-xs">
-                                <i class="fas fa-boxes-packing text-slate-400"></i> View All Classes &amp; Archives
+                                <i class="fas fa-chalkboard text-slate-400"></i> Manage Current SY Classes
                             </a>
+                        </div>
+                    </div>
+                    <% } else { %>
+                    <div class="mb-5 flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-xs">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-calendar-times"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-black uppercase tracking-wider text-amber-800">No Active School Year Open</span>
+                                    <span class="text-[10px] font-black bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">STRICT SY GUARD</span>
+                                </div>
+                                <p class="text-xs font-semibold text-amber-900/80 mt-0.5">No School Year is currently marked as Current. Dashboard metrics, classes, events, and activity feeds are hidden until an active School Year is opened.</p>
+                            </div>
                         </div>
                     </div>
                     <% } %>
@@ -780,7 +805,11 @@
 
                             <div class="pt-2 mt-2 border-t border-cyan-100 flex items-center justify-between text-[10px] font-bold text-slate-400">
                                 <span>Synchronized calendar</span>
+                                <% if (typeof currentSY !== 'undefined' && currentSY && classes && classes.length > 0) { %>
                                 <button onclick="openEventModal()" class="text-cyan-600 hover:underline cursor-pointer">+ Add Event</button>
+                                <% } else { %>
+                                <span class="text-slate-300 cursor-not-allowed" title="Requires an active class in the Current School Year">+ Add Event</span>
+                                <% } %>
                             </div>
                         </div>
 

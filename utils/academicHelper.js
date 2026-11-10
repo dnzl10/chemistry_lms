@@ -39,6 +39,23 @@ async function getActiveSchoolYear(db) {
 }
 
 /**
+ * Strictly fetch the active Current School Year (`status = 'Current'` or `is_active = 1`).
+ * Never falls back to an Archived or Draft SY, returning `null` so strict SY routes fail closed.
+ * @param {object} db - MySQL database connection/pool
+ * @returns {Promise<object|null>}
+ */
+async function getStrictCurrentSchoolYear(db) {
+    const [[currentSY]] = await db.query(
+        `SELECT *
+         FROM school_years
+         WHERE status = 'Current' OR is_active = 1
+         ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
+         LIMIT 1`
+    );
+    return currentSY || null;
+}
+
+/**
  * Normalizes status strings from UI or legacy payloads to canonical ('Current', 'Draft', 'Archive').
  * @param {string} status
  * @param {boolean|number} [isActive]
@@ -991,6 +1008,7 @@ const studentLifecycleHelper = require('./studentLifecycleHelper');
 module.exports = {
     getCurrentSchoolYear,
     getActiveSchoolYear,
+    getStrictCurrentSchoolYear,
     resolveAdminSchoolYearContext,
     resolveStudentSchoolYearContext,
     normalizeSchoolYearStatus,

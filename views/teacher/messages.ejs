@@ -97,6 +97,17 @@
             </div>
 
             <div class="flex items-center gap-3 md:gap-5">
+                <% if (typeof currentSY !== 'undefined' && currentSY && currentSY.sy_range) { %>
+                    <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase tracking-wide">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        S.Y. <%= currentSY.sy_range %> &middot; Active
+                    </span>
+                <% } else { %>
+                    <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-black uppercase tracking-wide">
+                        <i class="fas fa-ban text-[10px]"></i>
+                        No Active S.Y.
+                    </span>
+                <% } %>
                 <!-- Notification Bell Button -->
                 <button type="button" onclick="toggleNotifPanel()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
                     <i class="far fa-bell text-xl text-slate-700"></i>
@@ -234,6 +245,17 @@
             <main id="chatMain" class="flex-1 flex flex-col bg-slate-50/50 h-full min-w-0 relative">
                 <!-- Default Placeholder Empty State -->
                 <div id="noChatSelected" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                    <% if (typeof syBlocked !== 'undefined' && syBlocked) { %>
+                        <div class="mb-4 max-w-md rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-900 flex items-center gap-2 text-left">
+                            <i class="fas fa-shield-alt text-amber-600 shrink-0"></i>
+                            <span>Direct messaging is restricted to students enrolled in your Current School Year classes.</span>
+                        </div>
+                    <% } else if (typeof noActiveSY !== 'undefined' && noActiveSY) { %>
+                        <div class="mb-4 max-w-md rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-900 flex items-center gap-2 text-left">
+                            <i class="fas fa-exclamation-triangle text-rose-600 shrink-0"></i>
+                            <span>No Active Current School Year is configured. Messaging directory is paused.</span>
+                        </div>
+                    <% } %>
                     <div class="w-16 h-16 rounded-3xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center mb-4 text-2xl shadow-sm border border-cyan-500/20">
                         <i class="far fa-comments"></i>
                     </div>

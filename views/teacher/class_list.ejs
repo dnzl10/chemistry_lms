@@ -321,10 +321,23 @@
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 <div>
-                    <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">My Classes</h1>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">My Classes</h1>
+                        <% if (typeof currentSY !== 'undefined' && currentSY) { %>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase tracking-wide">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            S.Y. <%= currentSY.sy_range %> &middot; Active
+                        </span>
+                        <% } else { %>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-black uppercase tracking-wide">
+                            <i class="fas fa-exclamation-triangle text-[10px]"></i>
+                            No Active School Year
+                        </span>
+                        <% } %>
+                    </div>
                     <p class="text-xs text-slate-600 hidden sm:block font-medium">
                         <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
-                        Manage your classes and student rosters
+                        Manage your active Current School Year classes and student rosters
                     </p>
                 </div>
             </div>
@@ -387,13 +400,37 @@
     
                 <div class="p-4 md:p-8 flex-1 space-y-8">
 
+                <% if (typeof syBlocked !== 'undefined' && syBlocked) { %>
+                <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-xs">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fas fa-shield-alt text-amber-600 text-sm"></i>
+                        <span>Action blocked: Classes from archived or inactive School Years are hidden and locked under Strict Current School Year mode.</span>
+                    </div>
+                    <a href="/teacher/classes" class="text-amber-700 hover:text-amber-900 font-bold whitespace-nowrap">Dismiss</a>
+                </div>
+                <% } %>
+
+                <% if (typeof currentSY === 'undefined' || !currentSY) { %>
+                <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-xs">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-calendar-times"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-wider text-amber-800">No Active School Year Open</p>
+                            <p class="text-xs font-semibold text-amber-900/80 mt-0.5">No School Year is currently marked as Current. Class workspaces and student rosters are hidden until an active School Year is opened.</p>
+                        </div>
+                    </div>
+                </div>
+                <% } %>
+
                 <!-- ============================================================
                      SUMMARY STATS STRIP
                 ============================================================ -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                     <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
                         <p class="text-3xl font-black text-indigo-700"><%= classes.length %></p>
-                        <p class="text-xs font-semibold text-slate-400 mt-1">Total Classes</p>
+                        <p class="text-xs font-semibold text-slate-400 mt-1">Current SY Classes</p>
                     </div>
                     <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
                         <p class="text-3xl font-black text-cyan-600" id="totalStudentCount">
@@ -403,7 +440,7 @@
                     </div>
                     <div class="bg-white rounded-2xl border border-slate-100 p-5 text-center shadow-sm">
                         <p class="text-3xl font-black text-emerald-600">
-                            <%= (typeof currentSY !== 'undefined' && currentSY) ? currentSY.sy_range : (schoolYears.filter(function(sy){ return sy.status === 'Current' || sy.is_active; })[0]?.sy_range || 'N/A') %>
+                            <%= (typeof currentSY !== 'undefined' && currentSY) ? currentSY.sy_range : 'None' %>
                         </p>
                         <p class="text-xs font-semibold text-slate-400 mt-1">Current School Year</p>
                     </div>
@@ -425,22 +462,21 @@
                                 <i class="fas fa-chalkboard-user text-white text-sm"></i>
                             </div>
                             <div>
-                                <h2 class="text-sm font-bold text-slate-800">All Classes</h2>
-                                <p class="text-xs text-slate-400">Click a class to view the full student roster</p>
+                                <h2 class="text-sm font-bold text-slate-800">Active School Year Classes</h2>
+                                <p class="text-xs text-slate-400">Click a class to open its workspace or inspect its roster</p>
                             </div>
                         </div>
                         <!-- Filters -->
                         <div class="flex flex-wrap items-center gap-2">
-                            <!-- SY filter buttons -->
+                            <!-- Strict Active SY Indicator -->
                             <div class="flex gap-1 flex-wrap" id="syFilterGroup">
-                                <button class="sy-btn <%= (!schoolYears.some(sy => sy.status === 'Current' || sy.is_active)) ? 'active' : '' %>" data-sy="" onclick="filterClasses(this)">All Years</button>
-                                <% schoolYears.forEach(function(sy){ %>
-                                <button class="sy-btn <%= (sy.status === 'Current' || sy.is_active) ? 'active' : '' %>"
-                                        data-sy="<%= sy.sy_id %>"
-                                        onclick="filterClasses(this)">
-                                    <%= sy.sy_range %><% if (sy.status === 'Current' || sy.is_active) { %> <span style="font-size:9px" class="text-emerald-500 font-bold">● Current</span><% } else if (sy.status === 'Draft') { %> <span style="font-size:8px" class="text-sky-500">(Draft)</span><% } else { %> <span style="font-size:8px" class="text-slate-400">(Archive)</span><% } %>
+                                <% if (typeof currentSY !== 'undefined' && currentSY) { %>
+                                <button class="sy-btn active" data-sy="<%= currentSY.sy_id %>" onclick="filterClasses(this)">
+                                    <%= currentSY.sy_range %> <span style="font-size:9px" class="text-emerald-500 font-bold">● Current</span>
                                 </button>
-                                <% }); %>
+                                <% } else { %>
+                                <span class="sy-btn text-amber-600 border-amber-200 bg-amber-50">No Active SY</span>
+                                <% } %>
                             </div>
                             <!-- Search -->
                             <div class="relative">

@@ -19,12 +19,12 @@ const pool = require('../db');
  * - Analyzing (Bond types, Reactions, Nomenclature, Stoichiometry)
  * - Laboratory Precision (Motor dial accuracy within machine tolerances)
  */
-async function getStudentRadar(userId) {
+async function getStudentRadar(userId, options = {}) {
     try {
+        const syId = options && options.syId ? Number(options.syId) : null;
         // Strictly fetch Elementa Arcade Game micro-telemetry attempts (from elementa_questions via elementa_customer_attempts)
         // Web LMS student_responses & question_bank are strictly excluded.
-        const [rows] = await pool.query(
-            `SELECT 
+        let sql = `SELECT 
                 COALESCE(ca.level_number, r.level_number) AS level_number,
                 ca.attempt_id,
                 s.session_id,
@@ -41,10 +41,14 @@ async function getStudentRadar(userId) {
              FROM elementa_customer_attempts ca
              JOIN elementa_level_runs r ON r.run_id = ca.run_id
              JOIN elementa_game_sessions s ON s.session_id = r.session_id
-             WHERE (s.student_id_p1 = ? OR s.student_id_p2 = ?)
-             ORDER BY ca.attempted_at ASC, ca.attempt_id ASC`,
-            [userId, userId]
-        );
+             WHERE (s.student_id_p1 = ? OR s.student_id_p2 = ?)`;
+        const params = [userId, userId];
+        if (syId) {
+            sql += ` AND s.sy_id = ?`;
+            params.push(syId);
+        }
+        sql += ` ORDER BY ca.attempted_at ASC, ca.attempt_id ASC`;
+        const [rows] = await pool.query(sql, params);
 
         const getItemKey = (row) => {
             if (row.question_id) return `q_${row.question_id}`;

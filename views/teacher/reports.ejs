@@ -583,6 +583,12 @@
                     <div class="p-4 md:p-8 flex-1">
 
                         <!-- ACADEMIC YEAR & QUARTERLY GRADING DEADLINES BANNER -->
+                        <% if (typeof syBlocked !== 'undefined' && syBlocked) { %>
+                            <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900 flex items-center gap-2.5">
+                                <i class="fas fa-shield-alt text-amber-600 text-sm"></i>
+                                <span>Requested class belongs to another School Year or is unavailable in the Current School Year. Showing Current School Year reports only.</span>
+                            </div>
+                        <% } %>
                         <% if (typeof activeSY !== 'undefined' && activeSY) { %>
                             <div class="section-card p-4 md:p-5 mb-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-0 shadow-lg">
                                 <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -638,6 +644,14 @@
                                     <% }); %>
                                 </div>
                             </div>
+                        <% } else { %>
+                            <div class="mb-6 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-rose-900 flex items-center gap-3">
+                                <i class="fas fa-exclamation-triangle text-rose-600 text-lg"></i>
+                                <div>
+                                    <p class="text-sm font-extrabold">No Active Current School Year Configured</p>
+                                    <p class="text-xs text-rose-700">Reports and exports are paused until an administrator sets a School Year with <strong>Current</strong> status.</p>
+                                </div>
+                            </div>
                         <% } %>
 
                         <!-- CLASS SELECTOR STRIP -->
@@ -649,8 +663,7 @@
                                 <div>
                                     <p class="text-xs font-black text-indigo-900 uppercase tracking-tight">Active Filter
                                     </p>
-                                    <p class="text-[11px] text-slate-400 font-bold">All data below reflects the selected
-                                        class</p>
+                                    <p class="text-[11px] text-slate-400 font-bold">All data below reflects the selected Current School Year class</p>
                                 </div>
                             </div>
                             <div class="flex gap-3 items-center flex-wrap">
@@ -661,11 +674,11 @@
                                         <% classes.forEach(c=> { %>
                                             <option value="<%= c.class_id %>" data-subject="<%= c.subject_id %>"
                                                 <%=String(c.class_id)===String(selectedClassId) ? 'selected' : '' %>>
-                                                <%= c.class_name %> — <%= c.subject_name %> <%= c.sy_range ? '(' + c.sy_range + ')' : '' %> <%= (c.sy_status === 'Current' || c.sy_is_active) ? '[Current]' : '[Archive]' %>
+                                                <%= c.class_name %> — <%= c.subject_name %> <%= c.sy_range ? '(' + c.sy_range + ')' : '' %> [Current]
                                             </option>
                                             <% }) %>
                                                 <option value="all" <%=selectedClassId==='all' ? 'selected' : '' %>>—
-                                                    All my classes (Overview) —</option>
+                                                    All Current SY classes (Overview) —</option>
                                     </select>
                                 </div>
                             </div>
@@ -2554,6 +2567,9 @@
                     if (tab && document.getElementById('tab-' + tab)) {
                         const btn = document.getElementById('tabBtn-' + tab) || document.querySelector(`button[onclick*="'${tab}'"]`);
                         if (btn) switchTab(tab, btn);
+                    }
+                    if (urlParams.get('sy_blocked') === '1' && typeof rpToast === 'function') {
+                        rpToast('Requested class is outside the Current School Year.', 'error');
                     }
                 } catch (e) {
                     console.warn('[Tab Auto-Activation Error]', e);

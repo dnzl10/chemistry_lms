@@ -452,8 +452,20 @@
                             <i class="fas fa-bars text-xl"></i>
                         </button>
                         <div class="hidden sm:block">
-                            <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">Question
-                                Bank</h1>
+                            <div class="flex items-center gap-2.5 flex-wrap">
+                                <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">Question Bank</h1>
+                                <% if (typeof currentSY !== 'undefined' && currentSY) { %>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase tracking-wide">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    S.Y. <%= currentSY.sy_range %> &middot; Active
+                                </span>
+                                <% } else { %>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-black uppercase tracking-wide">
+                                    <i class="fas fa-exclamation-triangle text-[10px]"></i>
+                                    No Active School Year
+                                </span>
+                                <% } %>
+                            </div>
                             <p class="text-xs text-slate-600 font-medium">
                                 <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
                                 Author and curate interactive chemistry arcade challenges
@@ -541,6 +553,30 @@
 
                 <!-- Main Scrollable Body Area -->
                 <div class="flex-1 overflow-y-auto pt-24 pb-12 px-4 md:px-8 space-y-6" id="mainScroll">
+
+                    <% if (typeof syBlocked !== 'undefined' && syBlocked) { %>
+                    <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-xs">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fas fa-shield-alt text-amber-600 text-sm"></i>
+                            <span>Action blocked: Question bank entries, telemetry, and remediation records are restricted to the currently active School Year.</span>
+                        </div>
+                        <a href="/teacher/question-bank" class="text-amber-700 hover:text-amber-900 font-bold whitespace-nowrap">Dismiss</a>
+                    </div>
+                    <% } %>
+
+                    <% if (typeof currentSY === 'undefined' || !currentSY) { %>
+                    <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-xs">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-calendar-times"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-wider text-amber-800">No Active School Year Open</p>
+                                <p class="text-xs font-semibold text-amber-900/80 mt-0.5">Question bank challenges, telemetry insights, and remediation actions are hidden until an active School Year is opened.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <% } %>
 
                     <!-- 1. Top KPI Summary Cards -->
                     <div id="qbankKpiGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-4">

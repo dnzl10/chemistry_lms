@@ -6,17 +6,21 @@ const db = require('../db');
 const academicHelper = require('../utils/academicHelper');
 
 // Universal Teacher School Year Context Middleware
-// Automatically resolves the active current school year set by the Admin and attaches it
-// to req and res.locals so all teacher views and routes are strictly scoped to the active SY.
+// Strictly resolves the active Current School Year set by the Admin (never falls back to Archive/Draft)
+// and attaches it to req and res.locals for all teacher views and routes.
 router.use(async (req, res, next) => {
     try {
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
         req.currentSY = currentSY;
         req.activeSY = currentSY;
         res.locals.currentSY = currentSY;
         res.locals.activeSY = currentSY;
     } catch (err) {
-        console.error('[Teacher SY Middleware] Failed to resolve current SY:', err);
+        console.error('[Teacher SY Middleware] Failed to resolve strict current SY:', err);
+        req.currentSY = null;
+        req.activeSY = null;
+        res.locals.currentSY = null;
+        res.locals.activeSY = null;
     }
     next();
 });
@@ -291,20 +295,252 @@ async function getTeacherNotifications(db, teacherId) {
     }
 }
 
+/**
+ * Fetches consolidated recent student submissions and Arcade game activities
+ * strictly scoped to the provided active School Year (currentSyId).
+ * @param {number} teacherId
+ * @param {number|null} currentSyId
+ * @param {number} [limit=10]
+ * @returns {Promise<Array>}
+ */
+async function fetchConsolidatedTeacherActivities(teacherId, currentSyId, limit = 10) {
+    if (!currentSyId) return [];
+    const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 500));
+
+    const [rows] = await db.query(`
+        SELECT * FROM (
+            -- 1. Standard Individual Student Submissions (Assignments, Quizzes, Solo Arcade)
+            SELECT 
+                0 AS is_versus,
+                ss.score_id,
+                ss.student_id,
+                u.first_name, 
+                u.last_name, 
+                u.profile_pic AS student_pic,
+                ss.score_obtained,
+                ss.exp_gained,
+                NULL AS p2_id,
+                NULL AS p2_first_name,
+                NULL AS p2_last_name,
+                NULL AS p2_pic,
+                NULL AS p2_score,
+                NULL AS p2_exp,
+                NULL AS winner,
+                ss.total_items,
+                ss.assessment_id,
+                COALESCE(a.assessment_name, 'Assessment') AS assessment_name,
+                COALESCE(t.topic_name, 'General Chemistry') AS topic_name,
+                COALESCE(s.subject_name, 'Chemistry') AS subject_name,
+                s.subject_id,
+                c.class_id,
+                c.class_name,
+                ss.is_grace_period,
+                ss.grace_minutes_used,
+                COALESCE(ss.submitted_at, ss.date_recorded) AS submitted_at,
+                ss.file_path,
+                ss.original_filename,
+                ss.feedback,
+                egs.session_id,
+                CASE 
+                    WHEN egs.session_id IS NOT NULL OR ss.feedback LIKE '%Arcade%' THEN 'arcade'
+                    ELSE 'assignment'
+                END AS submission_type,
+                CASE
+                    WHEN egs.session_id IS NOT NULL THEN CONCAT('/teacher/analysis/', egs.session_id, '?student_id=', ss.student_id)
+                    ELSE CONCAT('/teacher/grading-workspace/', ss.assessment_id, '?score_id=', ss.score_id)
+                END AS target_url
+            FROM student_scores ss
+            JOIN users u ON ss.student_id = u.user_id
+            JOIN assessments a ON ss.assessment_id = a.assessment_id
+            JOIN topics t ON a.topic_id = t.topic_id
+            JOIN quarters q ON t.quarter_id = q.quarter_id
+            JOIN subjects s ON q.subject_id = s.subject_id
+            JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND c.sy_id = ?
+            JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+            LEFT JOIN elementa_game_sessions egs ON (
+                egs.assessment_id = ss.assessment_id 
+                AND (egs.student_id_p1 = ss.student_id OR egs.student_id_p2 = ss.student_id)
+                AND egs.sy_id = ?
+            )
+            WHERE a.sy_id = ?
+              AND NOT (
+                egs.play_mode = 'Versus' 
+                OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0)
+            )
+
+            UNION ALL
+
+            -- 2. Consolidated 2-Player Versus / Dual Matches (1 row per game match)
+            SELECT 
+                1 AS is_versus,
+                egs.session_id AS score_id,
+                u1.user_id AS student_id,
+                u1.first_name,
+                u1.last_name,
+                u1.profile_pic AS student_pic,
+                egs.final_score_p1 AS score_obtained,
+                COALESCE((SELECT ss.exp_gained FROM student_scores ss WHERE ss.assessment_id = egs.assessment_id AND ss.student_id = u1.user_id LIMIT 1), egs.final_score_p1 * 100, 100) AS exp_gained,
+                u2.user_id AS p2_id,
+                u2.first_name AS p2_first_name,
+                u2.last_name AS p2_last_name,
+                u2.profile_pic AS p2_pic,
+                egs.final_score_p2 AS p2_score,
+                COALESCE((SELECT ss.exp_gained FROM student_scores ss WHERE ss.assessment_id = egs.assessment_id AND ss.student_id = u2.user_id LIMIT 1), egs.final_score_p2 * 100, 100) AS p2_exp,
+                CASE 
+                    WHEN UPPER(egs.winner) IN ('P1', 'P2') THEN UPPER(egs.winner)
+                    WHEN UPPER(egs.winner) IN ('TIE', 'DRAW') THEN 'Tie'
+                    WHEN egs.final_score_p1 > egs.final_score_p2 THEN 'P1'
+                    WHEN egs.final_score_p2 > egs.final_score_p1 THEN 'P2'
+                    ELSE 'Tie'
+                END AS winner,
+                COALESCE(a.total_items, 3) AS total_items,
+                egs.assessment_id,
+                COALESCE(a.assessment_name, CONCAT('Arcade Level ', egs.highest_level_reached)) AS assessment_name,
+                COALESCE(t.topic_name, 'Scientific Measurement') AS topic_name,
+                COALESCE(s.subject_name, 'Chemistry') AS subject_name,
+                s.subject_id,
+                c.class_id,
+                c.class_name,
+                0 AS is_grace_period,
+                0 AS grace_minutes_used,
+                COALESCE(egs.ended_at, egs.started_at) AS submitted_at,
+                NULL AS file_path,
+                NULL AS original_filename,
+                'Elementa Versus Match' AS feedback,
+                egs.session_id,
+                'arcade' AS submission_type,
+                CONCAT('/teacher/analysis/', egs.session_id) AS target_url
+            FROM elementa_game_sessions egs
+            JOIN users u1 ON egs.student_id_p1 = u1.user_id
+            JOIN users u2 ON egs.student_id_p2 = u2.user_id
+            LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
+            LEFT JOIN topics t ON a.topic_id = t.topic_id
+            LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
+            LEFT JOIN (
+                SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
+                FROM class_students cs2
+                JOIN classes c2 ON cs2.class_id = c2.class_id
+                WHERE c2.teacher_id = ? AND c2.sy_id = ? AND (cs2.sy_id IS NULL OR cs2.sy_id = c2.sy_id)
+                GROUP BY cs2.student_id, c2.subject_id
+            ) fallback_p1 ON fallback_p1.student_id = u1.user_id
+                AND (q.subject_id IS NULL OR fallback_p1.subject_id = q.subject_id)
+            JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_p1.class_id)
+            JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
+            WHERE egs.sy_id = ?
+              AND c.teacher_id = ? AND c.sy_id = ?
+              AND (a.assessment_id IS NULL OR a.sy_id = ?)
+              AND (egs.play_mode = 'Versus' OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0))
+
+            UNION ALL
+
+            -- 3. Solo Arcade Freeplay (sessions without assessment_id or not synced)
+            SELECT 
+                0 AS is_versus,
+                egs.session_id AS score_id,
+                u.user_id AS student_id,
+                u.first_name,
+                u.last_name,
+                u.profile_pic AS student_pic,
+                egs.final_score_p1 AS score_obtained,
+                COALESCE(egs.final_score_p1 * 100, 100) AS exp_gained,
+                NULL AS p2_id,
+                NULL AS p2_first_name,
+                NULL AS p2_last_name,
+                NULL AS p2_pic,
+                NULL AS p2_score,
+                NULL AS p2_exp,
+                NULL AS winner,
+                GREATEST(COALESCE(a.total_items, egs.highest_level_reached, 1), egs.final_score_p1) AS total_items,
+                egs.assessment_id,
+                COALESCE(a.assessment_name, CONCAT('Arcade Level ', egs.highest_level_reached)) AS assessment_name,
+                COALESCE(t.topic_name, 'Arcade Mode') AS topic_name,
+                COALESCE(s.subject_name, 'Chemistry') AS subject_name,
+                s.subject_id,
+                c.class_id,
+                c.class_name,
+                0 AS is_grace_period,
+                0 AS grace_minutes_used,
+                COALESCE(egs.ended_at, egs.started_at) AS submitted_at,
+                NULL AS file_path,
+                NULL AS original_filename,
+                'Elementa Freeplay' AS feedback,
+                egs.session_id,
+                'arcade' AS submission_type,
+                CONCAT('/teacher/analysis/', egs.session_id, '?student_id=', u.user_id) AS target_url
+            FROM elementa_game_sessions egs
+            JOIN users u ON egs.student_id_p1 = u.user_id
+            LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
+            LEFT JOIN topics t ON a.topic_id = t.topic_id
+            LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
+            LEFT JOIN (
+                SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
+                FROM class_students cs2
+                JOIN classes c2 ON cs2.class_id = c2.class_id
+                WHERE c2.teacher_id = ? AND c2.sy_id = ? AND (cs2.sy_id IS NULL OR cs2.sy_id = c2.sy_id)
+                GROUP BY cs2.student_id, c2.subject_id
+            ) fallback_fp ON fallback_fp.student_id = u.user_id
+                AND (q.subject_id IS NULL OR fallback_fp.subject_id = q.subject_id)
+            JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_fp.class_id)
+            JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
+            WHERE egs.sy_id = ?
+              AND c.teacher_id = ? AND c.sy_id = ?
+              AND (a.assessment_id IS NULL OR a.sy_id = ?)
+              AND (egs.student_id_p2 IS NULL OR egs.student_id_p2 = 0)
+              AND (egs.assessment_id IS NULL OR NOT EXISTS (
+                  SELECT 1 FROM student_scores ss2 
+                  WHERE ss2.assessment_id = egs.assessment_id 
+                    AND ss2.student_id = u.user_id
+              ))
+        ) AS consolidated_feed
+        ORDER BY submitted_at DESC, score_id DESC
+        LIMIT ?`, [
+            teacherId, currentSyId, currentSyId, currentSyId,
+            teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId,
+            teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId,
+            safeLimit
+        ]);
+
+    return rows || [];
+}
+
 
 router.get('/dashboard', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
 
     try {
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const currentSyId = currentSY ? currentSY.sy_id : null;
-        const syStartDate = currentSY && currentSY.start_date ? new Date(currentSY.start_date) : null;
-        const syEndDate = currentSY && currentSY.end_date ? new Date(currentSY.end_date) : null;
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const notifications = await getTeacherNotifications(db, teacherId);
+
+        if (!currentSyId) {
+            return res.render('teacher/dashboard', {
+                user: req.user,
+                currentSY: null,
+                classes: [],
+                stats: { totalStudents: 0, totalAttempts: 0, avgAccuracy: 0 },
+                recentScores: [],
+                forumActivity: [],
+                pendingAssessments: [],
+                needsAttention: [],
+                announcements: [],
+                pinnedDiscussions: [],
+                events: [],
+                leaderboard: [],
+                subjectAssessmentStats: [],
+                weeklyTrends: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    scores: [0, 0, 0, 0, 0, 0, 0],
+                    counts: [0, 0, 0, 0, 0, 0, 0]
+                },
+                notifications,
+                syBlocked: req.query.sy_blocked === '1'
+            });
+        }
 
         const [
             [classes],
             [statsResult],
-            [recentScores],
+            recentScores,
             [forumActivity],
             [pendingAssessments],
             [needsAttention],
@@ -318,218 +554,41 @@ router.get('/dashboard', isTeacher, async (req, res) => {
         ] = await Promise.all([
             db.query(`
                 SELECT c.*, s.subject_name, s.subject_code, s.subject_image,
-                (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id) as student_count
+                (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)) as student_count
                 FROM classes c JOIN subjects s ON c.subject_id = s.subject_id
-                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)`, [teacherId, currentSyId, currentSyId]),
+                WHERE c.teacher_id = ? AND c.sy_id = ?`, [teacherId, currentSyId]),
 
             db.query(`
                 SELECT 
-                    (SELECT COUNT(DISTINCT cs.student_id) FROM class_students cs JOIN classes c ON cs.class_id = c.class_id WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)) as totalStudents,
+                    (SELECT COUNT(DISTINCT cs.student_id)
+                     FROM class_students cs
+                     JOIN classes c ON cs.class_id = c.class_id
+                     WHERE c.teacher_id = ? AND c.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)) as totalStudents,
                     (SELECT COUNT(*) FROM elementa_game_sessions egs 
                      JOIN class_students cs ON (egs.student_id_p1 = cs.student_id OR egs.student_id_p2 = cs.student_id)
                      JOIN classes c ON cs.class_id = c.class_id 
-                     WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)) as totalAttempts`,
-                [teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
+                     WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)) as totalAttempts`,
+                [teacherId, currentSyId, teacherId, currentSyId, currentSyId]),
 
-            db.query(`
-                SELECT * FROM (
-                    -- 1. Standard Individual Student Submissions (Assignments, Quizzes, Solo Arcade)
-                    SELECT 
-                        0 AS is_versus,
-                        ss.score_id,
-                        ss.student_id,
-                        u.first_name, 
-                        u.last_name, 
-                        u.profile_pic AS student_pic,
-                        ss.score_obtained,
-                        ss.exp_gained,
-                        NULL AS p2_id,
-                        NULL AS p2_first_name,
-                        NULL AS p2_last_name,
-                        NULL AS p2_pic,
-                        NULL AS p2_score,
-                        NULL AS p2_exp,
-                        NULL AS winner,
-                        ss.total_items,
-                        ss.assessment_id,
-                        COALESCE(a.assessment_name, 'Assessment') AS assessment_name,
-                        COALESCE(t.topic_name, 'General Chemistry') AS topic_name,
-                        COALESCE(s.subject_name, 'Chemistry') AS subject_name,
-                        s.subject_id,
-                        c.class_id,
-                        c.class_name,
-                        ss.is_grace_period,
-                        ss.grace_minutes_used,
-                        COALESCE(ss.submitted_at, ss.date_recorded) AS submitted_at,
-                        ss.file_path,
-                        ss.original_filename,
-                        ss.feedback,
-                        egs.session_id,
-                        CASE 
-                            WHEN egs.session_id IS NOT NULL OR ss.feedback LIKE '%Arcade%' THEN 'arcade'
-                            ELSE 'assignment'
-                        END AS submission_type,
-                        CASE
-                            WHEN egs.session_id IS NOT NULL THEN CONCAT('/teacher/analysis/', egs.session_id, '?student_id=', ss.student_id)
-                            ELSE CONCAT('/teacher/grading-workspace/', ss.assessment_id, '?score_id=', ss.score_id)
-                        END AS target_url
-                    FROM student_scores ss
-                    JOIN users u ON ss.student_id = u.user_id
-                    JOIN assessments a ON ss.assessment_id = a.assessment_id
-                    JOIN topics t ON a.topic_id = t.topic_id
-                    JOIN quarters q ON t.quarter_id = q.quarter_id
-                    JOIN subjects s ON q.subject_id = s.subject_id
-                    JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
-                    JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id
-                    LEFT JOIN elementa_game_sessions egs ON (
-                        egs.assessment_id = ss.assessment_id 
-                        AND (egs.student_id_p1 = ss.student_id OR egs.student_id_p2 = ss.student_id)
-                    )
-                    WHERE NOT (
-                        egs.play_mode = 'Versus' 
-                        OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0)
-                    )
-
-                    UNION ALL
-
-                    -- 2. Consolidated 2-Player Versus / Dual Matches (1 row per game match)
-                    SELECT 
-                        1 AS is_versus,
-                        egs.session_id AS score_id,
-                        u1.user_id AS student_id,
-                        u1.first_name,
-                        u1.last_name,
-                        u1.profile_pic AS student_pic,
-                        egs.final_score_p1 AS score_obtained,
-                        COALESCE((SELECT ss.exp_gained FROM student_scores ss WHERE ss.assessment_id = egs.assessment_id AND ss.student_id = u1.user_id LIMIT 1), egs.final_score_p1 * 100, 100) AS exp_gained,
-                        u2.user_id AS p2_id,
-                        u2.first_name AS p2_first_name,
-                        u2.last_name AS p2_last_name,
-                        u2.profile_pic AS p2_pic,
-                        egs.final_score_p2 AS p2_score,
-                        COALESCE((SELECT ss.exp_gained FROM student_scores ss WHERE ss.assessment_id = egs.assessment_id AND ss.student_id = u2.user_id LIMIT 1), egs.final_score_p2 * 100, 100) AS p2_exp,
-                        CASE 
-                            WHEN UPPER(egs.winner) IN ('P1', 'P2') THEN UPPER(egs.winner)
-                            WHEN UPPER(egs.winner) IN ('TIE', 'DRAW') THEN 'Tie'
-                            WHEN egs.final_score_p1 > egs.final_score_p2 THEN 'P1'
-                            WHEN egs.final_score_p2 > egs.final_score_p1 THEN 'P2'
-                            ELSE 'Tie'
-                        END AS winner,
-                        COALESCE(a.total_items, 3) AS total_items,
-                        egs.assessment_id,
-                        COALESCE(a.assessment_name, CONCAT('Arcade Level ', egs.highest_level_reached)) AS assessment_name,
-                        COALESCE(t.topic_name, 'Scientific Measurement') AS topic_name,
-                        COALESCE(s.subject_name, 'Chemistry') AS subject_name,
-                        s.subject_id,
-                        c.class_id,
-                        c.class_name,
-                        0 AS is_grace_period,
-                        0 AS grace_minutes_used,
-                        COALESCE(egs.ended_at, egs.started_at) AS submitted_at,
-                        NULL AS file_path,
-                        NULL AS original_filename,
-                        'Elementa Versus Match' AS feedback,
-                        egs.session_id,
-                        'arcade' AS submission_type,
-                        CONCAT('/teacher/analysis/', egs.session_id) AS target_url
-                    FROM elementa_game_sessions egs
-                    JOIN users u1 ON egs.student_id_p1 = u1.user_id
-                    JOIN users u2 ON egs.student_id_p2 = u2.user_id
-                    LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
-                    LEFT JOIN topics t ON a.topic_id = t.topic_id
-                    LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                    LEFT JOIN (
-                        SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
-                        FROM class_students cs2
-                        JOIN classes c2 ON cs2.class_id = c2.class_id
-                        WHERE c2.teacher_id = ? AND (? IS NULL OR c2.sy_id = ?)
-                        GROUP BY cs2.student_id, c2.subject_id
-                    ) fallback_p1 ON fallback_p1.student_id = u1.user_id
-                        AND (q.subject_id IS NULL OR fallback_p1.subject_id = q.subject_id)
-                    JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_p1.class_id)
-                    JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
-                    WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
-                      AND (egs.play_mode = 'Versus' OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0))
-
-                    UNION ALL
-
-                    -- 3. Solo Arcade Freeplay (sessions without assessment_id or not synced)
-                    SELECT 
-                        0 AS is_versus,
-                        egs.session_id AS score_id,
-                        u.user_id AS student_id,
-                        u.first_name,
-                        u.last_name,
-                        u.profile_pic AS student_pic,
-                        egs.final_score_p1 AS score_obtained,
-                        COALESCE(egs.final_score_p1 * 100, 100) AS exp_gained,
-                        NULL AS p2_id,
-                        NULL AS p2_first_name,
-                        NULL AS p2_last_name,
-                        NULL AS p2_pic,
-                        NULL AS p2_score,
-                        NULL AS p2_exp,
-                        NULL AS winner,
-                        GREATEST(COALESCE(a.total_items, egs.highest_level_reached, 1), egs.final_score_p1) AS total_items,
-                        egs.assessment_id,
-                        COALESCE(a.assessment_name, CONCAT('Arcade Level ', egs.highest_level_reached)) AS assessment_name,
-                        COALESCE(t.topic_name, 'Arcade Mode') AS topic_name,
-                        COALESCE(s.subject_name, 'Chemistry') AS subject_name,
-                        s.subject_id,
-                        c.class_id,
-                        c.class_name,
-                        0 AS is_grace_period,
-                        0 AS grace_minutes_used,
-                        COALESCE(egs.ended_at, egs.started_at) AS submitted_at,
-                        NULL AS file_path,
-                        NULL AS original_filename,
-                        'Elementa Freeplay' AS feedback,
-                        egs.session_id,
-                        'arcade' AS submission_type,
-                        CONCAT('/teacher/analysis/', egs.session_id, '?student_id=', u.user_id) AS target_url
-                    FROM elementa_game_sessions egs
-                    JOIN users u ON egs.student_id_p1 = u.user_id
-                    LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
-                    LEFT JOIN topics t ON a.topic_id = t.topic_id
-                    LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                    LEFT JOIN (
-                        SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
-                        FROM class_students cs2
-                        JOIN classes c2 ON cs2.class_id = c2.class_id
-                        WHERE c2.teacher_id = ? AND (? IS NULL OR c2.sy_id = ?)
-                        GROUP BY cs2.student_id, c2.subject_id
-                    ) fallback_fp ON fallback_fp.student_id = u.user_id
-                        AND (q.subject_id IS NULL OR fallback_fp.subject_id = q.subject_id)
-                    JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_fp.class_id)
-                    JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
-                    WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
-                      AND (egs.student_id_p2 IS NULL OR egs.student_id_p2 = 0)
-                      AND (egs.assessment_id IS NULL OR NOT EXISTS (
-                          SELECT 1 FROM student_scores ss2 
-                          WHERE ss2.assessment_id = egs.assessment_id 
-                            AND ss2.student_id = u.user_id
-                      ))
-                ) AS consolidated_feed
-                ORDER BY submitted_at DESC, score_id DESC
-                LIMIT 10`, [
-                    teacherId, currentSyId, currentSyId,
-                    teacherId, currentSyId, currentSyId,
-                    teacherId, currentSyId, currentSyId,
-                    teacherId, currentSyId, currentSyId,
-                    teacherId, currentSyId, currentSyId
-                ]),
+            fetchConsolidatedTeacherActivities(teacherId, currentSyId, 10),
 
             db.query(`
                 SELECT ft.*, t.topic_name, q.subject_id
                 FROM forum_topics ft 
                 LEFT JOIN topics t ON ft.topic_id = t.topic_id
                 LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                WHERE ft.teacher_id = ? 
+                WHERE ft.sy_id = ?
                   AND (
-                      ft.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
-                      OR (ft.class_id IS NULL AND (? IS NULL OR (ft.created_at >= ? AND ft.created_at <= ?)))
+                      ft.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
+                      OR (
+                          ft.class_id IS NULL
+                          AND (
+                              ft.teacher_id = ?
+                              OR ft.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
+                          )
+                      )
                   )
-                ORDER BY ft.created_at DESC`, [teacherId, teacherId, currentSyId, currentSyId, currentSyId, syStartDate, syEndDate]),
+                ORDER BY ft.created_at DESC`, [currentSyId, teacherId, currentSyId, teacherId, teacherId, currentSyId]),
 
             db.query(`
             SELECT DISTINCT
@@ -546,40 +605,46 @@ router.get('/dashboard', isTeacher, async (req, res) => {
             JOIN quarters q ON t.quarter_id = q.quarter_id
             JOIN classes c ON q.subject_id = c.subject_id
             WHERE c.teacher_id = ? 
-              AND (? IS NULL OR c.sy_id = ?) 
-              AND (? IS NULL OR a.sy_id = ?)
+              AND c.sy_id = ? 
+              AND a.sy_id = ?
               AND a.due_date >= CURDATE()
             ORDER BY a.due_date ASC
             LIMIT 10
-        `, [teacherId, currentSyId, currentSyId, currentSyId, currentSyId]),
+        `, [teacherId, currentSyId, currentSyId]),
 
             db.query(`
-                SELECT u.first_name, u.last_name, u.profile_pic, sp.progress_percent, s.subject_name, s.subject_id
+                SELECT u.first_name, u.last_name, u.profile_pic, MAX(sp.progress_percent) AS progress_percent, s.subject_name, s.subject_id
                 FROM student_progress sp 
                 JOIN users u ON sp.student_id = u.user_id
                 JOIN subjects s ON sp.subject_id = s.subject_id
                 JOIN classes c ON s.subject_id = c.subject_id
                 JOIN class_students cs ON c.class_id = cs.class_id AND cs.student_id = u.user_id
-                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND sp.progress_percent < 50 
-                GROUP BY u.user_id, s.subject_id`, [teacherId, currentSyId, currentSyId]),
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND sp.sy_id = c.sy_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) AND sp.progress_percent < 50 
+                GROUP BY u.user_id, s.subject_id`, [teacherId, currentSyId]),
 
             db.query(`
-                SELECT * FROM announcements 
-                WHERE teacher_id = ? 
+                SELECT a.* FROM announcements a
+                WHERE a.teacher_id = ? 
                   AND (
-                      sy_id = ?
-                      OR class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
-                      OR (sy_id IS NULL AND class_id IS NULL AND (? IS NULL OR (created_at >= ? AND created_at <= ?)))
+                      a.sy_id = ?
+                      OR a.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
                   )
-                ORDER BY created_at DESC LIMIT 3`, [teacherId, currentSyId, teacherId, currentSyId, currentSyId, currentSyId, syStartDate, syEndDate]),
+                ORDER BY a.created_at DESC LIMIT 3`, [teacherId, currentSyId, teacherId, currentSyId]),
 
             db.query(`
-                SELECT * FROM forum_topics 
-                WHERE teacher_id = ? AND is_pinned = 1
+                SELECT ft.* FROM forum_topics ft
+                WHERE ft.is_pinned = 1
+                  AND ft.sy_id = ?
                   AND (
-                      class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
-                      OR (class_id IS NULL AND (? IS NULL OR (created_at >= ? AND created_at <= ?)))
-                  )`, [teacherId, teacherId, currentSyId, currentSyId, currentSyId, syStartDate, syEndDate]),
+                      ft.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
+                      OR (
+                          ft.class_id IS NULL
+                          AND (
+                              ft.teacher_id = ?
+                              OR ft.subject_id IN (SELECT DISTINCT subject_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
+                          )
+                      )
+                  )`, [currentSyId, teacherId, currentSyId, teacherId, teacherId, currentSyId]),
 
             db.query(`
                 SELECT ev.*, s.subject_name 
@@ -587,10 +652,10 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 LEFT JOIN subjects s ON ev.subject_id = s.subject_id
                 WHERE ev.teacher_id = ? 
                   AND (
-                      ev.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND (? IS NULL OR sy_id = ?))
-                      OR (ev.class_id IS NULL AND (? IS NULL OR (ev.event_date >= ? AND ev.event_date <= ?)))
+                      ev.sy_id = ?
+                      OR ev.class_id IN (SELECT class_id FROM classes WHERE teacher_id = ? AND sy_id = ?)
                   )
-                ORDER BY ev.event_date ASC`, [teacherId, teacherId, currentSyId, currentSyId, currentSyId, syStartDate, syEndDate]),
+                ORDER BY ev.event_date ASC`, [teacherId, currentSyId, teacherId, currentSyId]),
 
             db.query(`
                 SELECT u.first_name, u.last_name, u.profile_pic,
@@ -600,14 +665,14 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                             JOIN topics t ON a.topic_id = t.topic_id
                             JOIN quarters q ON t.quarter_id = q.quarter_id
                             JOIN classes c2 ON q.subject_id = c2.subject_id AND c2.class_id = cs.class_id
-                            WHERE ss.student_id = u.user_id AND (? IS NULL OR c2.sy_id = ?) AND (? IS NULL OR a.sy_id = ?)),
+                            WHERE ss.student_id = u.user_id AND c2.sy_id = ? AND a.sy_id = ?),
                            0
                        ) AS total_points
                 FROM users u
                 JOIN class_students cs ON u.user_id = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?) AND u.role = 'Student'
-                GROUP BY u.user_id ORDER BY total_points DESC LIMIT 5`, [currentSyId, currentSyId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) AND u.role = 'Student'
+                GROUP BY u.user_id ORDER BY total_points DESC LIMIT 5`, [currentSyId, currentSyId, teacherId, currentSyId]),
 
             db.query(`
                 SELECT ROUND(AVG(eca.is_correct) * 100, 1) as avg_accuracy
@@ -616,7 +681,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                 JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
                 JOIN class_students cs ON (egs.student_id_p1 = cs.student_id OR egs.student_id_p2 = cs.student_id)
                 JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)`, [teacherId, currentSyId, currentSyId]),
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)`, [teacherId, currentSyId, currentSyId]),
 
             /* NEW: Subject Assessment Completion Stats for bar chart */
             db.query(`
@@ -632,14 +697,14 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     , 1) AS completion_percent
                 FROM subjects s
                 JOIN classes c ON s.subject_id = c.subject_id
-                LEFT JOIN class_students cs ON c.class_id = cs.class_id
+                LEFT JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                 LEFT JOIN quarters q ON s.subject_id = q.subject_id
                 LEFT JOIN topics t ON q.quarter_id = t.quarter_id
-                LEFT JOIN assessments a ON t.topic_id = a.topic_id AND (? IS NULL OR a.sy_id = ?)
-                LEFT JOIN elementa_student_grades esg ON (a.assessment_id = esg.assessment_id AND esg.student_id = cs.student_id)
-                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
+                LEFT JOIN assessments a ON t.topic_id = a.topic_id AND a.sy_id = ?
+                LEFT JOIN elementa_student_grades esg ON (a.assessment_id = esg.assessment_id AND esg.student_id = cs.student_id AND esg.sy_id = ?)
+                WHERE c.teacher_id = ? AND c.sy_id = ?
                 GROUP BY s.subject_id, s.subject_name, s.subject_code
-                ORDER BY completion_percent ASC`, [currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
+                ORDER BY completion_percent ASC`, [currentSyId, currentSyId, teacherId, currentSyId]),
 
             /* Weekly Performance Trends for Performance Overview line chart */
             db.query(`
@@ -660,10 +725,10 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     JOIN topics t ON a.topic_id = t.topic_id
                     JOIN quarters q ON t.quarter_id = q.quarter_id
                     JOIN subjects s ON q.subject_id = s.subject_id
-                    JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
-                    JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id
+                    JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND c.sy_id = ?
+                    JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                     WHERE ss.score_obtained IS NOT NULL AND ss.total_items > 0
-                      AND (? IS NULL OR a.sy_id = ?)
+                      AND a.sy_id = ?
 
                     UNION ALL
 
@@ -676,10 +741,10 @@ router.get('/dashboard', isTeacher, async (req, res) => {
                     JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
                     JOIN class_students cs ON (egs.student_id_p1 = cs.student_id OR egs.student_id_p2 = cs.student_id)
                     JOIN classes c ON cs.class_id = c.class_id
-                    WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
+                    WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                 ) all_attempts
                 GROUP BY weekday_idx, day_name
-                ORDER BY weekday_idx ASC`, [teacherId, currentSyId, currentSyId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
+                ORDER BY weekday_idx ASC`, [teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId]),
         ]);
 
         // Build Weekly Trends 7-day data (Mon=0, Tue=1, ..., Sun=6)
@@ -700,8 +765,6 @@ router.get('/dashboard', isTeacher, async (req, res) => {
             counts: dayAbbrs.map((_, idx) => weeklyCountMap[idx] !== undefined ? weeklyCountMap[idx] : 0)
         };
 
-        const notifications = await getTeacherNotifications(db, teacherId);
-
         res.render('teacher/dashboard', {
             user: req.user,
             currentSY,
@@ -718,6 +781,7 @@ router.get('/dashboard', isTeacher, async (req, res) => {
             subjectAssessmentStats,
             weeklyTrends,
             notifications,
+            syBlocked: req.query.sy_blocked === '1'
         });
 
     } catch (err) {
@@ -733,205 +797,28 @@ router.get('/dashboard', isTeacher, async (req, res) => {
 router.get('/all-activities', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     try {
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const currentSyId = currentSY ? currentSY.sy_id : null;
-
-        const [activities] = await db.query(`
-            SELECT * FROM (
-                -- 1. Standard Individual Student Submissions (Assignments, Quizzes, Solo Arcade)
-                SELECT 
-                    0 AS is_versus,
-                    ss.score_id,
-                    ss.student_id,
-                    u.first_name, 
-                    u.last_name, 
-                    u.profile_pic AS student_pic,
-                    ss.score_obtained,
-                    ss.exp_gained,
-                    NULL AS p2_id,
-                    NULL AS p2_first_name,
-                    NULL AS p2_last_name,
-                    NULL AS p2_pic,
-                    NULL AS p2_score,
-                    NULL AS p2_exp,
-                    NULL AS winner,
-                    ss.total_items,
-                    ss.assessment_id,
-                    COALESCE(a.assessment_name, 'Assessment') AS assessment_name,
-                    COALESCE(t.topic_name, 'General Chemistry') AS topic_name,
-                    COALESCE(s.subject_name, 'Chemistry') AS subject_name,
-                    s.subject_id,
-                    c.class_id,
-                    c.class_name,
-                    ss.is_grace_period,
-                    ss.grace_minutes_used,
-                    COALESCE(ss.submitted_at, ss.date_recorded) AS submitted_at,
-                    ss.file_path,
-                    ss.original_filename,
-                    ss.feedback,
-                    egs.session_id,
-                    CASE 
-                        WHEN egs.session_id IS NOT NULL OR ss.feedback LIKE '%Arcade%' THEN 'arcade'
-                        ELSE 'assignment'
-                    END AS submission_type,
-                    CASE
-                        WHEN egs.session_id IS NOT NULL THEN CONCAT('/teacher/analysis/', egs.session_id, '?student_id=', ss.student_id)
-                        ELSE CONCAT('/teacher/grading-workspace/', ss.assessment_id, '?score_id=', ss.score_id)
-                    END AS target_url
-                FROM student_scores ss
-                JOIN users u ON ss.student_id = u.user_id
-                JOIN assessments a ON ss.assessment_id = a.assessment_id
-                JOIN topics t ON a.topic_id = t.topic_id
-                JOIN quarters q ON t.quarter_id = q.quarter_id
-                JOIN subjects s ON q.subject_id = s.subject_id
-                JOIN classes c ON c.subject_id = s.subject_id AND c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
-                JOIN class_students cs ON cs.class_id = c.class_id AND cs.student_id = ss.student_id
-                LEFT JOIN elementa_game_sessions egs ON (
-                    egs.assessment_id = ss.assessment_id 
-                    AND (egs.student_id_p1 = ss.student_id OR egs.student_id_p2 = ss.student_id)
-                )
-                WHERE NOT (
-                    egs.play_mode = 'Versus' 
-                    OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0)
-                )
-
-                UNION ALL
-
-                -- 2. Consolidated 2-Player Versus / Dual Matches (1 row per game match)
-                SELECT 
-                    1 AS is_versus,
-                    egs.session_id AS score_id,
-                    u1.user_id AS student_id,
-                    u1.first_name,
-                    u1.last_name,
-                    u1.profile_pic AS student_pic,
-                    egs.final_score_p1 AS score_obtained,
-                    COALESCE((SELECT ss.exp_gained FROM student_scores ss WHERE ss.assessment_id = egs.assessment_id AND ss.student_id = u1.user_id LIMIT 1), egs.final_score_p1 * 100, 100) AS exp_gained,
-                    u2.user_id AS p2_id,
-                    u2.first_name AS p2_first_name,
-                    u2.last_name AS p2_last_name,
-                    u2.profile_pic AS p2_pic,
-                    egs.final_score_p2 AS p2_score,
-                    COALESCE((SELECT ss.exp_gained FROM student_scores ss WHERE ss.assessment_id = egs.assessment_id AND ss.student_id = u2.user_id LIMIT 1), egs.final_score_p2 * 100, 100) AS p2_exp,
-                    CASE 
-                        WHEN UPPER(egs.winner) IN ('P1', 'P2') THEN UPPER(egs.winner)
-                        WHEN UPPER(egs.winner) IN ('TIE', 'DRAW') THEN 'Tie'
-                        WHEN egs.final_score_p1 > egs.final_score_p2 THEN 'P1'
-                        WHEN egs.final_score_p2 > egs.final_score_p1 THEN 'P2'
-                        ELSE 'Tie'
-                    END AS winner,
-                    COALESCE(a.total_items, 3) AS total_items,
-                    egs.assessment_id,
-                    COALESCE(a.assessment_name, CONCAT('Arcade Level ', egs.highest_level_reached)) AS assessment_name,
-                    COALESCE(t.topic_name, 'Scientific Measurement') AS topic_name,
-                    COALESCE(s.subject_name, 'Chemistry') AS subject_name,
-                    s.subject_id,
-                    c.class_id,
-                    c.class_name,
-                    0 AS is_grace_period,
-                    0 AS grace_minutes_used,
-                    COALESCE(egs.ended_at, egs.started_at) AS submitted_at,
-                    NULL AS file_path,
-                    NULL AS original_filename,
-                    'Elementa Versus Match' AS feedback,
-                    egs.session_id,
-                    'arcade' AS submission_type,
-                    CONCAT('/teacher/analysis/', egs.session_id) AS target_url
-                FROM elementa_game_sessions egs
-                JOIN users u1 ON egs.student_id_p1 = u1.user_id
-                JOIN users u2 ON egs.student_id_p2 = u2.user_id
-                LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
-                LEFT JOIN topics t ON a.topic_id = t.topic_id
-                LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                LEFT JOIN (
-                    SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
-                    FROM class_students cs2
-                    JOIN classes c2 ON cs2.class_id = c2.class_id
-                    WHERE c2.teacher_id = ? AND (? IS NULL OR c2.sy_id = ?)
-                    GROUP BY cs2.student_id, c2.subject_id
-                ) fallback_p1 ON fallback_p1.student_id = u1.user_id
-                    AND (q.subject_id IS NULL OR fallback_p1.subject_id = q.subject_id)
-                JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_p1.class_id)
-                JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
-                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
-                  AND (egs.play_mode = 'Versus' OR (egs.student_id_p1 IS NOT NULL AND egs.student_id_p2 IS NOT NULL AND egs.student_id_p2 > 0))
-
-                UNION ALL
-
-                -- 3. Solo Arcade Freeplay (sessions without assessment_id or not synced)
-                SELECT 
-                    0 AS is_versus,
-                    egs.session_id AS score_id,
-                    u.user_id AS student_id,
-                    u.first_name,
-                    u.last_name,
-                    u.profile_pic AS student_pic,
-                    egs.final_score_p1 AS score_obtained,
-                    COALESCE(egs.final_score_p1 * 100, 100) AS exp_gained,
-                    NULL AS p2_id,
-                    NULL AS p2_first_name,
-                    NULL AS p2_last_name,
-                    NULL AS p2_pic,
-                    NULL AS p2_score,
-                    NULL AS p2_exp,
-                    NULL AS winner,
-                    GREATEST(COALESCE(a.total_items, egs.highest_level_reached, 1), egs.final_score_p1) AS total_items,
-                    egs.assessment_id,
-                    COALESCE(a.assessment_name, CONCAT('Arcade Level ', egs.highest_level_reached)) AS assessment_name,
-                    COALESCE(t.topic_name, 'Arcade Mode') AS topic_name,
-                    COALESCE(s.subject_name, 'Chemistry') AS subject_name,
-                    s.subject_id,
-                    c.class_id,
-                    c.class_name,
-                    0 AS is_grace_period,
-                    0 AS grace_minutes_used,
-                    COALESCE(egs.ended_at, egs.started_at) AS submitted_at,
-                    NULL AS file_path,
-                    NULL AS original_filename,
-                    'Elementa Freeplay' AS feedback,
-                    egs.session_id,
-                    'arcade' AS submission_type,
-                    CONCAT('/teacher/analysis/', egs.session_id, '?student_id=', u.user_id) AS target_url
-                FROM elementa_game_sessions egs
-                JOIN users u ON egs.student_id_p1 = u.user_id
-                LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
-                LEFT JOIN topics t ON a.topic_id = t.topic_id
-                LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-                LEFT JOIN (
-                    SELECT cs2.student_id, MAX(cs2.class_id) AS class_id, c2.subject_id
-                    FROM class_students cs2
-                    JOIN classes c2 ON cs2.class_id = c2.class_id
-                    WHERE c2.teacher_id = ? AND (? IS NULL OR c2.sy_id = ?)
-                    GROUP BY cs2.student_id, c2.subject_id
-                ) fallback_fp ON fallback_fp.student_id = u.user_id
-                    AND (q.subject_id IS NULL OR fallback_fp.subject_id = q.subject_id)
-                JOIN classes c ON c.class_id = COALESCE(egs.class_id, fallback_fp.class_id)
-                JOIN subjects s ON s.subject_id = COALESCE(q.subject_id, c.subject_id)
-                WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
-                  AND (egs.student_id_p2 IS NULL OR egs.student_id_p2 = 0)
-                  AND (egs.assessment_id IS NULL OR NOT EXISTS (
-                      SELECT 1 FROM student_scores ss2 
-                      WHERE ss2.assessment_id = egs.assessment_id 
-                        AND ss2.student_id = u.user_id
-                  ))
-            ) AS all_feed
-            ORDER BY submitted_at DESC
-            LIMIT 100
-        `, [
-            teacherId, currentSyId, currentSyId,
-            teacherId, currentSyId, currentSyId,
-            teacherId, currentSyId, currentSyId,
-            teacherId, currentSyId, currentSyId,
-            teacherId, currentSyId, currentSyId
-        ]);
-
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
         const notifications = await getTeacherNotifications(db, teacherId);
+
+        if (!currentSyId) {
+            return res.render('teacher/all_activities', {
+                user: req.user,
+                currentSY: null,
+                activities: [],
+                notifications,
+                syBlocked: req.query.sy_blocked === '1'
+            });
+        }
+
+        const activities = await fetchConsolidatedTeacherActivities(teacherId, currentSyId, 100);
 
         res.render('teacher/all_activities', {
             user: req.user,
             currentSY,
             activities,
-            notifications
+            notifications,
+            syBlocked: req.query.sy_blocked === '1'
         });
     } catch (err) {
         console.error("❌ Teacher All Activities Error:", err);
@@ -950,6 +837,9 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
         const classId = req.params.classId;
         const teacherId = req.user.user_id;
 
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+
         const [classData] = await db.execute(`
             SELECT c.*, s.*, sy.sy_range, sy.status AS sy_status, sy.is_active AS sy_is_active
             FROM classes c
@@ -966,6 +856,11 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                 customMessage: 'The requested class record does not exist or is not assigned to your instructor account.'
             });
         }
+
+        if (!currentSyId || Number(classData[0].sy_id) !== currentSyId) {
+            return res.redirect('/teacher/classes?sy_blocked=1');
+        }
+
         console.log('[DEBUG] subject_image:', classData[0].subject_image);
 
         const subjectId = classData[0].subject_id;
@@ -982,6 +877,8 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                     LEFT JOIN topics t ON a.topic_id = t.topic_id
                     LEFT JOIN quarters qt ON t.quarter_id = qt.quarter_id
                     WHERE (gs.student_id_p1 = u.user_id OR gs.student_id_p2 = u.user_id)
+                      AND gs.sy_id = ?
+                      AND (a.assessment_id IS NULL OR a.sy_id = ?)
                       AND gs.play_mode = 'Solo'
                       AND (gs.class_id = cs.class_id OR qt.subject_id = ? OR gs.assessment_id IS NULL)
                 ), 0) AS total_solo_score,
@@ -992,6 +889,8 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                     LEFT JOIN topics t ON a.topic_id = t.topic_id
                     LEFT JOIN quarters qt ON t.quarter_id = qt.quarter_id
                     WHERE (gs.student_id_p1 = u.user_id OR gs.student_id_p2 = u.user_id)
+                      AND gs.sy_id = ?
+                      AND (a.assessment_id IS NULL OR a.sy_id = ?)
                       AND gs.play_mode = 'Versus'
                       AND (gs.class_id = cs.class_id OR qt.subject_id = ? OR gs.assessment_id IS NULL)
                 ), 0) AS total_versus_score,
@@ -1007,6 +906,8 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                     LEFT JOIN topics t ON a.topic_id = t.topic_id
                     LEFT JOIN quarters qt ON t.quarter_id = qt.quarter_id
                     WHERE (gs.student_id_p1 = u.user_id OR gs.student_id_p2 = u.user_id)
+                      AND gs.sy_id = ?
+                      AND (a.assessment_id IS NULL OR a.sy_id = ?)
                       AND gs.play_mode = 'Versus'
                       AND (gs.class_id = cs.class_id OR qt.subject_id = ? OR gs.assessment_id IS NULL)
                 ), 0) AS total_versus_wins,
@@ -1025,12 +926,18 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                  ORDER BY pm.sent_at DESC LIMIT 1
                 ) AS last_message_text
             FROM users u
-            JOIN class_students cs ON u.user_id = cs.student_id
+            JOIN class_students cs ON u.user_id = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
             LEFT JOIN student_progress sp
-                   ON u.user_id = sp.student_id AND sp.subject_id = ?
+                   ON u.user_id = sp.student_id AND sp.subject_id = ? AND sp.sy_id = ?
             WHERE cs.class_id = ? AND u.role = 'Student'
             ORDER BY u.last_name ASC`,
-            [subjectId, subjectId, subjectId, teacherId, teacherId, teacherId, teacherId, subjectId, classId]
+            [
+                currentSyId, currentSyId, subjectId,
+                currentSyId, currentSyId, subjectId,
+                currentSyId, currentSyId, subjectId,
+                teacherId, teacherId, teacherId, teacherId,
+                currentSyId, subjectId, currentSyId, classId
+            ]
         );
 
         students.forEach(s => {
@@ -1041,8 +948,6 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
         });
 
         await topicScheduleService.evaluateNow();
-
-        const classSyId = classData[0].sy_id || null;
 
         const [quarters] = await db.execute(
             `SELECT * FROM quarters WHERE subject_id = ? ORDER BY quarter_number ASC`,
@@ -1063,20 +968,21 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                         SELECT lm.*, 0 AS query_count
                         FROM learning_materials lm 
                         WHERE lm.topic_id = ?
-                          AND (lm.sy_id = ? OR (? IS NULL AND lm.sy_id IS NULL))`, [t.topic_id, classSyId, classSyId]),
+                          AND lm.sy_id = ?`, [t.topic_id, currentSyId]),
                     db.execute(`
                         SELECT a.*,
-                            (SELECT COUNT(*) FROM elementa_game_sessions egs WHERE egs.assessment_id = a.assessment_id) AS submission_count,
-                            (SELECT COUNT(*) FROM elementa_game_sessions egs WHERE egs.assessment_id = a.assessment_id AND egs.session_status = 'Completed') AS graded_count
+                            (SELECT COUNT(*) FROM elementa_game_sessions egs WHERE egs.assessment_id = a.assessment_id AND egs.sy_id = ?) AS submission_count,
+                            (SELECT COUNT(*) FROM elementa_game_sessions egs WHERE egs.assessment_id = a.assessment_id AND egs.sy_id = ? AND egs.session_status = 'Completed') AS graded_count
                         FROM assessments a 
                         WHERE a.topic_id = ? 
-                          AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
-                        ORDER BY a.assessment_id ASC`, [t.topic_id, classSyId, classSyId]),
+                          AND a.sy_id = ?
+                        ORDER BY a.assessment_id ASC`, [currentSyId, currentSyId, t.topic_id, currentSyId]),
                     db.execute(`
                         SELECT * FROM forum_topics 
                         WHERE topic_id = ? 
+                          AND sy_id = ?
                           AND (class_id = ? OR class_id IS NULL)
-                        ORDER BY is_pinned DESC, created_at DESC`, [t.topic_id, classId]),
+                        ORDER BY is_pinned DESC, created_at DESC`, [t.topic_id, currentSyId, classId]),
                 ]);
                 t.materials = mats;
                 t.assessments = asms.filter(a => a.assessment_type !== 'Assignment');
@@ -1092,9 +998,9 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                    u.profile_pic AS author_pic
             FROM announcements a
             LEFT JOIN users u ON a.teacher_id = u.user_id
-            WHERE a.class_id = ? OR a.scope = 'global'
+            WHERE (a.class_id = ? OR a.scope = 'global') AND a.sy_id = ?
             ORDER BY a.is_critical DESC, a.is_priority DESC, a.created_at DESC
-        `, [classId]);
+        `, [classId, currentSyId]);
 
         const [scores] = await db.execute(`
             (
@@ -1117,11 +1023,12 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                     'lms' AS record_source
                 FROM student_scores ss
                 JOIN users u ON ss.student_id = u.user_id
-                JOIN class_students cs ON u.user_id = cs.student_id
+                JOIN class_students cs ON u.user_id = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
                 JOIN assessments a ON ss.assessment_id = a.assessment_id
                 LEFT JOIN topics t ON a.topic_id = t.topic_id
                 LEFT JOIN quarters qt ON t.quarter_id = qt.quarter_id
                 WHERE cs.class_id = ? 
+                  AND a.sy_id = ?
                   AND (qt.subject_id = ? OR a.assessment_id IS NULL)
                   AND (ss.feedback IS NULL OR ss.feedback NOT LIKE '%Arcade%')
             )
@@ -1171,11 +1078,14 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
                 LEFT JOIN topics t      ON a.topic_id       = t.topic_id
                 LEFT JOIN quarters qt   ON t.quarter_id     = qt.quarter_id
                 JOIN users u            ON (egs.student_id_p1 = u.user_id OR egs.student_id_p2 = u.user_id)
-                JOIN class_students cs  ON u.user_id        = cs.student_id
-                WHERE cs.class_id = ? AND (qt.subject_id = ? OR egs.assessment_id IS NULL)
+                JOIN class_students cs  ON u.user_id        = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+                WHERE cs.class_id = ?
+                  AND egs.sy_id = ?
+                  AND (a.assessment_id IS NULL OR a.sy_id = ?)
+                  AND (qt.subject_id = ? OR egs.assessment_id IS NULL)
             )
             ORDER BY date_recorded DESC`,
-            [classId, subjectId, classId, subjectId]
+            [currentSyId, classId, currentSyId, subjectId, currentSyId, classId, currentSyId, currentSyId, subjectId]
         );
 
         const [competitiveMatches] = await db.execute(`
@@ -1200,14 +1110,16 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
             LEFT JOIN users u1      ON egs.student_id_p1 = u1.user_id
             LEFT JOIN users u2      ON egs.student_id_p2 = u2.user_id
             WHERE egs.play_mode = 'Versus'
+              AND egs.sy_id = ?
+              AND (a.assessment_id IS NULL OR a.sy_id = ?)
               AND (qt.subject_id = ? OR egs.assessment_id IS NULL)
               AND (
-                egs.student_id_p1 IN (SELECT student_id FROM class_students WHERE class_id = ?)
+                egs.student_id_p1 IN (SELECT student_id FROM class_students WHERE class_id = ? AND (sy_id IS NULL OR sy_id = ?))
                 OR
-                egs.student_id_p2 IN (SELECT student_id FROM class_students WHERE class_id = ?)
+                egs.student_id_p2 IN (SELECT student_id FROM class_students WHERE class_id = ? AND (sy_id IS NULL OR sy_id = ?))
               )
             ORDER BY egs.started_at DESC`,
-            [subjectId, classId, classId]
+            [currentSyId, currentSyId, subjectId, classId, currentSyId, classId, currentSyId]
         );
 
         const leaderboardHistory = [];
@@ -1223,10 +1135,10 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
             FROM elementa_game_sessions egs
             LEFT JOIN users u ON egs.student_id_p1 = u.user_id
             LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
-            LEFT JOIN class_students cs ON u.user_id = cs.student_id
-            WHERE (cs.class_id = ? OR egs.class_id = ?) AND egs.session_status = 'Ongoing'
+            LEFT JOIN class_students cs ON u.user_id = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+            WHERE (cs.class_id = ? OR egs.class_id = ?) AND egs.sy_id = ? AND egs.session_status = 'Ongoing'
             ORDER BY egs.started_at ASC`,
-            [classId, classId]
+            [currentSyId, classId, classId, currentSyId]
         );
 
         const [forumDone] = await db.execute(`
@@ -1235,7 +1147,10 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
             JOIN forum_topics ft ON sfd.forum_id = ft.forum_id
             JOIN topics t        ON ft.topic_id  = t.topic_id
             JOIN quarters qt     ON t.quarter_id = qt.quarter_id
-            WHERE qt.subject_id = ?`, [subjectId]);
+            WHERE qt.subject_id = ?
+              AND ft.sy_id = ?
+              AND sfd.student_id IN (SELECT student_id FROM class_students WHERE class_id = ? AND (sy_id IS NULL OR sy_id = ?))`,
+            [subjectId, currentSyId, classId, currentSyId]);
 
         const forumDoneMap = {};
         forumDone.forEach(row => {
@@ -1244,8 +1159,10 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
         });
 
         const [calendarEvents] = await db.execute(`
-            SELECT * FROM calendar_events WHERE subject_id = ? ORDER BY event_date ASC`,
-            [subjectId]
+            SELECT * FROM calendar_events
+            WHERE subject_id = ? AND sy_id = ? AND (class_id IS NULL OR class_id = ?)
+            ORDER BY event_date ASC`,
+            [subjectId, currentSyId, classId]
         );
 
         const [whitelists] = await db.execute(`
@@ -1253,21 +1170,11 @@ router.get('/class/:classId', isTeacher, async (req, res) => {
             [classId]
         );
 
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const isHistoricalSY = !currentSY || (classData[0].sy_id !== currentSY.sy_id);
+        const isHistoricalSY = false;
 
         if (quarters && quarters.length > 0) {
             quarters.forEach(q => {
-                if (isHistoricalSY) {
-                    q.gradingStatus = {
-                        isOpen: false,
-                        status: 'LOCKED',
-                        deadline: null,
-                        message: 'Archived Academic Year: Grade modifications locked.'
-                    };
-                } else {
-                    q.gradingStatus = academicHelper.isQuarterGradingOpen(currentSY, q.quarter_number);
-                }
+                q.gradingStatus = academicHelper.isQuarterGradingOpen(currentSY, q.quarter_number);
             });
         }
 
@@ -1322,13 +1229,13 @@ const uploadWhitelist = multer({
 
 async function verifyClassOwnership(dbConn, teacherId, classId) {
     const [[c]] = await dbConn.execute(
-        `SELECT c.class_id, c.class_name, c.teacher_id, c.sy_id, sy.status AS sy_status, sy.is_active AS sy_is_active 
+        `SELECT c.class_id, c.class_name, c.subject_id, c.teacher_id, c.sy_id, sy.status AS sy_status, sy.is_active AS sy_is_active 
          FROM classes c 
          LEFT JOIN school_years sy ON c.sy_id = sy.sy_id 
          WHERE c.class_id = ?`, 
         [classId]
     );
-    if (!c || (teacherId && c.teacher_id !== teacherId)) {
+    if (!c || (teacherId && Number(c.teacher_id) !== Number(teacherId))) {
         const err = new Error("Unauthorized to access this class.");
         err.statusCode = 403;
         throw err;
@@ -1338,13 +1245,343 @@ async function verifyClassOwnership(dbConn, teacherId, classId) {
 
 async function assertActiveClass(dbConn, teacherId, classId) {
     const c = await verifyClassOwnership(dbConn, teacherId, classId);
-    const currentSY = await academicHelper.getCurrentSchoolYear(dbConn);
-    if (!currentSY || c.sy_id !== currentSY.sy_id || !c.sy_is_active) {
+    const currentSY = await academicHelper.getStrictCurrentSchoolYear(dbConn);
+    if (
+        !currentSY ||
+        Number(c.sy_id) !== Number(currentSY.sy_id) ||
+        !c.sy_is_active ||
+        c.sy_status === 'Archive' ||
+        c.sy_status === 'Draft'
+    ) {
         const err = new Error("This class belongs to an archived School Year and is read-only. Modifications are not allowed.");
         err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
         throw err;
     }
     return c;
+}
+
+/**
+ * Verify that `classId` belongs to `teacherId` strictly within `currentSyId` (active Current SY).
+ */
+async function verifyTeacherClassInCurrentSY(dbConn, teacherId, classId, currentSyId = null) {
+    const activeSY = currentSyId
+        ? { sy_id: Number(currentSyId) }
+        : await academicHelper.getStrictCurrentSchoolYear(dbConn);
+    if (!activeSY || !activeSY.sy_id) {
+        const err = new Error("No active Current School Year is configured.");
+        err.statusCode = 403;
+        err.code = 'NO_ACTIVE_SY';
+        throw err;
+    }
+    const c = await verifyClassOwnership(dbConn, teacherId, classId);
+    if (!c.sy_id || Number(c.sy_id) !== Number(activeSY.sy_id)) {
+        const err = new Error("This class belongs to another School Year and cannot be accessed in the Current School Year.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
+        throw err;
+    }
+    return c;
+}
+
+/**
+ * Verify that `assessmentId` belongs to `currentSyId` and is accessible/owned by `teacherId`.
+ */
+async function verifyTeacherAssessmentInCurrentSY(dbConn, teacherId, assessmentId, currentSyId = null, { requireOwnership = false } = {}) {
+    const parsedAid = parseInt(assessmentId, 10);
+    if (isNaN(parsedAid) || parsedAid <= 0) {
+        const err = new Error("Invalid assessment ID.");
+        err.statusCode = 400;
+        err.code = 'INVALID_ID';
+        throw err;
+    }
+    const activeSY = currentSyId
+        ? { sy_id: Number(currentSyId) }
+        : await academicHelper.getStrictCurrentSchoolYear(dbConn);
+    if (!activeSY || !activeSY.sy_id) {
+        const err = new Error("No active Current School Year is configured.");
+        err.statusCode = 403;
+        err.code = 'NO_ACTIVE_SY';
+        throw err;
+    }
+    const [[assessment]] = await dbConn.execute(
+        `SELECT a.*, q.subject_id AS quarter_subject_id
+         FROM assessments a
+         LEFT JOIN topics t ON a.topic_id = t.topic_id
+         LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
+         WHERE a.assessment_id = ?
+         LIMIT 1`,
+        [parsedAid]
+    );
+    if (!assessment) {
+        const err = new Error("Assessment not found.");
+        err.statusCode = 404;
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+    if (!assessment.sy_id || Number(assessment.sy_id) !== Number(activeSY.sy_id)) {
+        const err = new Error("This assessment belongs to another School Year and cannot be accessed or modified in the Current School Year.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
+        throw err;
+    }
+
+    const isCreator = Number(assessment.teacher_id) === Number(teacherId);
+    if (requireOwnership && !isCreator) {
+        const err = new Error("Access denied. You do not own this assessment.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_OWNER';
+        throw err;
+    }
+    if (!isCreator) {
+        const targetSubjectId = assessment.quarter_subject_id || null;
+        const [clsRows] = targetSubjectId
+            ? await dbConn.execute(
+                `SELECT class_id FROM classes WHERE subject_id = ? AND teacher_id = ? AND sy_id = ? LIMIT 1`,
+                [targetSubjectId, teacherId, Number(activeSY.sy_id)]
+            )
+            : [[]];
+        if (!clsRows.length) {
+            const err = new Error("Access denied. You do not teach this assessment's subject in the Current School Year.");
+            err.statusCode = 403;
+            err.code = 'FORBIDDEN_OWNER';
+            throw err;
+        }
+    }
+    return assessment;
+}
+
+/**
+ * Check whether `studentId` is enrolled in any class taught by `teacherId` within `currentSyId`.
+ */
+async function verifyStudentInTeacherCurrentSY(dbConn, teacherId, studentId, currentSyId = null) {
+    const parsedSid = parseInt(studentId, 10);
+    if (isNaN(parsedSid) || parsedSid <= 0) return null;
+    const activeSY = currentSyId
+        ? { sy_id: Number(currentSyId) }
+        : await academicHelper.getStrictCurrentSchoolYear(dbConn);
+    if (!activeSY || !activeSY.sy_id) return null;
+
+    const [rows] = await dbConn.execute(
+        `SELECT cs.class_id, c.subject_id, c.sy_id
+         FROM class_students cs
+         JOIN classes c ON cs.class_id = c.class_id
+         WHERE cs.student_id = ?
+           AND c.teacher_id = ?
+           AND c.sy_id = ?
+           AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+         LIMIT 1`,
+        [parsedSid, teacherId, Number(activeSY.sy_id)]
+    );
+    return rows.length ? rows[0] : null;
+}
+
+async function resolveActiveSyIdOrThrow(dbConn, currentSyId = null) {
+    const activeSY = currentSyId
+        ? { sy_id: Number(currentSyId) }
+        : await academicHelper.getStrictCurrentSchoolYear(dbConn);
+    if (!activeSY || !activeSY.sy_id) {
+        const err = new Error("Action blocked: No active Current School Year is configured.");
+        err.statusCode = 403;
+        err.code = 'NO_ACTIVE_SY';
+        throw err;
+    }
+    return Number(activeSY.sy_id);
+}
+
+async function verifyTeacherSubjectInCurrentSY(dbConn, teacherId, subjectId, currentSyId = null) {
+    const parsedSubId = parseInt(subjectId, 10);
+    if (isNaN(parsedSubId) || parsedSubId <= 0) {
+        const err = new Error("Invalid subject ID.");
+        err.statusCode = 400;
+        err.code = 'INVALID_ID';
+        throw err;
+    }
+    const activeSyId = await resolveActiveSyIdOrThrow(dbConn, currentSyId);
+    const [clsRows] = await dbConn.execute(
+        `SELECT class_id, subject_id, sy_id FROM classes WHERE subject_id = ? AND teacher_id = ? AND sy_id = ? LIMIT 1`,
+        [parsedSubId, teacherId, activeSyId]
+    );
+    if (!clsRows.length) {
+        const err = new Error("Access denied. You do not teach this subject in the Current School Year.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
+        throw err;
+    }
+    return { ...clsRows[0], currentSyId: activeSyId };
+}
+
+async function verifyTeacherQuarterInCurrentSY(dbConn, teacherId, quarterId, currentSyId = null) {
+    const parsedQid = parseInt(quarterId, 10);
+    if (isNaN(parsedQid) || parsedQid <= 0) {
+        const err = new Error("Invalid quarter ID.");
+        err.statusCode = 400;
+        err.code = 'INVALID_ID';
+        throw err;
+    }
+    const activeSyId = await resolveActiveSyIdOrThrow(dbConn, currentSyId);
+    const [[qRow]] = await dbConn.execute(
+        `SELECT quarter_id, subject_id FROM quarters WHERE quarter_id = ? LIMIT 1`,
+        [parsedQid]
+    );
+    if (!qRow) {
+        const err = new Error("Quarter not found.");
+        err.statusCode = 404;
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+    await verifyTeacherSubjectInCurrentSY(dbConn, teacherId, qRow.subject_id, activeSyId);
+    return { ...qRow, currentSyId: activeSyId };
+}
+
+async function verifyTeacherTopicInCurrentSY(dbConn, teacherId, topicId, currentSyId = null) {
+    const parsedTid = parseInt(topicId, 10);
+    if (isNaN(parsedTid) || parsedTid <= 0) {
+        const err = new Error("Invalid topic ID.");
+        err.statusCode = 400;
+        err.code = 'INVALID_ID';
+        throw err;
+    }
+    const activeSyId = await resolveActiveSyIdOrThrow(dbConn, currentSyId);
+    const [[tRow]] = await dbConn.execute(
+        `SELECT t.topic_id, q.quarter_id, q.subject_id
+         FROM topics t
+         JOIN quarters q ON t.quarter_id = q.quarter_id
+         WHERE t.topic_id = ?
+         LIMIT 1`,
+        [parsedTid]
+    );
+    if (!tRow) {
+        const err = new Error("Topic not found.");
+        err.statusCode = 404;
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+    await verifyTeacherSubjectInCurrentSY(dbConn, teacherId, tRow.subject_id, activeSyId);
+    return { ...tRow, currentSyId: activeSyId };
+}
+
+async function verifyTeacherMaterialInCurrentSY(dbConn, teacherId, materialId, currentSyId = null) {
+    const parsedMid = parseInt(materialId, 10);
+    if (isNaN(parsedMid) || parsedMid <= 0) {
+        const err = new Error("Invalid material ID.");
+        err.statusCode = 400;
+        err.code = 'INVALID_ID';
+        throw err;
+    }
+    const activeSyId = await resolveActiveSyIdOrThrow(dbConn, currentSyId);
+    const [[mat]] = await dbConn.execute(
+        `SELECT lm.*, q.subject_id
+         FROM learning_materials lm
+         LEFT JOIN topics t ON lm.topic_id = t.topic_id
+         LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
+         WHERE lm.material_id = ?
+         LIMIT 1`,
+        [parsedMid]
+    );
+    if (!mat) {
+        const err = new Error("Learning material not found.");
+        err.statusCode = 404;
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+    if (!mat.sy_id || Number(mat.sy_id) !== activeSyId) {
+        const err = new Error("This material belongs to another School Year and cannot be accessed or modified in the Current School Year.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
+        throw err;
+    }
+    if (mat.subject_id) {
+        await verifyTeacherSubjectInCurrentSY(dbConn, teacherId, mat.subject_id, activeSyId);
+    } else if (Number(mat.uploaded_by) !== Number(teacherId)) {
+        const err = new Error("Unauthorized to access this material.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_OWNER';
+        throw err;
+    }
+    return { ...mat, currentSyId: activeSyId };
+}
+
+async function verifyTeacherAnnouncementInCurrentSY(dbConn, teacherId, announcementId, currentSyId = null) {
+    const parsedAid = parseInt(announcementId, 10);
+    if (isNaN(parsedAid) || parsedAid <= 0) {
+        const err = new Error("Invalid announcement ID.");
+        err.statusCode = 400;
+        err.code = 'INVALID_ID';
+        throw err;
+    }
+    const activeSyId = await resolveActiveSyIdOrThrow(dbConn, currentSyId);
+    const [[ann]] = await dbConn.execute(
+        `SELECT a.*, c.teacher_id AS class_teacher_id, c.sy_id AS class_sy_id
+         FROM announcements a
+         LEFT JOIN classes c ON a.class_id = c.class_id
+         WHERE a.announcement_id = ?
+         LIMIT 1`,
+        [parsedAid]
+    );
+    if (!ann) {
+        const err = new Error("Announcement not found.");
+        err.statusCode = 404;
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+    if (
+        !ann.sy_id ||
+        Number(ann.sy_id) !== activeSyId ||
+        (ann.class_sy_id && Number(ann.class_sy_id) !== activeSyId)
+    ) {
+        const err = new Error("This announcement belongs to another School Year and cannot be modified in the Current School Year.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
+        throw err;
+    }
+    const isAuthor = Number(ann.teacher_id) === Number(teacherId);
+    const isClassTeacher = ann.class_teacher_id && Number(ann.class_teacher_id) === Number(teacherId);
+    if (!isAuthor && !isClassTeacher) {
+        const err = new Error("Unauthorized to modify this announcement.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_OWNER';
+        throw err;
+    }
+    return { ...ann, currentSyId: activeSyId };
+}
+
+async function verifyTeacherQuestionInCurrentSY(dbConn, teacherId, questionId, currentSyId = null, { allowSharedApproved = false } = {}) {
+    const parsedQid = parseInt(questionId, 10);
+    if (isNaN(parsedQid) || parsedQid <= 0) {
+        const err = new Error("Invalid question ID.");
+        err.statusCode = 400;
+        err.code = 'INVALID_ID';
+        throw err;
+    }
+    const activeSyId = await resolveActiveSyIdOrThrow(dbConn, currentSyId);
+    const [[q]] = await dbConn.execute(
+        `SELECT * FROM elementa_questions WHERE question_id = ? LIMIT 1`,
+        [parsedQid]
+    );
+    if (!q) {
+        const err = new Error("Question not found.");
+        err.statusCode = 404;
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+    if (!q.sy_id || Number(q.sy_id) !== activeSyId) {
+        const err = new Error("This question belongs to another School Year and cannot be accessed or modified in the Current School Year.");
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
+        throw err;
+    }
+    const isOwner = q.teacher_id && Number(q.teacher_id) === Number(teacherId);
+    if (!isOwner) {
+        const canShare = allowSharedApproved && (!q.teacher_id || q.verification_status === 'Approved');
+        if (!canShare) {
+            const err = new Error("Unauthorized to modify this question.");
+            err.statusCode = 403;
+            err.code = 'FORBIDDEN_OWNER';
+            throw err;
+        }
+    }
+    return { ...q, currentSyId: activeSyId };
 }
 
 // 1. Settings (Dates and Capacity)
@@ -1532,6 +1769,7 @@ router.delete('/class/:id/whitelist/remove', isTeacher, async (req, res) => {
 
 router.patch('/api/quarter/:qid/lock', isTeacher, async (req, res) => {
     try {
+        await verifyTeacherQuarterInCurrentSY(db, req.user.user_id, req.params.qid);
         const { is_locked } = req.body;
         if (is_locked === undefined) throw new Error('is_locked missing');
         await db.execute(`UPDATE quarters SET is_locked = ? WHERE quarter_id = ?`, [is_locked, req.params.qid]);
@@ -1539,11 +1777,12 @@ router.patch('/api/quarter/:qid/lock', isTeacher, async (req, res) => {
             await db.execute(`UPDATE topics SET is_locked = 1 WHERE quarter_id = ?`, [req.params.qid]);
         }
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 router.patch('/api/topic/:tid/lock', isTeacher, async (req, res) => {
     try {
+        await verifyTeacherTopicInCurrentSY(db, req.user.user_id, req.params.tid);
         const { is_locked } = req.body;
         if (is_locked === undefined) throw new Error('is_locked missing');
         const lockVal = (Number(is_locked) === 1 || is_locked === true || is_locked === '1') ? 1 : 0;
@@ -1566,24 +1805,26 @@ router.patch('/api/topic/:tid/lock', isTeacher, async (req, res) => {
             );
         }
         res.json({ success: true, is_locked: lockVal });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 router.patch('/api/material/:mid/lock', isTeacher, async (req, res) => {
     try {
+        await verifyTeacherMaterialInCurrentSY(db, req.user.user_id, req.params.mid);
         const { is_locked } = req.body;
         if (is_locked === undefined) throw new Error('is_locked missing');
         await db.execute(`UPDATE learning_materials SET is_locked = ? WHERE material_id = ?`, [is_locked, req.params.mid]);
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 router.patch('/api/assessment/:aid/unlock', isTeacher, async (req, res) => {
     try {
+        const asmt = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, req.params.aid);
         const { is_unlocked } = req.body;
         if (is_unlocked === undefined) throw new Error('is_unlocked missing');
         const unlockVal = (Number(is_unlocked) === 1 || is_unlocked === true || is_unlocked === '1') ? 1 : 0;
-        await db.execute(`UPDATE assessments SET is_unlocked = ? WHERE assessment_id = ?`, [unlockVal, req.params.aid]);
+        await db.execute(`UPDATE assessments SET is_unlocked = ? WHERE assessment_id = ? AND sy_id = ?`, [unlockVal, req.params.aid, asmt.sy_id]);
 
         if (unlockVal === 1) {
             try {
@@ -1593,10 +1834,10 @@ router.patch('/api/assessment/:aid/unlock', isTeacher, async (req, res) => {
                     FROM assessments a
                     JOIN topics t ON a.topic_id = t.topic_id
                     JOIN quarters q ON t.quarter_id = q.quarter_id
-                    JOIN classes c ON q.subject_id = c.subject_id
-                    JOIN class_students cs ON c.class_id = cs.class_id
-                    WHERE a.assessment_id = ?
-                `, [req.params.aid]);
+                    JOIN classes c ON q.subject_id = c.subject_id AND c.sy_id = a.sy_id AND c.teacher_id = ?
+                    JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                    WHERE a.assessment_id = ? AND a.sy_id = ?
+                `, [req.user.user_id, req.params.aid, asmt.sy_id]);
 
                 if (rows && rows.length > 0) {
                     const studentIds = [...new Set(rows.map(r => r.student_id))];
@@ -1613,7 +1854,7 @@ router.patch('/api/assessment/:aid/unlock', isTeacher, async (req, res) => {
                         title: `Assessment Unlocked: ${meta.assessment_name}`,
                         message: `The ${meta.assessment_type || 'Arcade'} assessment "${meta.assessment_name}" is now unlocked and available to complete${dueStr}.`,
                         targetUrl: `/subjects/open/${meta.subject_id}?tab=assessments&assessment_id=${meta.assessment_id}#asgn-card-${meta.assessment_id}`,
-                        metadata: { assessmentId: meta.assessment_id, subjectId: meta.subject_id }
+                        metadata: { assessmentId: meta.assessment_id, subjectId: meta.subject_id, syId: asmt.sy_id }
                     });
                 }
             } catch (notifErr) {
@@ -1622,7 +1863,7 @@ router.patch('/api/assessment/:aid/unlock', isTeacher, async (req, res) => {
         }
 
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 router.patch('/api/announcement/:aid/priority', isTeacher, async (req, res) => {
@@ -1630,33 +1871,14 @@ router.patch('/api/announcement/:aid/priority', isTeacher, async (req, res) => {
         const { is_priority } = req.body;
         if (is_priority === undefined) throw new Error('is_priority missing');
 
-        // RBAC / IDOR Protection: Verify author, class teacher, or Admin
-        const [[ann]] = await db.query(
-            `SELECT a.announcement_id, a.teacher_id, c.teacher_id AS class_teacher_id
-             FROM announcements a
-             LEFT JOIN classes c ON a.class_id = c.class_id
-             WHERE a.announcement_id = ?`,
-            [req.params.aid]
-        );
-
-        if (!ann) {
-            return res.status(404).json({ error: 'Announcement not found' });
-        }
-
-        const isAuthor = Number(ann.teacher_id) === Number(req.user.user_id);
-        const isClassTeacher = ann.class_teacher_id && Number(ann.class_teacher_id) === Number(req.user.user_id);
-        const isAdmin = req.user.role === 'Admin';
-
-        if (!isAuthor && !isClassTeacher && !isAdmin) {
-            return res.status(403).json({ error: 'Unauthorized: You do not have permission to modify this announcement.' });
-        }
+        await verifyTeacherAnnouncementInCurrentSY(db, req.user.user_id, req.params.aid);
 
         await db.execute(
             `UPDATE announcements SET is_priority = ? WHERE announcement_id = ?`,
             [is_priority ? 1 : 0, req.params.aid]
         );
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 // NOTE: PATCH /api/forum/:id/pin is defined below with ownership validation.
@@ -1682,26 +1904,24 @@ router.get('/api/topic/:tid/materials', isTeacher, async (req, res) => {
     try {
         const topicId = parseInt(req.params.tid, 10);
         if (isNaN(topicId)) return res.status(400).json({ success: false, error: 'Invalid topic_id' });
+        const topicMeta = await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topicId);
         const { sy_id, class_id } = req.query;
-        let resolvedSyId = sy_id ? parseInt(sy_id, 10) : null;
-        if (!resolvedSyId && class_id) {
-            const [[cls]] = await db.query('SELECT sy_id FROM classes WHERE class_id = ?', [class_id]);
-            if (cls) resolvedSyId = cls.sy_id;
+        if (sy_id && parseInt(sy_id, 10) !== topicMeta.currentSyId) {
+            return res.status(403).json({ success: false, error: 'Cannot view materials outside the Current School Year.' });
         }
-        if (!resolvedSyId) {
-            const currentSY = await academicHelper.getCurrentSchoolYear(db);
-            resolvedSyId = currentSY ? currentSY.sy_id : null;
+        if (class_id) {
+            await verifyTeacherClassInCurrentSY(db, req.user.user_id, class_id, topicMeta.currentSyId);
         }
         const [materials] = await db.query(
             `SELECT material_id, topic_id, title, material_type, file_path_or_url, is_locked, uploaded_by
              FROM learning_materials
-             WHERE topic_id = ? AND (sy_id = ? OR (? IS NULL AND sy_id IS NULL))
+             WHERE topic_id = ? AND sy_id = ?
              ORDER BY material_id ASC`,
-            [topicId, resolvedSyId, resolvedSyId]
+            [topicId, topicMeta.currentSyId]
         );
         res.json({ success: true, materials });
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -1709,6 +1929,7 @@ router.post('/api/topic', isTeacher, async (req, res) => {
     try {
         const { quarter_id, topic_name, topic_description, topic_objectives, video_url, is_locked, auto_unlock_at, auto_lock_at } = req.body;
         if (!quarter_id) throw new Error('quarter_id missing');
+        await verifyTeacherQuarterInCurrentSY(db, req.user.user_id, quarter_id);
         if (!topic_name || !String(topic_name).trim()) throw new Error('topic_name missing');
         if (!topic_description || !String(topic_description).trim()) throw new Error('topic_description missing');
         if (!topic_objectives || !String(topic_objectives).trim()) throw new Error('topic_objectives missing');
@@ -1743,11 +1964,12 @@ router.post('/api/topic', isTeacher, async (req, res) => {
             auto_unlock_at: sched.auto_unlock_at,
             auto_lock_at: sched.auto_lock_at
         });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ success: false, error: e.message }); }
 });
 
 router.put('/api/topic/:tid', isTeacher, async (req, res) => {
     try {
+        await verifyTeacherTopicInCurrentSY(db, req.user.user_id, req.params.tid);
         const { topic_name, topic_description, topic_objectives, video_url, is_locked, auto_unlock_at, auto_lock_at } = req.body;
         if (!topic_name || !String(topic_name).trim()) throw new Error('topic_name missing');
         if (!topic_description || !String(topic_description).trim()) throw new Error('topic_description missing');
@@ -1794,14 +2016,15 @@ router.put('/api/topic/:tid', isTeacher, async (req, res) => {
             auto_unlock_at: sched.auto_unlock_at,
             auto_lock_at: sched.auto_lock_at
         });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ success: false, error: e.message }); }
 });
 
 router.delete('/api/topic/:tid', isTeacher, async (req, res) => {
     try {
+        await verifyTeacherTopicInCurrentSY(db, req.user.user_id, req.params.tid);
         await db.execute(`DELETE FROM topics WHERE topic_id = ?`, [req.params.tid]);
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 
@@ -1822,6 +2045,14 @@ router.post('/api/material', isTeacher, (req, res) => {
             if (!title) throw new Error('title is required');
             if (!material_type) throw new Error('material_type is required');
 
+            const topicMeta = await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id);
+            if (sy_id !== undefined && sy_id !== null && String(sy_id).trim() !== '' && parseInt(sy_id, 10) !== topicMeta.currentSyId) {
+                const err = new Error('Cannot upload materials outside the Current School Year.');
+                err.statusCode = 403;
+                throw err;
+            }
+            const resolvedSyId = topicMeta.currentSyId;
+
             let savedPath;
             if (req.file) {
                 // Store ONLY the filename — never the path prefix
@@ -1830,12 +2061,6 @@ router.post('/api/material', isTeacher, (req, res) => {
                 savedPath = file_path_or_url.trim();
             } else {
                 throw new Error('Either upload a file or provide a URL.');
-            }
-
-            let resolvedSyId = sy_id ? parseInt(sy_id, 10) : null;
-            if (!resolvedSyId || isNaN(resolvedSyId)) {
-                const currentSY = await academicHelper.getCurrentSchoolYear(db);
-                resolvedSyId = currentSY ? currentSY.sy_id : null;
             }
 
             const [result] = await db.execute(
@@ -1852,17 +2077,17 @@ router.post('/api/material', isTeacher, (req, res) => {
                 aiService.processMaterialWithAI(req.file.path, db, materialId).catch(console.error);
             }
 
-            // Notify Enrolled Students in this class
+            // Notify Enrolled Students in this class (Current SY only)
             try {
                 const [students] = await db.query(`
                     SELECT c.class_id, cs.student_id, s.subject_name, t.topic_name
                     FROM topics t
                     JOIN quarters q ON t.quarter_id = q.quarter_id
                     JOIN subjects s ON q.subject_id = s.subject_id
-                    JOIN classes c ON s.subject_id = c.subject_id
-                    JOIN class_students cs ON c.class_id = cs.class_id
+                    JOIN classes c ON s.subject_id = c.subject_id AND c.sy_id = ? AND c.teacher_id = ?
+                    JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                     WHERE t.topic_id = ?
-                `, [topic_id]);
+                `, [resolvedSyId, req.user.user_id, topic_id]);
 
                 if (students.length > 0) {
                     const studentIds = [...new Set(students.map(s => s.student_id))];
@@ -1879,7 +2104,7 @@ router.post('/api/material', isTeacher, (req, res) => {
                         title: `New Material: ${title}`,
                         message: `New learning material was posted for ${topicName} in ${subjectName}.`,
                         targetUrl: `/subjects/open/${classId}`,
-                        metadata: { materialId, topicId: topic_id, classId }
+                        metadata: { materialId, topicId: topic_id, classId, syId: resolvedSyId }
                     });
                 }
             } catch (notifErr) {
@@ -1890,7 +2115,7 @@ router.post('/api/material', isTeacher, (req, res) => {
         } catch (e) {
             if (req.file) fs.unlink(req.file.path, () => { });
             console.error('[MATERIAL POST]', e.message);
-            res.status(500).json({ success: false, error: e.message });
+            res.status(e.statusCode || 500).json({ success: false, error: e.message });
         }
     });
 });
@@ -1905,10 +2130,12 @@ router.put('/api/material/:mid', isTeacher, (req, res) => {
             const mid = req.params.mid;
             if (!title) throw new Error('title is required');
 
-            const [[existing]] = await db.execute(
-                `SELECT file_path_or_url, sy_id FROM learning_materials WHERE material_id = ?`, [mid]
-            );
-            if (!existing) return res.status(404).json({ success: false, error: 'Material not found' });
+            const existing = await verifyTeacherMaterialInCurrentSY(db, req.user.user_id, mid);
+            if (sy_id !== undefined && sy_id !== null && String(sy_id).trim() !== '' && parseInt(sy_id, 10) !== existing.currentSyId) {
+                const err = new Error('Cannot move materials outside the Current School Year.');
+                err.statusCode = 403;
+                throw err;
+            }
 
             // Normalize helper: strip any leading /material_uploads/ prefix
             // so we always store just the bare filename in the DB.
@@ -1930,21 +2157,15 @@ router.put('/api/material/:mid', isTeacher, (req, res) => {
                 savedPath = existing.file_path_or_url; // keep existing
             }
 
-            let resolvedSyId = sy_id ? parseInt(sy_id, 10) : existing.sy_id;
-            if (!resolvedSyId || isNaN(resolvedSyId)) {
-                const currentSY = await academicHelper.getCurrentSchoolYear(db);
-                resolvedSyId = currentSY ? currentSY.sy_id : null;
-            }
-
             await db.execute(
-                `UPDATE learning_materials SET title = ?, material_type = ?, file_path_or_url = ?, is_locked = ?, sy_id = COALESCE(?, sy_id) WHERE material_id = ?`,
-                [title, material_type, savedPath, is_locked === '1' || is_locked === 1 ? 1 : 0, resolvedSyId, mid]
+                `UPDATE learning_materials SET title = ?, material_type = ?, file_path_or_url = ?, is_locked = ?, sy_id = ? WHERE material_id = ?`,
+                [title, material_type, savedPath, is_locked === '1' || is_locked === 1 ? 1 : 0, existing.currentSyId, mid]
             );
             res.json({ success: true, material_id: mid, file_path_or_url: savedPath });
         } catch (e) {
             if (req.file) fs.unlink(req.file.path, () => { });
             console.error('[MATERIAL PUT]', e.message);
-            res.status(500).json({ success: false, error: e.message });
+            res.status(e.statusCode || 500).json({ success: false, error: e.message });
         }
     });
 });
@@ -1952,10 +2173,7 @@ router.put('/api/material/:mid', isTeacher, (req, res) => {
 router.delete('/api/material/:mid', isTeacher, async (req, res) => {
     try {
         const mid = req.params.mid;
-        const [[mat]] = await db.query(
-            `SELECT material_id, material_type, file_path_or_url FROM learning_materials WHERE material_id = ?`,
-            [mid]
-        );
+        const mat = await verifyTeacherMaterialInCurrentSY(db, req.user.user_id, mid);
         if (mat) {
             // Delete linked interactions and clear remediation references
             await db.query(`DELETE FROM student_material_interactions WHERE material_id = ?`, [mid]);
@@ -1972,7 +2190,7 @@ router.delete('/api/material/:mid', isTeacher, async (req, res) => {
         }
         await db.execute(`DELETE FROM learning_materials WHERE material_id = ?`, [mid]);
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 
@@ -1992,6 +2210,7 @@ const {
 router.get('/api/topic-questions-pool/:topic_id', isTeacher, async (req, res) => {
     try {
         const topicId = parseInt(req.params.topic_id, 10);
+        await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topicId);
         const levelNumber = await resolveLevelForTopicId(db, topicId);
         const [questions] = await db.query(
             `SELECT question_id, question_code, level_number, topic, machine_name,
@@ -2011,12 +2230,13 @@ router.get('/api/topic-questions-pool/:topic_id', isTeacher, async (req, res) =>
         });
     } catch (e) {
         console.error('[GET /api/topic-questions-pool/:topic_id]', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
 router.get('/api/assessment/:aid', isTeacher, async (req, res) => {
     try {
+        await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, req.params.aid);
         const [[asmt]] = await db.query(
             `SELECT a.*, t.topic_name, CONCAT('Quarter ', q.quarter_number) AS quarter_name
              FROM assessments a
@@ -2040,7 +2260,7 @@ router.get('/api/assessment/:aid', isTeacher, async (req, res) => {
 
         res.json({ success: true, assessment: asmt });
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -2055,15 +2275,16 @@ router.post('/api/assessment', isTeacher, async (req, res) => {
         } = req.body;
         if (!topic_id || !assessment_name || !assessment_type) throw new Error('Missing required fields');
 
-        let resolvedSyId = sy_id ? parseInt(sy_id, 10) : null;
-        if (!resolvedSyId && class_id) {
-            const [[cls]] = await db.query('SELECT sy_id FROM classes WHERE class_id = ?', [class_id]);
-            if (cls) resolvedSyId = cls.sy_id;
+        const topicMeta = await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id);
+        if (sy_id !== undefined && sy_id !== null && String(sy_id).trim() !== '' && parseInt(sy_id, 10) !== topicMeta.currentSyId) {
+            const err = new Error('Cannot create assessments outside the Current School Year.');
+            err.statusCode = 403;
+            throw err;
         }
-        if (!resolvedSyId) {
-            const currentSY = await academicHelper.getCurrentSchoolYear(db);
-            resolvedSyId = currentSY ? currentSY.sy_id : null;
+        if (class_id) {
+            await verifyTeacherClassInCurrentSY(db, req.user.user_id, class_id, topicMeta.currentSyId);
         }
+        const resolvedSyId = topicMeta.currentSyId;
 
         const [result] = await db.execute(
             `INSERT INTO assessments 
@@ -2071,7 +2292,7 @@ router.post('/api/assessment', isTeacher, async (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 resolvedSyId,
-                quarter_id || null,
+                quarter_id || topicMeta.quarter_id || null,
                 topic_id,
                 assessment_name,
                 assessment_type,
@@ -2100,17 +2321,17 @@ router.post('/api/assessment', isTeacher, async (req, res) => {
             }
         }
 
-        // Dispatch in-app notification to all enrolled students
+        // Dispatch in-app notification to all enrolled students (Current SY only)
         if (Number(is_unlocked) !== 0) {
             try {
                 const [students] = await db.query(`
                     SELECT DISTINCT cs.student_id, c.subject_id
                     FROM topics t
                     JOIN quarters q ON t.quarter_id = q.quarter_id
-                    JOIN classes c ON q.subject_id = c.subject_id
-                    JOIN class_students cs ON c.class_id = cs.class_id
+                    JOIN classes c ON q.subject_id = c.subject_id AND c.sy_id = ? AND c.teacher_id = ?
+                    JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                     WHERE t.topic_id = ?
-                `, [topic_id]);
+                `, [resolvedSyId, req.user.user_id, topic_id]);
 
                 if (students.length > 0) {
                     const studentIds = [...new Set(students.map(s => s.student_id))];
@@ -2127,7 +2348,7 @@ router.post('/api/assessment', isTeacher, async (req, res) => {
                         title: `New Assessment: ${assessment_name}`,
                         message: `A new ${assessment_type} has been assigned${dueStr}. Click to view details.`,
                         targetUrl: `/subjects/open/${subjectId}?tab=assessments&assessment_id=${newAssessmentId}#asgn-card-${newAssessmentId}`,
-                        metadata: { assessmentId: newAssessmentId, subjectId }
+                        metadata: { assessmentId: newAssessmentId, subjectId, syId: resolvedSyId }
                     });
                 }
             } catch (notifErr) {
@@ -2138,12 +2359,14 @@ router.post('/api/assessment', isTeacher, async (req, res) => {
         res.json({ success: true, assessment_id: newAssessmentId });
     } catch (e) {
         console.error('[POST /api/assessment]', e);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
 router.put('/api/assessment/:aid', isTeacher, async (req, res) => {
     try {
+        const aid = req.params.aid;
+        const prevAssessment = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, aid);
         const {
             assessment_name, assessment_type, total_items = 10,
             duration_minutes = 30, timer_type = 'Global',
@@ -2151,8 +2374,6 @@ router.put('/api/assessment/:aid', isTeacher, async (req, res) => {
             question_selection_mode = 'random', selected_questions = []
         } = req.body;
         if (!assessment_name) throw new Error('assessment_name missing');
-        const aid = req.params.aid;
-        const [[prevAssessment]] = await db.query('SELECT is_unlocked FROM assessments WHERE assessment_id = ?', [aid]);
 
         await db.execute(
             `UPDATE assessments 
@@ -2195,7 +2416,7 @@ router.put('/api/assessment/:aid', isTeacher, async (req, res) => {
             }
         }
 
-        // If newly unlocked during edit, dispatch in-app notification
+        // If newly unlocked during edit, dispatch in-app notification (Current SY only)
         if (prevAssessment && Number(prevAssessment.is_unlocked) === 0 && (Number(is_unlocked) === 1 || is_unlocked === true)) {
             try {
                 const [rows] = await db.query(`
@@ -2204,10 +2425,10 @@ router.put('/api/assessment/:aid', isTeacher, async (req, res) => {
                     FROM assessments a
                     JOIN topics t ON a.topic_id = t.topic_id
                     JOIN quarters q ON t.quarter_id = q.quarter_id
-                    JOIN classes c ON q.subject_id = c.subject_id
-                    JOIN class_students cs ON c.class_id = cs.class_id
-                    WHERE a.assessment_id = ?
-                `, [aid]);
+                    JOIN classes c ON q.subject_id = c.subject_id AND c.sy_id = a.sy_id AND c.teacher_id = ?
+                    JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                    WHERE a.assessment_id = ? AND a.sy_id = ?
+                `, [req.user.user_id, aid, prevAssessment.sy_id]);
 
                 if (rows && rows.length > 0) {
                     const studentIds = [...new Set(rows.map(r => r.student_id))];
@@ -2224,7 +2445,7 @@ router.put('/api/assessment/:aid', isTeacher, async (req, res) => {
                         title: `Assessment Unlocked: ${assessment_name}`,
                         message: `The ${assessment_type || 'Arcade'} assessment "${assessment_name}" is now unlocked and available to complete${dueStr}.`,
                         targetUrl: `/subjects/open/${meta.subject_id}?tab=assessments&assessment_id=${aid}#asgn-card-${aid}`,
-                        metadata: { assessmentId: aid, subjectId: meta.subject_id }
+                        metadata: { assessmentId: aid, subjectId: meta.subject_id, syId: prevAssessment.sy_id }
                     });
                 }
             } catch (notifErr) {
@@ -2235,20 +2456,21 @@ router.put('/api/assessment/:aid', isTeacher, async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         console.error('[PUT /api/assessment/:aid]', e);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
 router.delete('/api/assessment/:aid', isTeacher, async (req, res) => {
     try {
         const aid = req.params.aid;
+        await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, aid);
         await db.execute(`UPDATE elementa_game_sessions SET assessment_id = NULL WHERE assessment_id = ?`, [aid]);
         await db.execute(`DELETE FROM elementa_assessment_questions WHERE assessment_id = ?`, [aid]).catch(() => { });
         await db.execute(`DELETE FROM elementa_assessment_tickets WHERE assessment_id = ?`, [aid]).catch(() => { });
         await db.execute(`DELETE FROM student_scores      WHERE assessment_id = ?`, [aid]).catch(() => { });
         await db.execute(`DELETE FROM assessments         WHERE assessment_id = ?`, [aid]);
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 // ============================================================
@@ -2260,6 +2482,16 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
     { name: 'sample_output', maxCount: 1 },
     { name: 'sample_file', maxCount: 1 }
 ]), async (req, res) => {
+    const cleanupUploadedAssignmentFiles = () => {
+        if (!req.files) return;
+        for (const key of Object.keys(req.files)) {
+            for (const f of (req.files[key] || [])) {
+                if (f && f.path && fs.existsSync(f.path)) {
+                    try { fs.unlinkSync(f.path); } catch (_) { }
+                }
+            }
+        }
+    };
     try {
         const {
             topic_id, quarter_id, assessment_name, total_items, due_date,
@@ -2273,7 +2505,30 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
         } = req.body;
 
         if (!topic_id || !assessment_name) {
+            cleanupUploadedAssignmentFiles();
             return res.status(400).json({ success: false, error: 'Topic and Assignment Title are required' });
+        }
+
+        const topicMeta = await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id);
+        if (req.body.sy_id !== undefined && req.body.sy_id !== null && String(req.body.sy_id).trim() !== '' && parseInt(req.body.sy_id, 10) !== topicMeta.currentSyId) {
+            const err = new Error('Cannot create assignments outside the Current School Year.');
+            err.statusCode = 403;
+            throw err;
+        }
+        const resolvedSyId = topicMeta.currentSyId;
+
+        if (req.body.class_id) {
+            await verifyTeacherClassInCurrentSY(db, req.user.user_id, req.body.class_id, resolvedSyId);
+        }
+
+        const cleanTargetAudience = (target_audience === 'sections' || target_audience === 'students')
+            ? target_audience
+            : 'everyone';
+        const secIds = (cleanTargetAudience === 'sections' && target_sections)
+            ? (Array.isArray(target_sections) ? target_sections : String(target_sections).split(',').map(s => s.trim()).filter(Boolean))
+            : [];
+        for (const sid of secIds) {
+            await verifyTeacherClassInCurrentSY(db, req.user.user_id, sid, resolvedSyId);
         }
 
         let rubricCriteria = [];
@@ -2309,35 +2564,18 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
         if (isGroup && (!parsedGroupSetId || isNaN(parsedGroupSetId))) {
             const [[firstSet]] = await db.query(
                 `SELECT gs.group_set_id FROM group_sets gs 
-                 JOIN classes c ON gs.class_id = c.class_id 
+                 JOIN classes c ON gs.class_id = c.class_id AND c.sy_id = ? AND c.teacher_id = ?
                  JOIN quarters q ON q.subject_id = c.subject_id 
                  JOIN topics t ON t.quarter_id = q.quarter_id 
                  WHERE t.topic_id = ? ORDER BY gs.created_at DESC LIMIT 1`,
-                [topic_id]
+                [resolvedSyId, req.user.user_id, topic_id]
             );
             if (firstSet) parsedGroupSetId = firstSet.group_set_id;
         }
 
-        let resolvedSyId = req.body.sy_id ? parseInt(req.body.sy_id, 10) : null;
-        if (!resolvedSyId && (req.body.class_id || target_sections)) {
-            const sec = req.body.class_id || (Array.isArray(target_sections) ? target_sections[0] : String(target_sections).split(',')[0].trim());
-            if (sec) {
-                const [[cls]] = await db.query('SELECT sy_id FROM classes WHERE class_id = ?', [sec]);
-                if (cls) resolvedSyId = cls.sy_id;
-            }
-        }
-        if (!resolvedSyId) {
-            const currentSY = await academicHelper.getCurrentSchoolYear(db);
-            resolvedSyId = currentSY ? currentSY.sy_id : null;
-        }
-
-        const cleanTargetAudience = (target_audience === 'sections' || target_audience === 'students')
-            ? target_audience
-            : 'everyone';
-
         const insertParams = [
             resolvedSyId,
-            quarter_id || null,
+            quarter_id || topicMeta.quarter_id || null,
             topic_id,
             assessment_name,
             Number(total_items) || 100,
@@ -2383,8 +2621,7 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
         const assignmentId = result.insertId;
 
         // Populate assignment_audiences junction table
-        if (cleanTargetAudience === 'sections' && target_sections) {
-            const secIds = Array.isArray(target_sections) ? target_sections : String(target_sections).split(',').map(s => s.trim()).filter(Boolean);
+        if (cleanTargetAudience === 'sections' && secIds.length > 0) {
             for (const sid of secIds) {
                 await db.execute(`INSERT INTO assignment_audiences (assessment_id, class_id) VALUES (?, ?)`, [assignmentId, sid]);
             }
@@ -2416,13 +2653,15 @@ router.post('/api/assignment', isTeacher, assignmentAssetUpload.fields([
 
         res.json({ success: true, assignment_id: assignmentId });
     } catch (e) {
+        cleanupUploadedAssignmentFiles();
         console.error('[POST /api/assignment]', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
 router.get('/api/assignment/:aid', isTeacher, async (req, res) => {
     try {
+        await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, req.params.aid);
         const [rows] = await db.query(
             `SELECT a.*, r.rubric_id, r.title AS rubric_title
              FROM assessments a
@@ -2455,7 +2694,7 @@ router.get('/api/assignment/:aid', isTeacher, async (req, res) => {
 
         res.json({ success: true, assignment });
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -2466,6 +2705,7 @@ router.put('/api/assignment/:aid', isTeacher, assignmentAssetUpload.fields([
 ]), async (req, res) => {
     try {
         const aid = req.params.aid;
+        const currentAsgn = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, aid);
         const {
             assessment_name, total_items, due_date,
             category, objectives, description, instructions,
@@ -2480,11 +2720,15 @@ router.put('/api/assignment/:aid', isTeacher, assignmentAssetUpload.fields([
 
         if (!assessment_name) return res.status(400).json({ success: false, error: 'Assignment Title is required' });
 
-        // Fetch current assignment files to handle replacement or removal
-        const [[currentAsgn]] = await db.query(
-            `SELECT format_file_path, format_file_name, sample_file_path, sample_file_name FROM assessments WHERE assessment_id = ?`,
-            [aid]
-        );
+        const cleanTargetAudience = (target_audience === 'sections' || target_audience === 'students')
+            ? target_audience
+            : 'everyone';
+        const secIds = (cleanTargetAudience === 'sections' && target_sections)
+            ? (Array.isArray(target_sections) ? target_sections : String(target_sections).split(',').map(s => s.trim()).filter(Boolean))
+            : [];
+        for (const sid of secIds) {
+            await verifyTeacherClassInCurrentSY(db, req.user.user_id, sid, currentAsgn.sy_id);
+        }
 
         let formatFilePath = (currentAsgn && currentAsgn.format_file_path) ? currentAsgn.format_file_path : null;
         let formatFileName = (currentAsgn && currentAsgn.format_file_name) ? currentAsgn.format_file_name : null;
@@ -2541,19 +2785,15 @@ router.put('/api/assignment/:aid', isTeacher, assignmentAssetUpload.fields([
         if (isGroup && (!parsedGroupSetId || isNaN(parsedGroupSetId))) {
             const [[firstSet]] = await db.query(
                 `SELECT gs.group_set_id FROM group_sets gs 
-                 JOIN classes c ON gs.class_id = c.class_id 
+                 JOIN classes c ON gs.class_id = c.class_id AND c.sy_id = ? AND c.teacher_id = ?
                  JOIN quarters q ON q.subject_id = c.subject_id 
                  JOIN topics t ON t.quarter_id = q.quarter_id 
                  JOIN assessments a ON a.topic_id = t.topic_id
                  WHERE a.assessment_id = ? ORDER BY gs.created_at DESC LIMIT 1`,
-                [aid]
+                [currentAsgn.sy_id, req.user.user_id, aid]
             );
             if (firstSet) parsedGroupSetId = firstSet.group_set_id;
         }
-
-        const cleanTargetAudience = (target_audience === 'sections' || target_audience === 'students')
-            ? target_audience
-            : 'everyone';
 
         const updateParams = [
             assessment_name,
@@ -2600,8 +2840,7 @@ router.put('/api/assignment/:aid', isTeacher, assignmentAssetUpload.fields([
 
         // Update target audiences
         await db.execute(`DELETE FROM assignment_audiences WHERE assessment_id = ?`, [aid]);
-        if (cleanTargetAudience === 'sections' && target_sections) {
-            const secIds = Array.isArray(target_sections) ? target_sections : String(target_sections).split(',').map(s => s.trim()).filter(Boolean);
+        if (cleanTargetAudience === 'sections' && secIds.length > 0) {
             for (const sid of secIds) {
                 await db.execute(`INSERT INTO assignment_audiences (assessment_id, class_id) VALUES (?, ?)`, [aid, sid]);
             }
@@ -2643,19 +2882,14 @@ router.put('/api/assignment/:aid', isTeacher, assignmentAssetUpload.fields([
         res.json({ success: true });
     } catch (e) {
         console.error('[PUT /api/assignment/:aid]', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
 router.delete('/api/assignment/:aid', isTeacher, async (req, res) => {
     try {
         const aid = req.params.aid;
-
-        // Fetch format and sample files to delete from disk
-        const [[asgn]] = await db.query(
-            `SELECT format_file_path, sample_file_path FROM assessments WHERE assessment_id = ?`,
-            [aid]
-        );
+        const asgn = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, aid);
         if (asgn) {
             if (asgn.format_file_path) {
                 const p = path.join(__dirname, '..', 'public', asgn.format_file_path);
@@ -2688,7 +2922,7 @@ router.delete('/api/assignment/:aid', isTeacher, async (req, res) => {
         await db.execute(`DELETE FROM assessments WHERE assessment_id = ?`, [aid]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -2699,6 +2933,7 @@ router.delete('/api/assignment/:aid', isTeacher, async (req, res) => {
 router.get('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
     try {
         const classId = req.params.classId;
+        await verifyTeacherClassInCurrentSY(db, req.user.user_id, classId);
         const [sets] = await db.query(
             `SELECT * FROM group_sets WHERE class_id = ? ORDER BY created_at DESC`,
             [classId]
@@ -2732,14 +2967,14 @@ router.get('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
         res.json({ success: true, group_sets: sets, groupSets: sets });
     } catch (e) {
         console.error('[GET /api/classes/:classId/group-sets]', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
 router.post('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
     try {
         const classId = req.params.classId;
-        await assertActiveClass(db, req.user.role === 'Admin' ? null : req.user.user_id, classId);
+        const cls = await assertActiveClass(db, req.user.role === 'Admin' ? null : req.user.user_id, classId);
         const rawTitle = req.body.title || req.body.set_name || '';
         const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
         const description = (req.body.description || '').trim();
@@ -2791,9 +3026,9 @@ router.post('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
                     `SELECT u.user_id 
                      FROM users u
                      JOIN class_students cs ON u.user_id = cs.student_id
-                     WHERE cs.class_id = ? AND u.role = 'Student' AND u.user_id IN (?)
+                     WHERE cs.class_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = ?) AND u.role = 'Student' AND u.user_id IN (?)
                      ORDER BY RAND()`,
-                    [classId, candidateStudentIds]
+                    [classId, cls.sy_id, candidateStudentIds]
                 );
                 studentsToGroup = targetStudents;
             } else {
@@ -2801,9 +3036,9 @@ router.post('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
                     `SELECT u.user_id 
                      FROM users u
                      JOIN class_students cs ON u.user_id = cs.student_id
-                     WHERE cs.class_id = ? AND u.role = 'Student'
+                     WHERE cs.class_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = ?) AND u.role = 'Student'
                      ORDER BY RAND()`,
-                    [classId]
+                    [classId, cls.sy_id]
                 );
                 studentsToGroup = enrolledStudents;
             }
@@ -2848,23 +3083,37 @@ router.post('/api/classes/:classId/group-sets', isTeacher, async (req, res) => {
 
 router.delete('/api/group-sets/:setId', isTeacher, async (req, res) => {
     try {
+        const [[setRow]] = await db.query(
+            `SELECT class_id FROM group_sets WHERE group_set_id = ? LIMIT 1`,
+            [req.params.setId]
+        );
+        if (!setRow) return res.status(404).json({ success: false, error: 'Group set not found' });
+        await verifyTeacherClassInCurrentSY(db, req.user.user_id, setRow.class_id);
+
         await db.execute(`UPDATE assessments SET group_set_id = NULL WHERE group_set_id = ?`, [req.params.setId]);
         await db.execute(`DELETE FROM group_sets WHERE group_set_id = ?`, [req.params.setId]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
 router.delete('/api/student-groups/:groupId', isTeacher, async (req, res) => {
     try {
         const groupId = req.params.groupId;
+        const [[grpRow]] = await db.query(
+            `SELECT gs.class_id FROM student_groups sg JOIN group_sets gs ON sg.group_set_id = gs.group_set_id WHERE sg.group_id = ? LIMIT 1`,
+            [groupId]
+        );
+        if (!grpRow) return res.status(404).json({ success: false, error: 'Group not found' });
+        await verifyTeacherClassInCurrentSY(db, req.user.user_id, grpRow.class_id);
+
         await db.execute(`DELETE FROM group_members WHERE group_id = ?`, [groupId]);
         await db.execute(`DELETE FROM student_groups WHERE group_id = ?`, [groupId]);
         res.json({ success: true });
     } catch (e) {
         console.error('[DELETE /api/student-groups/:groupId]', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -2879,24 +3128,8 @@ router.post('/api/announcement', isTeacher, announcementUpload.single('attachmen
         const { class_id, title, content, is_priority, is_critical, due_date, forward_webhook } = req.body;
         if (!class_id || !title || !content) throw new Error('Missing required fields');
 
-        // RBAC / IDOR Protection: Verify teacher teaches this class OR user is Admin
-        const [[cls]] = await db.query(
-            `SELECT class_id, class_name, teacher_id, subject_id, sy_id FROM classes WHERE class_id = ?`,
-            [class_id]
-        );
-        if (!cls) {
-            return res.status(404).json({ error: 'Class not found.' });
-        }
-
-        const isClassTeacher = cls.teacher_id && Number(cls.teacher_id) === Number(req.user.user_id);
-        const isAdmin = req.user.role === 'Admin';
-
-        if (!isClassTeacher && !isAdmin) {
-            return res.status(403).json({ error: 'Unauthorized: You are not assigned to this class.' });
-        }
-
-        const currentSY = !cls.sy_id ? await academicHelper.getCurrentSchoolYear(db) : null;
-        const targetSyId = cls.sy_id || (currentSY ? currentSY.sy_id : null);
+        const cls = await verifyTeacherClassInCurrentSY(db, req.user.user_id, class_id);
+        const targetSyId = Number(cls.sy_id);
 
         let attachment_url = null;
         let attachment_name = null;
@@ -2947,7 +3180,10 @@ router.post('/api/announcement', isTeacher, announcementUpload.single('attachmen
 
         // In-App Notification to enrolled students
         try {
-            const [students] = await db.query('SELECT student_id FROM class_students WHERE class_id = ?', [class_id]);
+            const [students] = await db.query(
+                'SELECT student_id FROM class_students WHERE class_id = ? AND (sy_id IS NULL OR sy_id = ?)',
+                [class_id, targetSyId]
+            );
             const recipientIds = students.map(s => s.student_id);
             if (recipientIds.length > 0) {
                 await notificationService.dispatch({
@@ -2960,7 +3196,7 @@ router.post('/api/announcement', isTeacher, announcementUpload.single('attachmen
                     title: `Announcement: ${title.trim()}`,
                     message: content.trim().substring(0, 160),
                     targetUrl: `/dashboard#ann-card-${insertRes.insertId}`,
-                    metadata: { announcementId: insertRes.insertId, classId: class_id }
+                    metadata: { announcementId: insertRes.insertId, classId: class_id, syId: targetSyId }
                 });
             }
         } catch (notifErr) {
@@ -2968,7 +3204,12 @@ router.post('/api/announcement', isTeacher, announcementUpload.single('attachmen
         }
 
         res.json({ success: true, announcement_id: insertRes.insertId, attachment_url, attachment_name });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (_) { }
+        }
+        res.status(e.statusCode || 500).json({ error: e.message });
+    }
 });
 
 router.put('/api/announcement/:aid', isTeacher, announcementUpload.single('attachment'), async (req, res) => {
@@ -2976,26 +3217,7 @@ router.put('/api/announcement/:aid', isTeacher, announcementUpload.single('attac
         const { title, content, is_priority, is_critical, due_date, remove_attachment } = req.body;
         if (!title || !content) throw new Error('Missing required fields');
 
-        // 1. RBAC / IDOR Protection: Verify author, class teacher, or Admin
-        const [[ann]] = await db.query(
-            `SELECT a.*, c.teacher_id AS class_teacher_id 
-             FROM announcements a
-             LEFT JOIN classes c ON a.class_id = c.class_id
-             WHERE a.announcement_id = ?`,
-            [req.params.aid]
-        );
-
-        if (!ann) {
-            return res.status(404).json({ error: 'Announcement not found' });
-        }
-
-        const isAuthor = Number(ann.teacher_id) === Number(req.user.user_id);
-        const isClassTeacher = ann.class_teacher_id && Number(ann.class_teacher_id) === Number(req.user.user_id);
-        const isAdmin = req.user.role === 'Admin';
-
-        if (!isAuthor && !isClassTeacher && !isAdmin) {
-            return res.status(403).json({ error: 'Unauthorized to edit this announcement' });
-        }
+        const ann = await verifyTeacherAnnouncementInCurrentSY(db, req.user.user_id, req.params.aid);
 
         let attachmentUpdateSql = '';
         const params = [
@@ -3046,33 +3268,19 @@ router.put('/api/announcement/:aid', isTeacher, announcementUpload.single('attac
         const finalAttUrl = req.file ? ('/announcement_uploads/' + req.file.filename) : (remove_attachment === '1' || remove_attachment === true ? null : ann.attachment_url);
         const finalAttName = req.file ? req.file.originalname : (remove_attachment === '1' || remove_attachment === true ? null : ann.attachment_name);
         res.json({ success: true, attachment_url: finalAttUrl, attachment_name: finalAttName });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (_) { }
+        }
+        res.status(e.statusCode || 500).json({ error: e.message });
+    }
 });
 
 router.delete('/api/announcement/:aid', isTeacher, async (req, res) => {
     try {
-        // 1. RBAC / IDOR Protection: Verify author, class teacher, or Admin
-        const [[ann]] = await db.query(
-            `SELECT a.*, c.teacher_id AS class_teacher_id 
-             FROM announcements a
-             LEFT JOIN classes c ON a.class_id = c.class_id
-             WHERE a.announcement_id = ?`,
-            [req.params.aid]
-        );
+        const ann = await verifyTeacherAnnouncementInCurrentSY(db, req.user.user_id, req.params.aid);
 
-        if (!ann) {
-            return res.status(404).json({ error: 'Announcement not found' });
-        }
-
-        const isAuthor = Number(ann.teacher_id) === Number(req.user.user_id);
-        const isClassTeacher = ann.class_teacher_id && Number(ann.class_teacher_id) === Number(req.user.user_id);
-        const isAdmin = req.user.role === 'Admin';
-
-        if (!isAuthor && !isClassTeacher && !isAdmin) {
-            return res.status(403).json({ error: 'Unauthorized to delete this announcement' });
-        }
-
-        // 2. Safely unlink physical attachment file from disk
+        // Safely unlink physical attachment file from disk
         if (ann.attachment_url) {
             const filePath = path.join(__dirname, '..', 'public', ann.attachment_url.replace(/^\//, ''));
             if (fs.existsSync(filePath)) {
@@ -3080,10 +3288,10 @@ router.delete('/api/announcement/:aid', isTeacher, async (req, res) => {
             }
         }
 
-        // 3. Purge database record
+        // Purge database record
         await db.execute(`DELETE FROM announcements WHERE announcement_id = ?`, [req.params.aid]);
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 
@@ -3110,13 +3318,19 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
             return res.json({ success: false, questions: [] });
         }
 
+        const verifiedAsmt = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, assessmentId);
+        const currentSyId = Number(verifiedAsmt.sy_id);
+        if (classId && !isNaN(classId)) {
+            await verifyTeacherClassInCurrentSY(db, req.user.user_id, classId, currentSyId);
+        }
+
         // 1. Fetch assessment details to understand topic / type
         const [asmtRows] = await db.execute(`
             SELECT a.assessment_id, a.assessment_name, a.assessment_type, a.topic_id, t.topic_name
             FROM assessments a
             LEFT JOIN topics t ON a.topic_id = t.topic_id
-            WHERE a.assessment_id = ?
-        `, [assessmentId]);
+            WHERE a.assessment_id = ? AND a.sy_id = ?
+        `, [assessmentId, currentSyId]);
 
         const asmt = asmtRows.length ? asmtRows[0] : null;
 
@@ -3147,7 +3361,7 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
             questions = topicQuestions;
         }
 
-        // Priority 3: elementa_grade_responses
+        // Priority 3: elementa_grade_responses (scoped to Current SY)
         if (!questions.length) {
             const [egrQuestions] = await db.execute(`
                 SELECT DISTINCT egr.question_id,
@@ -3156,14 +3370,15 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
                        COALESCE(eq.topic, 'General') AS topic_name,
                        COALESCE(egr.question_number, 0) AS sort_order
                 FROM elementa_grade_responses egr
+                JOIN elementa_game_sessions egs ON egr.session_id = egs.session_id
                 LEFT JOIN elementa_questions eq ON egr.question_id = eq.question_id
-                WHERE egr.assessment_id = ?
+                WHERE egr.assessment_id = ? AND egs.sy_id = ?
                 ORDER BY sort_order ASC, egr.question_id ASC
-            `, [assessmentId]);
+            `, [assessmentId, currentSyId]);
             questions = egrQuestions;
         }
 
-        // Priority 4: if still none, check customer attempts joined to sessions with this assessment_id
+        // Priority 4: if still none, check customer attempts joined to sessions with this assessment_id (Current SY)
         if (!questions.length) {
             const [sessQuestions] = await db.execute(`
                 SELECT DISTINCT eq.question_id, eq.prompt AS question_text, eq.difficulty,
@@ -3173,8 +3388,8 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
                 JOIN elementa_questions eq ON eca.question_id = eq.question_id
                 JOIN elementa_level_runs elr ON eca.run_id = elr.run_id
                 JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
-                WHERE egs.assessment_id = ?
-            `, [assessmentId]);
+                WHERE egs.assessment_id = ? AND egs.sy_id = ?
+            `, [assessmentId, currentSyId]);
             questions = sessQuestions;
         }
 
@@ -3183,14 +3398,14 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
             return res.json({ success: true, questions: [], assessment: asmt });
         }
 
-        // 3. Compute student response statistics for each question
+        // 3. Compute student response statistics for each question (strictly Current SY)
         const qIds = questions.map(q => q.question_id).filter(Boolean);
         const statsMap = {};
 
         if (qIds.length > 0) {
             const placeholders = qIds.map(() => '?').join(',');
 
-            // A) Attempts associated with sessions for this assessment
+            // A) Attempts associated with Current SY sessions for this assessment
             let sessionSql = `
                 SELECT 
                     eca.question_id,
@@ -3202,18 +3417,19 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
                 JOIN elementa_level_runs elr ON eca.run_id = elr.run_id
                 JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
                 WHERE eca.question_id IN (${placeholders})
+                  AND egs.sy_id = ?
                   AND (egs.assessment_id = ? OR egs.assessment_id IS NULL)
             `;
-            const sessionParams = [...qIds, assessmentId];
+            const sessionParams = [...qIds, currentSyId, assessmentId];
             if (classId) {
-                const classSessionSql = sessionSql + ` AND (egs.class_id = ? OR egs.student_id_p1 IN (SELECT student_id FROM class_students WHERE class_id = ?)) GROUP BY eca.question_id`;
-                const [classStats] = await db.query(classSessionSql, [...sessionParams, classId, classId]);
+                const classSessionSql = sessionSql + ` AND (egs.class_id = ? OR egs.student_id_p1 IN (SELECT student_id FROM class_students WHERE class_id = ? AND (sy_id IS NULL OR sy_id = ?))) GROUP BY eca.question_id`;
+                const [classStats] = await db.query(classSessionSql, [...sessionParams, classId, classId, currentSyId]);
                 classStats.forEach(s => {
                     statsMap[s.question_id] = s;
                 });
             }
 
-            // For questions not covered by class-filtered session attempts, check all session attempts
+            // For questions not covered by class-filtered session attempts, check Current SY session attempts
             const [generalSessStats] = await db.query(sessionSql + ` GROUP BY eca.question_id`, sessionParams);
             generalSessStats.forEach(s => {
                 if (!statsMap[s.question_id] || Number(statsMap[s.question_id].total_responses) === 0) {
@@ -3221,25 +3437,27 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
                 }
             });
 
-            // B) For questions still without attempts, query all elementa_customer_attempts by question_id
+            // B) For questions still without attempts, query elementa_customer_attempts scoped to Current SY
             for (const q of questions) {
                 if (!statsMap[q.question_id] || Number(statsMap[q.question_id].total_responses) === 0) {
                     const [directAttempts] = await db.execute(`
                         SELECT 
-                            COUNT(attempt_id) AS total_responses,
-                            SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct_count,
-                            SUM(CASE WHEN is_correct = 0 THEN 1 ELSE 0 END) AS wrong_count,
-                            AVG(response_time_s * 1000) AS avg_response_ms
-                        FROM elementa_customer_attempts
-                        WHERE question_id = ?
-                    `, [q.question_id]);
+                            COUNT(eca.attempt_id) AS total_responses,
+                            SUM(CASE WHEN eca.is_correct = 1 THEN 1 ELSE 0 END) AS correct_count,
+                            SUM(CASE WHEN eca.is_correct = 0 THEN 1 ELSE 0 END) AS wrong_count,
+                            AVG(eca.response_time_s * 1000) AS avg_response_ms
+                        FROM elementa_customer_attempts eca
+                        JOIN elementa_level_runs elr ON eca.run_id = elr.run_id
+                        JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
+                        WHERE eca.question_id = ? AND egs.sy_id = ?
+                    `, [q.question_id, currentSyId]);
                     if (directAttempts.length && Number(directAttempts[0].total_responses) > 0) {
                         statsMap[q.question_id] = directAttempts[0];
                     }
                 }
             }
 
-            // C) Also check elementa_grade_responses
+            // C) Also check elementa_grade_responses (scoped to Current SY)
             let egrSql = `
                 SELECT 
                     egr.question_id,
@@ -3248,12 +3466,13 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
                     SUM(CASE WHEN egr.is_correct = 0 THEN 1 ELSE 0 END) AS wrong_count,
                     AVG(egr.response_time_s * 1000) AS avg_response_ms
                 FROM elementa_grade_responses egr
-                WHERE egr.assessment_id = ?
+                JOIN elementa_game_sessions egs ON egr.session_id = egs.session_id
+                WHERE egr.assessment_id = ? AND egs.sy_id = ?
             `;
-            const egrParams = [assessmentId];
+            const egrParams = [assessmentId, currentSyId];
             if (classId) {
-                egrSql += ` AND (egr.class_id = ? OR egr.student_id IN (SELECT student_id FROM class_students WHERE class_id = ?))`;
-                egrParams.push(classId, classId);
+                egrSql += ` AND (egr.class_id = ? OR egr.student_id IN (SELECT student_id FROM class_students WHERE class_id = ? AND (sy_id IS NULL OR sy_id = ?)))`;
+                egrParams.push(classId, classId, currentSyId);
             }
             egrSql += ` GROUP BY egr.question_id`;
             const [egrStats] = await db.query(egrSql, egrParams);
@@ -3302,19 +3521,24 @@ router.get('/api/breakdown/:assessmentId', isTeacher, async (req, res) => {
         });
     } catch (e) {
         console.error('[API Breakdown Error]:', e);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
 // ── GET /teacher/api/assessment-diagnostic/:scoreId — Comprehensive Student Assessment Result & Diagnostic ──
 router.get('/api/assessment-diagnostic/:scoreId', isTeacher, async (req, res) => {
     try {
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
         const rawScoreId = req.params.scoreId;
         const isLmsScore = typeof rawScoreId === 'string' && rawScoreId.startsWith('ss_');
         const scoreId = isLmsScore ? parseInt(rawScoreId.replace('ss_', ''), 10) : parseInt(rawScoreId, 10);
         const studentId = req.query.studentId ? parseInt(req.query.studentId, 10) : null;
         const classId = req.query.classId ? parseInt(req.query.classId, 10) : null;
         const assessmentIdQuery = req.query.assessmentId ? parseInt(req.query.assessmentId, 10) : null;
+
+        if (classId && !isNaN(classId)) {
+            await verifyTeacherClassInCurrentSY(db, req.user.user_id, classId, activeSyId);
+        }
 
         // 1. Fetch Attempt / Session Metadata
         let attempt = null;
@@ -3323,6 +3547,7 @@ router.get('/api/assessment-diagnostic/:scoreId', isTeacher, async (req, res) =>
             const [sessRows] = await db.execute(`
                 SELECT 
                     egs.session_id,
+                    egs.sy_id AS session_sy_id,
                     egs.started_at,
                     egs.ended_at,
                     egs.play_mode,
@@ -3354,6 +3579,7 @@ router.get('/api/assessment-diagnostic/:scoreId', isTeacher, async (req, res) =>
                         END
                     ) AS exp_gained,
                     egs.assessment_id,
+                    a.sy_id AS assessment_sy_id,
                     COALESCE(a.assessment_name, 'Arcade Challenge') AS assessment_name,
                     COALESCE(a.assessment_type, 'Assessment') AS assessment_type,
                     a.topic_id,
@@ -3376,6 +3602,7 @@ router.get('/api/assessment-diagnostic/:scoreId', isTeacher, async (req, res) =>
                 const [fallbackRows] = await db.execute(`
                     SELECT 
                         egs.session_id,
+                        egs.sy_id AS session_sy_id,
                         egs.started_at,
                         egs.ended_at,
                         egs.play_mode,
@@ -3390,6 +3617,7 @@ router.get('/api/assessment-diagnostic/:scoreId', isTeacher, async (req, res) =>
                             CASE WHEN egs.final_score_p1 > 0 THEN egs.final_score_p1 * 100 ELSE 0 END
                         ) AS exp_gained,
                         egs.assessment_id,
+                        a.sy_id AS assessment_sy_id,
                         COALESCE(a.assessment_name, 'Arcade Challenge') AS assessment_name,
                         COALESCE(a.assessment_type, 'Assessment') AS assessment_type,
                         a.topic_id,
@@ -3413,6 +3641,7 @@ router.get('/api/assessment-diagnostic/:scoreId', isTeacher, async (req, res) =>
             const [ssRows] = await db.execute(`
                 SELECT 
                     ss.score_id AS session_id,
+                    a.sy_id AS assessment_sy_id,
                     ss.date_recorded AS started_at,
                     ss.date_recorded AS ended_at,
                     'Standard' AS play_mode,
@@ -3442,6 +3671,21 @@ router.get('/api/assessment-diagnostic/:scoreId', isTeacher, async (req, res) =>
 
         if (!attempt) {
             return res.status(404).json({ success: false, error: 'Assessment attempt record not found.' });
+        }
+
+        const attemptSyId = attempt.session_sy_id || attempt.assessment_sy_id || null;
+        if (
+            !attemptSyId ||
+            Number(attemptSyId) !== activeSyId ||
+            (attempt.session_sy_id && attempt.assessment_sy_id && Number(attempt.assessment_sy_id) !== activeSyId)
+        ) {
+            return res.status(403).json({ success: false, error: 'Diagnostic record belongs to a non-current School Year.' });
+        }
+        if (attempt.user_id) {
+            const enrolled = await verifyStudentInTeacherCurrentSY(db, req.user.user_id, attempt.user_id, activeSyId);
+            if (!enrolled) {
+                return res.status(403).json({ success: false, error: 'Student is not enrolled in your Current School Year classes.' });
+            }
         }
 
         const effectiveAssessmentId = attempt.assessment_id || assessmentIdQuery;
@@ -3867,6 +4111,7 @@ router.get('/api/assessment-diagnostic/:scoreId', isTeacher, async (req, res) =>
 router.get('/api/live-sessions/:classId', isTeacher, async (req, res) => {
     try {
         const classId = req.params.classId;
+        const cls = await verifyTeacherClassInCurrentSY(db, req.user.user_id, classId);
         const [sessions] = await db.execute(`
             SELECT egs.session_id, egs.play_mode AS player_mode, egs.highest_level_reached AS current_item_index,
                 egs.final_score_p1 AS accumulated_score, egs.session_status, egs.started_at AS start_time,
@@ -3875,13 +4120,13 @@ router.get('/api/live-sessions/:classId', isTeacher, async (req, res) => {
             FROM elementa_game_sessions egs
             LEFT JOIN users u           ON egs.student_id_p1 = u.user_id
             LEFT JOIN assessments a     ON egs.assessment_id = a.assessment_id
-            LEFT JOIN class_students cs ON u.user_id         = cs.student_id
-            WHERE (cs.class_id = ? OR egs.class_id = ?) AND egs.session_status = 'Ongoing'
+            LEFT JOIN class_students cs ON u.user_id         = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+            WHERE (cs.class_id = ? OR egs.class_id = ?) AND egs.sy_id = ? AND egs.session_status = 'Ongoing'
             ORDER BY egs.started_at ASC`,
-            [classId, classId]
+            [cls.sy_id, classId, classId, cls.sy_id]
         );
         res.json({ sessions });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 // ============================================================
@@ -3895,9 +4140,8 @@ router.get('/api/attendance/:classId', isTeacher, async (req, res) => {
         const teacherId = req.user.user_id;
         const targetDate = req.query.date || new Date().toISOString().slice(0, 10);
 
-        // Verify class ownership (read-only view permitted for archived classes)
-        const isAdmin = req.user.role === 'Admin';
-        const clsObj = await verifyClassOwnership(db, isAdmin ? null : teacherId, classId);
+        // Verify class ownership & strict Current School Year status
+        const clsObj = await verifyTeacherClassInCurrentSY(db, teacherId, classId);
 
         // Query enrolled students and left-join attendance_records for targetDate
         const [students] = await db.query(`
@@ -3920,9 +4164,9 @@ router.get('/api/attendance/:classId', isTeacher, async (req, res) => {
                 ON ar.student_id = u.user_id 
                AND ar.class_id = cs.class_id 
                AND ar.session_date = ?
-            WHERE cs.class_id = ? AND u.role = 'Student'
+            WHERE cs.class_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = ?) AND u.role = 'Student'
             ORDER BY u.last_name ASC, u.first_name ASC`,
-            [targetDate, classId]
+            [targetDate, classId, clsObj.sy_id]
         );
 
         let presentCount = 0, lateCount = 0, absentCount = 0, excusedCount = 0, unmarkedCount = 0;
@@ -3950,7 +4194,7 @@ router.get('/api/attendance/:classId', isTeacher, async (req, res) => {
         });
     } catch (e) {
         console.error('Error fetching attendance:', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -4042,7 +4286,7 @@ router.post('/api/attendance/:classId/save', isTeacher, async (req, res) => {
         res.json({ success: true, message: 'Attendance recorded successfully' });
     } catch (e) {
         console.error('Error saving attendance:', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -4053,9 +4297,8 @@ router.get('/api/attendance/:classId/analytics', isTeacher, async (req, res) => 
         const teacherId = req.user.user_id;
         const range = req.query.range || 'all'; // 'all', '30d', '7d', 'month'
 
-        // Verify class ownership (read-only view permitted for archived classes)
-        const isAdmin = req.user.role === 'Admin';
-        const clsObj = await verifyClassOwnership(db, isAdmin ? null : teacherId, classId);
+        // Verify class ownership & strict Current School Year status
+        const clsObj = await verifyTeacherClassInCurrentSY(db, teacherId, classId);
 
         let dateFilter = '';
         let lmsDateFilter = '';
@@ -4388,7 +4631,7 @@ router.get('/api/attendance/:classId/analytics', isTeacher, async (req, res) => 
         });
     } catch (e) {
         console.error('Error fetching attendance analytics:', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -4398,9 +4641,17 @@ router.get('/api/attendance/:classId/student/:studentId/history', isTeacher, asy
         const { classId, studentId } = req.params;
         const teacherId = req.user.user_id;
 
-        // Verify class ownership (read-only view permitted for archived classes)
-        const isAdmin = req.user.role === 'Admin';
-        const clsObj = await verifyClassOwnership(db, isAdmin ? null : teacherId, classId);
+        // Verify class ownership & strict Current School Year status
+        const clsObj = await verifyTeacherClassInCurrentSY(db, teacherId, classId);
+
+        // Verify student belongs to this active class
+        const [[enrolled]] = await db.query(
+            `SELECT student_id FROM class_students WHERE class_id = ? AND student_id = ? AND (sy_id IS NULL OR sy_id = ?) LIMIT 1`,
+            [classId, studentId, clsObj.sy_id]
+        );
+        if (!enrolled) {
+            return res.status(404).json({ success: false, error: 'Student not found in this active class.' });
+        }
 
         // Student info with LMS telemetry
         const [studentRows] = await db.query(`
@@ -4437,7 +4688,7 @@ router.get('/api/attendance/:classId/student/:studentId/history', isTeacher, asy
         });
     } catch (e) {
         console.error('Error fetching student attendance history:', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(e.statusCode || 500).json({ success: false, error: e.message });
     }
 });
 
@@ -4469,129 +4720,190 @@ router.get('/api/attendance/:classId/student/:studentId/history', isTeacher, asy
 // CALENDAR EVENTS
 // ============================================================
 
+async function resolveAuthorizedCalendarTargetSY(teacherId, { class_id, subject_id, sy_id }) {
+    const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+    if (!currentSY) {
+        const err = new Error('Action blocked: No active School Year is currently open.');
+        err.statusCode = 403;
+        throw err;
+    }
+    const currentSyId = Number(currentSY.sy_id);
+
+    if (sy_id !== undefined && sy_id !== null && String(sy_id).trim() !== '' && Number(sy_id) !== currentSyId) {
+        const err = new Error('Cannot schedule or modify events outside the active School Year.');
+        err.statusCode = 403;
+        throw err;
+    }
+
+    const parsedClassId = class_id ? parseInt(class_id, 10) : null;
+    const parsedSubjectId = subject_id ? parseInt(subject_id, 10) : null;
+
+    if (parsedClassId) {
+        await verifyTeacherClassInCurrentSY(db, teacherId, parsedClassId, currentSyId);
+    } else if (parsedSubjectId) {
+        const [[clsRow]] = await db.query(
+            `SELECT class_id FROM classes WHERE teacher_id = ? AND subject_id = ? AND sy_id = ? LIMIT 1`,
+            [teacherId, parsedSubjectId, currentSyId]
+        );
+        if (!clsRow) {
+            const err = new Error('Selected subject is not assigned to your classes in the active School Year.');
+            err.statusCode = 403;
+            throw err;
+        }
+    }
+
+    return { currentSyId, parsedClassId, parsedSubjectId };
+}
+
 router.post('/events/add', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     const { subject_id, class_id, sy_id, event_title, event_description, event_type, event_date,
         duration_type, start_date, end_date, duration_minutes, is_repeatable, repeat_cycle } = req.body;
     const isAjax = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest' || (req.headers.accept && req.headers.accept.includes('application/json'));
     try {
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const parsedClassId = class_id ? parseInt(class_id, 10) : null;
-        let targetSyId = sy_id ? parseInt(sy_id, 10) : null;
-        if (!targetSyId && parsedClassId) {
-            const [[clsRow]] = await db.query(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [parsedClassId]);
-            if (clsRow && clsRow.sy_id) targetSyId = clsRow.sy_id;
-        }
-        if (!targetSyId) {
-            targetSyId = currentSY ? currentSY.sy_id : null;
-        }
+        const { currentSyId, parsedClassId, parsedSubjectId } = await resolveAuthorizedCalendarTargetSY(teacherId, { class_id, subject_id, sy_id });
 
         const [result] = await db.query(`
             INSERT INTO calendar_events 
             (teacher_id, subject_id, class_id, sy_id, event_title, event_description, event_type, 
              event_date, duration_type, start_date, end_date, duration_minutes, is_repeatable, repeat_cycle) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [teacherId, subject_id || null, parsedClassId, targetSyId, event_title, event_description, event_type, event_date, duration_type,
+            [teacherId, parsedSubjectId, parsedClassId, currentSyId, event_title, event_description, event_type, event_date, duration_type,
                 start_date || null, end_date || null, duration_minutes || null,
                 is_repeatable === 'on' ? 1 : 0, is_repeatable === 'on' ? repeat_cycle : null]
         );
         if (isAjax) {
-            return res.json({ success: true, event_id: result.insertId });
+            return res.json({ success: true, event_id: result.insertId, sy_id: currentSyId });
         }
         res.redirect('/teacher/dashboard');
     } catch (err) {
         console.error("❌ Error adding event:", err);
+        const statusCode = err.statusCode || 500;
         if (isAjax) {
-            return res.status(500).json({ success: false, error: "Failed to save event." });
+            return res.status(statusCode).json({ success: false, error: err.statusCode ? err.message : "Failed to save event." });
         }
-        res.status(500).send("Failed to save event.");
+        if (statusCode === 403) {
+            return res.redirect('/teacher/dashboard?sy_blocked=1');
+        }
+        res.status(statusCode).send("Failed to save event.");
     }
 });
 
 router.post('/api/calendar-event', isTeacher, async (req, res) => {
     try {
+        const teacherId = req.user.user_id;
         const { subject_id, class_id, sy_id, event_title, event_type, event_date, duration_type,
             start_date, end_date, duration_minutes, event_location, event_description,
             is_repeatable, repeat_cycle } = req.body;
         if (!event_title) throw new Error('event_title missing');
         if (!event_date) throw new Error('event_date missing');
 
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const parsedClassId = class_id ? parseInt(class_id, 10) : null;
-        let targetSyId = sy_id ? parseInt(sy_id, 10) : null;
-        if (!targetSyId && parsedClassId) {
-            const [[clsRow]] = await db.query(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [parsedClassId]);
-            if (clsRow && clsRow.sy_id) targetSyId = clsRow.sy_id;
-        }
-        if (!targetSyId) {
-            targetSyId = currentSY ? currentSY.sy_id : null;
-        }
+        const { currentSyId, parsedClassId, parsedSubjectId } = await resolveAuthorizedCalendarTargetSY(teacherId, { class_id, subject_id, sy_id });
 
         const [calResult] = await db.execute(
             `INSERT INTO calendar_events (subject_id, class_id, sy_id, teacher_id, event_title, event_type, event_date, duration_type, start_date, end_date, duration_minutes, event_location, event_description, is_repeatable, repeat_cycle)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [subject_id || null, parsedClassId, targetSyId, req.user.user_id, event_title, event_type || 'Material', event_date,
+            [parsedSubjectId, parsedClassId, currentSyId, teacherId, event_title, event_type || 'Material', event_date,
                 duration_type || 'None', start_date || null, end_date || null, duration_minutes || null,
                 event_location || 'TBA', event_description || null, is_repeatable ? 1 : 0, repeat_cycle || 'None']
         );
 
-        // Notify enrolled students in this subject & school year
-        try {
-            const [students] = await db.query(`
-                SELECT cs.student_id
-                FROM classes c
-                JOIN class_students cs ON c.class_id = cs.class_id
-                WHERE c.subject_id = ?
-                  AND (? IS NULL OR c.sy_id = ?)
-                  AND (? IS NULL OR c.class_id = ?)
-            `, [subject_id, targetSyId, targetSyId, parsedClassId, parsedClassId]);
+        // Notify enrolled students in this subject & strict active school year
+        if (parsedSubjectId || parsedClassId) {
+            try {
+                const [students] = await db.query(`
+                    SELECT cs.student_id
+                    FROM classes c
+                    JOIN class_students cs ON c.class_id = cs.class_id
+                    WHERE c.teacher_id = ?
+                      AND c.sy_id = ?
+                      AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                      AND (? IS NULL OR c.subject_id = ?)
+                      AND (? IS NULL OR c.class_id = ?)
+                `, [teacherId, currentSyId, parsedSubjectId, parsedSubjectId, parsedClassId, parsedClassId]);
 
-            if (students.length > 0) {
-                const studentIds = [...new Set(students.map(s => s.student_id))];
-                const dateStr = new Date(event_date).toLocaleDateString();
-                await notificationService.dispatch({
-                    recipientIds: studentIds,
-                    actorId: req.user.user_id,
-                    role: 'Student',
-                    category: 'academic',
-                    priority: 'normal',
-                    eventType: 'calendar_event_created',
-                    title: `Calendar Event: ${event_title}`,
-                    message: `${event_type || 'Event'} scheduled on ${dateStr}.`,
-                    targetUrl: '/events',
-                    metadata: { subjectId: subject_id, eventDate: event_date, eventId: calResult.insertId }
-                });
+                if (students.length > 0) {
+                    const studentIds = [...new Set(students.map(s => s.student_id))];
+                    const dateStr = new Date(event_date).toLocaleDateString();
+                    await notificationService.dispatch({
+                        recipientIds: studentIds,
+                        actorId: teacherId,
+                        role: 'Student',
+                        category: 'academic',
+                        priority: 'normal',
+                        eventType: 'calendar_event_created',
+                        title: `Calendar Event: ${event_title}`,
+                        message: `${event_type || 'Event'} scheduled on ${dateStr}.`,
+                        targetUrl: '/events',
+                        metadata: { subjectId: parsedSubjectId, eventDate: event_date, eventId: calResult.insertId, syId: currentSyId }
+                    });
+                }
+            } catch (notifErr) {
+                console.error('[Calendar Event Notification Error]', notifErr.message);
             }
-        } catch (notifErr) {
-            console.error('[Calendar Event Notification Error]', notifErr.message);
         }
 
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        res.json({ success: true, sy_id: currentSyId });
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 router.put('/api/calendar-event/:eid', isTeacher, async (req, res) => {
     try {
+        const teacherId = req.user.user_id;
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        if (!currentSY) {
+            return res.status(403).json({ error: 'Action blocked: No active School Year is currently open.' });
+        }
+        const currentSyId = Number(currentSY.sy_id);
+
+        const [[existing]] = await db.query(
+            `SELECT event_id, sy_id FROM calendar_events WHERE event_id = ? AND teacher_id = ? LIMIT 1`,
+            [req.params.eid, teacherId]
+        );
+        if (!existing) return res.status(404).json({ error: 'Event not found.' });
+        if (Number(existing.sy_id) !== currentSyId) {
+            return res.status(403).json({ error: 'Cannot modify calendar events from a non-current School Year.' });
+        }
+
         const { event_title, event_type, event_date, duration_type, start_date, end_date,
             duration_minutes, event_location, event_description, is_repeatable, repeat_cycle } = req.body;
         if (!event_title) throw new Error('event_title missing');
         await db.execute(
             `UPDATE calendar_events SET event_title=?, event_type=?, event_date=?, duration_type=?,
              start_date=?, end_date=?, duration_minutes=?, event_location=?, event_description=?,
-             is_repeatable=?, repeat_cycle=? WHERE event_id=? AND teacher_id=?`,
+             is_repeatable=?, repeat_cycle=? WHERE event_id=? AND teacher_id=? AND sy_id=?`,
             [event_title, event_type, event_date, duration_type || 'None', start_date || null,
                 end_date || null, duration_minutes || null, event_location || 'TBA',
-                event_description || null, is_repeatable ? 1 : 0, repeat_cycle || 'None', req.params.eid, req.user.user_id]
+                event_description || null, is_repeatable ? 1 : 0, repeat_cycle || 'None', req.params.eid, teacherId, currentSyId]
         );
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 router.delete('/api/calendar-event/:eid', isTeacher, async (req, res) => {
     try {
-        await db.execute(`DELETE FROM calendar_events WHERE event_id = ? AND teacher_id = ?`, [req.params.eid, req.user.user_id]);
+        const teacherId = req.user.user_id;
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        if (!currentSY) {
+            return res.status(403).json({ error: 'Action blocked: No active School Year is currently open.' });
+        }
+        const currentSyId = Number(currentSY.sy_id);
+
+        const [[existing]] = await db.query(
+            `SELECT event_id, sy_id FROM calendar_events WHERE event_id = ? AND teacher_id = ? LIMIT 1`,
+            [req.params.eid, teacherId]
+        );
+        if (!existing) return res.status(404).json({ error: 'Event not found.' });
+        if (Number(existing.sy_id) !== currentSyId) {
+            return res.status(403).json({ error: 'Cannot delete calendar events from a non-current School Year.' });
+        }
+
+        await db.execute(
+            `DELETE FROM calendar_events WHERE event_id = ? AND teacher_id = ? AND sy_id = ?`,
+            [req.params.eid, teacherId, currentSyId]
+        );
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 
@@ -4656,33 +4968,42 @@ router.get('/api/forum-replies/:forumId', isTeacher, async (req, res) => {
 /**
  * Strict Teacher Messaging Authorization Guard
  * Enforces that a teacher can ONLY communicate with:
- * 1. Students enrolled in at least one class taught by this teacher (classes.teacher_id = ?)
- * 2. Users with whom the teacher already has an existing conversation thread in private_messages
+ * 1. Students enrolled in at least one Current School Year class taught by this teacher
+ * 2. Non-student peers (e.g., Faculty/Admin) with whom the teacher already has an existing private_messages thread
+ * Fails closed (returns false) if no active Current School Year exists.
  */
-async function canTeacherCommunicate(teacherId, targetUserId) {
+async function canTeacherCommunicate(teacherId, targetUserId, currentSyId = null) {
     const tId = parseInt(teacherId, 10);
     const uId = parseInt(targetUserId, 10);
     if (isNaN(tId) || isNaN(uId) || tId === uId) return false;
 
     try {
+        const activeSyId = currentSyId
+            ? Number(currentSyId)
+            : await resolveActiveSyIdOrThrow(db).catch(() => null);
+        if (!activeSyId) return false;
+
         const [rows] = await db.query(`
             SELECT 1
             WHERE EXISTS (
-                -- 1. Student enrolled in any class taught by this teacher
+                -- 1. Student enrolled in any Current-SY class taught by this teacher
                 SELECT 1
                 FROM classes c
                 JOIN class_students cs ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ? AND cs.student_id = ?
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND cs.student_id = ?
+                  AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
             )
             OR EXISTS (
-                -- 2. Existing message history between teacher and user
+                -- 2. Non-student peer with existing message history
                 SELECT 1
                 FROM private_messages pm
-                WHERE (pm.sender_id = ? AND pm.receiver_id = ?)
-                   OR (pm.sender_id = ? AND pm.receiver_id = ?)
+                JOIN users u ON u.user_id = ?
+                WHERE u.role <> 'Student'
+                  AND ((pm.sender_id = ? AND pm.receiver_id = ?)
+                    OR (pm.sender_id = ? AND pm.receiver_id = ?))
             )
             LIMIT 1
-        `, [tId, uId, tId, uId, uId, tId]);
+        `, [tId, activeSyId, uId, uId, tId, uId, uId, tId]);
 
         return rows.length > 0;
     } catch (err) {
@@ -4692,15 +5013,20 @@ async function canTeacherCommunicate(teacherId, targetUserId) {
 }
 
 /**
- * Retrieves the authorized student contacts directory for a teacher,
+ * Retrieves the authorized student contacts directory for a teacher within the Current School Year,
  * deduplicated by student user_id and enriched with shared classes & subjects.
  */
-async function getAuthorizedTeacherContacts(teacherId, searchQuery = '', classIdFilter = null, subjectIdFilter = null) {
+async function getAuthorizedTeacherContacts(teacherId, searchQuery = '', classIdFilter = null, subjectIdFilter = null, currentSyId = null) {
     const tId = parseInt(teacherId, 10);
     if (isNaN(tId)) return [];
 
+    const activeSyId = currentSyId
+        ? Number(currentSyId)
+        : await resolveActiveSyIdOrThrow(db).catch(() => null);
+    if (!activeSyId) return [];
+
     let filterClause = '';
-    const params = [tId];
+    const params = [tId, activeSyId];
 
     if (searchQuery && searchQuery.trim().length > 0) {
         filterClause += ` AND (
@@ -4772,9 +5098,9 @@ async function getAuthorizedTeacherContacts(teacherId, searchQuery = '', classId
                 s.subject_name
             FROM classes c
             JOIN subjects s ON c.subject_id = s.subject_id
-            JOIN class_students cs ON c.class_id = cs.class_id
+            JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
             JOIN users u ON cs.student_id = u.user_id
-            WHERE c.teacher_id = ?
+            WHERE c.teacher_id = ? AND c.sy_id = ?
         ) contact
         WHERE 1=1 ${filterClause}
         GROUP BY
@@ -4802,6 +5128,22 @@ router.getAuthorizedTeacherContacts = getAuthorizedTeacherContacts;
 router.get('/messages', isTeacher, async (req, res) => {
     try {
         const teacherId = req.user.user_id;
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const notifications = await getTeacherNotifications(db, teacherId);
+
+        if (!currentSyId) {
+            return res.render('teacher/messages', {
+                user: req.user,
+                currentSY: null,
+                noActiveSY: true,
+                syBlocked: req.query.sy_blocked === '1',
+                classes: [],
+                subjects: [],
+                notifications,
+                activeNav: 'none'
+            });
+        }
 
         const [teacherClasses] = await db.query(`
             SELECT
@@ -4813,11 +5155,11 @@ router.get('/messages', isTeacher, async (req, res) => {
                 COUNT(DISTINCT cs.student_id) AS student_count
             FROM classes c
             JOIN subjects s ON c.subject_id = s.subject_id
-            LEFT JOIN class_students cs ON c.class_id = cs.class_id
-            WHERE c.teacher_id = ?
+            LEFT JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+            WHERE c.teacher_id = ? AND c.sy_id = ?
             GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name
             ORDER BY s.subject_code ASC, c.class_name ASC
-        `, [teacherId]);
+        `, [teacherId, currentSyId]);
 
         const subjectMap = new Map();
         for (const cls of teacherClasses) {
@@ -4830,10 +5172,12 @@ router.get('/messages', isTeacher, async (req, res) => {
             }
         }
         const uniqueSubjects = Array.from(subjectMap.values());
-        const notifications = await getTeacherNotifications(db, teacherId);
 
         res.render('teacher/messages', {
             user: req.user,
+            currentSY,
+            noActiveSY: false,
+            syBlocked: req.query.sy_blocked === '1',
             classes: teacherClasses,
             subjects: uniqueSubjects,
             notifications,
@@ -4852,6 +5196,10 @@ router.get('/messages/:studentId', isTeacher, async (req, res) => {
         if (isNaN(studentId)) {
             return res.redirect('/teacher/messages');
         }
+        const allowed = await canTeacherCommunicate(req.user.user_id, studentId);
+        if (!allowed) {
+            return res.redirect('/teacher/messages?sy_blocked=1');
+        }
         return res.redirect(`/teacher/messages?userId=${studentId}`);
     } catch (err) {
         console.error('[GET /teacher/messages/:studentId Error]', err);
@@ -4863,15 +5211,20 @@ router.get('/messages/:studentId', isTeacher, async (req, res) => {
 router.get('/api/messaging/contacts', isTeacher, async (req, res) => {
     try {
         const teacherId = req.user.user_id;
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
         const q = req.query.q || '';
         const classId = req.query.class_id || null;
         const subjectId = req.query.subject_id || null;
 
-        const contacts = await getAuthorizedTeacherContacts(teacherId, q, classId, subjectId);
+        if (classId) {
+            await verifyTeacherClassInCurrentSY(db, teacherId, classId, activeSyId);
+        }
+
+        const contacts = await getAuthorizedTeacherContacts(teacherId, q, classId, subjectId, activeSyId);
         res.json({ success: true, count: contacts.length, contacts });
     } catch (err) {
         console.error('[GET /teacher/api/messaging/contacts Error]', err);
-        res.status(500).json({ error: 'Failed to retrieve student directory' });
+        res.status(err.statusCode || 500).json({ error: err.message || 'Failed to retrieve student directory' });
     }
 });
 
@@ -4879,6 +5232,7 @@ router.get('/api/messaging/contacts', isTeacher, async (req, res) => {
 router.get('/api/messaging/conversations', isTeacher, async (req, res) => {
     try {
         const teacherId = req.user.user_id;
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
 
         const [rows] = await db.query(`
             SELECT
@@ -4902,15 +5256,15 @@ router.get('/api/messaging/conversations', isTeacher, async (req, res) => {
                     SELECT GROUP_CONCAT(DISTINCT CONCAT(s.subject_code, ' (', c.class_name, ')') ORDER BY s.subject_code SEPARATOR ', ')
                     FROM classes c
                     JOIN subjects s ON c.subject_id = s.subject_id
-                    JOIN class_students cs ON cs.class_id = c.class_id
-                    WHERE c.teacher_id = ? AND cs.student_id = partner.user_id
+                    JOIN class_students cs ON cs.class_id = c.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                    WHERE c.teacher_id = ? AND c.sy_id = ? AND cs.student_id = partner.user_id
                 ) AS shared_classes,
                 (
                     SELECT GROUP_CONCAT(DISTINCT s.subject_code ORDER BY s.subject_code SEPARATOR ', ')
                     FROM classes c
                     JOIN subjects s ON c.subject_id = s.subject_id
-                    JOIN class_students cs ON cs.class_id = c.class_id
-                    WHERE c.teacher_id = ? AND cs.student_id = partner.user_id
+                    JOIN class_students cs ON cs.class_id = c.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                    WHERE c.teacher_id = ? AND c.sy_id = ? AND cs.student_id = partner.user_id
                 ) AS shared_subjects
             FROM (
                 SELECT 
@@ -4928,13 +5282,22 @@ router.get('/api/messaging/conversations', isTeacher, async (req, res) => {
                 WHERE receiver_id = ? AND is_read = 0
                 GROUP BY sender_id
             ) unread ON unread.sender_id = convo.partner_id
+            WHERE (
+                partner.role <> 'Student'
+                OR EXISTS (
+                    SELECT 1
+                    FROM classes c
+                    JOIN class_students cs ON cs.class_id = c.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                    WHERE c.teacher_id = ? AND c.sy_id = ? AND cs.student_id = partner.user_id
+                )
+            )
             ORDER BY latest.sent_at DESC, latest.message_id DESC
-        `, [teacherId, teacherId, teacherId, teacherId, teacherId, teacherId]);
+        `, [teacherId, activeSyId, teacherId, activeSyId, teacherId, teacherId, teacherId, teacherId, teacherId, activeSyId]);
 
         res.json(rows);
     } catch (err) {
         console.error('[GET /teacher/api/messaging/conversations Error]', err);
-        res.status(500).json([]);
+        res.status(err.statusCode || 500).json({ error: err.message || 'Failed to load conversations' });
     }
 });
 
@@ -4947,9 +5310,10 @@ router.get('/api/messaging/thread/:partnerId', isTeacher, async (req, res) => {
             return res.status(400).json({ error: 'Valid student/partner user ID required' });
         }
 
-        const allowed = await canTeacherCommunicate(teacherId, partnerId);
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+        const allowed = await canTeacherCommunicate(teacherId, partnerId, activeSyId);
         if (!allowed) {
-            return res.status(403).json({ error: 'Access denied: You can only message students enrolled in your classes.' });
+            return res.status(403).json({ error: 'Access denied: You can only message students enrolled in your Current School Year classes.' });
         }
 
         const [messages] = await db.query(`
@@ -4987,20 +5351,20 @@ router.get('/api/messaging/thread/:partnerId', isTeacher, async (req, res) => {
                     SELECT GROUP_CONCAT(DISTINCT CONCAT(s.subject_code, ' (', c.class_name, ')') ORDER BY s.subject_code SEPARATOR ', ')
                     FROM classes c
                     JOIN subjects s ON c.subject_id = s.subject_id
-                    JOIN class_students cs ON cs.class_id = c.class_id
-                    WHERE c.teacher_id = ? AND cs.student_id = u.user_id
+                    JOIN class_students cs ON cs.class_id = c.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                    WHERE c.teacher_id = ? AND c.sy_id = ? AND cs.student_id = u.user_id
                 ) AS shared_classes,
                 (
                     SELECT GROUP_CONCAT(DISTINCT s.subject_code ORDER BY s.subject_code SEPARATOR ', ')
                     FROM classes c
                     JOIN subjects s ON c.subject_id = s.subject_id
-                    JOIN class_students cs ON cs.class_id = c.class_id
-                    WHERE c.teacher_id = ? AND cs.student_id = u.user_id
+                    JOIN class_students cs ON cs.class_id = c.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                    WHERE c.teacher_id = ? AND c.sy_id = ? AND cs.student_id = u.user_id
                 ) AS shared_subjects
             FROM users u
             WHERE u.user_id = ?
             LIMIT 1
-        `, [teacherId, teacherId, partnerId]);
+        `, [teacherId, activeSyId, teacherId, activeSyId, partnerId]);
 
         res.json({
             success: true,
@@ -5009,7 +5373,7 @@ router.get('/api/messaging/thread/:partnerId', isTeacher, async (req, res) => {
         });
     } catch (err) {
         console.error('[GET /teacher/api/messaging/thread/:partnerId Error]', err);
-        res.status(500).json({ error: 'Failed to retrieve conversation thread' });
+        res.status(err.statusCode || 500).json({ error: err.message || 'Failed to retrieve conversation thread' });
     }
 });
 
@@ -5024,9 +5388,10 @@ router.get('/api/messaging/poll', isTeacher, async (req, res) => {
             return res.status(400).json({ error: 'partnerId is required' });
         }
 
-        const allowed = await canTeacherCommunicate(teacherId, partnerId);
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+        const allowed = await canTeacherCommunicate(teacherId, partnerId, activeSyId);
         if (!allowed) {
-            return res.status(403).json({ error: 'Access denied: You can only communicate with students enrolled in your classes.' });
+            return res.status(403).json({ error: 'Access denied: You can only communicate with students enrolled in your Current School Year classes.' });
         }
 
         let query = `
@@ -5061,7 +5426,7 @@ router.get('/api/messaging/poll', isTeacher, async (req, res) => {
         res.json({ success: true, messages: newMessages });
     } catch (err) {
         console.error('[GET /teacher/api/messaging/poll Error]', err);
-        res.status(500).json({ error: 'Failed to poll messages' });
+        res.status(err.statusCode || 500).json({ error: err.message || 'Failed to poll messages' });
     }
 });
 
@@ -5074,6 +5439,12 @@ router.post('/api/messaging/read', isTeacher, async (req, res) => {
             return res.status(400).json({ error: 'partner_id is required' });
         }
 
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+        const allowed = await canTeacherCommunicate(teacherId, partnerId, activeSyId);
+        if (!allowed) {
+            return res.status(403).json({ error: 'Access denied: Partner is outside your Current School Year roster.' });
+        }
+
         await db.query(
             `UPDATE private_messages SET is_read = 1
              WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`,
@@ -5083,7 +5454,7 @@ router.post('/api/messaging/read', isTeacher, async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error('[POST /teacher/api/messaging/read Error]', err);
-        res.status(500).json({ error: 'Failed to mark messages as read' });
+        res.status(err.statusCode || 500).json({ error: err.message || 'Failed to mark messages as read' });
     }
 });
 
@@ -5094,9 +5465,10 @@ router.get('/api/messages/:studentId', isTeacher, async (req, res) => {
         const studentId = parseInt(req.params.studentId, 10);
         if (isNaN(studentId)) return res.status(400).json({ error: 'Invalid studentId' });
 
-        const allowed = await canTeacherCommunicate(teacherId, studentId);
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+        const allowed = await canTeacherCommunicate(teacherId, studentId, activeSyId);
         if (!allowed) {
-            return res.status(403).json({ error: 'Access denied: You can only message students enrolled in your classes.' });
+            return res.status(403).json({ error: 'Access denied: You can only message students enrolled in your Current School Year classes.' });
         }
 
         const [messages] = await db.execute(`
@@ -5116,7 +5488,7 @@ router.get('/api/messages/:studentId', isTeacher, async (req, res) => {
         }
 
         res.json({ messages });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 
 // ── POST /teacher/api/messages & /teacher/api/messaging/send ──────────────────
@@ -5129,9 +5501,10 @@ async function handleTeacherSendMessage(req, res) {
         if (isNaN(receiverId)) return res.status(400).json({ error: 'receiver_id missing' });
         if (!messageText) return res.status(400).json({ error: 'Empty message' });
 
-        const allowed = await canTeacherCommunicate(teacherId, receiverId);
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+        const allowed = await canTeacherCommunicate(teacherId, receiverId, activeSyId);
         if (!allowed) {
-            return res.status(403).json({ error: 'Access denied: You can only message students enrolled in your classes.' });
+            return res.status(403).json({ error: 'Access denied: You can only message students enrolled in your Current School Year classes.' });
         }
 
         const [result] = await db.execute(
@@ -5167,7 +5540,7 @@ async function handleTeacherSendMessage(req, res) {
             message_text: messageText,
             sent_at: new Date()
         });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 }
 
 router.post('/api/messages', isTeacher, handleTeacherSendMessage);
@@ -5200,10 +5573,11 @@ async function handleTeacherMessageUpload(req, res) {
         }
         if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-        const allowed = await canTeacherCommunicate(teacherId, receiverId);
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+        const allowed = await canTeacherCommunicate(teacherId, receiverId, activeSyId);
         if (!allowed) {
             if (req.file) fs.unlink(req.file.path, () => { });
-            return res.status(403).json({ error: 'Access denied: You can only message students enrolled in your classes.' });
+            return res.status(403).json({ error: 'Access denied: You can only message students enrolled in your Current School Year classes.' });
         }
 
         const fileUrl = '/forum_uploads/' + req.file.filename;
@@ -5245,7 +5619,7 @@ async function handleTeacherMessageUpload(req, res) {
         });
     } catch (e) {
         if (req.file) fs.unlink(req.file.path, () => { });
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 }
 
@@ -5264,13 +5638,20 @@ router.get('/classes', isTeacher, async (req, res) => {
     console.log(`[GET] /teacher/classes — user: ${req.user?.user_id}`);
     try {
         const teacherId = req.user.user_id;
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const notifications = await getTeacherNotifications(db, teacherId);
 
-        const [schoolYears] = await db.execute(
-            `SELECT sy_id, sy_range, sy_code, status, is_active
-             FROM school_years
-             ORDER BY is_active DESC, sy_range DESC`
-        );
+        if (!currentSyId) {
+            return res.render('teacher/class_list', {
+                user: req.user,
+                currentSY: null,
+                classes: [],
+                schoolYears: [],
+                notifications,
+                syBlocked: req.query.sy_blocked === '1'
+            });
+        }
 
         const [classes] = await db.execute(`
             SELECT
@@ -5291,29 +5672,30 @@ router.get('/classes', isTeacher, async (req, res) => {
             FROM classes c
             JOIN subjects s      ON c.subject_id = s.subject_id
             JOIN school_years sy  ON c.sy_id      = sy.sy_id
-            LEFT JOIN class_students cs ON c.class_id = cs.class_id
+            LEFT JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
             LEFT JOIN student_progress sp
                    ON cs.student_id = sp.student_id
                   AND sp.subject_id = c.subject_id
-            WHERE c.teacher_id = ?
+                  AND sp.sy_id = c.sy_id
+            WHERE c.teacher_id = ? AND c.sy_id = ?
             GROUP BY
                 c.class_id, c.class_name, c.subject_id, c.sy_id,
                 sy.sy_range, sy.status, sy.is_active,
                 s.subject_name, s.subject_code, s.subject_image,
                 s.semester, s.enrollment_code
-            ORDER BY sy.is_active DESC, sy.sy_id DESC, c.class_name ASC`,
-            [teacherId]
+            ORDER BY c.class_name ASC`,
+            [teacherId, currentSyId]
         );
 
-        console.log(`[DEBUG] ${classes.length} classes found for teacher ${teacherId}`);
+        console.log(`[DEBUG] ${classes.length} active-SY classes found for teacher ${teacherId}`);
 
-        const notifications = await getTeacherNotifications(db, teacherId);
         res.render('teacher/class_list', {
             user: req.user,
             currentSY,
             classes: classes || [],
-            schoolYears: schoolYears || [],
+            schoolYears: [currentSY],
             notifications,
+            syBlocked: req.query.sy_blocked === '1'
         });
 
     } catch (err) {
@@ -5333,17 +5715,11 @@ router.get('/api/class-roster/:classId', isTeacher, async (req, res) => {
         const classId = req.params.classId;
         const teacherId = req.user.user_id;
 
-        // Safety: confirm this class belongs to the requesting teacher
-        const [ownership] = await db.execute(
-            `SELECT class_id, subject_id FROM classes WHERE class_id = ? AND teacher_id = ?`,
-            [classId, teacherId]
-        );
-        if (!ownership.length) {
-            return res.status(403).json({ error: 'Access denied or class not found' });
-        }
-        const subjectId = ownership[0].subject_id;
+        const ownership = await verifyTeacherClassInCurrentSY(db, teacherId, classId);
+        const subjectId = ownership.subject_id;
+        const currentSyId = Number(ownership.sy_id);
 
-        // Full student profiles with gamification + progress data
+        // Full student profiles with gamification + progress data (strictly Current SY)
         const [students] = await db.execute(`
             SELECT
                 u.user_id,
@@ -5373,19 +5749,21 @@ router.get('/api/class-roster/:classId', isTeacher, async (req, res) => {
             FROM users u
             JOIN class_students cs ON u.user_id = cs.student_id
                                    AND cs.class_id = ?
+                                   AND (cs.sy_id IS NULL OR cs.sy_id = ?)
             LEFT JOIN student_progress sp
                    ON u.user_id    = sp.student_id
                   AND sp.subject_id = ?
+                  AND sp.sy_id      = ?
             WHERE u.role = 'Student'
             ORDER BY u.last_name ASC, u.first_name ASC`,
-            [classId, subjectId]
+            [classId, currentSyId, subjectId, currentSyId]
         );
 
         // Leaderboard history per student (purged dead table)
         const studentIds = students.map(s => s.user_id);
         const lbRows = [];
 
-        // Assessment scores per student for this subject
+        // Assessment scores per student for this subject (strictly Current SY)
         let scoreRows = [];
         if (studentIds.length) {
             const placeholders = studentIds.map(() => '?').join(',');
@@ -5403,9 +5781,11 @@ router.get('/api/class-roster/:classId', isTeacher, async (req, res) => {
                  LEFT JOIN topics t       ON a.topic_id       = t.topic_id
                  LEFT JOIN quarters qt    ON t.quarter_id     = qt.quarter_id
                  WHERE esg.student_id IN (${placeholders})
+                   AND esg.sy_id = ?
+                   AND (a.assessment_id IS NULL OR a.sy_id = ?)
                    AND (qt.subject_id = ? OR esg.assessment_id IS NULL)
                  ORDER BY esg.started_at DESC`,
-                [...studentIds, subjectId]
+                [...studentIds, currentSyId, currentSyId, subjectId]
             );
             scoreRows = scData;
         }
@@ -5423,7 +5803,7 @@ router.get('/api/class-roster/:classId', isTeacher, async (req, res) => {
 
     } catch (err) {
         console.error('[ERROR] GET /teacher/api/class-roster:', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -5443,31 +5823,35 @@ async function handleGetStudentDetailedScores(req, res) {
             return res.status(400).json({ success: false, error: 'Invalid student ID.' });
         }
 
-        // 1. Verify student and instructor class association (Multi-tenant IDOR protection)
+        const effSyId = await resolveActiveSyIdOrThrow(db);
+        if (classId && !isNaN(classId)) {
+            await verifyTeacherClassInCurrentSY(db, teacherId, classId, effSyId);
+        }
+
+        // 1. Verify student and instructor class association strictly in Current SY
         const [studentRows] = await db.query(`
             SELECT u.user_id, u.first_name, u.last_name, u.middle_name, u.suffix, u.lrn_number,
                    u.grade_level, u.section, u.strand, u.profile_pic, u.current_level,
                    COALESCE(u.total_exp, 0) AS total_exp, u.email,
                    c.class_id, c.class_name, c.subject_id, c.sy_id, s.subject_name, s.subject_code
             FROM users u
-            JOIN class_students cs ON u.user_id = cs.student_id
+            JOIN class_students cs ON u.user_id = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
             JOIN classes c ON cs.class_id = c.class_id
             JOIN subjects s ON c.subject_id = s.subject_id
-            WHERE u.user_id = ? AND (c.teacher_id = ? OR ? = 'Admin')
+            WHERE u.user_id = ? AND c.teacher_id = ? AND c.sy_id = ?
               AND (? IS NULL OR c.subject_id = ?)
               AND (? IS NULL OR c.class_id = ?)
             ORDER BY c.class_id ASC
             LIMIT 1
-        `, [studentId, teacherId, req.user.role, subjectId, subjectId, classId, classId]);
+        `, [effSyId, studentId, teacherId, effSyId, subjectId, subjectId, classId, classId]);
 
         if (!studentRows.length) {
-            return res.status(404).json({ success: false, error: 'Student record not found or access denied for this instructor account.' });
+            return res.status(404).json({ success: false, error: 'Student record not found in your Current School Year classes.' });
         }
 
         const student = studentRows[0];
         const effSubjectId = student.subject_id;
         const effClassId = student.class_id;
-        const effSyId = student.sy_id || null;
 
         // 2. Fetch all quarters and topics for this subject
         const [topics] = await db.query(`
@@ -5479,7 +5863,7 @@ async function handleGetStudentDetailedScores(req, res) {
             ORDER BY q.quarter_number ASC, t.topic_id ASC
         `, [effSubjectId]);
 
-        // 3. Fetch all assigned assessments & assignments for these topics
+        // 3. Fetch all assigned assessments & assignments for these topics (strict Current SY)
         const [assessments] = await db.query(`
             SELECT a.assessment_id, a.topic_id, a.quarter_id, a.assessment_name,
                    COALESCE(a.assessment_type, 'Assignment') AS assessment_type,
@@ -5492,11 +5876,11 @@ async function handleGetStudentDetailedScores(req, res) {
                 JOIN quarters q ON t.quarter_id = q.quarter_id
                 WHERE q.subject_id = ?
             )
-              AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
+              AND a.sy_id = ?
             ORDER BY a.topic_id ASC, a.assessment_type ASC, a.assessment_id ASC
-        `, [effSubjectId, effSyId, effSyId]);
+        `, [effSubjectId, effSyId]);
 
-        // 4. Fetch student's LMS scores
+        // 4. Fetch student's LMS scores (strict Current SY)
         const [lmsScores] = await db.query(`
             SELECT ss.score_id, ss.student_id, ss.assessment_id,
                    ss.score_obtained,
@@ -5514,11 +5898,11 @@ async function handleGetStudentDetailedScores(req, res) {
             JOIN assessments a ON ss.assessment_id = a.assessment_id
             JOIN topics t ON a.topic_id = t.topic_id
             JOIN quarters q ON t.quarter_id = q.quarter_id
-            WHERE ss.student_id = ? AND q.subject_id = ?
+            WHERE ss.student_id = ? AND q.subject_id = ? AND a.sy_id = ?
             ORDER BY ss.assessment_id ASC, ss.attempt_number DESC, ss.score_id DESC
-        `, [studentId, effSubjectId]);
+        `, [studentId, effSubjectId, effSyId]);
 
-        // 5. Fetch Elementa Arcade completed sessions
+        // 5. Fetch Elementa Arcade completed sessions (strict Current SY)
         const [arcadeScores] = await db.query(`
             SELECT esg.session_id, esg.assessment_id, esg.level_topic, esg.play_mode,
                    esg.correct_answers AS score_obtained,
@@ -5531,11 +5915,11 @@ async function handleGetStudentDetailedScores(req, res) {
             JOIN assessments a ON esg.assessment_id = a.assessment_id
             JOIN topics t ON a.topic_id = t.topic_id
             JOIN quarters q ON t.quarter_id = q.quarter_id
-            WHERE esg.student_id = ? AND q.subject_id = ? AND esg.run_status = 'Completed'
+            WHERE esg.student_id = ? AND q.subject_id = ? AND esg.sy_id = ? AND a.sy_id = ? AND esg.run_status = 'Completed'
             ORDER BY esg.started_at DESC
-        `, [studentId, effSubjectId]);
+        `, [studentId, effSubjectId, effSyId, effSyId]);
 
-        // 6. Fetch all assigned discussion forums for this subject (including general subject-level forums where topic_id IS NULL)
+        // 6. Fetch all assigned discussion forums for this subject (strict Current SY)
         const [allSubjectForums] = await db.query(`
             SELECT ft.forum_id, ft.topic_id, ft.title, ft.base_exp, ft.due_date,
                    COALESCE(CASE WHEN q.subject_id = ft.subject_id THEN t.topic_name ELSE NULL END, 'General Subject Forum') AS topic_name,
@@ -5546,11 +5930,11 @@ async function handleGetStudentDetailedScores(req, res) {
             FROM forum_topics ft
             LEFT JOIN topics t ON ft.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-            WHERE ft.subject_id = ?
+            WHERE ft.subject_id = ? AND ft.sy_id = ?
             ORDER BY quarter_number ASC, ft.topic_id ASC, ft.forum_id ASC
-        `, [effSubjectId]);
+        `, [effSubjectId, effSyId]);
 
-        // 7. Fetch student's completed forum records (using actual awarded EXP from database)
+        // 7. Fetch student's completed forum records (strict Current SY)
         const [studentForumDone] = await db.query(`
             SELECT sfd.id, sfd.student_id, sfd.forum_id, sfd.done_at,
                    COALESCE(sfd.exp_awarded, 0) AS exp_awarded,
@@ -5558,11 +5942,11 @@ async function handleGetStudentDetailedScores(req, res) {
                    ft.title, ft.topic_id, ft.base_exp, ft.due_date
             FROM student_forum_done sfd
             JOIN forum_topics ft ON sfd.forum_id = ft.forum_id
-            WHERE sfd.student_id = ? AND ft.subject_id = ?
+            WHERE sfd.student_id = ? AND ft.subject_id = ? AND ft.sy_id = ?
             ORDER BY sfd.done_at DESC
-        `, [studentId, effSubjectId]);
+        `, [studentId, effSubjectId, effSyId]);
 
-        // 8. Fetch student's interactive simulation quiz submissions (scoped to student's class SY)
+        // 8. Fetch student's interactive simulation quiz submissions (strict Current SY)
         const [simulationSubmissions] = await db.query(`
             SELECT esqs.submission_id, esqs.quiz_id, esqs.student_id, esqs.simulation_slug,
                    esqs.score, esqs.total_questions, esqs.correct_count, esqs.incorrect_count,
@@ -5571,9 +5955,9 @@ async function handleGetStudentDetailedScores(req, res) {
             FROM elementa_simulation_quiz_submissions esqs
             JOIN elementa_simulation_custom_quizzes q ON esqs.quiz_id = q.quiz_id
             WHERE esqs.student_id = ?
-              AND (? IS NULL OR (esqs.sy_id = ? AND q.sy_id = ?))
+              AND esqs.sy_id = ? AND q.sy_id = ?
             ORDER BY esqs.submitted_at DESC
-        `, [studentId, effSyId, effSyId, effSyId]);
+        `, [studentId, effSyId, effSyId]);
 
         // 9. Deduplicate per assessment_id (pick highest score obtained)
         const scoreMap = new Map();
@@ -5952,7 +6336,7 @@ async function handleGetStudentDetailedScores(req, res) {
 
     } catch (err) {
         console.error('[GET /teacher/api/student/:studentId/scores Error]:', err);
-        return res.status(500).json({ success: false, error: 'Internal server error fetching student scores.' });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.statusCode ? err.message : 'Internal server error fetching student scores.' });
     }
 }
 
@@ -5971,22 +6355,31 @@ router.get('/student/:studentId/scores', isTeacher, async (req, res) => {
         const subjectId = parseInt(req.query.subject || req.query.subjectId, 10) || null;
         const teacherId = req.user.user_id;
 
-        // Lookup the student's class taught by this teacher for this subject
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) {
+            return res.redirect('/teacher/classes?sy_blocked=1');
+        }
+
+        // Lookup the student's Current SY class taught by this teacher for this subject
         const [rows] = await db.execute(`
             SELECT cs.class_id
             FROM class_students cs
             JOIN classes c ON cs.class_id = c.class_id
-            WHERE cs.student_id = ? AND (c.teacher_id = ? OR ? = 'Admin')
+            WHERE cs.student_id = ?
+              AND c.teacher_id = ?
+              AND c.sy_id = ?
+              AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
               AND (? IS NULL OR c.subject_id = ?)
             ORDER BY cs.class_id ASC
             LIMIT 1
-        `, [studentId, teacherId, req.user.role, subjectId, subjectId]);
+        `, [studentId, teacherId, currentSyId, subjectId, subjectId]);
 
         if (rows.length && rows[0].class_id) {
             return res.redirect(`/teacher/class/${rows[0].class_id}?openScores=${studentId}`);
         }
 
-        return res.redirect('/teacher/classes');
+        return res.redirect('/teacher/classes?sy_blocked=1');
     } catch (err) {
         console.error('[GET /teacher/student/:studentId/scores redirect error]:', err);
         return res.redirect('/teacher/classes');
@@ -6106,8 +6499,32 @@ router.get('/question_bank', isTeacher, (req, res) => {
 router.get('/question-bank', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     try {
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const currentSyId = currentSY ? currentSY.sy_id : null;
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const notifications = await getTeacherNotifications(db, teacherId);
+
+        if (!currentSyId) {
+            return res.render('teacher/question_bank', {
+                questions: [],
+                quarters: [],
+                assessments: [],
+                classes: [],
+                materials: [],
+                totalQuestions: 0,
+                approvedCount: 0,
+                pendingCount: 0,
+                rejectedCount: 0,
+                topicCount: 0,
+                machineCount: 0,
+                LEVEL_MACHINES,
+                LEVEL_TOPIC_MAP,
+                user: req.user,
+                currentPage: 'question-bank',
+                currentSY: null,
+                notifications,
+                syBlocked: req.query.sy_blocked === '1'
+            });
+        }
 
         const [questions] = await db.execute(`
             SELECT
@@ -6137,21 +6554,21 @@ router.get('/question-bank', isTeacher, async (req, res) => {
             LEFT JOIN topics t ON eq.topic_id = t.topic_id
             LEFT JOIN users vu ON eq.verified_by = vu.user_id
             LEFT JOIN users tu ON eq.teacher_id = tu.user_id
-            WHERE eq.is_active = 1 AND (? IS NULL OR eq.sy_id = ?)
+            WHERE eq.is_active = 1 AND eq.sy_id = ?
             ORDER BY eq.level_number ASC, eq.display_order ASC, eq.question_id DESC`,
-            [currentSyId, currentSyId]
+            [currentSyId]
         );
 
-        // Quarters + topics (nested, for dropdowns) - scoped to active classes
+        // Quarters + topics (nested, for dropdowns) - scoped strictly to Current SY classes
         const [quartersRaw] = await db.execute(`
             SELECT qt.quarter_id, qt.quarter_number, qt.subject_id,
                    t.topic_id,   t.topic_name
             FROM quarters qt
             JOIN classes c ON qt.subject_id = c.subject_id
             LEFT JOIN topics t ON t.quarter_id = qt.quarter_id
-            WHERE c.teacher_id = ? AND (? IS NULL OR c.sy_id = ?)
+            WHERE c.teacher_id = ? AND c.sy_id = ?
             ORDER BY qt.quarter_number ASC, t.topic_id ASC`,
-            [teacherId, currentSyId, currentSyId]
+            [teacherId, currentSyId]
         );
 
         const quartersMap = {};
@@ -6179,18 +6596,18 @@ router.get('/question-bank', isTeacher, async (req, res) => {
         const [assessments] = await db.execute(`
             SELECT a.assessment_id, a.assessment_name, a.assessment_type
             FROM assessments a
-            WHERE a.teacher_id = ?
+            WHERE a.teacher_id = ? AND a.sy_id = ?
             ORDER BY a.assessment_name ASC`,
-            [teacherId]
+            [teacherId, currentSyId]
         );
 
         const [classes] = await db.execute(`
             SELECT c.class_id, c.class_name, c.subject_id, s.subject_name
             FROM classes c
             LEFT JOIN subjects s ON c.subject_id = s.subject_id
-            WHERE c.teacher_id = ?
+            WHERE c.teacher_id = ? AND c.sy_id = ?
             ORDER BY c.class_name ASC`,
-            [teacherId]
+            [teacherId, currentSyId]
         );
 
         const [materials] = await db.execute(`
@@ -6206,10 +6623,10 @@ router.get('/question-bank', isTeacher, async (req, res) => {
             FROM learning_materials lm
             LEFT JOIN topics t ON lm.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-            LEFT JOIN classes c ON q.subject_id = c.subject_id
-            WHERE c.teacher_id = ? OR c.teacher_id IS NULL OR ? = 'Admin'
+            JOIN classes c ON q.subject_id = c.subject_id
+            WHERE lm.sy_id = ? AND c.teacher_id = ? AND c.sy_id = ?
             ORDER BY topic_name ASC, lm.title ASC`,
-            [teacherId, req.user.role]
+            [currentSyId, teacherId, currentSyId]
         );
 
         const totalQuestions = questions.length;
@@ -6219,7 +6636,6 @@ router.get('/question-bank', isTeacher, async (req, res) => {
         const topicCount = new Set(questions.map(q => q.level_number)).size;
         const machineCount = new Set(questions.map(q => q.machine_name)).size;
 
-        const notifications = await getTeacherNotifications(db, teacherId);
         res.render('teacher/question_bank', {
             questions,
             quarters,
@@ -6236,7 +6652,9 @@ router.get('/question-bank', isTeacher, async (req, res) => {
             LEVEL_TOPIC_MAP,
             user: req.user,
             currentPage: 'question-bank',
-            notifications
+            currentSY,
+            notifications,
+            syBlocked: req.query.sy_blocked === '1'
         });
 
     } catch (err) {
@@ -6251,11 +6669,18 @@ router.get('/question-bank', isTeacher, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 router.post('/api/question', isTeacher, async (req, res) => {
     try {
+        const currentSyId = await resolveActiveSyIdOrThrow(db);
         const {
             topic_id, level_number, question_code, prompt, question_text,
             answer_text, machine_name, machine_id, time_limit_s, points,
-            difficulty, steps_json
+            difficulty, steps_json, sy_id
         } = req.body;
+
+        if (sy_id !== undefined && sy_id !== null && String(sy_id).trim() !== '' && parseInt(sy_id, 10) !== currentSyId) {
+            const err = new Error('Cannot create questions outside the Current School Year.');
+            err.statusCode = 403;
+            throw err;
+        }
 
         const actualPrompt = prompt || question_text;
         if (!actualPrompt) throw new Error('Customer order prompt is required');
@@ -6267,6 +6692,10 @@ router.post('/api/question', isTeacher, async (req, res) => {
         const actualMachineId = parseInt(machine_id, 10) || machineInfo.id;
         const actualTopic = machineInfo.topic;
         const actualTopicId = topic_id ? parseInt(topic_id, 10) : (LEVEL_TOPIC_MAP[actualLevel] || null);
+
+        if (topic_id) {
+            await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id, currentSyId);
+        }
 
         // Auto-generate question code if missing
         const qCode = question_code && question_code.trim() !== ''
@@ -6293,9 +6722,6 @@ router.post('/api/question', isTeacher, async (req, res) => {
             [actualLevel]
         );
         const nextDisplayOrder = Number(maxOrderRow?.next_order) || 1;
-
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
-        const currentSyId = currentSY ? currentSY.sy_id : null;
 
         const [result] = await db.execute(`
             INSERT INTO elementa_questions
@@ -6339,7 +6765,7 @@ router.post('/api/question', isTeacher, async (req, res) => {
                     title: 'Arcade Question Submitted for Review',
                     message: `${req.user.first_name} ${req.user.last_name} submitted a new Elementa arcade question (${qCode}) for verification.`,
                     targetUrl: '/admin/gaming_question_bank',
-                    metadata: { questionId: newQid }
+                    metadata: { questionId: newQid, syId: currentSyId }
                 });
             }
         } catch (notifErr) {
@@ -6349,7 +6775,7 @@ router.post('/api/question', isTeacher, async (req, res) => {
         res.json({ success: true, question_id: newQid, message: 'Question submitted! Awaiting administrator approval.' });
     } catch (e) {
         console.error('[ERROR] POST /api/question:', e.message);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -6360,6 +6786,7 @@ router.post('/api/question', isTeacher, async (req, res) => {
 router.put('/api/question/:qid', isTeacher, async (req, res) => {
     try {
         const qid = req.params.qid;
+        const existingQ = await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, qid);
         const {
             topic_id, level_number, question_code, prompt, question_text,
             answer_text, machine_name, machine_id, time_limit_s, points,
@@ -6376,6 +6803,10 @@ router.put('/api/question/:qid', isTeacher, async (req, res) => {
         const actualMachineId = parseInt(machine_id, 10) || machineInfo.id;
         const actualTopic = machineInfo.topic;
         const actualTopicId = topic_id ? parseInt(topic_id, 10) : (LEVEL_TOPIC_MAP[actualLevel] || null);
+
+        if (topic_id) {
+            await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id, existingQ.currentSyId);
+        }
 
         let finalStepsJson = null;
         if (steps_json) {
@@ -6397,7 +6828,7 @@ router.put('/api/question/:qid', isTeacher, async (req, res) => {
                 difficulty          = ?,
                 verification_status = 'Pending',
                 rejection_reason    = NULL
-            WHERE question_id = ? AND (teacher_id = ? OR ? = 'Admin')`,
+            WHERE question_id = ? AND sy_id = ? AND teacher_id = ?`,
             [
                 actualLevel,
                 actualTopicId,
@@ -6411,15 +6842,15 @@ router.put('/api/question/:qid', isTeacher, async (req, res) => {
                 parseInt(points, 10) || 1,
                 difficulty || 'Easy',
                 qid,
-                req.user.user_id,
-                req.user.role
+                existingQ.currentSyId,
+                req.user.user_id
             ]
         );
 
         res.json({ success: true, message: 'Question updated and resubmitted for admin review.' });
     } catch (e) {
         console.error('[ERROR] PUT /api/question:', e.message);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -6430,14 +6861,15 @@ router.put('/api/question/:qid', isTeacher, async (req, res) => {
 router.delete('/api/question/:qid', isTeacher, async (req, res) => {
     try {
         const qid = req.params.qid;
+        const existingQ = await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, qid);
         await db.execute(
-            `UPDATE elementa_questions SET is_active = 0 WHERE question_id = ? AND (teacher_id = ? OR ? = 'Admin')`,
-            [qid, req.user.user_id, req.user.role]
+            `UPDATE elementa_questions SET is_active = 0 WHERE question_id = ? AND sy_id = ? AND teacher_id = ?`,
+            [qid, existingQ.currentSyId, req.user.user_id]
         );
         res.json({ success: true });
     } catch (e) {
         console.error('[ERROR] DELETE /api/question:', e.message);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -6447,18 +6879,27 @@ router.delete('/api/question/:qid', isTeacher, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 router.post('/api/questions/bulk-delete', isTeacher, async (req, res) => {
     try {
-        const ids = req.body.ids;
-        if (!ids || !ids.length) throw new Error('No ids provided');
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+        const ids = Array.isArray(req.body.ids) ? req.body.ids.map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n > 0) : [];
+        if (!ids.length) throw new Error('No valid ids provided');
 
         const placeholders = ids.map(() => '?').join(',');
-        await db.execute(
-            `UPDATE elementa_questions SET is_active = 0 WHERE question_id IN (${placeholders}) AND (teacher_id = ? OR ? = 'Admin')`,
-            [...ids, req.user.user_id, req.user.role]
+        const [nonCurrentRows] = await db.query(
+            `SELECT question_id FROM elementa_questions WHERE question_id IN (${placeholders}) AND (sy_id IS NULL OR sy_id <> ?)`,
+            [...ids, activeSyId]
         );
-        res.json({ success: true, deleted: ids.length });
+        if (nonCurrentRows.length > 0) {
+            return res.status(403).json({ error: 'One or more selected questions belong to a non-current School Year.' });
+        }
+
+        const [delRes] = await db.execute(
+            `UPDATE elementa_questions SET is_active = 0 WHERE question_id IN (${placeholders}) AND sy_id = ? AND teacher_id = ?`,
+            [...ids, activeSyId, req.user.user_id]
+        );
+        res.json({ success: true, deleted: delRes.affectedRows });
     } catch (e) {
         console.error('[ERROR] POST /api/questions/bulk-delete:', e.message);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -6470,25 +6911,20 @@ router.post('/api/question/:qid/link-assessment', isTeacher, async (req, res) =>
         const { assessment_id } = req.body;
         if (!assessment_id) throw new Error('assessment_id is required');
 
-        const [asmtRows] = await db.execute(
-            `SELECT topic_id FROM assessments WHERE assessment_id = ? AND teacher_id = ?`,
-            [assessment_id, req.user.user_id]
-        );
-        if (!asmtRows.length) {
-            return res.status(404).json({ error: 'Assessment not found or not yours' });
-        }
+        const existingQ = await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, req.params.qid);
+        const asmtMeta = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, assessment_id, existingQ.currentSyId, { requireOwnership: true });
 
-        const topicId = asmtRows[0].topic_id;
+        const topicId = asmtMeta.topic_id;
         const levelNum = TOPIC_LEVEL_MAP[topicId] || 1;
 
         await db.execute(
-            `UPDATE elementa_questions SET topic_id = ?, level_number = ? WHERE question_id = ? AND (teacher_id = ? OR ? = 'Admin')`,
-            [topicId, levelNum, req.params.qid, req.user.user_id, req.user.role]
+            `UPDATE elementa_questions SET topic_id = ?, level_number = ? WHERE question_id = ? AND sy_id = ? AND teacher_id = ?`,
+            [topicId, levelNum, req.params.qid, existingQ.currentSyId, req.user.user_id]
         );
         res.json({ success: true });
     } catch (e) {
         console.error('[ERROR] POST /api/question/link-assessment:', e.message);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -6499,14 +6935,15 @@ router.post('/api/question/:qid/link-assessment', isTeacher, async (req, res) =>
 // ════════════════════════════════════════════════════════════════════════════
 router.patch('/api/question/:qid/cancel-submission', isTeacher, async (req, res) => {
     try {
+        const existingQ = await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, req.params.qid);
         await db.execute(
             `UPDATE elementa_questions SET verification_status = 'Rejected', rejection_reason = 'Cancelled by teacher.'
-             WHERE question_id = ? AND (teacher_id = ? OR ? = 'Admin')`,
-            [req.params.qid, req.user.user_id, req.user.role]
+             WHERE question_id = ? AND sy_id = ? AND teacher_id = ?`,
+            [req.params.qid, existingQ.currentSyId, req.user.user_id]
         );
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -6518,6 +6955,7 @@ router.patch('/api/question/:qid/cancel-submission', isTeacher, async (req, res)
 router.put('/api/question/:qid/revise', isTeacher, async (req, res) => {
     try {
         const qid = req.params.qid;
+        const existingQ = await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, qid);
         const {
             topic_id, level_number, prompt, question_text,
             answer_text, machine_name, machine_id, time_limit_s, points,
@@ -6534,6 +6972,10 @@ router.put('/api/question/:qid/revise', isTeacher, async (req, res) => {
         const actualMachineId = parseInt(machine_id, 10) || machineInfo.id;
         const actualTopic = machineInfo.topic;
         const actualTopicId = topic_id ? parseInt(topic_id, 10) : (LEVEL_TOPIC_MAP[actualLevel] || null);
+
+        if (topic_id) {
+            await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id, existingQ.currentSyId);
+        }
 
         let finalStepsJson = null;
         if (steps_json) {
@@ -6557,7 +6999,7 @@ router.put('/api/question/:qid/revise', isTeacher, async (req, res) => {
                 rejection_reason    = NULL,
                 verified_by         = NULL,
                 verified_at         = NULL
-            WHERE question_id = ? AND (teacher_id = ? OR ? = 'Admin')`,
+            WHERE question_id = ? AND sy_id = ? AND teacher_id = ?`,
             [
                 actualLevel,
                 actualTopicId,
@@ -6571,8 +7013,8 @@ router.put('/api/question/:qid/revise', isTeacher, async (req, res) => {
                 parseInt(points, 10) || 1,
                 difficulty || 'Easy',
                 qid,
-                req.user.user_id,
-                req.user.role
+                existingQ.currentSyId,
+                req.user.user_id
             ]
         );
 
@@ -6591,7 +7033,7 @@ router.put('/api/question/:qid/revise', isTeacher, async (req, res) => {
                     title: 'Revised Arcade Question Submitted',
                     message: `${req.user.first_name} ${req.user.last_name} submitted a revised Elementa question for review.`,
                     targetUrl: '/admin/gaming_question_bank',
-                    metadata: { questionId: qid }
+                    metadata: { questionId: qid, syId: existingQ.currentSyId }
                 });
             }
         } catch (notifErr) {
@@ -6601,7 +7043,7 @@ router.put('/api/question/:qid/revise', isTeacher, async (req, res) => {
         res.json({ success: true, message: 'Question revised and resubmitted for admin review.' });
     } catch (e) {
         console.error('[ERROR] PUT /api/question/revise:', e.message);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -6611,6 +7053,10 @@ router.put('/api/question/:qid/revise', isTeacher, async (req, res) => {
 router.get('/api/questions/performance-gaps', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
     try {
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) return res.json({ questions: [] });
+
         const [rows] = await db.execute(`
             SELECT
                 eq.question_id,
@@ -6618,22 +7064,26 @@ router.get('/api/questions/performance-gaps', isTeacher, async (req, res) => {
                 eq.difficulty,
                 eq.machine_name                                                           AS mechanic_type,
                 COALESCE(t.topic_name, eq.topic)                                          AS topic_name,
-                COUNT(DISTINCT eqh.history_id)                                            AS total_attempts,
-                COUNT(DISTINCT CASE WHEN eqh.is_correct = 0 THEN eqh.history_id END)      AS wrong_count,
+                COUNT(DISTINCT eca.attempt_id)                                            AS total_attempts,
+                COUNT(DISTINCT CASE WHEN eca.is_correct = 0 THEN eca.attempt_id END)      AS wrong_count,
                 COALESCE(
-                    COUNT(DISTINCT CASE WHEN eqh.is_correct = 0 THEN eqh.history_id END)
-                    / NULLIF(COUNT(DISTINCT eqh.history_id), 0)
+                    COUNT(DISTINCT CASE WHEN eca.is_correct = 0 THEN eca.attempt_id END)
+                    / NULLIF(COUNT(DISTINCT eca.attempt_id), 0)
                 , 0)                                                                       AS error_rate
             FROM elementa_questions eq
-            LEFT JOIN topics t                 ON eq.topic_id        = t.topic_id
-            LEFT JOIN elementa_question_history eqh ON eqh.question_id = eq.question_id
-            WHERE (eq.teacher_id = ? OR eq.teacher_id IS NULL)
+            LEFT JOIN topics t ON eq.topic_id = t.topic_id
+            JOIN elementa_customer_attempts eca ON eca.question_id = eq.question_id
+            JOIN elementa_level_runs elr ON elr.run_id = eca.run_id
+            JOIN elementa_game_sessions egs ON egs.session_id = elr.session_id AND egs.sy_id = ?
+            JOIN class_students cs ON cs.student_id = (CASE WHEN elr.player_number = 1 THEN egs.student_id_p1 ELSE egs.student_id_p2 END) AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+            JOIN classes c ON cs.class_id = c.class_id AND c.teacher_id = ? AND c.sy_id = ?
+            WHERE eq.sy_id = ?
               AND eq.verification_status = 'Approved'
               AND eq.is_active = 1
             GROUP BY eq.question_id, eq.prompt, eq.difficulty, eq.machine_name, t.topic_name, eq.topic
             HAVING total_attempts > 0
             ORDER BY error_rate DESC, total_attempts DESC`,
-            [teacherId]
+            [currentSyId, currentSyId, teacherId, currentSyId, currentSyId]
         );
         res.json({ questions: rows });
     } catch (e) {
@@ -6652,12 +7102,15 @@ router.get('/api/telemetry/class/:classId', isTeacher, async (req, res) => {
         const classId = parseInt(req.params.classId, 10);
         if (!classId) return res.status(400).json({ error: 'Invalid class ID' });
 
+        const clsObj = await verifyTeacherClassInCurrentSY(db, teacherId, classId);
+        const currentSyId = Number(clsObj.sy_id);
+
         const [cls] = await db.query(
             `SELECT c.class_id, c.class_name, s.subject_name 
              FROM classes c 
              LEFT JOIN subjects s ON c.subject_id = s.subject_id 
-             WHERE c.class_id = ? AND (c.teacher_id = ? OR ? = 'Admin')`,
-            [classId, teacherId, req.user.role]
+             WHERE c.class_id = ? AND c.sy_id = ? AND c.teacher_id = ?`,
+            [classId, currentSyId, teacherId]
         );
         if (!cls.length) return res.status(403).json({ error: 'Access denied to this class.' });
 
@@ -6686,15 +7139,15 @@ router.get('/api/telemetry/class/:classId', isTeacher, async (req, res) => {
                 MAX(eqr.advice_text) AS assigned_advice_text
             FROM elementa_customer_attempts ca
             JOIN elementa_level_runs r ON r.run_id = ca.run_id
-            JOIN elementa_game_sessions s ON s.session_id = r.session_id
-            JOIN class_students cs ON cs.student_id = (CASE WHEN r.player_number = 1 THEN s.student_id_p1 ELSE s.student_id_p2 END)
-            LEFT JOIN elementa_questions eq ON (eq.question_id = ca.question_id OR (ca.question_snapshot IS NOT NULL AND eq.prompt = ca.question_snapshot))
+            JOIN elementa_game_sessions s ON s.session_id = r.session_id AND s.sy_id = ?
+            JOIN class_students cs ON cs.student_id = (CASE WHEN r.player_number = 1 THEN s.student_id_p1 ELSE s.student_id_p2 END) AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+            LEFT JOIN elementa_questions eq ON (eq.question_id = ca.question_id OR (ca.question_snapshot IS NOT NULL AND eq.prompt = ca.question_snapshot)) AND (eq.sy_id IS NULL OR eq.sy_id = ?)
             LEFT JOIN elementa_question_remediation eqr ON eqr.question_id = COALESCE(eq.question_id, ca.question_id) AND (eqr.class_id = cs.class_id OR eqr.class_id IS NULL)
-            LEFT JOIN learning_materials lm ON lm.material_id = eqr.material_id
+            LEFT JOIN learning_materials lm ON lm.material_id = eqr.material_id AND lm.sy_id = ?
             WHERE cs.class_id = ?
             GROUP BY COALESCE(eq.question_id, ca.question_id), question_code, question_prompt, correct_answer, machine_name, level_number
             HAVING total_attempts > 0
-        `, [classId]);
+        `, [currentSyId, currentSyId, currentSyId, currentSyId, classId]);
 
         const struggling = [...rows].filter(q => q.wrong_count > 0).sort((a, b) => b.wrong_count - a.wrong_count || b.error_rate_pct - a.error_rate_pct);
         const mastered = [...rows].filter(q => q.correct_count > 0).sort((a, b) => b.accuracy_pct - a.accuracy_pct || b.total_attempts - a.total_attempts);
@@ -6707,14 +7160,14 @@ router.get('/api/telemetry/class/:classId', isTeacher, async (req, res) => {
                 SUM(CASE WHEN ca.is_correct = 1 THEN 1 ELSE 0 END) AS total_correct,
                 ROUND((SUM(CASE WHEN ca.is_correct = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(ca.attempt_id), 0)) * 100, 1) AS class_accuracy
             FROM class_students cs
-            LEFT JOIN elementa_game_sessions s ON (s.student_id_p1 = cs.student_id OR s.student_id_p2 = cs.student_id)
+            LEFT JOIN elementa_game_sessions s ON (s.student_id_p1 = cs.student_id OR s.student_id_p2 = cs.student_id) AND s.sy_id = ?
             LEFT JOIN elementa_level_runs r ON r.session_id = s.session_id AND (
                 (r.player_number = 1 AND s.student_id_p1 = cs.student_id) OR
                 (r.player_number = 2 AND s.student_id_p2 = cs.student_id)
             )
             LEFT JOIN elementa_customer_attempts ca ON ca.run_id = r.run_id
-            WHERE cs.class_id = ?
-        `, [classId]);
+            WHERE cs.class_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+        `, [currentSyId, classId, currentSyId]);
 
         res.json({
             success: true,
@@ -6725,7 +7178,7 @@ router.get('/api/telemetry/class/:classId', isTeacher, async (req, res) => {
         });
     } catch (err) {
         console.error('[ERROR] GET /api/telemetry/class/:classId:', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -6737,6 +7190,9 @@ router.get('/api/telemetry/class/:classId/students', isTeacher, async (req, res)
     try {
         const classId = parseInt(req.params.classId, 10);
         if (!classId) return res.status(400).json({ error: 'Invalid class ID' });
+
+        const clsObj = await verifyTeacherClassInCurrentSY(db, req.user.user_id, classId);
+        const currentSyId = Number(clsObj.sy_id);
 
         const [students] = await db.query(`
             SELECT 
@@ -6753,21 +7209,21 @@ router.get('/api/telemetry/class/:classId/students', isTeacher, async (req, res)
                 MAX(ca.attempted_at) AS last_played
             FROM class_students cs
             JOIN users u ON cs.student_id = u.user_id
-            LEFT JOIN elementa_game_sessions s ON (s.student_id_p1 = u.user_id OR s.student_id_p2 = u.user_id)
+            LEFT JOIN elementa_game_sessions s ON (s.student_id_p1 = u.user_id OR s.student_id_p2 = u.user_id) AND s.sy_id = ?
             LEFT JOIN elementa_level_runs r ON r.session_id = s.session_id AND (
                 (r.player_number = 1 AND s.student_id_p1 = u.user_id) OR
                 (r.player_number = 2 AND s.student_id_p2 = u.user_id)
             )
             LEFT JOIN elementa_customer_attempts ca ON ca.run_id = r.run_id
-            WHERE cs.class_id = ?
+            WHERE cs.class_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = ?)
             GROUP BY u.user_id, u.first_name, u.last_name, u.lrn_number, u.profile_pic
             ORDER BY total_score DESC, accuracy_pct DESC
-        `, [classId]);
+        `, [currentSyId, classId, currentSyId]);
 
         res.json({ success: true, students });
     } catch (err) {
         console.error('[ERROR] GET /api/telemetry/class/:classId/students:', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -6780,13 +7236,19 @@ router.get('/api/telemetry/student/:studentId', isTeacher, async (req, res) => {
         const studentId = parseInt(req.params.studentId, 10);
         if (!studentId) return res.status(400).json({ error: 'Invalid student ID' });
 
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+        const enrolled = await verifyStudentInTeacherCurrentSY(db, req.user.user_id, studentId, activeSyId);
+        if (!enrolled) {
+            return res.status(403).json({ error: 'Student is not enrolled in your Current School Year classes.' });
+        }
+
         const [[student]] = await db.query(
             `SELECT user_id, first_name, last_name, lrn_number, profile_pic FROM users WHERE user_id = ?`,
             [studentId]
         );
         if (!student) return res.status(404).json({ error: 'Student not found' });
 
-        const radar = await arcadeAnalyticsService.getStudentRadar(studentId);
+        const radar = await arcadeAnalyticsService.getStudentRadar(studentId, { syId: activeSyId });
 
         const [attempts] = await db.query(`
             SELECT 
@@ -6806,11 +7268,11 @@ router.get('/api/telemetry/student/:studentId', isTeacher, async (req, res) => {
             FROM elementa_customer_attempts ca
             JOIN elementa_level_runs r ON r.run_id = ca.run_id
             JOIN elementa_game_sessions s ON s.session_id = r.session_id
-            LEFT JOIN elementa_questions eq ON (eq.question_id = ca.question_id OR (ca.question_snapshot IS NOT NULL AND eq.prompt = ca.question_snapshot))
-            WHERE (s.student_id_p1 = ? OR s.student_id_p2 = ?)
+            LEFT JOIN elementa_questions eq ON (eq.question_id = ca.question_id OR (ca.question_snapshot IS NOT NULL AND eq.prompt = ca.question_snapshot)) AND (eq.sy_id IS NULL OR eq.sy_id = ?)
+            WHERE s.sy_id = ? AND (s.student_id_p1 = ? OR s.student_id_p2 = ?)
             ORDER BY ca.attempted_at DESC
             LIMIT 50
-        `, [studentId, studentId]);
+        `, [activeSyId, activeSyId, studentId, studentId]);
 
         res.json({
             success: true,
@@ -6820,7 +7282,7 @@ router.get('/api/telemetry/student/:studentId', isTeacher, async (req, res) => {
         });
     } catch (err) {
         console.error('[ERROR] GET /api/telemetry/student/:studentId:', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -6836,10 +7298,14 @@ router.get('/api/telemetry/question/:questionId/struggling-students', isTeacher,
             return res.status(400).json({ error: 'Valid questionId and classId parameters are required.' });
         }
 
-        // 1. Fetch Question Info
+        const clsObj = await verifyTeacherClassInCurrentSY(db, req.user.user_id, classId);
+        const currentSyId = Number(clsObj.sy_id);
+
+        // 1. Fetch Question Info (verify Current SY)
         const [[question]] = await db.query(`
             SELECT 
                 eq.question_id,
+                eq.sy_id,
                 eq.question_code,
                 eq.prompt,
                 eq.level_number,
@@ -6851,7 +7317,11 @@ router.get('/api/telemetry/question/:questionId/struggling-students', isTeacher,
             WHERE eq.question_id = ?
         `, [questionId]);
 
-        // 2. Fetch Struggling Students in this Class who got this question wrong
+        if (question && question.sy_id && Number(question.sy_id) !== currentSyId) {
+            return res.status(403).json({ error: 'Question belongs to another School Year.' });
+        }
+
+        // 2. Fetch Struggling Students in this Class who got this question wrong (Current SY)
         const [students] = await db.query(`
             SELECT DISTINCT 
                 u.user_id,
@@ -6864,17 +7334,17 @@ router.get('/api/telemetry/question/:questionId/struggling-students', isTeacher,
                 MAX(ca.player_answer) AS last_answer
             FROM elementa_customer_attempts ca
             JOIN elementa_level_runs r ON r.run_id = ca.run_id
-            JOIN elementa_game_sessions s ON s.session_id = r.session_id
-            JOIN class_students cs ON cs.student_id = (CASE WHEN r.player_number = 1 THEN s.student_id_p1 ELSE s.student_id_p2 END)
+            JOIN elementa_game_sessions s ON s.session_id = r.session_id AND s.sy_id = ?
+            JOIN class_students cs ON cs.student_id = (CASE WHEN r.player_number = 1 THEN s.student_id_p1 ELSE s.student_id_p2 END) AND (cs.sy_id IS NULL OR cs.sy_id = ?)
             JOIN users u ON u.user_id = cs.student_id
             WHERE cs.class_id = ? 
               AND (ca.question_id = ? OR ca.question_snapshot = ?)
               AND ca.is_correct = 0
             GROUP BY u.user_id, u.first_name, u.last_name, u.lrn_number, u.profile_pic
             ORDER BY u.last_name ASC, u.first_name ASC
-        `, [classId, questionId, question ? question.prompt : '']);
+        `, [currentSyId, currentSyId, classId, questionId, question ? question.prompt : '']);
 
-        // 3. Fetch currently assigned remediation material (if any)
+        // 3. Fetch currently assigned remediation material (if any, scoped to Current SY)
         const [[currentRemediation]] = await db.query(`
             SELECT 
                 eqr.id,
@@ -6886,14 +7356,14 @@ router.get('/api/telemetry/question/:questionId/struggling-students', isTeacher,
                 lm.file_path_or_url,
                 t.topic_name
             FROM elementa_question_remediation eqr
-            JOIN learning_materials lm ON eqr.material_id = lm.material_id
+            JOIN learning_materials lm ON eqr.material_id = lm.material_id AND lm.sy_id = ?
             LEFT JOIN topics t ON lm.topic_id = t.topic_id
             WHERE eqr.question_id = ? AND (eqr.class_id = ? OR eqr.class_id IS NULL)
             ORDER BY eqr.assigned_at DESC
             LIMIT 1
-        `, [questionId, classId]);
+        `, [currentSyId, questionId, classId]);
 
-        // 4. Fetch available uploaded learning materials
+        // 4. Fetch available uploaded learning materials strictly in Current SY
         const [materials] = await db.query(`
             SELECT DISTINCT
                 lm.material_id, 
@@ -6906,10 +7376,10 @@ router.get('/api/telemetry/question/:questionId/struggling-students', isTeacher,
             FROM learning_materials lm
             LEFT JOIN topics t ON lm.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-            LEFT JOIN classes c ON q.subject_id = c.subject_id
-            WHERE c.teacher_id = ? OR c.teacher_id IS NULL OR ? = 'Admin'
+            JOIN classes c ON q.subject_id = c.subject_id
+            WHERE lm.sy_id = ? AND c.teacher_id = ? AND c.sy_id = ?
             ORDER BY topic_name ASC, lm.title ASC
-        `, [req.user.user_id, req.user.role]);
+        `, [currentSyId, req.user.user_id, currentSyId]);
 
         res.json({
             success: true,
@@ -6920,7 +7390,7 @@ router.get('/api/telemetry/question/:questionId/struggling-students', isTeacher,
         });
     } catch (err) {
         console.error('[ERROR] GET /api/telemetry/question/:questionId/struggling-students:', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -6939,25 +7409,28 @@ router.post('/api/telemetry/assign-remediation', isTeacher, async (req, res) => 
             return res.status(400).json({ error: 'Class, question, and learning material are required.' });
         }
 
-        // Verify class ownership
-        const [cls] = await db.query(`
-            SELECT class_id, class_name FROM classes WHERE class_id = ? AND (teacher_id = ? OR ? = 'Admin')
-        `, [classId, req.user.user_id, req.user.role]);
-        if (!cls.length) return res.status(403).json({ error: 'Access denied to this class.' });
+        const clsObj = await verifyTeacherClassInCurrentSY(db, req.user.user_id, classId);
+        const currentSyId = Number(clsObj.sy_id);
 
-        // Verify material
+        // Verify material belongs to Current SY
         const [[mat]] = await db.query(`
-            SELECT lm.material_id, lm.title, lm.material_type, lm.file_path_or_url, lm.topic_id, t.topic_name
+            SELECT lm.material_id, lm.sy_id, lm.title, lm.material_type, lm.file_path_or_url, lm.topic_id, t.topic_name
             FROM learning_materials lm
             LEFT JOIN topics t ON lm.topic_id = t.topic_id
             WHERE lm.material_id = ?
         `, [materialId]);
         if (!mat) return res.status(404).json({ error: 'Learning material not found.' });
+        if (!mat.sy_id || Number(mat.sy_id) !== currentSyId) {
+            return res.status(403).json({ error: 'Learning material belongs to another School Year.' });
+        }
 
-        // Fetch question info
+        // Fetch & verify question info belongs to Current SY
         const [[qRow]] = await db.query(`
-            SELECT question_code, prompt, machine_name FROM elementa_questions WHERE question_id = ?
+            SELECT question_code, prompt, machine_name, sy_id FROM elementa_questions WHERE question_id = ?
         `, [questionId]);
+        if (qRow && qRow.sy_id && Number(qRow.sy_id) !== currentSyId) {
+            return res.status(403).json({ error: 'Question belongs to another School Year.' });
+        }
         const qCode = qRow ? qRow.question_code : `Q${questionId}`;
 
         // Save / Update in elementa_question_remediation
@@ -6970,17 +7443,17 @@ router.post('/api/telemetry/assign-remediation', isTeacher, async (req, res) => 
             VALUES (?, ?, ?, ?, ?)
         `, [classId, questionId, materialId, advice_text || null, req.user.user_id]);
 
-        // Find students who got this question wrong in this class
+        // Find students who got this question wrong in this class (Current SY only)
         const [strugglingStudents] = await db.query(`
             SELECT DISTINCT (CASE WHEN r.player_number = 1 THEN s.student_id_p1 ELSE s.student_id_p2 END) AS student_id
             FROM elementa_customer_attempts ca
             JOIN elementa_level_runs r ON r.run_id = ca.run_id
-            JOIN elementa_game_sessions s ON s.session_id = r.session_id
-            JOIN class_students cs ON cs.student_id = (CASE WHEN r.player_number = 1 THEN s.student_id_p1 ELSE s.student_id_p2 END)
+            JOIN elementa_game_sessions s ON s.session_id = r.session_id AND s.sy_id = ?
+            JOIN class_students cs ON cs.student_id = (CASE WHEN r.player_number = 1 THEN s.student_id_p1 ELSE s.student_id_p2 END) AND (cs.sy_id IS NULL OR cs.sy_id = ?)
             WHERE cs.class_id = ? 
               AND (ca.question_id = ? OR ca.question_snapshot = ?)
               AND ca.is_correct = 0
-        `, [classId, questionId, qRow ? qRow.prompt : '']);
+        `, [currentSyId, currentSyId, classId, questionId, qRow ? qRow.prompt : '']);
 
         const studentIds = strugglingStudents.map(s => s.student_id);
 
@@ -7008,7 +7481,8 @@ router.post('/api/telemetry/assign-remediation', isTeacher, async (req, res) => 
                 metadata: {
                     questionId,
                     materialId,
-                    classId
+                    classId,
+                    syId: currentSyId
                 }
             });
         }
@@ -7017,11 +7491,11 @@ router.post('/api/telemetry/assign-remediation', isTeacher, async (req, res) => 
             success: true,
             student_count: studentIds.length,
             material_title: mat.title,
-            class_name: cls[0].class_name
+            class_name: clsObj.class_name
         });
     } catch (err) {
         console.error('[ERROR] POST /api/telemetry/assign-remediation:', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -7031,11 +7505,8 @@ router.get('/api/question/:qid/student-performance', isTeacher, async (req, res)
     const teacherId = req.user.user_id;
     const qid = req.params.qid;
     try {
-        const [ownership] = await db.execute(
-            `SELECT question_id FROM elementa_questions WHERE question_id = ? AND (teacher_id = ? OR teacher_id IS NULL OR ? = 'Admin')`,
-            [qid, teacherId, req.user.role]
-        );
-        if (!ownership.length) return res.status(403).json({ error: 'Access denied.' });
+        const qMeta = await verifyTeacherQuestionInCurrentSY(db, teacherId, qid, null, { allowSharedApproved: true });
+        const currentSyId = qMeta.currentSyId;
 
         const [rows] = await db.execute(`
             SELECT
@@ -7047,32 +7518,34 @@ router.get('/api/question/:qid/student-performance', isTeacher, async (req, res)
                 u.lrn_number,
                 COALESCE(a.assessment_name, 'Elementa Arcade') AS assessment_name,
                 'Arcade' AS assessment_type,
-                eqh.is_correct,
+                eca.is_correct,
                 eq.answer_text AS correct_answer,
-                eqh.answered_at AS date_recorded
-            FROM elementa_question_history eqh
-            JOIN elementa_game_sessions egs ON eqh.session_id = egs.session_id
-            JOIN users u ON egs.user_id = u.user_id
-            JOIN class_students cs ON cs.student_id = u.user_id
-            JOIN classes c ON cs.class_id = c.class_id AND c.teacher_id = ?
-            JOIN elementa_questions eq ON eqh.question_id = eq.question_id
+                eca.attempted_at AS date_recorded
+            FROM elementa_customer_attempts eca
+            JOIN elementa_level_runs elr ON eca.run_id = elr.run_id
+            JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id AND egs.sy_id = ?
+            JOIN users u ON u.user_id = (CASE WHEN elr.player_number = 1 THEN egs.student_id_p1 ELSE egs.student_id_p2 END)
+            JOIN class_students cs ON cs.student_id = u.user_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+            JOIN classes c ON cs.class_id = c.class_id AND c.teacher_id = ? AND c.sy_id = ?
+            JOIN elementa_questions eq ON eca.question_id = eq.question_id AND eq.sy_id = ?
             LEFT JOIN assessments a ON egs.assessment_id = a.assessment_id
-            WHERE eqh.question_id = ?
+            WHERE eca.question_id = ?
               AND u.role = 'Student'
-            ORDER BY eqh.answered_at DESC`,
-            [teacherId, qid]
+            ORDER BY eca.attempted_at DESC`,
+            [currentSyId, currentSyId, teacherId, currentSyId, currentSyId, qid]
         );
 
         res.json({ students: rows });
     } catch (e) {
         console.error('[ERROR] GET /api/question/:qid/student-performance:', e.message);
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
 
 router.get('/api/question/:qid/remediations', isTeacher, async (req, res) => {
     try {
+        const qMeta = await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, req.params.qid, null, { allowSharedApproved: true });
         const [rows] = await db.execute(`
             SELECT
                 rm.rem_id,
@@ -7086,12 +7559,13 @@ router.get('/api/question/:qid/remediations', isTeacher, async (req, res) => {
             FROM remediation_materials rm
             LEFT JOIN learning_materials lm ON rm.material_id = lm.material_id
             WHERE rm.question_id = ?
+              AND (lm.material_id IS NULL OR lm.sy_id = ?)
             ORDER BY rm.created_at DESC`,
-            [req.params.qid]
+            [req.params.qid, qMeta.currentSyId]
         );
         res.json({ remediations: rows });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -7101,14 +7575,20 @@ router.get('/api/question/:qid/remediations', isTeacher, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 router.post('/api/question/:qid/remediation', isTeacher, async (req, res) => {
     try {
+        const qMeta = await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, req.params.qid, null, { allowSharedApproved: true });
+        const currentSyId = qMeta.currentSyId;
         const { advice_text, material_id, link_url, preview_json } = req.body;
+        if (material_id) {
+            await verifyTeacherMaterialInCurrentSY(db, req.user.user_id, material_id, currentSyId);
+        }
+
         await db.execute(
             `INSERT INTO remediation_materials (question_id, material_id, advice_text, link_url, preview_json)
              VALUES (?, ?, ?, ?, ?)`,
             [req.params.qid, material_id || null, advice_text || null, link_url || null, preview_json ? JSON.stringify(preview_json) : null]
         );
 
-        // Notify struggling students who missed this question via elementa_customer_attempts
+        // Notify struggling students who missed this question in Current SY only
         try {
             const [struggling] = await db.query(`
                 SELECT DISTINCT 
@@ -7116,14 +7596,15 @@ router.post('/api/question/:qid/remediation', isTeacher, async (req, res) => {
                     c.class_id
                 FROM elementa_customer_attempts eca
                 JOIN elementa_level_runs elr ON eca.run_id = elr.run_id
-                JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
-                JOIN elementa_questions eq ON eca.question_id = eq.question_id
+                JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id AND egs.sy_id = ?
+                JOIN elementa_questions eq ON eca.question_id = eq.question_id AND eq.sy_id = ?
                 JOIN topics t ON eq.topic_id = t.topic_id
                 JOIN quarters q ON t.quarter_id = q.quarter_id
-                JOIN classes c ON q.subject_id = c.subject_id
-                JOIN class_students cs ON c.class_id = cs.class_id AND (CASE WHEN elr.player_number = 1 THEN egs.student_id_p1 ELSE egs.student_id_p2 END) = cs.student_id
+                JOIN classes c ON q.subject_id = c.subject_id AND c.teacher_id = ? AND c.sy_id = ?
+                JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+                    AND (CASE WHEN elr.player_number = 1 THEN egs.student_id_p1 ELSE egs.student_id_p2 END) = cs.student_id
                 WHERE eca.question_id = ? AND eca.is_correct = 0
-            `, [req.params.qid]);
+            `, [currentSyId, currentSyId, req.user.user_id, currentSyId, currentSyId, req.params.qid]);
 
             if (struggling.length > 0) {
                 const studentIds = [...new Set(struggling.map(s => s.student_id).filter(Boolean))];
@@ -7139,7 +7620,7 @@ router.post('/api/question/:qid/remediation', isTeacher, async (req, res) => {
                         title: 'New Study Guidance Added',
                         message: 'Your teacher posted remedial study material for questions you missed.',
                         targetUrl: `/subjects/open/${classId}`,
-                        metadata: { questionId: req.params.qid, materialId: material_id || null }
+                        metadata: { questionId: req.params.qid, materialId: material_id || null, syId: currentSyId }
                     });
                 }
             }
@@ -7149,7 +7630,7 @@ router.post('/api/question/:qid/remediation', isTeacher, async (req, res) => {
 
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -7159,10 +7640,14 @@ router.post('/api/question/:qid/remediation', isTeacher, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 router.delete('/api/remediation/:remId', isTeacher, async (req, res) => {
     try {
+        const [[rem]] = await db.query(`SELECT question_id FROM remediation_materials WHERE rem_id = ? LIMIT 1`, [req.params.remId]);
+        if (!rem) return res.status(404).json({ error: 'Remediation not found' });
+        await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, rem.question_id, null, { allowSharedApproved: true });
+
         await db.execute(`DELETE FROM remediation_materials WHERE rem_id = ?`, [req.params.remId]);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(e.statusCode || 500).json({ error: e.message });
     }
 });
 
@@ -7180,6 +7665,11 @@ router.post('/api/generate-questions', isTeacher, async (req, res) => {
 
         if (!topic_id) throw new Error('topic_id is required');
         if (!difficulty) throw new Error('difficulty is required');
+
+        const topicMeta = await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id);
+        if (material_id) {
+            await verifyTeacherMaterialInCurrentSY(db, req.user.user_id, material_id, topicMeta.currentSyId);
+        }
 
         const safeCount = Math.min(Math.max(parseInt(count) || 5, 1), 20);
 
@@ -7321,7 +7811,7 @@ JSON schema for each item:
 
     } catch (e) {
         console.error('[GEMINI ERROR] POST /api/generate-questions:', e.message);
-        res.status(500).json({ error: 'AI Generation Failed: ' + e.message });
+        res.status(e.statusCode || 500).json({ error: 'AI Generation Failed: ' + e.message });
     }
 });
 
@@ -7372,14 +7862,7 @@ const forumUpload = multer({
  * Never falls back to an Archive/Draft SY so forum routes fail closed when no SY is active.
  */
 async function resolveStrictForumCurrentSY() {
-    const [[currentSY]] = await db.query(`
-        SELECT *
-        FROM school_years
-        WHERE status = 'Current' OR is_active = 1
-        ORDER BY (status = 'Current' AND is_active = 1) DESC, is_active DESC, sy_id DESC
-        LIMIT 1
-    `);
-    return currentSY || null;
+    return academicHelper.getStrictCurrentSchoolYear(db);
 }
 
 /**
@@ -9666,6 +10149,12 @@ router.get('/analysis/:attemptId', isTeacher, async (req, res) => {
     const studentId = req.query.student_id ? parseInt(req.query.student_id, 10) : null;
 
     try {
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) {
+            return res.redirect('/teacher/all-activities?sy_blocked=1');
+        }
+
         // Check if session is a Versus match in elementa_game_sessions
         const [versusSessionRows] = await db.execute(`
             SELECT 
@@ -9696,14 +10185,30 @@ router.get('/analysis/:attemptId', isTeacher, async (req, res) => {
         if (isVersus) {
             const vsSess = versusSessionRows[0];
 
-            // Fetch EXP and grade stats for both players
+            // Strict Current SY & teacher ownership guard
+            if (!vsSess.sy_id || Number(vsSess.sy_id) !== currentSyId) {
+                return res.redirect('/teacher/all-activities?sy_blocked=1');
+            }
+            if (vsSess.class_id) {
+                const [[clsOwn]] = await db.execute(
+                    `SELECT class_id FROM classes WHERE class_id = ? AND teacher_id = ? AND sy_id = ? LIMIT 1`,
+                    [vsSess.class_id, teacherId, currentSyId]
+                );
+                if (!clsOwn) return res.redirect('/teacher/all-activities?sy_blocked=1');
+            } else {
+                const p1Own = await verifyStudentInTeacherCurrentSY(db, teacherId, vsSess.student_id_p1, currentSyId);
+                const p2Own = vsSess.student_id_p2 ? await verifyStudentInTeacherCurrentSY(db, teacherId, vsSess.student_id_p2, currentSyId) : null;
+                if (!p1Own && !p2Own) return res.redirect('/teacher/all-activities?sy_blocked=1');
+            }
+
+            // Fetch EXP and grade stats for both players (strictly Current SY)
             const [p1ScoreRows] = await db.query('SELECT exp_gained FROM student_scores WHERE assessment_id = ? AND student_id = ? LIMIT 1', [vsSess.assessment_id, vsSess.student_id_p1]);
             const [p2ScoreRows] = await db.query('SELECT exp_gained FROM student_scores WHERE assessment_id = ? AND student_id = ? LIMIT 1', [vsSess.assessment_id, vsSess.student_id_p2]);
             const p1Exp = p1ScoreRows.length ? p1ScoreRows[0].exp_gained : 300;
             const p2Exp = p2ScoreRows.length ? p2ScoreRows[0].exp_gained : 300;
 
-            const [p1GradeRows] = await db.query('SELECT * FROM elementa_student_grades WHERE session_id = ? AND student_id = ? LIMIT 1', [attemptId, vsSess.student_id_p1]);
-            const [p2GradeRows] = await db.query('SELECT * FROM elementa_student_grades WHERE session_id = ? AND student_id = ? LIMIT 1', [attemptId, vsSess.student_id_p2]);
+            const [p1GradeRows] = await db.query('SELECT * FROM elementa_student_grades WHERE session_id = ? AND student_id = ? AND sy_id = ? LIMIT 1', [attemptId, vsSess.student_id_p1, currentSyId]);
+            const [p2GradeRows] = await db.query('SELECT * FROM elementa_student_grades WHERE session_id = ? AND student_id = ? AND sy_id = ? LIMIT 1', [attemptId, vsSess.student_id_p2, currentSyId]);
             const p1Grade = p1GradeRows.length ? p1GradeRows[0] : {};
             const p2Grade = p2GradeRows.length ? p2GradeRows[0] : {};
 
@@ -9767,14 +10272,14 @@ router.get('/analysis/:attemptId', isTeacher, async (req, res) => {
                 }
             };
         } else {
-            // Standard Individual Attempt
-            const queryParams = [attemptId];
+            // Standard Individual Attempt (strictly Current SY)
+            const queryParams = [attemptId, currentSyId];
             let studentCondition = '';
             if (studentId) {
                 studentCondition = ' AND esg.student_id = ? ';
                 queryParams.push(studentId);
             }
-            queryParams.push(teacherId);
+            queryParams.push(teacherId, currentSyId, currentSyId, currentSyId);
 
             const [attemptRows] = await db.execute(`
                 SELECT
@@ -9791,16 +10296,26 @@ router.get('/analysis/:attemptId', isTeacher, async (req, res) => {
                     COALESCE(s.subject_name, 'Chemistry') AS subject_name
                 FROM elementa_student_grades esg
                 JOIN users u ON esg.student_id = u.user_id
-                JOIN class_students cs ON u.user_id = cs.student_id
+                JOIN class_students cs ON u.user_id = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
                 JOIN classes c ON cs.class_id = c.class_id
                 LEFT JOIN assessments a ON esg.assessment_id = a.assessment_id
                 LEFT JOIN topics t ON a.topic_id = t.topic_id
                 LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
                 LEFT JOIN subjects s ON q.subject_id = s.subject_id
-                WHERE esg.session_id = ? ${studentCondition} AND c.teacher_id = ?
-                LIMIT 1`, queryParams);
+                WHERE esg.session_id = ? ${studentCondition}
+                  AND c.teacher_id = ?
+                  AND esg.sy_id = ?
+                  AND c.sy_id = ?
+                  AND (a.assessment_id IS NULL OR a.sy_id = ?)
+                LIMIT 1`, [currentSyId, attemptId, ...(studentId ? [studentId] : []), teacherId, currentSyId, currentSyId, currentSyId]);
 
-            if (!attemptRows.length) return res.status(404).send('Attempt not found or access denied.');
+            if (!attemptRows.length) {
+                const [[otherSess]] = await db.execute(`SELECT session_id FROM elementa_game_sessions WHERE session_id = ? LIMIT 1`, [attemptId]);
+                if (otherSess) {
+                    return res.redirect('/teacher/all-activities?sy_blocked=1');
+                }
+                return res.status(404).send('Attempt not found or access denied.');
+            }
             attempt = attemptRows[0];
             attempt.is_versus = false;
             attempt.p1 = {
@@ -9877,12 +10392,14 @@ router.get('/analysis/:attemptId', isTeacher, async (req, res) => {
         }
         const responses = rawResponses;
 
-        // 4. Available materials for picker (Feature 2)
-        const [materials] = await db.execute(`
-            SELECT material_id, title, material_type
-            FROM learning_materials
-            WHERE topic_id = ?
-            ORDER BY title ASC`, [attempt.topic_id]);
+        // 4. Available materials for picker (strictly Current SY)
+        const [materials] = attempt.topic_id
+            ? await db.execute(`
+                SELECT material_id, title, material_type
+                FROM learning_materials
+                WHERE topic_id = ? AND sy_id = ?
+                ORDER BY title ASC`, [attempt.topic_id, currentSyId])
+            : [[]];
 
         // 5. Automated insights (Feature 5)
         const insights = [];
@@ -9957,15 +10474,19 @@ router.get('/analysis/:attemptId', isTeacher, async (req, res) => {
             }
         }
 
+        const notifications = await getTeacherNotifications(db, teacherId);
+
         res.render('teacher/analysis', {
             user: req.user,
+            currentSY,
             attempt,
             questions,
             responses,
             p1_responses,
             p2_responses,
             materials,
-            insights
+            insights,
+            notifications
         });
 
     } catch (err) {
@@ -9978,6 +10499,11 @@ router.post('/api/analysis/remediation', isTeacher, async (req, res) => {
     try {
         const { question_id, material_id, link_url, preview_json, advice_text } = req.body;
         if (!question_id) return res.status(400).json({ error: 'question_id required' });
+
+        const qMeta = await verifyTeacherQuestionInCurrentSY(db, req.user.user_id, question_id, null, { allowSharedApproved: true });
+        if (material_id) {
+            await verifyTeacherMaterialInCurrentSY(db, req.user.user_id, material_id, qMeta.currentSyId);
+        }
 
         // Upsert: if rem entry exists for this question, update; otherwise insert
         const [existing] = await db.execute(
@@ -10006,7 +10532,7 @@ router.post('/api/analysis/remediation', isTeacher, async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error('❌ [POST /teacher/api/analysis/remediation]', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -10018,8 +10544,14 @@ router.post('/api/analysis/bulk-remediation', isTeacher, async (req, res) => {
         if (!topic_id) return res.status(400).json({ error: 'topic_id required' });
         if (!material_id && !link_url && !advice_text) return res.status(400).json({ error: 'Nothing to apply' });
 
+        const topicMeta = await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id);
+        if (material_id) {
+            await verifyTeacherMaterialInCurrentSY(db, req.user.user_id, material_id, topicMeta.currentSyId);
+        }
+
         const [qRows] = await db.execute(
-            `SELECT question_id FROM elementa_questions WHERE topic_id = ? AND is_active = 1`, [topic_id]
+            `SELECT question_id FROM elementa_questions WHERE topic_id = ? AND sy_id = ? AND is_active = 1`,
+            [topic_id, topicMeta.currentSyId]
         );
 
         let count = 0;
@@ -10052,7 +10584,7 @@ router.post('/api/analysis/bulk-remediation', isTeacher, async (req, res) => {
         res.json({ success: true, count });
     } catch (err) {
         console.error('❌ [POST /teacher/api/analysis/bulk-remediation]', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -10062,7 +10594,12 @@ router.post('/api/analysis/upload-material', isTeacher, analysisUpload.single('f
     try {
         const { topic_id, title } = req.body;
         if (!req.file) return res.status(400).json({ error: 'No file received' });
-        if (!topic_id) return res.status(400).json({ error: 'topic_id required' });
+        if (!topic_id) {
+            fs.unlink(req.file.path, () => { });
+            return res.status(400).json({ error: 'topic_id required' });
+        }
+
+        const topicMeta = await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id);
 
         const mime = req.file.mimetype;
         let material_type = 'pdf';
@@ -10073,15 +10610,18 @@ router.post('/api/analysis/upload-material', isTeacher, analysisUpload.single('f
         const filePath = req.file.filename;
 
         const [result] = await db.execute(`
-            INSERT INTO learning_materials (topic_id, title, material_type, file_path_or_url, is_locked, uploaded_by)
-            VALUES (?, ?, ?, ?, 0, ?)`,
-            [topic_id, title || req.file.originalname, material_type, filePath, req.user.user_id]
+            INSERT INTO learning_materials (topic_id, sy_id, title, material_type, file_path_or_url, is_locked, uploaded_by)
+            VALUES (?, ?, ?, ?, ?, 0, ?)`,
+            [topic_id, topicMeta.currentSyId, title || req.file.originalname, material_type, filePath, req.user.user_id]
         );
 
         res.json({ success: true, material_id: result.insertId });
     } catch (err) {
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            fs.unlink(req.file.path, () => { });
+        }
         console.error('❌ [POST /teacher/api/analysis/upload-material]', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.statusCode || 500).json({ error: err.message });
     }
 });
 
@@ -10128,27 +10668,68 @@ router.get('/reports', isTeacher, async (req, res) => {
     let selectedClassId = req.query.class_id;
 
     try {
-        const currentSY = await academicHelper.getCurrentSchoolYear(db);
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        const notifications = await getTeacherNotifications(db, teacherId);
 
-        // Fetch teacher's classes for the filter dropdown (with subject metadata, quarters, and school year)
+        if (!currentSyId) {
+            if (req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest') {
+                return res.status(403).json({ success: false, error: 'No active Current School Year is configured.' });
+            }
+            const emptyDist = ['90-100', '75-89', '60-74', '40-59', '0-39'].map(label => ({ label, count: 0 }));
+            return res.render('teacher/reports', {
+                user: req.user,
+                activeSY: null,
+                currentSY: null,
+                noActiveSY: true,
+                syBlocked: req.query.sy_blocked === '1',
+                quarterStatuses: {},
+                classes: [],
+                selectedClassId: '',
+                stats: { totalStudents: 0, totalAttempts: 0, avgAccuracy: 0, avgCompletion: 0 },
+                students: [],
+                remediationList: [],
+                topicRemediationList: [],
+                completionRates: [],
+                scoreDistribution: emptyDist,
+                winLoss: [],
+                expGrowth: { labels: [], datasets: [] },
+                itemAnalysis: [],
+                arcadeStats: { total: 0, single: 0, duel: 0 },
+                arcadeByStudent: [],
+                heatmap: { topics: [], rows: [] },
+                seqErrors: [],
+                notifications,
+            });
+        }
+
+        // Fetch teacher's Current-SY classes for the filter dropdown (with subject metadata, quarters, and school year)
         const [classes] = await db.execute(`
             SELECT c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester,
                    c.sy_id, sy.sy_range, sy.status AS sy_status, sy.is_active AS sy_is_active,
                    COALESCE(GROUP_CONCAT(q.quarter_number ORDER BY q.quarter_number), '1,2') as quarters
             FROM classes c
             JOIN subjects s ON c.subject_id = s.subject_id
-            LEFT JOIN school_years sy ON c.sy_id = sy.sy_id
+            JOIN school_years sy ON c.sy_id = sy.sy_id
             LEFT JOIN quarters q ON s.subject_id = q.subject_id
-            WHERE c.teacher_id = ?
+            WHERE c.teacher_id = ? AND c.sy_id = ?
             GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester, c.sy_id, sy.sy_range, sy.status, sy.is_active
-            ORDER BY sy.is_active DESC, c.class_id ASC, c.class_name ASC`, [teacherId]);
+            ORDER BY c.class_id ASC, c.class_name ASC`, [teacherId, currentSyId]);
 
-        // Default to teacher's primary active class in the CURRENT school year if no class is explicitly specified
-        if (!selectedClassId && classes.length > 0) {
-            const currentSYClass = currentSY ? classes.find(c => c.sy_id === currentSY.sy_id) : null;
-            selectedClassId = currentSYClass ? String(currentSYClass.class_id) : String(classes[0].class_id);
+        if (selectedClassId && selectedClassId !== 'all') {
+            const matchedClass = classes.find(c => String(c.class_id) === String(selectedClassId));
+            if (!matchedClass) {
+                if (req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest') {
+                    return res.status(403).json({ success: false, error: 'This class belongs to another School Year or you do not have permission to view it.' });
+                }
+                return res.redirect('/teacher/reports?sy_blocked=1');
+            }
+            selectedClassId = String(matchedClass.class_id);
+        } else if (!selectedClassId && classes.length > 0) {
+            // Default to teacher's primary active class in the CURRENT school year if no class is explicitly specified
+            selectedClassId = String(classes[0].class_id);
         } else if (selectedClassId === 'all') {
-            selectedClassId = null; // triggers overview across all classes for DB queries
+            selectedClassId = null; // triggers overview across Current-SY classes
         }
 
         // Build a subject-id filter if a class is selected
@@ -10178,19 +10759,19 @@ router.get('/reports', isTeacher, async (req, res) => {
             [scoreDistRows]
         ] = await Promise.all([
 
-            // Stats summary (Fixed duplicate counting in multi-player matches)
+            // Stats summary (Current SY scoped; single-counted per session)
             db.execute(`
                 SELECT
                     (SELECT COUNT(DISTINCT cs.student_id)
                      FROM class_students cs
                      JOIN classes c ON cs.class_id = c.class_id
-                     WHERE c.teacher_id = ?
+                     WHERE c.teacher_id = ? AND c.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                      ${selectedClassId ? 'AND c.class_id = ?' : ''}) AS totalStudents,
                     (SELECT COUNT(DISTINCT egs.session_id)
                      FROM elementa_game_sessions egs
                      JOIN class_students cs ON (egs.student_id_p1 = cs.student_id OR egs.student_id_p2 = cs.student_id)
                      JOIN classes c ON cs.class_id = c.class_id
-                     WHERE c.teacher_id = ?
+                     WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                      ${selectedClassId ? 'AND c.class_id = ?' : ''}) AS totalAttempts,
                     (SELECT ROUND(AVG(eca.is_correct) * 100, 1)
                      FROM elementa_customer_attempts eca
@@ -10198,20 +10779,20 @@ router.get('/reports', isTeacher, async (req, res) => {
                      JOIN elementa_game_sessions egs ON elr.session_id = egs.session_id
                      JOIN class_students cs ON (CASE WHEN elr.player_number = 1 THEN egs.student_id_p1 ELSE egs.student_id_p2 END) = cs.student_id
                      JOIN classes c2 ON cs.class_id = c2.class_id
-                     WHERE c2.teacher_id = ?
+                     WHERE c2.teacher_id = ? AND c2.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c2.sy_id)
                      ${selectedClassId ? 'AND c2.class_id = ?' : ''}) AS avgAccuracy,
                     (SELECT AVG(sp.progress_percent)
                      FROM student_progress sp
                      JOIN class_students cs2 ON sp.student_id = cs2.student_id
                      JOIN classes c3 ON cs2.class_id = c3.class_id
-                     WHERE c3.teacher_id = ?
+                     WHERE c3.teacher_id = ? AND c3.sy_id = ? AND sp.subject_id = c3.subject_id AND sp.sy_id = c3.sy_id AND (cs2.sy_id IS NULL OR cs2.sy_id = c3.sy_id)
                      ${selectedClassId ? 'AND c3.class_id = ?' : ''}) AS avgCompletion`,
                 selectedClassId
-                    ? [teacherId, selectedClassId, teacherId, selectedClassId, teacherId, selectedClassId, teacherId, selectedClassId]
-                    : [teacherId, teacherId, teacherId, teacherId]
+                    ? [teacherId, currentSyId, selectedClassId, teacherId, currentSyId, currentSyId, selectedClassId, teacherId, currentSyId, currentSyId, selectedClassId, teacherId, currentSyId, selectedClassId]
+                    : [teacherId, currentSyId, teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId, teacherId, currentSyId]
             ),
 
-            // Students list (for export cards + picker)
+            // Students list (Current SY classes only)
             db.execute(`
                 SELECT DISTINCT
                     u.user_id, u.first_name, u.last_name, u.middle_name,
@@ -10224,20 +10805,20 @@ router.get('/reports', isTeacher, async (req, res) => {
                 JOIN class_students cs ON u.user_id = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
                 JOIN subjects s ON c.subject_id = s.subject_id
-                LEFT JOIN student_progress sp ON sp.student_id = u.user_id AND sp.subject_id = c.subject_id
-                WHERE c.teacher_id = ? AND u.role = 'Student'
+                LEFT JOIN student_progress sp ON sp.student_id = u.user_id AND sp.subject_id = c.subject_id AND sp.sy_id = c.sy_id
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) AND u.role = 'Student'
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 ORDER BY u.last_name, u.first_name, c.class_name`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, selectedClassId] : [teacherId, currentSyId]
             ),
 
-            // Restructured Class Topic Remediation Analysis
-            computeClassTopicRemediation(db, selectedClassId, teacherId, subjectId).catch(err => {
+            // Restructured Class Topic Remediation Analysis (Current SY scoped)
+            computeClassTopicRemediation(db, selectedClassId, teacherId, subjectId, currentSyId).catch(err => {
                 console.warn('[Remediation Warning]', err.message);
                 return [];
             }),
 
-            // Completion rates per class
+            // Completion rates per class (Current SY classes only)
             db.execute(`
                 SELECT
                     c.class_id, c.class_name,
@@ -10248,16 +10829,16 @@ router.get('/reports', isTeacher, async (req, res) => {
                 FROM classes c
                 JOIN subjects s ON c.subject_id = s.subject_id
                 JOIN school_years sy ON c.sy_id = sy.sy_id
-                LEFT JOIN class_students cs ON c.class_id = cs.class_id
-                LEFT JOIN student_progress sp ON sp.student_id = cs.student_id AND sp.subject_id = c.subject_id
-                WHERE c.teacher_id = ?
+                LEFT JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                LEFT JOIN student_progress sp ON sp.student_id = cs.student_id AND sp.subject_id = c.subject_id AND sp.sy_id = c.sy_id
+                WHERE c.teacher_id = ? AND c.sy_id = ?
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 GROUP BY c.class_id, c.class_name, s.subject_name, sy.sy_range
                 ORDER BY avg_progress ASC`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, selectedClassId] : [teacherId, currentSyId]
             ),
 
-            // Score distribution buckets (Unified LMS Submissions + Arcade Simulations)
+            // Score distribution buckets (Unified LMS Submissions + Arcade Simulations in Current SY)
             db.execute(`
                 SELECT
                     CASE
@@ -10272,9 +10853,10 @@ router.get('/reports', isTeacher, async (req, res) => {
                     SELECT
                         ROUND((ss.score_obtained / NULLIF(ss.total_possible_score, 0)) * 100) AS grade_percent
                     FROM student_scores ss
+                    JOIN assessments a ON ss.assessment_id = a.assessment_id
                     JOIN class_students cs ON ss.student_id = cs.student_id
                     JOIN classes c ON cs.class_id = c.class_id
-                    WHERE c.teacher_id = ? AND ss.total_possible_score > 0
+                    WHERE c.teacher_id = ? AND c.sy_id = ? AND a.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) AND ss.total_possible_score > 0
                     ${selectedClassId ? 'AND c.class_id = ?' : ''}
 
                     UNION ALL
@@ -10282,14 +10864,17 @@ router.get('/reports', isTeacher, async (req, res) => {
                     SELECT
                         esg.grade_percent
                     FROM elementa_student_grades esg
+                    LEFT JOIN assessments a ON esg.assessment_id = a.assessment_id
                     JOIN class_students cs ON esg.student_id = cs.student_id
                     JOIN classes c ON cs.class_id = c.class_id
-                    WHERE c.teacher_id = ? AND esg.grade_percent IS NOT NULL
+                    WHERE c.teacher_id = ? AND c.sy_id = ? AND esg.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) AND (a.assessment_id IS NULL OR a.sy_id = ?) AND esg.grade_percent IS NOT NULL
                     ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 ) combined
                 GROUP BY label
                 ORDER BY FIELD(label,'90-100','75-89','60-74','40-59','0-39')`,
-                selectedClassId ? [teacherId, selectedClassId, teacherId, selectedClassId] : [teacherId, teacherId]
+                selectedClassId
+                    ? [teacherId, currentSyId, currentSyId, selectedClassId, teacherId, currentSyId, currentSyId, currentSyId, selectedClassId]
+                    : [teacherId, currentSyId, currentSyId, teacherId, currentSyId, currentSyId, currentSyId]
             )
         ]);
 
@@ -10305,7 +10890,7 @@ router.get('/reports', isTeacher, async (req, res) => {
             [seqErrorRows]
         ] = await Promise.all([
 
-            // Win/loss (top winners)
+            // Win/loss (top winners in Current SY)
             safeQuery(db.execute(`
                 SELECT u.user_id, u.first_name, u.last_name,
                        COUNT(egs.session_id) AS wins
@@ -10316,15 +10901,15 @@ router.get('/reports', isTeacher, async (req, res) => {
                 )
                 JOIN class_students cs ON u.user_id = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ? AND egs.play_mode = 'Versus'
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) AND egs.play_mode = 'Versus'
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 GROUP BY u.user_id, u.first_name, u.last_name
                 ORDER BY wins DESC
                 LIMIT 10`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, currentSyId, selectedClassId] : [teacherId, currentSyId, currentSyId]
             )),
 
-            // EXP growth (sessions over time)
+            // EXP growth (sessions over time in Current SY)
             safeQuery(db.execute(`
                 SELECT
                     u.first_name, u.last_name, u.user_id,
@@ -10334,14 +10919,14 @@ router.get('/reports', isTeacher, async (req, res) => {
                 JOIN users u ON (egs.student_id_p1 = u.user_id OR egs.student_id_p2 = u.user_id)
                 JOIN class_students cs ON u.user_id = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 ORDER BY egs.started_at ASC
                 LIMIT 500`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, currentSyId, selectedClassId] : [teacherId, currentSyId, currentSyId]
             )),
 
-            // Item analysis (failure rate per question — single-counted per student)
+            // Item analysis (failure rate per question in Current SY)
             safeQuery(db.execute(`
                 SELECT
                     eq.question_id, eq.prompt AS question_text, eq.difficulty,
@@ -10354,16 +10939,17 @@ router.get('/reports', isTeacher, async (req, res) => {
                 JOIN class_students cs ON (CASE WHEN elr.player_number = 1 THEN egs.student_id_p1 ELSE egs.student_id_p2 END) = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
                 LEFT JOIN elementa_questions eq ON eca.question_id = eq.question_id
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                  AND (eq.question_id IS NULL OR eq.sy_id = ?)
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 GROUP BY eq.question_id, eq.prompt, eq.difficulty, topic_name
                 HAVING COUNT(eca.attempt_id) > 0
                 ORDER BY (SUM(eca.is_correct = 0) / COUNT(eca.attempt_id)) DESC
                 LIMIT 50`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, currentSyId, currentSyId, selectedClassId] : [teacherId, currentSyId, currentSyId, currentSyId]
             )),
 
-            // Arcade utilization aggregate (Distinct session counting)
+            // Arcade utilization aggregate (Distinct session counting in Current SY)
             safeQuery(db.execute(`
                 SELECT
                     COUNT(DISTINCT egs.session_id) AS total,
@@ -10372,12 +10958,12 @@ router.get('/reports', isTeacher, async (req, res) => {
                 FROM elementa_game_sessions egs
                 JOIN class_students cs ON (egs.student_id_p1 = cs.student_id OR egs.student_id_p2 = cs.student_id)
                 JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, currentSyId, selectedClassId] : [teacherId, currentSyId, currentSyId]
             )),
 
-            // Arcade utilization per student
+            // Arcade utilization per student (Current SY)
             safeQuery(db.execute(`
                 SELECT
                     u.user_id, u.first_name, u.last_name,
@@ -10388,28 +10974,28 @@ router.get('/reports', isTeacher, async (req, res) => {
                 JOIN users u ON (egs.student_id_p1 = u.user_id OR egs.student_id_p2 = u.user_id)
                 JOIN class_students cs ON u.user_id = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 GROUP BY u.user_id, u.first_name, u.last_name
                 ORDER BY total_sessions DESC`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, currentSyId, selectedClassId] : [teacherId, currentSyId, currentSyId]
             )),
 
-            // Heatmap — topic list
+            // Heatmap — topic list (Current SY classes only)
             safeQuery(db.execute(`
                 SELECT DISTINCT t.topic_id, t.topic_name
                 FROM topics t
                 JOIN quarters q ON t.quarter_id = q.quarter_id
                 JOIN subjects s ON q.subject_id = s.subject_id
                 JOIN classes c ON c.subject_id = s.subject_id
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND c.sy_id = ?
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 ORDER BY t.topic_id ASC
                 LIMIT 12`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, selectedClassId] : [teacherId, currentSyId]
             )),
 
-            // Heatmap — per-student per-topic accuracy
+            // Heatmap — per-student per-topic accuracy (Current SY)
             safeQuery(db.execute(`
                 SELECT
                     u.user_id, u.first_name, u.last_name,
@@ -10423,14 +11009,14 @@ router.get('/reports', isTeacher, async (req, res) => {
                 JOIN classes c ON cs.class_id = c.class_id
                 JOIN elementa_questions eq ON eca.question_id = eq.question_id
                 JOIN topics t ON eq.topic_id = t.topic_id
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND eq.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 GROUP BY u.user_id, t.topic_id
                 ORDER BY u.last_name, u.first_name`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, currentSyId, currentSyId, selectedClassId] : [teacherId, currentSyId, currentSyId, currentSyId]
             )),
 
-            // Sequence error analysis (Arcade Machine Failure Modes — accurate student matching)
+            // Sequence error analysis (Current SY)
             safeQuery(db.execute(`
                 SELECT
                     eca.question_id,
@@ -10448,13 +11034,14 @@ router.get('/reports', isTeacher, async (req, res) => {
                 JOIN class_students cs ON (CASE WHEN elr.player_number = 1 THEN egs.student_id_p1 ELSE egs.student_id_p2 END) = cs.student_id
                 JOIN classes c ON cs.class_id = c.class_id
                 LEFT JOIN elementa_questions eq ON eca.question_id = eq.question_id
-                WHERE c.teacher_id = ?
+                WHERE c.teacher_id = ? AND c.sy_id = ? AND egs.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+                  AND (eq.question_id IS NULL OR eq.sy_id = ?)
                 ${selectedClassId ? 'AND c.class_id = ?' : ''}
                 GROUP BY eca.question_id, question_text, topic_name, eca.machine_used
                 HAVING total_count > 0
                 ORDER BY wrong_count DESC
                 LIMIT 200`,
-                selectedClassId ? [teacherId, selectedClassId] : [teacherId]
+                selectedClassId ? [teacherId, currentSyId, currentSyId, currentSyId, selectedClassId] : [teacherId, currentSyId, currentSyId, currentSyId]
             ))
         ]);
 
@@ -10551,8 +11138,7 @@ router.get('/reports', isTeacher, async (req, res) => {
             duel: Number(arcadeRows[0]?.duel_mode || 0),
         };
 
-        const notifications = await getTeacherNotifications(db, teacherId);
-        const activeSY = currentSY || (await academicHelper.getActiveSchoolYear(db));
+        const activeSY = currentSY;
         const quarterStatuses = {
             1: academicHelper.isQuarterGradingOpen(activeSY, 1),
             2: academicHelper.isQuarterGradingOpen(activeSY, 2),
@@ -10564,6 +11150,8 @@ router.get('/reports', isTeacher, async (req, res) => {
             user: req.user,
             activeSY,
             currentSY: activeSY,
+            noActiveSY: false,
+            syBlocked: req.query.sy_blocked === '1',
             quarterStatuses,
             classes,
             selectedClassId: req.query.class_id === 'all' ? 'all' : (selectedClassId || ''),
@@ -10598,19 +11186,20 @@ router.get('/reports', isTeacher, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 
 // ── HELPER: Fetch enrolled students with academic performance & attendance metrics ──
-async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole = 'Teacher') {
+async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole = 'Teacher', expectedSyId = null) {
     const isAdmin = userRole === 'Admin';
+    const activeSyId = expectedSyId ? Number(expectedSyId) : await resolveActiveSyIdOrThrow(db);
     const [cls] = await db.query(`
         SELECT c.class_id, c.class_name, c.subject_id, c.sy_id, s.subject_name, s.subject_code
         FROM classes c
         JOIN subjects s ON c.subject_id = s.subject_id
-        WHERE c.class_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}
-    `, isAdmin ? [classId] : [classId, teacherId]);
+        WHERE c.class_id = ? AND c.sy_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}
+    `, isAdmin ? [classId, activeSyId] : [classId, activeSyId, teacherId]);
 
     if (!cls.length) return { classInfo: null, students: [] };
     const classInfo = cls[0];
     const effSubjectId = classInfo.subject_id;
-    const effSyId = classInfo.sy_id || null;
+    const effSyId = classInfo.sy_id || activeSyId;
 
     const [students] = await db.query(`
         SELECT u.user_id, u.lrn_number, u.first_name, u.middle_name, u.last_name,
@@ -10621,7 +11210,7 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
                COALESCE(att.days_excused, 0) AS days_excused,
                COALESCE(att.total_sessions, 0) AS total_sessions
         FROM users u
-        JOIN class_students cs ON u.user_id = cs.student_id
+        JOIN class_students cs ON u.user_id = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
         LEFT JOIN (
             SELECT student_id, class_id,
                    COUNT(*) AS total_sessions,
@@ -10634,7 +11223,7 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
         ) att ON att.student_id = u.user_id AND att.class_id = cs.class_id
         WHERE cs.class_id = ? AND u.role = 'Student'
         ORDER BY u.last_name ASC, u.first_name ASC
-    `, [classId]);
+    `, [effSyId, classId]);
 
     if (!students.length) return { classInfo, students: [] };
     const studentIds = students.map(s => s.user_id);
@@ -10650,8 +11239,8 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
             JOIN quarters q ON t.quarter_id = q.quarter_id
             WHERE q.subject_id = ?
         )
-          AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
-    `, [effSubjectId, effSyId, effSyId]);
+          AND a.sy_id = ?
+    `, [effSubjectId, effSyId]);
 
     const totalAssignedTasks = assessments.length;
 
@@ -10665,8 +11254,8 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
         JOIN assessments a ON ss.assessment_id = a.assessment_id
         JOIN topics t ON a.topic_id = t.topic_id
         JOIN quarters q ON t.quarter_id = q.quarter_id
-        WHERE q.subject_id = ? AND ss.student_id IN (?)
-    `, [effSubjectId, studentIds]);
+        WHERE q.subject_id = ? AND a.sy_id = ? AND ss.student_id IN (?)
+    `, [effSubjectId, effSyId, studentIds]);
 
     // Fetch Arcade scores
     const [arcadeScores] = await db.query(`
@@ -10678,8 +11267,8 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
         JOIN assessments a ON esg.assessment_id = a.assessment_id
         JOIN topics t ON a.topic_id = t.topic_id
         JOIN quarters q ON t.quarter_id = q.quarter_id
-        WHERE q.subject_id = ? AND esg.student_id IN (?) AND esg.run_status = 'Completed'
-    `, [effSubjectId, studentIds]);
+        WHERE q.subject_id = ? AND a.sy_id = ? AND esg.sy_id = ? AND esg.student_id IN (?) AND esg.run_status = 'Completed'
+    `, [effSubjectId, effSyId, effSyId, studentIds]);
 
     // Fetch subject forums
     const [forums] = await db.query(`
@@ -10687,8 +11276,8 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
         FROM forum_topics ft
         JOIN topics t ON ft.topic_id = t.topic_id
         JOIN quarters q ON t.quarter_id = q.quarter_id
-        WHERE q.subject_id = ?
-    `, [effSubjectId]);
+        WHERE q.subject_id = ? AND ft.sy_id = ?
+    `, [effSubjectId, effSyId]);
     const totalSubjectForums = forums.length;
 
     const [doneForums] = await db.query(`
@@ -10697,8 +11286,8 @@ async function getEnrolledStudentsWithFullMetrics(classId, teacherId, userRole =
         JOIN forum_topics ft ON sfd.forum_id = ft.forum_id
         JOIN topics t ON ft.topic_id = t.topic_id
         JOIN quarters q ON t.quarter_id = q.quarter_id
-        WHERE q.subject_id = ? AND sfd.student_id IN (?)
-    `, [effSubjectId, studentIds]);
+        WHERE q.subject_id = ? AND ft.sy_id = ? AND sfd.student_id IN (?)
+    `, [effSubjectId, effSyId, studentIds]);
 
     // Fetch simulation bonus exp (scoped to class SY)
     const [simSubmissions] = await db.query(`
@@ -10911,8 +11500,9 @@ router.get('/api/attendance/:classId/conducted-dates', isTeacher, async (req, re
         const classId = req.params.classId;
         const teacherId = req.user.user_id;
         const isAdmin = req.user.role === 'Admin';
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
 
-        // Support multi-class overview ('all')
+        // Support multi-class overview ('all') strictly within Current SY
         if (classId === 'all') {
             const [dates] = await db.query(`
                 SELECT DISTINCT DATE_FORMAT(ar.session_date, '%Y-%m-%d') AS raw_date,
@@ -10921,15 +11511,15 @@ router.get('/api/attendance/:classId/conducted-dates', isTeacher, async (req, re
                        COUNT(ar.attendance_id) AS total_records
                 FROM attendance_records ar
                 JOIN classes c ON ar.class_id = c.class_id
-                WHERE ${isAdmin ? '1=1' : 'c.teacher_id = ?'} AND ar.attendance_method = 'Manual_Teacher'
+                WHERE c.sy_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'} AND ar.attendance_method = 'Manual_Teacher'
                 GROUP BY DATE(ar.session_date)
                 ORDER BY ar.session_date DESC
-            `, isAdmin ? [] : [teacherId]);
+            `, isAdmin ? [activeSyId] : [activeSyId, teacherId]);
 
             return res.json({
                 success: true,
                 class_id: 'all',
-                class_name: 'All Classes',
+                class_name: 'All Current SY Classes',
                 dates: dates.map(d => ({
                     date: d.raw_date,
                     label: `${d.formatted_date} (${d.day_name}) — ${d.total_records} marked across classes`,
@@ -10941,11 +11531,11 @@ router.get('/api/attendance/:classId/conducted-dates', isTeacher, async (req, re
 
         const [cls] = await db.query(
             isAdmin
-                ? "SELECT class_id, class_name FROM classes WHERE class_id = ?"
-                : "SELECT class_id, class_name FROM classes WHERE class_id = ? AND teacher_id = ?",
-            isAdmin ? [classId] : [classId, teacherId]
+                ? "SELECT class_id, class_name FROM classes WHERE class_id = ? AND sy_id = ?"
+                : "SELECT class_id, class_name FROM classes WHERE class_id = ? AND teacher_id = ? AND sy_id = ?",
+            isAdmin ? [classId, activeSyId] : [classId, teacherId, activeSyId]
         );
-        if (!cls.length) return res.status(403).json({ success: false, error: 'Unauthorized class access' });
+        if (!cls.length) return res.status(403).json({ success: false, error: 'Unauthorized class access or class belongs to another School Year.' });
 
         const [dates] = await db.query(`
             SELECT DISTINCT session_date,
@@ -10972,7 +11562,7 @@ router.get('/api/attendance/:classId/conducted-dates', isTeacher, async (req, re
         });
     } catch (err) {
         console.error('[GET /api/attendance/:classId/conducted-dates Error]:', err);
-        return res.status(500).json({ success: false, error: 'Failed to fetch conducted attendance dates' });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.message || 'Failed to fetch conducted attendance dates' });
     }
 });
 
@@ -11007,6 +11597,7 @@ router.get('/api/reports/topics-filter-data', isTeacher, async (req, res) => {
     }
 
     try {
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
         let subjectIds = [];
 
         if (classId !== 'all') {
@@ -11016,18 +11607,18 @@ router.get('/api/reports/topics-filter-data', isTeacher, async (req, res) => {
             }
 
             const [clsRows] = await db.query(
-                `SELECT subject_id FROM classes WHERE class_id = ? ${isAdmin ? '' : 'AND teacher_id = ?'}`,
-                isAdmin ? [parsedClassId] : [parsedClassId, teacherId]
+                `SELECT subject_id FROM classes WHERE class_id = ? AND sy_id = ? ${isAdmin ? '' : 'AND teacher_id = ?'}`,
+                isAdmin ? [parsedClassId, activeSyId] : [parsedClassId, activeSyId, teacherId]
             );
 
             if (!clsRows.length) {
-                return res.status(403).json({ success: false, error: 'Unauthorized class access' });
+                return res.status(403).json({ success: false, error: 'Unauthorized class access or class belongs to another School Year.' });
             }
             subjectIds = [clsRows[0].subject_id];
         } else {
             const [clsRows] = await db.query(
-                `SELECT DISTINCT subject_id FROM classes WHERE ${isAdmin ? '1=1' : 'teacher_id = ?'}`,
-                isAdmin ? [] : [teacherId]
+                `SELECT DISTINCT subject_id FROM classes WHERE sy_id = ? ${isAdmin ? '' : 'AND teacher_id = ?'}`,
+                isAdmin ? [activeSyId] : [activeSyId, teacherId]
             );
             subjectIds = clsRows.map(r => r.subject_id);
         }
@@ -11061,15 +11652,15 @@ router.get('/api/reports/topics-filter-data', isTeacher, async (req, res) => {
             });
         }
 
-        // 1. Topics containing Assessments (non-Assignment quizzes, tests, etc.)
+        // 1. Topics containing Assessments (Current SY)
         let asmtSql = `
             SELECT DISTINCT t.topic_id, t.topic_name, q.quarter_number
             FROM topics t
             JOIN quarters q ON t.quarter_id = q.quarter_id
             JOIN assessments a ON a.topic_id = t.topic_id
-            WHERE q.subject_id IN (${placeholders}) AND (a.assessment_type != 'Assignment' OR a.assessment_type IS NULL)
+            WHERE q.subject_id IN (${placeholders}) AND a.sy_id = ? AND (a.assessment_type != 'Assignment' OR a.assessment_type IS NULL)
         `;
-        const asmtParams = [...subjectIds];
+        const asmtParams = [...subjectIds, activeSyId];
         if (quarter) {
             asmtSql += ' AND q.quarter_number = ?';
             asmtParams.push(quarter);
@@ -11077,15 +11668,15 @@ router.get('/api/reports/topics-filter-data', isTeacher, async (req, res) => {
         asmtSql += ' ORDER BY q.quarter_number ASC, t.topic_id ASC';
         const [asmtTopics] = await db.query(asmtSql, asmtParams);
 
-        // 2. Topics containing Assignments
+        // 2. Topics containing Assignments (Current SY)
         let asgnSql = `
             SELECT DISTINCT t.topic_id, t.topic_name, q.quarter_number
             FROM topics t
             JOIN quarters q ON t.quarter_id = q.quarter_id
             JOIN assessments a ON a.topic_id = t.topic_id
-            WHERE q.subject_id IN (${placeholders}) AND a.assessment_type = 'Assignment'
+            WHERE q.subject_id IN (${placeholders}) AND a.sy_id = ? AND a.assessment_type = 'Assignment'
         `;
-        const asgnParams = [...subjectIds];
+        const asgnParams = [...subjectIds, activeSyId];
         if (quarter) {
             asgnSql += ' AND q.quarter_number = ?';
             asgnParams.push(quarter);
@@ -11093,15 +11684,15 @@ router.get('/api/reports/topics-filter-data', isTeacher, async (req, res) => {
         asgnSql += ' ORDER BY q.quarter_number ASC, t.topic_id ASC';
         const [asgnTopics] = await db.query(asgnSql, asgnParams);
 
-        // 3. Topics containing Discussion Forums
+        // 3. Topics containing Discussion Forums (Current SY)
         let forumSql = `
             SELECT DISTINCT t.topic_id, t.topic_name, q.quarter_number
             FROM topics t
             JOIN quarters q ON t.quarter_id = q.quarter_id
             JOIN forum_topics ft ON ft.topic_id = t.topic_id
-            WHERE q.subject_id IN (${placeholders})
+            WHERE q.subject_id IN (${placeholders}) AND ft.sy_id = ?
         `;
-        const forumParams = [...subjectIds];
+        const forumParams = [...subjectIds, activeSyId];
         if (quarter) {
             forumSql += ' AND q.quarter_number = ?';
             forumParams.push(quarter);
@@ -11125,26 +11716,28 @@ router.get('/api/reports/topics-filter-data', isTeacher, async (req, res) => {
         });
     } catch (err) {
         console.error('[GET /api/reports/topics-filter-data]', err);
-        return res.status(500).json({ success: false, error: 'Database error loading topic filter options' });
+        return res.status(err.statusCode || 500).json({ success: false, error: err.message || 'Database error loading topic filter options' });
     }
 });
 
 /**
- * Shared Helper: Compute Student Subject Summary Analytics (100% Class-View View Score parity)
+ * Shared Helper: Compute Student Subject Summary Analytics (100% Class-View View Score parity, SY scoped)
  */
-async function computeStudentSubjectSummary(studentId, subjectId) {
-    // 1. Fetch all assigned coursework in subject
+async function computeStudentSubjectSummary(studentId, subjectId, syId = null) {
+    const effectiveSyId = syId ? Number(syId) : await resolveActiveSyIdOrThrow(db);
+
+    // 1. Fetch all assigned coursework in subject for this SY
     const [allTasks] = await db.query(`
         SELECT a.assessment_id, a.assessment_name, a.assessment_type, a.category,
                COALESCE(a.total_items, 10) AS total_items
         FROM assessments a
         JOIN topics t ON a.topic_id = t.topic_id
         JOIN quarters q ON t.quarter_id = q.quarter_id
-        WHERE q.subject_id = ?
+        WHERE q.subject_id = ? AND a.sy_id = ?
         ORDER BY q.quarter_number ASC, t.topic_id ASC, a.assessment_id ASC
-    `, [subjectId]);
+    `, [subjectId, effectiveSyId]);
 
-    // 2. Fetch student's submitted coursework scores
+    // 2. Fetch student's submitted coursework scores for this SY
     const [lmsScores] = await db.query(`
         SELECT ss.assessment_id, ss.score_obtained, ss.total_possible_score AS total_items,
                ss.exp_gained, ss.feedback, ss.submitted_at, ss.attempt_number
@@ -11152,11 +11745,11 @@ async function computeStudentSubjectSummary(studentId, subjectId) {
         JOIN assessments a ON ss.assessment_id = a.assessment_id
         JOIN topics t ON a.topic_id = t.topic_id
         JOIN quarters q ON t.quarter_id = q.quarter_id
-        WHERE ss.student_id = ? AND q.subject_id = ?
+        WHERE ss.student_id = ? AND q.subject_id = ? AND a.sy_id = ?
         ORDER BY ss.assessment_id ASC, ss.attempt_number DESC, ss.score_id DESC
-    `, [studentId, subjectId]);
+    `, [studentId, subjectId, effectiveSyId]);
 
-    // 3. Fetch arcade session grades
+    // 3. Fetch arcade session grades for this SY
     const [arcadeScores] = await db.query(`
         SELECT esg.assessment_id, esg.correct_answers AS score_obtained,
                esg.points_possible AS total_items, esg.points_earned AS exp_gained,
@@ -11165,43 +11758,32 @@ async function computeStudentSubjectSummary(studentId, subjectId) {
         JOIN assessments a ON esg.assessment_id = a.assessment_id
         JOIN topics t ON a.topic_id = t.topic_id
         JOIN quarters q ON t.quarter_id = q.quarter_id
-        WHERE esg.student_id = ? AND q.subject_id = ? AND esg.run_status = 'Completed'
+        WHERE esg.student_id = ? AND q.subject_id = ? AND esg.sy_id = ? AND a.sy_id = ? AND esg.run_status = 'Completed'
         ORDER BY esg.started_at DESC
-    `, [studentId, subjectId]);
+    `, [studentId, subjectId, effectiveSyId, effectiveSyId]);
 
-    // 4. Fetch subject discussion forums & student completions (scoped by ft.subject_id to match Student Forums page)
+    // 4. Fetch subject discussion forums & student completions for this SY
     const [allSubjectForums] = await db.query(`
         SELECT ft.forum_id, ft.topic_id, ft.title, ft.base_exp, ft.due_date
         FROM forum_topics ft
-        WHERE ft.subject_id = ?
-    `, [subjectId]);
+        WHERE ft.subject_id = ? AND ft.sy_id = ?
+    `, [subjectId, effectiveSyId]);
 
     const [studentForumDone] = await db.query(`
         SELECT sfd.forum_id, COALESCE(sfd.exp_awarded, 0) AS exp_awarded, sfd.done_at
         FROM student_forum_done sfd
         JOIN forum_topics ft ON sfd.forum_id = ft.forum_id
-        WHERE sfd.student_id = ? AND ft.subject_id = ?
-    `, [studentId, subjectId]);
+        WHERE sfd.student_id = ? AND ft.subject_id = ? AND ft.sy_id = ?
+    `, [studentId, subjectId, effectiveSyId]);
 
-    // 5. Fetch simulation quiz submissions (scoped to student's active/enrolled SY for subjectId)
-    const [[enrollSyRow]] = await db.query(`
-        SELECT c.sy_id
-        FROM class_students cs
-        JOIN classes c ON cs.class_id = c.class_id
-        JOIN school_years sy ON c.sy_id = sy.sy_id
-        WHERE cs.student_id = ? AND c.subject_id = ? AND sy.status <> 'Draft'
-        ORDER BY (sy.status = 'Current') DESC, sy.start_date DESC, c.class_id ASC
-        LIMIT 1
-    `, [studentId, subjectId]);
-    const effSimSyId = enrollSyRow ? enrollSyRow.sy_id : null;
-
+    // 5. Fetch simulation quiz submissions for this SY
     const [simSubmissions] = await db.query(`
         SELECT esqs.submission_id, esqs.quiz_id, esqs.simulation_slug,
                esqs.score, esqs.total_questions, esqs.exp_earned, esqs.percentage
         FROM elementa_simulation_quiz_submissions esqs
         WHERE esqs.student_id = ?
-          AND (? IS NULL OR esqs.sy_id = ?)
-    `, [studentId, effSimSyId, effSimSyId]);
+          AND esqs.sy_id = ?
+    `, [studentId, effectiveSyId]);
 
     // Build deduplicated best score map
     const scoreMap = new Map();
@@ -11301,21 +11883,23 @@ async function computeStudentSubjectSummary(studentId, subjectId) {
  * Evaluates curriculum topic vulnerability across Assessments, Assignments, and Forums
  * Scoped to a specific class (or all classes taught by teacher)
  */
-async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectId = null) {
+async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectId = null, currentSyId = null) {
     let effectiveClassId = classId;
     let targetSubjectId = subjectId;
+    const activeSyId = currentSyId ? Number(currentSyId) : await resolveActiveSyIdOrThrow(dbConn);
 
     if (effectiveClassId && effectiveClassId !== 'all') {
         const [cRows] = await dbConn.query(
-            `SELECT class_id, class_name, subject_id, teacher_id FROM classes WHERE class_id = ?`,
-            [effectiveClassId]
+            `SELECT class_id, class_name, subject_id, teacher_id FROM classes WHERE class_id = ? AND sy_id = ?`,
+            [effectiveClassId, activeSyId]
         );
-        if (cRows.length > 0) {
-            targetSubjectId = cRows[0].subject_id;
+        if (!cRows.length) {
+            return [];
         }
+        targetSubjectId = cRows[0].subject_id;
     }
 
-    // 1. Fetch Active Enrolled Students
+    // 1. Fetch Active Enrolled Students (Current SY scoped)
     let enrolledStudents = [];
     if (effectiveClassId && effectiveClassId !== 'all') {
         const [sRows] = await dbConn.query(`
@@ -11323,9 +11907,10 @@ async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectI
             FROM class_students cs
             JOIN users u ON cs.student_id = u.user_id
             JOIN classes c ON cs.class_id = c.class_id
-            WHERE cs.class_id = ? AND c.teacher_id = ? AND u.role = 'Student'
+            WHERE cs.class_id = ? AND c.teacher_id = ? AND c.sy_id = ?
+              AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) AND u.role = 'Student'
             ORDER BY u.last_name ASC, u.first_name ASC
-        `, [effectiveClassId, teacherId]);
+        `, [effectiveClassId, teacherId, activeSyId]);
         enrolledStudents = sRows;
     } else {
         const [sRows] = await dbConn.query(`
@@ -11333,17 +11918,18 @@ async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectI
             FROM class_students cs
             JOIN users u ON cs.student_id = u.user_id
             JOIN classes c ON cs.class_id = c.class_id
-            WHERE c.teacher_id = ? AND u.role = 'Student'
+            WHERE c.teacher_id = ? AND c.sy_id = ?
+              AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) AND u.role = 'Student'
             ${targetSubjectId ? 'AND c.subject_id = ?' : ''}
             ORDER BY u.last_name ASC, u.first_name ASC
-        `, targetSubjectId ? [teacherId, targetSubjectId] : [teacherId]);
+        `, targetSubjectId ? [teacherId, activeSyId, targetSubjectId] : [teacherId, activeSyId]);
         enrolledStudents = sRows;
     }
 
     const totalEnrolled = enrolledStudents.length;
     const studentIds = enrolledStudents.map(s => s.student_id);
 
-    // 2. Fetch Topics for Subject (or all subjects taught by teacher)
+    // 2. Fetch Topics for Subject (or all Current-SY subjects taught by teacher)
     let topicQuery = `
         SELECT t.topic_id, t.topic_name, t.topic_description, q.quarter_number, q.quarter_id, s.subject_id, s.subject_name
         FROM topics t
@@ -11357,11 +11943,11 @@ async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectI
     } else {
         topicQuery += `
             JOIN classes c ON c.subject_id = s.subject_id
-            WHERE c.teacher_id = ?
+            WHERE c.teacher_id = ? AND c.sy_id = ?
             GROUP BY t.topic_id, t.topic_name, t.topic_description, q.quarter_number, q.quarter_id, s.subject_id, s.subject_name
             ORDER BY q.quarter_number ASC, t.topic_id ASC
         `;
-        topicParams.push(teacherId);
+        topicParams.push(teacherId, activeSyId);
     }
     const [topicRows] = await dbConn.query(topicQuery, topicParams);
 
@@ -11371,24 +11957,24 @@ async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectI
 
     const topicIds = topicRows.map(t => t.topic_id);
 
-    // 3. Fetch Coursework Tasks (Assessments and Assignments) under these topics
+    // 3. Fetch Coursework Tasks (Current SY)
     const [tasks] = await dbConn.query(`
         SELECT a.assessment_id, a.assessment_name, a.assessment_type, a.topic_id,
                COALESCE(a.total_items, 10) AS total_items, a.is_unlocked
         FROM assessments a
-        WHERE a.topic_id IN (?)
+        WHERE a.topic_id IN (?) AND a.sy_id = ?
         ORDER BY a.topic_id ASC, a.assessment_id ASC
-    `, [topicIds]);
+    `, [topicIds, activeSyId]);
 
-    // 4. Fetch Discussion Forums under these topics
+    // 4. Fetch Discussion Forums under these topics (Current SY)
     const [forums] = await dbConn.query(`
         SELECT ft.forum_id, ft.topic_id, ft.title, COALESCE(ft.base_exp, 100) AS base_exp
         FROM forum_topics ft
-        WHERE ft.topic_id IN (?)
+        WHERE ft.topic_id IN (?) AND ft.sy_id = ?
         ORDER BY ft.topic_id ASC, ft.forum_id ASC
-    `, [topicIds]);
+    `, [topicIds, activeSyId]);
 
-    // 5. Fetch Student Scores for Enrolled Students
+    // 5. Fetch Student Scores for Enrolled Students (Current SY)
     let lmsScores = [];
     let arcadeScores = [];
     let forumDoneRecords = [];
@@ -11399,9 +11985,9 @@ async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectI
             SELECT ss.student_id, ss.assessment_id, ss.score_obtained, ss.total_possible_score, ss.exp_gained
             FROM student_scores ss
             JOIN assessments a ON ss.assessment_id = a.assessment_id
-            WHERE ss.student_id IN (?) AND a.topic_id IN (?)
+            WHERE ss.student_id IN (?) AND a.topic_id IN (?) AND a.sy_id = ?
             ORDER BY ss.assessment_id ASC, ss.score_id DESC
-        `, [studentIds, topicIds]);
+        `, [studentIds, topicIds, activeSyId]);
         lmsScores = lms;
 
         // Arcade session grades
@@ -11410,9 +11996,9 @@ async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectI
                    esg.points_possible AS total_possible_score, esg.points_earned AS exp_gained, esg.grade_percent
             FROM elementa_student_grades esg
             JOIN assessments a ON esg.assessment_id = a.assessment_id
-            WHERE esg.student_id IN (?) AND a.topic_id IN (?) AND esg.run_status = 'Completed'
+            WHERE esg.student_id IN (?) AND a.topic_id IN (?) AND esg.sy_id = ? AND a.sy_id = ? AND esg.run_status = 'Completed'
             ORDER BY esg.started_at DESC
-        `, [studentIds, topicIds]);
+        `, [studentIds, topicIds, activeSyId, activeSyId]);
         arcadeScores = arc;
 
         // Forum completions
@@ -11420,8 +12006,8 @@ async function computeClassTopicRemediation(dbConn, classId, teacherId, subjectI
             SELECT sfd.student_id, sfd.forum_id, sfd.exp_awarded, ft.topic_id
             FROM student_forum_done sfd
             JOIN forum_topics ft ON sfd.forum_id = ft.forum_id
-            WHERE sfd.student_id IN (?) AND ft.topic_id IN (?)
-        `, [studentIds, topicIds]);
+            WHERE sfd.student_id IN (?) AND ft.topic_id IN (?) AND ft.sy_id = ?
+        `, [studentIds, topicIds, activeSyId]);
         forumDoneRecords = fd;
     }
 
@@ -11712,27 +12298,39 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
     };
     const round1 = (num) => Math.round((Number(num) + Number.EPSILON) * 10) / 10;
 
-    const activeSY = await academicHelper.getCurrentSchoolYear(dbConn);
-    const activeSyId = activeSY ? activeSY.sy_id : null;
+    const activeSY = await academicHelper.getStrictCurrentSchoolYear(dbConn);
+    const activeSyId = activeSY ? Number(activeSY.sy_id) : null;
+    if (!activeSyId) {
+        return {
+            isMultiClass,
+            noActiveSY: true,
+            weights,
+            classes: [],
+            consolidatedKpis: {
+                totalEnrolled: 0, passedCount: 0, atRiskCount: 0, incompleteCount: 0,
+                passingRate: 0, atRiskRate: 0, classLmsMean: null, classArcadeMean: null,
+                classFinalMean: null, classAttMean: null
+            }
+        };
+    }
     const passingThreshold = options.passingThreshold || (activeSY ? Number(activeSY.passing_threshold || 75) : 75.0);
 
-    // 1. Fetch Target Classes
+    // 1. Fetch Target Classes (strictly Current SY)
     let classQuery = `
-        SELECT c.class_id, c.class_name, c.subject_id, s.subject_name, s.subject_code, s.semester, sy.sy_range,
+        SELECT c.class_id, c.class_name, c.subject_id, c.sy_id, s.subject_name, s.subject_code, s.semester, sy.sy_range,
                COALESCE((SELECT GROUP_CONCAT(DISTINCT q.quarter_number ORDER BY q.quarter_number) FROM quarters q WHERE q.subject_id = c.subject_id), '1,2') AS quarters
         FROM classes c
         JOIN subjects s ON c.subject_id = s.subject_id
         JOIN school_years sy ON c.sy_id = sy.sy_id
-        WHERE c.teacher_id = ?
+        WHERE c.teacher_id = ? AND c.sy_id = ?
     `;
-    const classParams = [teacherId];
+    const classParams = [teacherId, activeSyId];
 
     if (!isMultiClass) {
         classQuery += ` AND c.class_id = ?`;
         classParams.push(parseInt(classId, 10));
     } else {
-        classQuery += ` AND (? IS NULL OR c.sy_id = ?) ORDER BY c.class_name ASC, s.subject_name ASC`;
-        classParams.push(activeSyId, activeSyId);
+        classQuery += ` ORDER BY c.class_name ASC, s.subject_name ASC`;
     }
 
     const [classRows] = await dbConn.query(classQuery, classParams);
@@ -11762,6 +12360,7 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
     for (const cls of classRows) {
         const curClassId = cls.class_id;
         const curSubjectId = cls.subject_id;
+        const curSyId = Number(cls.sy_id || activeSyId);
         const validQuarters = String(cls.quarters || '1,2').split(',').map(Number).filter(n => !isNaN(n));
 
         // Guard against Quarter-vs-Subject mismatch (e.g., Chemistry 1 only covers Q1 & Q2; Chemistry 2 covers Q3 & Q4)
@@ -11781,15 +12380,15 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
             ? `Quarter ${effectiveQuarter}`
             : `All Quarters (${validQuarters.map(q => 'Q' + q).join(' & ')})`;
 
-        // 2. Fetch Active Enrolled Students
+        // 2. Fetch Active Enrolled Students (SY scoped)
         const [enrolledStudents] = await dbConn.query(`
             SELECT DISTINCT cs.student_id, u.user_id, u.first_name, u.middle_name, u.last_name, u.lrn_number,
                    u.sex, u.strand, u.section, u.grade_level, u.current_level, u.total_exp, u.email
             FROM class_students cs
             JOIN users u ON cs.student_id = u.user_id
-            WHERE cs.class_id = ? AND u.role = 'Student'
+            WHERE cs.class_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = ?) AND u.role = 'Student'
             ORDER BY u.last_name ASC, u.first_name ASC
-        `, [curClassId]);
+        `, [curClassId, curSyId]);
 
         const totalEnrolled = enrolledStudents.length;
         const studentIds = enrolledStudents.map(s => s.student_id);
@@ -11808,7 +12407,7 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
             continue;
         }
 
-        // 3. Fetch Coursework Tasks Scoped to Class Subject & Effective Quarter
+        // 3. Fetch Coursework Tasks Scoped to Class Subject, SY & Effective Quarter
         let taskSql = `
             SELECT a.assessment_id, a.assessment_name, a.assessment_type, a.category,
                    COALESCE(a.total_items, 10) AS total_items, t.topic_id, t.topic_name, q.quarter_number
@@ -11816,9 +12415,9 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
             JOIN topics t ON a.topic_id = t.topic_id
             JOIN quarters q ON t.quarter_id = q.quarter_id
             WHERE q.subject_id = ?
-              AND (a.sy_id = ? OR (? IS NULL AND a.sy_id IS NULL))
+              AND a.sy_id = ?
         `;
-        const taskParams = [curSubjectId, cls.sy_id || null, cls.sy_id || null];
+        const taskParams = [curSubjectId, curSyId];
         if (effectiveQuarter) {
             taskSql += ` AND q.quarter_number = ?`;
             taskParams.push(effectiveQuarter);
@@ -11831,8 +12430,7 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
         const topicAsmts = tasks.filter(t => t.assessment_type !== 'Assignment');
         const topicAsgns = tasks.filter(t => t.assessment_type === 'Assignment');
 
-        // 4. Fetch Discussion Forums Scoped to Class Subject (ft.subject_id) & Effective Quarter
-        // Includes general subject-level forums (topic_id IS NULL) and prevents cross-subject topic leakage
+        // 4. Fetch Discussion Forums Scoped to Class Subject (ft.subject_id), SY & Effective Quarter
         const [rawForums] = await dbConn.query(`
             SELECT ft.forum_id, ft.topic_id, ft.title, COALESCE(ft.base_exp, 100) AS base_exp,
                    COALESCE(
@@ -11842,9 +12440,9 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
             FROM forum_topics ft
             LEFT JOIN topics t ON ft.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
-            WHERE ft.subject_id = ?
+            WHERE ft.subject_id = ? AND ft.sy_id = ?
             ORDER BY quarter_number ASC, ft.topic_id ASC, ft.forum_id ASC
-        `, [curSubjectId]);
+        `, [curSubjectId, curSyId]);
         const forums = effectiveQuarter
             ? rawForums.filter(f => Number(f.quarter_number) === effectiveQuarter)
             : rawForums;
@@ -11867,8 +12465,8 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
                 SELECT esg.student_id, esg.assessment_id, esg.correct_answers AS score_obtained,
                        esg.points_possible AS total_possible_score, esg.points_earned AS exp_gained, esg.grade_percent
                 FROM elementa_student_grades esg
-                WHERE esg.student_id IN (?) AND esg.assessment_id IN (?) AND esg.class_id = ? AND esg.run_status = 'Completed'
-            `, [studentIds, taskIds, curClassId]);
+                WHERE esg.student_id IN (?) AND esg.assessment_id IN (?) AND esg.class_id = ? AND esg.sy_id = ? AND esg.run_status = 'Completed'
+            `, [studentIds, taskIds, curClassId, curSyId]);
             arcadeScores = arc;
         }
 
@@ -11885,14 +12483,13 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
 
         // 7. Fetch Simulation Laboratory Quiz Submissions (Scoped to Class SY & Effective Quarter)
         if (studentIds.length > 0) {
-            const clsSyId = cls.sy_id || null;
             const [sims] = await dbConn.query(`
                 SELECT esqs.student_id, esqs.quiz_id, esqs.simulation_slug, esqs.score, esqs.total_questions,
                        esqs.percentage, esqs.exp_earned
                 FROM elementa_simulation_quiz_submissions esqs
                 WHERE esqs.student_id IN (?)
-                  AND (? IS NULL OR esqs.sy_id = ?)
-            `, [studentIds, clsSyId, clsSyId]);
+                  AND esqs.sy_id = ?
+            `, [studentIds, curSyId]);
 
             if (effectiveQuarter) {
                 simSubmissions = sims.filter(s => SIMULATION_QUARTER_MAP[s.simulation_slug] === effectiveQuarter);
@@ -11925,12 +12522,12 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
             });
         }
 
-        // 9. Fetch Syllabus Progress
+        // 9. Fetch Syllabus Progress (SY scoped)
         const [progRows] = await dbConn.query(`
             SELECT student_id, progress_percent
             FROM student_progress
-            WHERE subject_id = ? AND student_id IN (?)
-        `, [curSubjectId, studentIds]);
+            WHERE subject_id = ? AND sy_id = ? AND student_id IN (?)
+        `, [curSubjectId, curSyId, studentIds]);
 
         const progMap = new Map();
         for (const pr of progRows) {
@@ -12436,6 +13033,15 @@ async function computeClassGradebookData(conn, classId, teacherId, options = {})
  * Shared Helper: Fetch Filtered Report Data For A Student in a Class & Subject
  */
 async function getStudentFilteredReportData(studentId, classId, subjectId, filters = {}) {
+    let targetClassSyId = filters.sy_id ? parseInt(filters.sy_id, 10) : null;
+    if (!targetClassSyId && classId) {
+        const [[clsSyRow]] = await db.query(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [classId]);
+        if (clsSyRow && clsSyRow.sy_id) targetClassSyId = Number(clsSyRow.sy_id);
+    }
+    if (!targetClassSyId) {
+        targetClassSyId = await resolveActiveSyIdOrThrow(db);
+    }
+
     // 1. Fetch Student demographic details
     const [studentRows] = await db.query(`
         SELECT user_id, first_name, middle_name, last_name, lrn_number,
@@ -12446,7 +13052,7 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
     const lvlTitle = levelProgressionService.LEVEL_TITLES[student.current_level || 1]?.title || 'Cadet';
     student.level_title = lvlTitle;
 
-    // 2. Attendance Summary
+    // 2. Attendance Summary (class-scoped)
     const [attRows] = await db.query(`
         SELECT
             COUNT(*) AS total_days,
@@ -12465,17 +13071,17 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
     const excusedDays = Number(att.excused_days || 0);
     const attRate = totalDays > 0 ? Math.round(((presentDays + lateDays) / totalDays) * 100) : null;
 
-    // 3. Subject Syllabus Progress
+    // 3. Subject Syllabus Progress (SY scoped)
     const [progRows] = await db.query(`
         SELECT progress_percent FROM student_progress
-        WHERE student_id = ? AND subject_id = ?
-    `, [studentId, subjectId]);
+        WHERE student_id = ? AND subject_id = ? AND sy_id = ?
+    `, [studentId, subjectId, targetClassSyId]);
     const syllabusProgress = progRows.length ? Number(progRows[0].progress_percent || 0) : 0;
 
-    // 4. Summary Analytics (Class-View View Score parity)
-    const summary = await computeStudentSubjectSummary(studentId, subjectId);
+    // 4. Summary Analytics (Class-View View Score parity, SY scoped)
+    const summary = await computeStudentSubjectSummary(studentId, subjectId, targetClassSyId);
 
-    // 5. Component: Assessments
+    // 5. Component: Assessments (SY scoped)
     let assessments = [];
     if (filters.inc_asmt !== '0' && filters.inc_asmt !== false) {
         let sql = `
@@ -12496,9 +13102,9 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
                     GROUP BY assessment_id
                 ) s2 ON s1.score_id = s2.max_id
             ) ss ON a.assessment_id = ss.assessment_id
-            WHERE q.subject_id = ? AND (a.assessment_type != 'Assignment' OR a.assessment_type IS NULL)
+            WHERE q.subject_id = ? AND a.sy_id = ? AND (a.assessment_type != 'Assignment' OR a.assessment_type IS NULL)
         `;
-        const params = [studentId, subjectId];
+        const params = [studentId, subjectId, targetClassSyId];
 
         if (filters.quarter) {
             sql += ' AND q.quarter_number = ?';
@@ -12551,7 +13157,7 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
         }
     }
 
-    // 6. Component: Assignments
+    // 6. Component: Assignments (SY scoped)
     let assignments = [];
     if (filters.inc_asgn !== '0' && filters.inc_asgn !== false) {
         let sql = `
@@ -12572,9 +13178,9 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
                     GROUP BY assessment_id
                 ) s2 ON s1.score_id = s2.max_id
             ) ss ON a.assessment_id = ss.assessment_id
-            WHERE q.subject_id = ? AND a.assessment_type = 'Assignment'
+            WHERE q.subject_id = ? AND a.sy_id = ? AND a.assessment_type = 'Assignment'
         `;
-        const params = [studentId, subjectId];
+        const params = [studentId, subjectId, targetClassSyId];
 
         if (filters.quarter) {
             sql += ' AND q.quarter_number = ?';
@@ -12615,7 +13221,7 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
         });
     }
 
-    // 7. Component: Discussion Forums
+    // 7. Component: Discussion Forums (SY scoped)
     let forums = [];
     if (filters.inc_forums !== '0' && filters.inc_forums !== false) {
         let sql = `
@@ -12631,9 +13237,9 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
             LEFT JOIN topics t ON ft.topic_id = t.topic_id
             LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
             LEFT JOIN student_forum_done sfd ON ft.forum_id = sfd.forum_id AND sfd.student_id = ?
-            WHERE ft.subject_id = ?
+            WHERE ft.subject_id = ? AND ft.sy_id = ?
         `;
-        const params = [studentId, subjectId];
+        const params = [studentId, subjectId, targetClassSyId];
 
         if (filters.forum_topic) {
             sql += ' AND ft.topic_id = ?';
@@ -12665,11 +13271,6 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
     // 8. Component: Simulation Quizzes (scoped to class SY)
     let simulationQuizzes = [];
     if (filters.inc_sim !== '0' && filters.inc_sim !== false) {
-        let targetClassSyId = filters.sy_id ? parseInt(filters.sy_id, 10) : null;
-        if (!targetClassSyId && classId) {
-            const [[clsSyRow]] = await db.query(`SELECT sy_id FROM classes WHERE class_id = ? LIMIT 1`, [classId]);
-            if (clsSyRow && clsSyRow.sy_id) targetClassSyId = clsSyRow.sy_id;
-        }
         let sql = `
             SELECT esqs.submission_id, esqs.quiz_id, esqs.simulation_slug,
                    esqs.score, esqs.total_questions, esqs.percentage, esqs.exp_earned,
@@ -12678,13 +13279,9 @@ async function getStudentFilteredReportData(studentId, classId, subjectId, filte
             FROM elementa_simulation_quiz_submissions esqs
             JOIN elementa_simulation_custom_quizzes q ON esqs.quiz_id = q.quiz_id
             WHERE esqs.student_id = ?
+              AND esqs.sy_id = ? AND q.sy_id = ?
         `;
-        const params = [studentId];
-
-        if (targetClassSyId) {
-            sql += ' AND esqs.sy_id = ? AND q.sy_id = ?';
-            params.push(targetClassSyId, targetClassSyId);
-        }
+        const params = [studentId, targetClassSyId, targetClassSyId];
 
         if (filters.sim_slugs) {
             const slugsArr = Array.isArray(filters.sim_slugs) ? filters.sim_slugs : filters.sim_slugs.split(',').map(s => s.trim()).filter(Boolean);
@@ -13016,6 +13613,43 @@ function renderStudentProgressReportCardPage(doc, data, options) {
     }
 }
 
+async function resolveExportClassesInCurrentSY(dbConn, teacherId, isAdmin, requestedClassId, { includeMetadata = false } = {}) {
+    const activeSyId = await resolveActiveSyIdOrThrow(dbConn);
+    const quartersCol = includeMetadata
+        ? `, s.subject_code, s.semester, sy.sy_range, COALESCE(GROUP_CONCAT(q.quarter_number ORDER BY q.quarter_number), '1,2') AS quarters`
+        : '';
+    const extraJoins = includeMetadata
+        ? `JOIN school_years sy ON c.sy_id = sy.sy_id LEFT JOIN quarters q ON s.subject_id = q.subject_id`
+        : '';
+    const groupBy = includeMetadata
+        ? `GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester, sy.sy_range`
+        : '';
+
+    const [allTeacherClasses] = await dbConn.execute(`
+        SELECT c.class_id, c.class_name, c.subject_id, c.sy_id, s.subject_name${quartersCol}
+        FROM classes c
+        LEFT JOIN subjects s ON c.subject_id = s.subject_id
+        ${extraJoins}
+        WHERE c.sy_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}
+        ${groupBy}
+        ORDER BY c.class_id ASC, c.class_name ASC
+    `, isAdmin ? [activeSyId] : [activeSyId, teacherId]);
+
+    const isMultiClass = (requestedClassId === 'all' || !requestedClassId);
+    if (isMultiClass) {
+        return { activeSyId, isMultiClass: true, allTeacherClasses, targetClasses: allTeacherClasses };
+    }
+
+    const matched = allTeacherClasses.find(c => String(c.class_id) === String(requestedClassId));
+    if (!matched) {
+        const err = new Error('Unauthorized class access or class belongs to another School Year.');
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_SY';
+        throw err;
+    }
+    return { activeSyId, isMultiClass: false, allTeacherClasses, targetClasses: [matched] };
+}
+
 // ── A. Class List & Attendance — PDF ──────────────────────────────────────────
 router.get('/reports/export/class-list/pdf', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
@@ -13024,23 +13658,14 @@ router.get('/reports/export/class-list/pdf', isTeacher, async (req, res) => {
 
     try {
         const isAdmin = req.user.role === 'Admin';
-
-        // Fetch all classes assigned to this teacher in deterministic order
-        const [allTeacherClasses] = await db.execute(`
-            SELECT c.class_id, c.class_name, c.subject_id, s.subject_name
-            FROM classes c
-            LEFT JOIN subjects s ON c.subject_id = s.subject_id
-            ${isAdmin ? '' : 'WHERE c.teacher_id = ?'}
-            ORDER BY c.class_id ASC, c.class_name ASC
-        `, isAdmin ? [] : [teacherId]);
-
-        const isMultiClass = (selectedClassId === 'all' || !selectedClassId);
-        let targetClasses = isMultiClass
-            ? allTeacherClasses
-            : allTeacherClasses.filter(c => String(c.class_id) === String(selectedClassId));
-
-        if (targetClasses.length === 0 && allTeacherClasses.length > 0) {
-            targetClasses = allTeacherClasses;
+        const { activeSyId, isMultiClass, targetClasses } = await resolveExportClassesInCurrentSY(
+            db,
+            teacherId,
+            isAdmin,
+            selectedClassId
+        );
+        if (!targetClasses.length) {
+            return res.status(404).send('No active Current School Year classes found for export.');
         }
 
         const auditRef = generateAuditRef(exportTab === 'attendance' ? 'ATT' : 'CLS');
@@ -13622,7 +14247,9 @@ router.get('/reports/export/class-list/pdf', isTeacher, async (req, res) => {
 
     } catch (err) {
         console.error('❌ [GET /reports/export/class-list/pdf]', err);
-        res.status(500).send('PDF generation failed.');
+        if (!res.headersSent) {
+            res.status(err.statusCode || 500).send(err.statusCode ? err.message : 'PDF generation failed.');
+        }
     }
 });
 
@@ -13635,23 +14262,14 @@ router.get('/reports/export/class-list/excel', isTeacher, async (req, res) => {
 
     try {
         const isAdmin = req.user.role === 'Admin';
-
-        // Fetch all classes assigned to this teacher in deterministic order
-        const [allTeacherClasses] = await db.execute(`
-            SELECT c.class_id, c.class_name, c.subject_id, s.subject_name
-            FROM classes c
-            LEFT JOIN subjects s ON c.subject_id = s.subject_id
-            ${isAdmin ? '' : 'WHERE c.teacher_id = ?'}
-            ORDER BY c.class_id ASC, c.class_name ASC
-        `, isAdmin ? [] : [teacherId]);
-
-        const isMultiClass = (selectedClassId === 'all' || !selectedClassId);
-        let targetClasses = isMultiClass
-            ? allTeacherClasses
-            : allTeacherClasses.filter(c => String(c.class_id) === String(selectedClassId));
-
-        if (targetClasses.length === 0 && allTeacherClasses.length > 0) {
-            targetClasses = allTeacherClasses;
+        const { activeSyId, isMultiClass, targetClasses } = await resolveExportClassesInCurrentSY(
+            db,
+            teacherId,
+            isAdmin,
+            selectedClassId
+        );
+        if (!targetClasses.length) {
+            return res.status(404).send('No active Current School Year classes found for export.');
         }
 
         const wb = new ExcelJS.Workbook();
@@ -14386,7 +15004,9 @@ router.get('/reports/export/class-list/excel', isTeacher, async (req, res) => {
 
     } catch (err) {
         console.error('❌ [GET /reports/export/class-list/excel]', err);
-        res.status(500).send('Excel generation failed.');
+        if (!res.headersSent) {
+            res.status(err.statusCode || 500).send(err.statusCode ? err.message : 'Excel generation failed.');
+        }
     }
 });
 
@@ -14403,37 +15023,49 @@ router.get('/reports/export/report-card/:studentId', isTeacher, async (req, res)
     }
 
     try {
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+
         if (!selectedClassId) {
             const [cRows] = await db.query(`
                 SELECT c.class_id FROM classes c
                 JOIN class_students cs ON c.class_id = cs.class_id
-                WHERE cs.student_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}
+                WHERE cs.student_id = ? AND c.sy_id = ? AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id) ${isAdmin ? '' : 'AND c.teacher_id = ?'}
                 LIMIT 1
-            `, isAdmin ? [studentId] : [studentId, teacherId]);
+            `, isAdmin ? [studentId, activeSyId] : [studentId, activeSyId, teacherId]);
             if (cRows.length) selectedClassId = cRows[0].class_id;
         }
 
         if (!selectedClassId) {
-            return res.status(400).send('No authorized class association found for this student.');
+            return res.status(403).send('No Current School Year class association found for this student.');
         }
 
         const [classRows] = await db.query(`
-            SELECT c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester, sy.sy_range,
+            SELECT c.class_id, c.class_name, c.subject_id, c.sy_id, s.subject_code, s.subject_name, s.semester, sy.sy_range,
                    COALESCE(GROUP_CONCAT(q.quarter_number ORDER BY q.quarter_number), '1,2') as quarters
             FROM classes c
             JOIN subjects s ON c.subject_id = s.subject_id
             JOIN school_years sy ON c.sy_id = sy.sy_id
             LEFT JOIN quarters q ON s.subject_id = q.subject_id
-            WHERE c.class_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}
-            GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester, sy.sy_range
-        `, isAdmin ? [selectedClassId] : [selectedClassId, teacherId]);
+            WHERE c.class_id = ? AND c.sy_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}
+            GROUP BY c.class_id, c.class_name, c.subject_id, c.sy_id, s.subject_code, s.subject_name, s.semester, sy.sy_range
+        `, isAdmin ? [selectedClassId, activeSyId] : [selectedClassId, activeSyId, teacherId]);
 
-        if (!classRows.length) return res.status(403).send('Unauthorized class access.');
+        if (!classRows.length) return res.status(403).send('Unauthorized class access or class belongs to another School Year.');
         const cls = classRows[0];
         const classQuarters = (cls.quarters || '1,2').split(',').map(Number);
 
+        // Ensure student belongs to this verified Current-SY class
+        const [[enrolledRow]] = await db.query(
+            `SELECT 1 AS ok FROM class_students WHERE class_id = ? AND student_id = ? AND (sy_id IS NULL OR sy_id = ?) LIMIT 1`,
+            [selectedClassId, studentId, activeSyId]
+        );
+        if (!enrolledRow) {
+            return res.status(403).send('Student is not enrolled in this Current School Year class.');
+        }
+
         // Parse filters
         const filters = {
+            sy_id: activeSyId,
             quarter: req.query.quarter || '',
             inc_asmt: req.query.inc_asmt !== '0',
             asmt_topic: req.query.asmt_topic || '',
@@ -14486,7 +15118,9 @@ router.get('/reports/export/report-card/:studentId', isTeacher, async (req, res)
 
     } catch (err) {
         console.error('❌ [GET /reports/export/report-card/:studentId]', err);
-        res.status(500).send('PDF generation failed.');
+        if (!res.headersSent) {
+            res.status(err.statusCode || 500).send(err.statusCode ? err.message : 'PDF generation failed.');
+        }
     }
 });
 
@@ -14494,6 +15128,7 @@ router.get('/reports/export/report-card/:studentId', isTeacher, async (req, res)
 // ── C1. Single-Topic Remediation Dossier — PDF ───────────────────────────────
 router.get('/reports/export/remediation/topic/:topicId/pdf', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
+    const isAdmin = req.user.role === 'Admin';
     const topicId = parseInt(req.params.topicId, 10);
     const selectedClassId = req.query.class_id && req.query.class_id !== 'all' ? parseInt(req.query.class_id, 10) : null;
 
@@ -14502,7 +15137,9 @@ router.get('/reports/export/remediation/topic/:topicId/pdf', isTeacher, async (r
             return res.status(400).send('Topic ID is required.');
         }
 
-        // 1. Fetch Class and Subject Metadata
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+
+        // 1. Fetch Class and Subject Metadata strictly in Current SY
         let classInfo = {};
         if (selectedClassId) {
             const [cRows] = await db.query(
@@ -14510,15 +15147,20 @@ router.get('/reports/export/remediation/topic/:topicId/pdf', isTeacher, async (r
                  FROM classes c
                  JOIN subjects s ON c.subject_id = s.subject_id
                  JOIN school_years sy ON c.sy_id = sy.sy_id
-                 WHERE c.class_id = ? AND c.teacher_id = ?`,
-                [selectedClassId, teacherId]
+                 WHERE c.class_id = ? AND c.sy_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}`,
+                isAdmin ? [selectedClassId, activeSyId] : [selectedClassId, activeSyId, teacherId]
             );
-            if (cRows.length > 0) {
-                classInfo = cRows[0];
+            if (!cRows.length) {
+                return res.status(403).send('Unauthorized class access or class belongs to another School Year.');
             }
+            classInfo = cRows[0];
         }
 
-        // 2. Fetch Topic Details
+        // 2. Fetch Topic Details and verify ownership/SY
+        let topicMeta;
+        if (!isAdmin) {
+            await verifyTeacherTopicInCurrentSY(db, teacherId, topicId, activeSyId);
+        }
         const [tRows] = await db.query(
             `SELECT t.topic_id, t.topic_name, t.topic_description, q.quarter_number, q.quarter_id, s.subject_id, s.subject_name, s.subject_code
              FROM topics t
@@ -14530,23 +15172,23 @@ router.get('/reports/export/remediation/topic/:topicId/pdf', isTeacher, async (r
         if (tRows.length === 0) {
             return res.status(404).send('Topic not found.');
         }
-        const topicMeta = tRows[0];
+        topicMeta = tRows[0];
 
-        // 3. Compute Topic Remediation Metrics via Helper Engine
-        const topicResults = await computeClassTopicRemediation(db, selectedClassId, teacherId, topicMeta.subject_id);
+        // 3. Compute Topic Remediation Metrics via Helper Engine (Current SY scoped)
+        const topicResults = await computeClassTopicRemediation(db, selectedClassId, teacherId, topicMeta.subject_id, activeSyId);
         const topicData = topicResults.find(t => t.topic_id === topicId);
 
         if (!topicData) {
             return res.status(404).send('Remediation metrics not available for this topic.');
         }
 
-        // 4. Fetch Attached Learning Materials
+        // 4. Fetch Attached Learning Materials (Current SY scoped)
         const [materials] = await db.query(
             `SELECT material_id, title, material_type, file_path_or_url
              FROM learning_materials
-             WHERE topic_id = ?
+             WHERE topic_id = ? AND sy_id = ?
              ORDER BY title ASC LIMIT 5`,
-            [topicId]
+            [topicId, activeSyId]
         );
 
         // 5. Initialize PDF Document
@@ -14721,7 +15363,7 @@ router.get('/reports/export/remediation/topic/:topicId/pdf', isTeacher, async (r
     } catch (err) {
         console.error('❌ [GET /reports/export/remediation/topic/:topicId/pdf]', err);
         if (!res.headersSent) {
-            res.status(500).send('PDF generation failed.');
+            res.status(err.statusCode || 500).send(err.statusCode ? err.message : 'PDF generation failed.');
         }
     }
 });
@@ -14730,13 +15372,16 @@ router.get('/reports/export/remediation/topic/:topicId/pdf', isTeacher, async (r
 // ── C. Class Remediation & Curriculum Risk Matrix — Batch PDF ────────────────
 router.get('/reports/export/remediation/pdf', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
+    const isAdmin = req.user.role === 'Admin';
     const selectedClassId = req.query.class_id && req.query.class_id !== 'all' ? parseInt(req.query.class_id, 10) : null;
     const filterQuarter = req.query.quarter ? parseInt(req.query.quarter, 10) : null;
     const filterRisk = req.query.risk || null;   // 'high' / 'moderate' / 'low' / 'at_risk_only'
     const filterTopic = req.query.topic_id ? parseInt(req.query.topic_id, 10) : null;
 
     try {
-        // 1. Fetch Class and Subject Metadata
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
+
+        // 1. Fetch Class and Subject Metadata strictly in Current SY
         let classInfo = {};
         if (selectedClassId) {
             const [cRows] = await db.query(
@@ -14744,16 +15389,21 @@ router.get('/reports/export/remediation/pdf', isTeacher, async (req, res) => {
                  FROM classes c
                  JOIN subjects s ON c.subject_id = s.subject_id
                  JOIN school_years sy ON c.sy_id = sy.sy_id
-                 WHERE c.class_id = ? AND c.teacher_id = ?`,
-                [selectedClassId, teacherId]
+                 WHERE c.class_id = ? AND c.sy_id = ? ${isAdmin ? '' : 'AND c.teacher_id = ?'}`,
+                isAdmin ? [selectedClassId, activeSyId] : [selectedClassId, activeSyId, teacherId]
             );
-            if (cRows.length > 0) {
-                classInfo = cRows[0];
+            if (!cRows.length) {
+                return res.status(403).send('Unauthorized class access or class belongs to another School Year.');
             }
+            classInfo = cRows[0];
         }
 
-        // 2. Compute Topic Remediation Data via Helper Engine
-        let topicResults = await computeClassTopicRemediation(db, selectedClassId, teacherId, classInfo.subject_id);
+        if (filterTopic && !isAdmin) {
+            await verifyTeacherTopicInCurrentSY(db, teacherId, filterTopic, activeSyId);
+        }
+
+        // 2. Compute Topic Remediation Data via Helper Engine (Current SY scoped)
+        let topicResults = await computeClassTopicRemediation(db, selectedClassId, teacherId, classInfo.subject_id, activeSyId);
 
         // 3. Apply Filters
         if (filterQuarter) {
@@ -14971,7 +15621,7 @@ router.get('/reports/export/remediation/pdf', isTeacher, async (req, res) => {
     } catch (err) {
         console.error('❌ [GET /reports/export/remediation/pdf]', err);
         if (!res.headersSent) {
-            res.status(500).send('PDF generation failed.');
+            res.status(err.statusCode || 500).send(err.statusCode ? err.message : 'PDF generation failed.');
         }
     }
 });
@@ -14980,7 +15630,7 @@ router.get('/reports/export/remediation/pdf', isTeacher, async (req, res) => {
 // ── D. Consolidated Batch Report Cards — PDF ────────────────────────────────
 router.get('/reports/export/report-card-batch/pdf', isTeacher, async (req, res) => {
     const teacherId = req.user.user_id;
-    const isMultiClass = (req.query.class_id === 'all' || !req.query.class_id || req.query.class_id === '');
+    const isAdmin = req.user.role === 'Admin';
     const filterQuarter = req.query.quarter && req.query.quarter !== 'all' ? req.query.quarter : null;
 
     const filters = {
@@ -15004,19 +15654,17 @@ router.get('/reports/export/report-card-batch/pdf', isTeacher, async (req, res) 
     };
 
     try {
-        const [allTeacherClasses] = await db.execute(`
-            SELECT c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester, sy.sy_range,
-                   COALESCE(GROUP_CONCAT(q.quarter_number ORDER BY q.quarter_number), '1,2') as quarters
-            FROM classes c
-            JOIN subjects s ON c.subject_id = s.subject_id
-            JOIN school_years sy ON c.sy_id = sy.sy_id
-            LEFT JOIN quarters q ON s.subject_id = q.subject_id
-            WHERE c.teacher_id = ?
-            GROUP BY c.class_id, c.class_name, c.subject_id, s.subject_code, s.subject_name, s.semester, sy.sy_range
-            ORDER BY c.class_name ASC, s.subject_name ASC`, [teacherId]);
+        const { activeSyId, isMultiClass, allTeacherClasses, targetClasses: resolvedClasses } = await resolveExportClassesInCurrentSY(
+            db,
+            teacherId,
+            isAdmin,
+            req.query.class_id || 'all',
+            { includeMetadata: true }
+        );
+        filters.sy_id = activeSyId;
 
         if (!allTeacherClasses.length) {
-            return res.status(400).send('No active classes found for this teacher.');
+            return res.status(404).send('No active Current School Year classes found for this teacher.');
         }
 
         const qNum = filterQuarter ? parseInt(filterQuarter, 10) : null;
@@ -15024,20 +15672,18 @@ router.get('/reports/export/report-card-batch/pdf', isTeacher, async (req, res) 
 
         if (isMultiClass) {
             if (qNum) {
-                targetClasses = allTeacherClasses.filter(c => {
+                targetClasses = resolvedClasses.filter(c => {
                     const cQuarters = (c.quarters || '').split(',').map(Number);
                     return cQuarters.includes(qNum);
                 });
                 if (!targetClasses.length) {
-                    return res.status(400).send(`None of your classes offer Quarter ${qNum}.`);
+                    return res.status(400).send(`None of your Current School Year classes offer Quarter ${qNum}.`);
                 }
             } else {
-                targetClasses = allTeacherClasses;
+                targetClasses = resolvedClasses;
             }
         } else {
-            const single = allTeacherClasses.find(c => String(c.class_id) === String(req.query.class_id));
-            if (!single) return res.status(403).send('Unauthorized class filter or class not found.');
-            
+            const single = resolvedClasses[0];
             const classQuarters = (single.quarters || '').split(',').map(Number);
             if (qNum && !classQuarters.includes(qNum)) {
                 return res.status(400).send(`Invalid Quarter: Class "${single.class_name} — ${single.subject_name}" only covers Quarters ${classQuarters.join(' & ')}. Quarter ${qNum} does not exist for this subject.`);
@@ -15055,14 +15701,14 @@ router.get('/reports/export/report-card-batch/pdf', isTeacher, async (req, res) 
                    COALESCE(sp.progress_percent, 0) AS syllabus_progress,
                    (SELECT COALESCE(GROUP_CONCAT(q.quarter_number ORDER BY q.quarter_number), '1,2') FROM quarters q WHERE q.subject_id = c.subject_id) AS quarters
             FROM users u
-            JOIN class_students cs ON u.user_id = cs.student_id
+            JOIN class_students cs ON u.user_id = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
             JOIN classes c ON cs.class_id = c.class_id
             JOIN subjects s ON c.subject_id = s.subject_id
             JOIN school_years sy ON c.sy_id = sy.sy_id
-            LEFT JOIN student_progress sp ON sp.student_id = u.user_id AND sp.subject_id = c.subject_id
-            WHERE cs.class_id IN (${placeholders}) AND u.role = 'Student'
+            LEFT JOIN student_progress sp ON sp.student_id = u.user_id AND sp.subject_id = c.subject_id AND sp.sy_id = c.sy_id
+            WHERE cs.class_id IN (${placeholders}) AND c.sy_id = ? AND u.role = 'Student'
             ORDER BY c.class_name ASC, s.subject_name ASC, u.last_name ASC, u.first_name ASC`,
-            targetClassIds
+            [activeSyId, ...targetClassIds, activeSyId]
         );
 
         function formatQuarterScopeLabel(quartersStr, selectedQuarter) {
@@ -15208,7 +15854,9 @@ router.get('/reports/export/report-card-batch/pdf', isTeacher, async (req, res) 
 
     } catch (err) {
         console.error('❌ [GET /reports/export/report-card-batch/pdf]', err);
-        res.status(500).send('Batch PDF generation failed.');
+        if (!res.headersSent) {
+            res.status(err.statusCode || 500).send(err.statusCode ? err.message : 'Batch PDF generation failed.');
+        }
     }
 });
 
@@ -15280,6 +15928,10 @@ router.get('/reports/export/gradebook/excel', isTeacher, async (req, res) => {
             standing: filterStanding,
             weights
         });
+
+        if (gradebookData.noActiveSY) {
+            return res.status(403).send('Action blocked: No active Current School Year is configured.');
+        }
 
         if (!gradebookData.classes || gradebookData.classes.length === 0) {
             if (selectedClassId !== 'all') {
@@ -15885,6 +16537,10 @@ router.get('/reports/export/gradebook/pdf', isTeacher, async (req, res) => {
             weights
         });
 
+        if (gradebookData.noActiveSY) {
+            return res.status(403).send('Action blocked: No active Current School Year is configured.');
+        }
+
         if (!gradebookData.classes || gradebookData.classes.length === 0) {
             if (selectedClassId !== 'all') {
                 return res.status(403).send('Unauthorized or non-existent class selection.');
@@ -16372,6 +17028,12 @@ router.get('/assessment/create', isTeacher, async (req, res) => {
             return res.status(400).send('topic_id and quarter_id are required.');
         }
 
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) {
+            return res.redirect('/teacher/classes?sy_blocked=1');
+        }
+
         const [[topic]] = await db.execute(
             'SELECT topic_id, topic_name, topic_description, topic_objectives FROM topics WHERE topic_id = ?',
             [topic_id]
@@ -16384,6 +17046,12 @@ router.get('/assessment/create', isTeacher, async (req, res) => {
                 requestedPath: req.originalUrl,
                 customMessage: 'The selected chemistry topic could not be found in the curriculum registry.'
             });
+        }
+
+        try {
+            await verifyTeacherTopicInCurrentSY(db, req.user.user_id, topic_id, currentSyId);
+        } catch (authErr) {
+            return res.redirect('/teacher/classes?sy_blocked=1');
         }
 
         const [[quarter]] = await db.execute(
@@ -16412,7 +17080,8 @@ router.get('/assessment/create', isTeacher, async (req, res) => {
                 timer_type: 'Global',
                 is_unlocked: 0,
                 due_date: null,
-                teacher_id: req.user.user_id   // ← Passport: req.user
+                teacher_id: req.user.user_id,
+                sy_id: currentSyId
             },
             topic,
             quarter,
@@ -16420,7 +17089,7 @@ router.get('/assessment/create', isTeacher, async (req, res) => {
         };
 
         const notifications = await getTeacherNotifications(db, req.user.user_id);
-        res.render('teacher/game_configuration', { pageData, user: req.user, notifications });
+        res.render('teacher/game_configuration', { pageData, user: req.user, currentSY, notifications });
 
     } catch (err) {
         console.error('[GET /assessment/create]', err);
@@ -16436,7 +17105,13 @@ router.get('/assessment/create', isTeacher, async (req, res) => {
 router.get('/assessment/:assessment_id/configure', isTeacher, async (req, res) => {
     try {
         const { assessment_id } = req.params;
-        const teacher_id = req.user.user_id;   // ← Passport: req.user
+        const teacher_id = req.user.user_id;
+
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) {
+            return res.redirect('/teacher/classes?sy_blocked=1');
+        }
 
         // Fetch assessment — must belong to this teacher (or user is Admin)
         const isAdmin = req.user && req.user.role === 'Admin';
@@ -16454,6 +17129,10 @@ router.get('/assessment/:assessment_id/configure', isTeacher, async (req, res) =
                 requestedPath: req.originalUrl,
                 customMessage: 'The requested assessment could not be found or you do not have permission to configure it.'
             });
+        }
+
+        if (!assessment.sy_id || Number(assessment.sy_id) !== currentSyId) {
+            return res.redirect('/teacher/classes?sy_blocked=1');
         }
 
         const [[topic]] = await db.execute(
@@ -16498,7 +17177,7 @@ router.get('/assessment/:assessment_id/configure', isTeacher, async (req, res) =
 
         const pageData = { assessment, topic, quarter, questions };
         const notifications = await getTeacherNotifications(db, req.user.user_id);
-        res.render('teacher/game_configuration', { pageData, user: req.user, notifications });
+        res.render('teacher/game_configuration', { pageData, user: req.user, currentSY, notifications });
 
     } catch (err) {
         console.error('[GET /assessment/:id/configure]', err);
@@ -16513,7 +17192,7 @@ router.get('/assessment/:assessment_id/configure', isTeacher, async (req, res) =
 // Returns { success, media_path, media_type }
 // ============================================================
 router.post('/assessment/upload-media', isTeacher, (req, res) => {
-    uploadQuestionMedia.single('media')(req, res, (err) => {
+    uploadQuestionMedia.single('media')(req, res, async (err) => {
         if (err) {
             if (err.code === 'LIMIT_FILE_SIZE') {
                 return res.status(400).json({ success: false, error: 'File exceeds the 50MB limit.' });
@@ -16522,6 +17201,13 @@ router.post('/assessment/upload-media', isTeacher, (req, res) => {
         }
         if (!req.file) {
             return res.status(400).json({ success: false, error: 'No file received.' });
+        }
+
+        try {
+            await resolveActiveSyIdOrThrow(db);
+        } catch (syErr) {
+            fs.unlink(req.file.path, () => { });
+            return res.status(syErr.statusCode || 403).json({ success: false, error: syErr.message });
         }
 
         const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
@@ -16540,7 +17226,7 @@ router.post('/assessment/upload-media', isTeacher, (req, res) => {
 // Returns { success, image_path }
 // ============================================================
 router.post('/assessment/upload-choice-image', isTeacher, (req, res) => {
-    uploadChoiceImage.single('choice_image')(req, res, (err) => {
+    uploadChoiceImage.single('choice_image')(req, res, async (err) => {
         if (err) {
             if (err.code === 'LIMIT_FILE_SIZE') {
                 return res.status(400).json({ success: false, error: 'File exceeds the 5MB limit.' });
@@ -16550,6 +17236,14 @@ router.post('/assessment/upload-choice-image', isTeacher, (req, res) => {
         if (!req.file) {
             return res.status(400).json({ success: false, error: 'No file received.' });
         }
+
+        try {
+            await resolveActiveSyIdOrThrow(db);
+        } catch (syErr) {
+            fs.unlink(req.file.path, () => { });
+            return res.status(syErr.statusCode || 403).json({ success: false, error: syErr.message });
+        }
+
         const imagePath = `/uploads/choice_images/${req.file.filename}`;
         res.json({ success: true, image_path: imagePath });
     });
@@ -16566,35 +17260,47 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
     try {
         await conn.beginTransaction();
 
-        const teacher_id = req.user.user_id;   // ← Passport: req.user
+        const teacher_id = req.user.user_id;
         const { assessment, questions, deletedQuestionIds } = req.body;
+        if (!assessment) {
+            await conn.rollback();
+            return res.status(400).json({ success: false, error: 'Assessment payload missing.' });
+        }
 
-        // ── STEP 1: Ownership check for edits (Admin bypasses) ─────────────────
+        const activeSyId = await resolveActiveSyIdOrThrow(conn);
+
+        if (assessment.sy_id !== undefined && assessment.sy_id !== null && String(assessment.sy_id).trim() !== '' && parseInt(assessment.sy_id, 10) !== activeSyId) {
+            await conn.rollback();
+            return res.status(403).json({ success: false, error: 'Cannot save assessments outside the Current School Year.' });
+        }
+
+        // ── STEP 1: Ownership & Strict SY check ─────────────────
         const isUserAdmin = req.user && req.user.role === 'Admin';
-        if (assessment.assessment_id && !isUserAdmin) {
+        if (assessment.assessment_id) {
             const [[existing]] = await conn.execute(
-                'SELECT teacher_id FROM assessments WHERE assessment_id = ?',
+                'SELECT teacher_id, sy_id FROM assessments WHERE assessment_id = ?',
                 [assessment.assessment_id]
             );
             if (!existing) {
                 await conn.rollback();
                 return res.status(404).json({ success: false, error: 'Assessment not found.' });
             }
-            if (parseInt(existing.teacher_id) !== parseInt(teacher_id)) {
+            if (!existing.sy_id || Number(existing.sy_id) !== activeSyId) {
+                await conn.rollback();
+                return res.status(403).json({ success: false, error: 'This assessment belongs to another School Year and cannot be modified.' });
+            }
+            if (!isUserAdmin && parseInt(existing.teacher_id) !== parseInt(teacher_id)) {
                 await conn.rollback();
                 return res.status(403).json({ success: false, error: 'Access denied.' });
             }
+        } else if (assessment.topic_id && !isUserAdmin) {
+            await verifyTeacherTopicInCurrentSY(conn, teacher_id, assessment.topic_id, activeSyId);
         }
 
         // ── STEP 2: Upsert assessment ──────────────────────────
         const isNewAssessment = !assessment.assessment_id;
         let assessment_id = assessment.assessment_id || null;
-
-        let resolvedSyId = assessment.sy_id ? parseInt(assessment.sy_id, 10) : null;
-        if (!resolvedSyId) {
-            const currentSY = await academicHelper.getCurrentSchoolYear(db);
-            resolvedSyId = currentSY ? currentSY.sy_id : null;
-        }
+        const resolvedSyId = activeSyId;
 
         const assessmentFields = {
             sy_id: resolvedSyId,
@@ -16648,7 +17354,7 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
                      sound_bg = ?, sound_correct = ?, sound_wrong = ?,
                      sound_result_pass = ?, sound_result_fail = ?,
                      speech_enabled = ?
-                 WHERE assessment_id = ?`,
+                 WHERE assessment_id = ? AND sy_id = ?`,
                 [
                     assessmentFields.quarter_id,
                     assessmentFields.topic_id,
@@ -16665,7 +17371,8 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
                     assessment.sound_result_pass || '',
                     assessment.sound_result_fail || '',
                     assessment.speech_enabled ? 1 : 0,
-                    assessment_id
+                    assessment_id,
+                    resolvedSyId
                 ]
             );
         }
@@ -16697,17 +17404,18 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
             const sortOrder = parseInt(q.sort_order) || 1;
 
             if (!question_id) {
-                // INSERT new question into elementa_questions
+                // INSERT new question into elementa_questions (strictly stamped with resolvedSyId)
                 const qCode = 'Q_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
                 const levelNum = (assessmentFields.topic_id && TOPIC_LEVEL_MAP[assessmentFields.topic_id]) || 1;
                 const topicLabel = (LEVEL_MACHINES[levelNum] && LEVEL_MACHINES[levelNum].topic) || 'Chemistry';
                 const [qInsert] = await conn.execute(
                     `INSERT INTO elementa_questions
-                     (topic_id, level_number, topic, teacher_id, question_code, prompt, answer_text, steps_json,
+                     (topic_id, sy_id, level_number, topic, teacher_id, question_code, prompt, answer_text, steps_json,
                       time_limit_s, points, difficulty, machine_name, machine_id, display_order, verification_status, is_active)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', 1)`,
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', 1)`,
                     [
                         assessmentFields.topic_id || null,
+                        resolvedSyId,
                         levelNum,
                         topicLabel,
                         teacher_id,
@@ -16725,12 +17433,12 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
                 );
                 question_id = qInsert.insertId;
             } else {
-                // UPDATE existing question in elementa_questions
+                // UPDATE existing question in elementa_questions (scoped to Current SY)
                 await conn.execute(
                     `UPDATE elementa_questions
                      SET prompt = ?, answer_text = ?, steps_json = ?,
                          time_limit_s = ?, points = ?, difficulty = ?
-                     WHERE question_id = ? AND (teacher_id = ? OR ? = 1)`,
+                     WHERE question_id = ? AND sy_id = ? AND (teacher_id = ? OR ? = 1)`,
                     [
                         promptText,
                         answerText,
@@ -16739,6 +17447,7 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
                         pointsVal,
                         diffVal,
                         question_id,
+                        resolvedSyId,
                         teacher_id,
                         isUserAdmin ? 1 : 0
                     ]
@@ -16785,17 +17494,17 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
 
         await conn.commit();
 
-        // Dispatch in-app notification if new assessment or published
+        // Dispatch in-app notification if new assessment or published (strictly Current SY)
         if (isNewAssessment && assessmentFields.is_unlocked) {
             try {
                 const [students] = await db.query(`
                     SELECT DISTINCT cs.student_id, c.subject_id
                     FROM topics t
                     JOIN quarters q ON t.quarter_id = q.quarter_id
-                    JOIN classes c ON q.subject_id = c.subject_id
-                    JOIN class_students cs ON c.class_id = cs.class_id
+                    JOIN classes c ON q.subject_id = c.subject_id AND c.sy_id = ? AND c.teacher_id = ?
+                    JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                     WHERE t.topic_id = ?
-                `, [assessmentFields.topic_id]);
+                `, [resolvedSyId, teacher_id, assessmentFields.topic_id]);
 
                 if (students.length > 0) {
                     const studentIds = [...new Set(students.map(s => s.student_id))];
@@ -16812,7 +17521,7 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
                         title: `New Assessment: ${assessmentFields.assessment_name}`,
                         message: `A new ${assessmentFields.assessment_type || 'Arcade'} assessment is now live${dueStr}.`,
                         targetUrl: `/subjects/open/${subjectId}?tab=assessments&assessment_id=${assessment_id}#asgn-card-${assessment_id}`,
-                        metadata: { assessmentId: assessment_id, subjectId }
+                        metadata: { assessmentId: assessment_id, subjectId, syId: resolvedSyId }
                     });
                 }
             } catch (notifErr) {
@@ -16825,7 +17534,7 @@ router.post('/assessment/save', isTeacher, async (req, res) => {
     } catch (err) {
         await conn.rollback();
         console.error('[POST /assessment/save]', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     } finally {
         conn.release();
     }
@@ -16844,14 +17553,19 @@ router.delete('/api/assessment/:aid/full', isTeacher, async (req, res) => {
         const aid = req.params.aid;
         const teacher_id = req.user.user_id;
         const isUserAdmin = req.user && req.user.role === 'Admin';
+        const activeSyId = await resolveActiveSyIdOrThrow(conn);
 
-        // Ownership check
+        // Ownership & strict Current SY check
         const [[existing]] = await conn.execute(
-            'SELECT teacher_id FROM assessments WHERE assessment_id = ?', [aid]
+            'SELECT teacher_id, sy_id FROM assessments WHERE assessment_id = ?', [aid]
         );
         if (!existing) {
             await conn.rollback();
             return res.status(404).json({ success: false, error: 'Assessment not found.' });
+        }
+        if (!existing.sy_id || Number(existing.sy_id) !== activeSyId) {
+            await conn.rollback();
+            return res.status(403).json({ success: false, error: 'This assessment belongs to another School Year and cannot be deleted.' });
         }
         if (!isUserAdmin && parseInt(existing.teacher_id) !== parseInt(teacher_id)) {
             await conn.rollback();
@@ -16874,7 +17588,7 @@ router.delete('/api/assessment/:aid/full', isTeacher, async (req, res) => {
     } catch (err) {
         if (conn) await conn.rollback();
         console.error('[DELETE /api/assessment/:aid/full]', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     } finally {
         if (conn) conn.release();
     }
@@ -16897,15 +17611,8 @@ router.post('/api/subject/:subjectId/image', isTeacher, (req, res) => {
         try {
             const subjectId = req.params.subjectId;
 
-            // Ownership check — teacher must teach this subject
-            const [[ownership]] = await db.execute(
-                `SELECT c.class_id FROM classes c WHERE c.subject_id = ? AND c.teacher_id = ? LIMIT 1`,
-                [subjectId, req.user.user_id]
-            );
-            if (!ownership) {
-                fs.unlink(req.file.path, () => { });
-                return res.status(403).json({ success: false, error: 'You do not teach this subject.' });
-            }
+            // Ownership & strict Current School Year check
+            await verifyTeacherSubjectInCurrentSY(db, req.user.user_id, subjectId);
 
             // Fetch old image filename to delete it after update
             const [[subjectRow]] = await db.execute(
@@ -16929,7 +17636,7 @@ router.post('/api/subject/:subjectId/image', isTeacher, (req, res) => {
         } catch (e) {
             fs.unlink(req.file.path, () => { });
             console.error('[SUBJECT IMAGE]', e.message);
-            res.status(500).json({ success: false, error: e.message });
+            res.status(e.statusCode || 500).json({ success: false, error: e.message });
         }
     });
 });
@@ -16949,10 +17656,13 @@ router.get('/profile', isTeacher, async (req, res) => {
              FROM users WHERE user_id = ?`, [req.user.user_id]
         );
 
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
         const notifications = await getTeacherNotifications(db, req.user.user_id);
 
         res.render('teacher/profile', {
             user,
+            currentSY: currentSY || null,
+            noActiveSY: !currentSY,
             notifications: notifications || [],
             updated: req.query.updated === '1'
         });
@@ -17025,26 +17735,27 @@ router.post('/profile/update', isTeacher, profileUpload.single('profile_pic'), a
     }
 });
 
-// For teacher profile page — classes tab
+// For teacher profile page — classes tab (strictly Current School Year)
 router.get('/api/class-roster-list', isTeacher, async (req, res) => {
     try {
+        const activeSyId = await resolveActiveSyIdOrThrow(db);
         const [classes] = await db.execute(`
             SELECT c.class_id, c.class_name,
                    s.subject_name, s.subject_code,
                    sy.sy_range,
-                   COUNT(cs.student_id) AS student_count
+                   COUNT(DISTINCT cs.student_id) AS student_count
             FROM classes c
             JOIN subjects s ON c.subject_id = s.subject_id
             JOIN school_years sy ON c.sy_id = sy.sy_id
-            LEFT JOIN class_students cs ON c.class_id = cs.class_id
-            WHERE c.teacher_id = ?
-            GROUP BY c.class_id
-            ORDER BY c.class_id DESC`, [req.user.user_id]
+            LEFT JOIN class_students cs ON c.class_id = cs.class_id AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+            WHERE c.teacher_id = ? AND c.sy_id = ?
+            GROUP BY c.class_id, c.class_name, s.subject_name, s.subject_code, sy.sy_range
+            ORDER BY c.class_id DESC`, [req.user.user_id, activeSyId]
         );
         res.json({ classes });
     } catch (err) {
         console.error('[ERROR] GET /teacher/api/class-roster-list', err);
-        res.status(500).json({ classes: [] });
+        res.status(err.statusCode || 500).json({ error: err.message, classes: [] });
     }
 });
 
@@ -17071,32 +17782,132 @@ const uploadAudioNote = multer({
 });
 
 // 1. GET /teacher/grading-workspace/:aid or /teacher/grading/workspace/:aid — Fast Grading SPA UI
+async function resolveAuthorizedScoreEntryInCurrentSY(teacherId, scoreId, { assessmentId = null, studentId = null } = {}) {
+    const activeSyId = await resolveActiveSyIdOrThrow(db);
+    const isNew = scoreId === 'new' || scoreId === '0' || !scoreId;
+
+    if (!isNew) {
+        const [[row]] = await db.query(
+            `SELECT ss.score_id, ss.student_id, ss.assessment_id
+             FROM student_scores ss
+             WHERE ss.score_id = ? LIMIT 1`,
+            [scoreId]
+        );
+        if (!row) {
+            const err = new Error('Submission score record not found.');
+            err.statusCode = 404;
+            throw err;
+        }
+        const asmtMeta = await verifyTeacherAssessmentInCurrentSY(db, teacherId, row.assessment_id, activeSyId);
+        return { activeSyId, assessmentId: row.assessment_id, subjectId: asmtMeta.quarter_subject_id, studentId: row.student_id };
+    }
+
+    if (!assessmentId) {
+        const err = new Error('assessment_id is required.');
+        err.statusCode = 400;
+        throw err;
+    }
+    const asmtMeta = await verifyTeacherAssessmentInCurrentSY(db, teacherId, assessmentId, activeSyId);
+    if (studentId) {
+        const enrolled = await verifyStudentInTeacherCurrentSY(db, teacherId, studentId, activeSyId);
+        if (!enrolled) {
+            const err = new Error('Student is not enrolled in your Current School Year classes.');
+            err.statusCode = 403;
+            throw err;
+        }
+    }
+    return { activeSyId, assessmentId, subjectId: asmtMeta.quarter_subject_id, studentId };
+}
+
+async function fetchAssessmentTargetStudents(teacherId, assessmentId, subjectId, activeSyId, condition) {
+    const baseScope = `
+        FROM users u
+        JOIN class_students cs ON u.user_id = cs.student_id AND (cs.sy_id IS NULL OR cs.sy_id = ?)
+        JOIN classes c ON cs.class_id = c.class_id AND c.teacher_id = ? AND c.sy_id = ?
+            AND (? IS NULL OR c.subject_id = ?)
+    `;
+    const baseParams = [activeSyId, teacherId, activeSyId, subjectId || null, subjectId || null];
+
+    if (condition === 'unsubmitted') {
+        const [rows] = await db.query(
+            `SELECT DISTINCT u.user_id, u.first_name, u.last_name, u.email
+             ${baseScope}
+             WHERE u.role = 'Student'
+               AND u.user_id NOT IN (SELECT student_id FROM student_scores WHERE assessment_id = ?)
+             ORDER BY u.last_name ASC, u.first_name ASC`,
+            [...baseParams, assessmentId]
+        );
+        return rows;
+    }
+    if (condition === 'below_cutoff') {
+        const [rows] = await db.query(
+            `SELECT DISTINCT u.user_id, u.first_name, u.last_name, u.email, ss.score_obtained, ss.total_items
+             ${baseScope}
+             JOIN student_scores ss ON ss.student_id = u.user_id AND ss.assessment_id = ?
+             WHERE u.role = 'Student' AND ss.total_items > 0 AND (ss.score_obtained / ss.total_items) < 0.75
+             ORDER BY u.last_name ASC, u.first_name ASC`,
+            [...baseParams, assessmentId]
+        );
+        return rows;
+    }
+    if (condition === 'grace_period') {
+        const [rows] = await db.query(
+            `SELECT DISTINCT u.user_id, u.first_name, u.last_name, u.email, ss.is_grace_period, ss.grace_minutes_used
+             ${baseScope}
+             JOIN student_scores ss ON ss.student_id = u.user_id AND ss.assessment_id = ?
+             WHERE u.role = 'Student' AND ss.is_grace_period = 1
+             ORDER BY u.last_name ASC, u.first_name ASC`,
+            [...baseParams, assessmentId]
+        );
+        return rows;
+    }
+
+    const [rows] = await db.query(
+        `SELECT DISTINCT u.user_id, u.first_name, u.last_name, u.email
+         ${baseScope}
+         WHERE u.role = 'Student'
+         ORDER BY u.last_name ASC, u.first_name ASC`,
+        baseParams
+    );
+    return rows;
+}
+
 router.get(['/grading-workspace/:aid', '/grading/workspace/:aid'], isTeacher, async (req, res) => {
     try {
-        const [assessments] = await db.query(
-            `SELECT * FROM assessments WHERE assessment_id = ?`,
-            [req.params.aid]
-        );
-        if (!assessments.length) {
-            return res.status(404).render('404', {
-                title: 'Assessment Not Found | Elementa LMS',
-                user: req.user,
-                role: req.user ? req.user.role : 'Teacher',
-                requestedPath: req.originalUrl,
-                customMessage: 'The requested assessment for this grading workspace could not be found.'
-            });
+        const currentSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const currentSyId = currentSY ? Number(currentSY.sy_id) : null;
+        if (!currentSyId) {
+            return res.redirect('/teacher/classes?sy_blocked=1');
         }
 
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        let assessment;
+        try {
+            assessment = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, req.params.aid, currentSyId);
+        } catch (authErr) {
+            if (authErr.statusCode === 404) {
+                return res.status(404).render('404', {
+                    title: 'Assessment Not Found | Elementa LMS',
+                    user: req.user,
+                    role: req.user ? req.user.role : 'Teacher',
+                    requestedPath: req.originalUrl,
+                    customMessage: 'The requested assessment for this grading workspace could not be found.'
+                });
+            }
+            return res.redirect('/teacher/classes?sy_blocked=1');
+        }
+
         const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId: req.params.aid });
-        const gradingStatus = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
+        const gradingStatus = academicHelper.isQuarterGradingOpen(currentSY, qInfo.quarterNumber);
+        const notifications = await getTeacherNotifications(db, req.user.user_id);
 
         res.render('teacher/grading_workspace', {
             user: req.user,
-            assessment: assessments[0],
-            activeSY,
+            assessment,
+            activeSY: currentSY,
+            currentSY,
             quarterNumber: qInfo.quarterNumber,
-            gradingStatus
+            gradingStatus,
+            notifications
         });
     } catch (err) {
         console.error('[GET /teacher/grading-workspace/:aid]', err);
@@ -17108,6 +17919,8 @@ router.get(['/grading-workspace/:aid', '/grading/workspace/:aid'], isTeacher, as
 router.get('/api/grading/:aid/submissions', isTeacher, async (req, res) => {
     try {
         const aid = req.params.aid;
+        const verifiedAsmt = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, aid);
+        const currentSyId = Number(verifiedAsmt.sy_id);
 
         // Fetch assessment and subject info
         const [[asmt]] = await db.query(`
@@ -17115,22 +17928,18 @@ router.get('/api/grading/:aid/submissions', isTeacher, async (req, res) => {
             FROM assessments a 
             JOIN topics t ON a.topic_id = t.topic_id 
             JOIN quarters q ON t.quarter_id = q.quarter_id 
-            WHERE a.assessment_id = ?
-        `, [aid]);
+            WHERE a.assessment_id = ? AND a.sy_id = ?
+        `, [aid, currentSyId]);
 
         if (!asmt) {
             return res.status(404).json({ success: false, error: 'Assessment not found' });
         }
 
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        const activeSY = await academicHelper.getStrictCurrentSchoolYear(db);
         const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId: aid });
         const gradingStatus = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
 
-        if (!asmt) {
-            return res.status(404).json({ success: false, error: 'Assessment not found' });
-        }
-
-        // Query ONLY records that represent actual student submissions
+        // Query ONLY records that represent actual Current-SY student submissions in teacher's classes
         const [rawSubmissions] = await db.query(`
             SELECT ss.*, u.first_name, u.last_name, u.email, u.profile_pic,
                    COALESCE(ss.file_path, (SELECT CONCAT('/material_uploads/', original_filename) FROM submission_receipts sr WHERE sr.score_id = ss.score_id LIMIT 1)) AS file_path,
@@ -17144,9 +17953,16 @@ router.get('/api/grading/:aid/submissions', isTeacher, async (req, res) => {
             LEFT JOIN student_groups sg ON ss.group_id = sg.group_id
             LEFT JOIN users sub_u ON ss.submitted_by_user_id = sub_u.user_id
             WHERE ss.assessment_id = ?
+              AND ss.student_id IN (
+                  SELECT cs.student_id
+                  FROM class_students cs
+                  JOIN classes c ON cs.class_id = c.class_id
+                  WHERE c.teacher_id = ? AND c.sy_id = ? AND c.subject_id = ?
+                    AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
+              )
               AND (ss.file_path IS NOT NULL OR sr.sha256_hash IS NOT NULL OR ss.submitted_at IS NOT NULL)
             ORDER BY ss.date_recorded DESC, ss.score_id DESC
-        `, [aid]);
+        `, [aid, req.user.user_id, currentSyId, asmt.subject_id]);
 
         // Fetch rubric criteria if any
         const [rubrics] = await db.query(`SELECT rubric_id FROM rubrics WHERE assessment_id = ?`, [aid]);
@@ -17343,7 +18159,7 @@ router.get('/api/grading/:aid/submissions', isTeacher, async (req, res) => {
         });
     } catch (err) {
         console.error('[GET /teacher/api/grading/:aid/submissions]', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
@@ -17358,14 +18174,20 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
         const { student_id, assessment_id } = req.body;
         const assessmentId = assessment_id || req.body.assessmentId || null;
 
-        // Check quarter grading deadline
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
-        const qInfo = await academicHelper.resolveAssessmentQuarter(db, {
+        const resolvedCtx = await resolveAuthorizedScoreEntryInCurrentSY(req.user.user_id, scoreId, {
             assessmentId,
+            studentId: student_id
+        });
+
+        // Check quarter grading deadline against strict Current SY
+        const activeSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, {
+            assessmentId: resolvedCtx.assessmentId,
             scoreId: (scoreId === 'new' || scoreId === '0') ? null : scoreId
         });
         const gradingCheck = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
         if (!gradingCheck.isAllowed) {
+            if (req.file && req.file.path && fs.existsSync(req.file.path)) fs.unlink(req.file.path, () => { });
             return res.status(403).json({
                 success: false,
                 error: `Grading Locked: ${gradingCheck.message}`,
@@ -17392,6 +18214,7 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
                     scoreId = ins.insertId;
                 }
             } else {
+                if (req.file && req.file.path && fs.existsSync(req.file.path)) fs.unlink(req.file.path, () => { });
                 return res.status(400).json({ success: false, error: 'Missing student_id or assessment_id for new score record' });
             }
         }
@@ -17425,7 +18248,7 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
                     title: `Voice Feedback: ${assessment_name}`,
                     message: `Your instructor added an audio critique (${duration}s). Click to listen.`,
                     targetUrl: `/subjects/open/${subject_id}?tab=assessments&assessment_id=${aid}#asgn-card-${aid}`,
-                    metadata: { scoreId, assessmentId: aid }
+                    metadata: { scoreId, assessmentId: aid, syId: resolvedCtx.activeSyId }
                 });
 
                 // Propagate audio note to group members if shared group assignment
@@ -17433,8 +18256,13 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
                     let targetGrpId = gid || req.body.group_id;
                     if (!targetGrpId) {
                         const [[grpLookup]] = await db.query(
-                            `SELECT group_id FROM group_members WHERE student_id = ? LIMIT 1`,
-                            [sid]
+                            `SELECT gm.group_id
+                             FROM group_members gm
+                             JOIN student_groups sg ON gm.group_id = sg.group_id
+                             JOIN group_sets gs ON sg.group_set_id = gs.group_set_id
+                             JOIN classes c ON gs.class_id = c.class_id AND c.sy_id = ? AND c.teacher_id = ?
+                             WHERE gm.student_id = ? LIMIT 1`,
+                            [resolvedCtx.activeSyId, req.user.user_id, sid]
                         );
                         if (grpLookup) targetGrpId = grpLookup.group_id;
                     }
@@ -17461,7 +18289,7 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
                                     title: `Group Voice Feedback: ${assessment_name}`,
                                     message: `Your instructor added an audio critique (${duration}s) for your group. Click to listen.`,
                                     targetUrl: `/subjects/open/${subject_id}?tab=assessments&assessment_id=${aid}#asgn-card-${aid}`,
-                                    metadata: { scoreId, assessmentId: aid }
+                                    metadata: { scoreId, assessmentId: aid, syId: resolvedCtx.activeSyId }
                                 });
                             } catch (_) { }
                         }
@@ -17474,8 +18302,9 @@ router.post('/api/grading/:scoreId/audio-note', isTeacher, uploadAudioNote.singl
 
         res.json({ success: true, voice_note_path: filename, duration, score_id: scoreId });
     } catch (err) {
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) fs.unlink(req.file.path, () => { });
         console.error('[POST /teacher/api/grading/:scoreId/audio-note]', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
@@ -17492,10 +18321,15 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
             if (firstMem) targetStudentId = firstMem.student_id;
         }
 
-        // Check quarter grading deadline
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
-        const qInfo = await academicHelper.resolveAssessmentQuarter(db, {
+        const resolvedCtx = await resolveAuthorizedScoreEntryInCurrentSY(req.user.user_id, scoreId, {
             assessmentId,
+            studentId: targetStudentId
+        });
+
+        // Check quarter grading deadline against strict Current SY
+        const activeSY = await academicHelper.getStrictCurrentSchoolYear(db);
+        const qInfo = await academicHelper.resolveAssessmentQuarter(db, {
+            assessmentId: resolvedCtx.assessmentId,
             scoreId: (scoreId === 'new' || scoreId === '0') ? null : scoreId
         });
         const gradingCheck = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
@@ -17551,6 +18385,7 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
         // Fetch score and assessment info
         const [[scoreRow]] = await db.query(`
             SELECT ss.score_id, ss.student_id, ss.assessment_id, ss.group_id, ss.total_items,
+                   ss.submitted_by_user_id, ss.file_path, ss.original_filename, ss.file_size_bytes,
                    a.assessment_name, a.is_group_assignment, a.group_grading_mode, a.group_submission_mode, q.subject_id
             FROM student_scores ss
             JOIN assessments a ON ss.assessment_id = a.assessment_id
@@ -17574,13 +18409,13 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
                     title: `Grade Released: ${scoreRow.assessment_name}`,
                     message: `Score: ${finalScore} pts. Click to view rubric evaluation and feedback.`,
                     targetUrl: `/subjects/open/${scoreRow.subject_id}?tab=assessments&assessment_id=${scoreRow.assessment_id}#asgn-card-${scoreRow.assessment_id}`,
-                    metadata: { scoreId, assessmentId: scoreRow.assessment_id, score: finalScore }
+                    metadata: { scoreId, assessmentId: scoreRow.assessment_id, score: finalScore, syId: resolvedCtx.activeSyId }
                 });
             } catch (notifErr) {
                 console.error('[Notification Dispatch Error on Grade Save]', notifErr);
             }
 
-            // If group assignment with shared grade, propagate to all group members
+            // If group assignment with shared grade, propagate to all group members (Current SY only)
             if (scoreRow.is_group_assignment && (scoreRow.group_grading_mode === 'shared_grade' || scoreRow.group_grading_mode === 'group' || scoreRow.group_submission_mode === 'one_per_group' || is_group_submission)) {
                 let effectiveGroupId = scoreRow.group_id || group_id;
                 if (!effectiveGroupId) {
@@ -17590,11 +18425,11 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
                         JOIN student_groups sg ON gm.group_id = sg.group_id
                         WHERE gm.student_id = ? AND (sg.group_set_id = (SELECT group_set_id FROM assessments WHERE assessment_id = ?) OR sg.group_set_id IN (
                             SELECT gs.group_set_id FROM group_sets gs 
-                            JOIN classes c ON gs.class_id = c.class_id 
+                            JOIN classes c ON gs.class_id = c.class_id AND c.sy_id = ? AND c.teacher_id = ?
                             WHERE c.subject_id = ?
                         ))
                         LIMIT 1
-                    `, [scoreRow.student_id, scoreRow.assessment_id, scoreRow.subject_id]);
+                    `, [scoreRow.student_id, scoreRow.assessment_id, resolvedCtx.activeSyId, req.user.user_id, scoreRow.subject_id]);
                     if (grpLookup) {
                         effectiveGroupId = grpLookup.group_id;
                         await db.query(`UPDATE student_scores SET group_id = ? WHERE score_id = ?`, [effectiveGroupId, scoreId]);
@@ -17667,7 +18502,7 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
                                     title: `Group Grade: ${scoreRow.assessment_name}`,
                                     message: `Your team received ${finalScore} pts. Click to view rubric evaluation and feedback.`,
                                     targetUrl: `/subjects/open/${scoreRow.subject_id}?tab=assessments&assessment_id=${scoreRow.assessment_id}#asgn-card-${scoreRow.assessment_id}`,
-                                    metadata: { scoreId: peerScoreId, assessmentId: scoreRow.assessment_id, score: finalScore }
+                                    metadata: { scoreId: peerScoreId, assessmentId: scoreRow.assessment_id, score: finalScore, syId: resolvedCtx.activeSyId }
                                 });
                             } catch (_) { }
                         }
@@ -17679,7 +18514,7 @@ router.post('/api/grading/:scoreId/save', isTeacher, async (req, res) => {
         res.json({ success: true, score_id: scoreId, message: 'Grade and rubric evaluation saved.' });
     } catch (err) {
         console.error('[POST /teacher/api/grading/:scoreId/save]', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
@@ -17739,48 +18574,23 @@ router.post('/api/comment-bank/:id/use', isTeacher, async (req, res) => {
     }
 });
 
-// 5. Smart Batch Actions: Filter Cohorts & Dispatch
+// 5. Smart Batch Actions: Filter Cohorts & Dispatch (Strictly Current SY)
 router.get('/api/assessment/:aid/students-filter', isTeacher, async (req, res) => {
     try {
         const aid = req.params.aid;
         const condition = req.query.status || 'unsubmitted';
-
-        let query = '';
-        let params = [];
-
-        if (condition === 'unsubmitted') {
-            query = `
-                SELECT u.user_id, u.first_name, u.last_name, u.email
-                FROM users u
-                WHERE u.role = 'Student'
-                  AND u.user_id NOT IN (SELECT student_id FROM student_scores WHERE assessment_id = ?)
-            `;
-            params = [aid];
-        } else if (condition === 'below_cutoff') {
-            query = `
-                SELECT u.user_id, u.first_name, u.last_name, u.email, ss.score_obtained, ss.total_items
-                FROM student_scores ss
-                JOIN users u ON ss.student_id = u.user_id
-                WHERE ss.assessment_id = ? AND (ss.score_obtained / ss.total_items) < 0.75
-            `;
-            params = [aid];
-        } else if (condition === 'grace_period') {
-            query = `
-                SELECT u.user_id, u.first_name, u.last_name, u.email, ss.is_grace_period, ss.grace_minutes_used
-                FROM student_scores ss
-                JOIN users u ON ss.student_id = u.user_id
-                WHERE ss.assessment_id = ? AND ss.is_grace_period = 1
-            `;
-            params = [aid];
-        } else {
-            query = `SELECT u.user_id, u.first_name, u.last_name, u.email FROM users u WHERE u.role = 'Student'`;
-        }
-
-        const [students] = await db.query(query, params);
+        const asmtMeta = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, aid);
+        const students = await fetchAssessmentTargetStudents(
+            req.user.user_id,
+            aid,
+            asmtMeta.quarter_subject_id,
+            asmtMeta.sy_id,
+            condition
+        );
         res.json({ success: true, count: students.length, students });
     } catch (err) {
         console.error('[GET /api/assessment/:aid/students-filter]', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
@@ -17788,13 +18598,16 @@ router.post('/api/assessment/:aid/batch-message', isTeacher, async (req, res) =>
     try {
         const { condition, subject, body } = req.body;
         const aid = req.params.aid;
+        const asmtMeta = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, aid);
 
-        // Fetch matching cohort
-        const [students] = await db.query(`
-            SELECT u.user_id FROM users u
-            WHERE u.role = 'Student'
-              ${condition === 'unsubmitted' ? 'AND u.user_id NOT IN (SELECT student_id FROM student_scores WHERE assessment_id = ?)' : ''}
-        `, condition === 'unsubmitted' ? [aid] : []);
+        // Fetch matching Current-SY enrolled cohort
+        const students = await fetchAssessmentTargetStudents(
+            req.user.user_id,
+            aid,
+            asmtMeta.quarter_subject_id,
+            asmtMeta.sy_id,
+            condition || 'all'
+        );
 
         if (!students.length) {
             return res.json({ success: true, dispatchedCount: 0 });
@@ -17832,7 +18645,7 @@ router.post('/api/assessment/:aid/batch-message', isTeacher, async (req, res) =>
                 title: `${subject || 'Announcement from ' + senderName}`,
                 message: previewText,
                 targetUrl: `/messages?userId=${req.user.user_id}`,
-                metadata: { senderId: req.user.user_id, assessmentId: aid }
+                metadata: { senderId: req.user.user_id, assessmentId: aid, syId: asmtMeta.sy_id }
             });
         } catch (notifErr) {
             console.error('[Notification Dispatch Error on Batch Message]', notifErr.message);
@@ -17841,16 +18654,17 @@ router.post('/api/assessment/:aid/batch-message', isTeacher, async (req, res) =>
         res.json({ success: true, dispatchedCount: students.length });
     } catch (err) {
         console.error('[POST /api/assessment/:aid/batch-message]', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 router.post('/api/assessment/:aid/batch-zero', isTeacher, async (req, res) => {
     try {
         const aid = req.params.aid;
+        const asmtMeta = await verifyTeacherAssessmentInCurrentSY(db, req.user.user_id, aid);
 
-        // Check quarter grading deadline
-        const activeSY = await academicHelper.getActiveSchoolYear(db);
+        // Check quarter grading deadline against strict Current SY
+        const activeSY = await academicHelper.getStrictCurrentSchoolYear(db);
         const qInfo = await academicHelper.resolveAssessmentQuarter(db, { assessmentId: aid });
         const gradingCheck = academicHelper.isQuarterGradingOpen(activeSY, qInfo.quarterNumber);
         if (!gradingCheck.isAllowed) {
@@ -17861,14 +18675,15 @@ router.post('/api/assessment/:aid/batch-zero', isTeacher, async (req, res) => {
             });
         }
 
-        const [[asmt]] = await db.query(`SELECT total_items FROM assessments WHERE assessment_id = ?`, [aid]);
-        const totalItems = asmt ? asmt.total_items : 10;
+        const totalItems = asmtMeta.total_items || 10;
 
-        const [unsubmitted] = await db.query(`
-            SELECT u.user_id FROM users u
-            WHERE u.role = 'Student'
-              AND u.user_id NOT IN (SELECT student_id FROM student_scores WHERE assessment_id = ?)
-        `, [aid]);
+        const unsubmitted = await fetchAssessmentTargetStudents(
+            req.user.user_id,
+            aid,
+            asmtMeta.quarter_subject_id,
+            asmtMeta.sy_id,
+            'unsubmitted'
+        );
 
         for (const s of unsubmitted) {
             await db.query(`
@@ -17880,7 +18695,7 @@ router.post('/api/assessment/:aid/batch-zero', isTeacher, async (req, res) => {
         res.json({ success: true, affectedCount: unsubmitted.length });
     } catch (err) {
         console.error('[POST /api/assessment/:aid/batch-zero]', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
@@ -18201,5 +19016,8 @@ router._getStudentFilteredReportData = getStudentFilteredReportData;
 router._renderStudentProgressReportCardPage = renderStudentProgressReportCardPage;
 router._verifyClassOwnership = verifyClassOwnership;
 router._assertActiveClass = assertActiveClass;
+router._verifyTeacherClassInCurrentSY = verifyTeacherClassInCurrentSY;
+router._verifyTeacherAssessmentInCurrentSY = verifyTeacherAssessmentInCurrentSY;
+router._verifyStudentInTeacherCurrentSY = verifyStudentInTeacherCurrentSY;
 
 module.exports = router;
