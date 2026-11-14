@@ -97,17 +97,6 @@
             </div>
 
             <div class="flex items-center gap-3 md:gap-5">
-                <% if (typeof currentSY !== 'undefined' && currentSY && currentSY.sy_range) { %>
-                    <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase tracking-wide">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        S.Y. <%= currentSY.sy_range %> &middot; Active
-                    </span>
-                <% } else { %>
-                    <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-black uppercase tracking-wide">
-                        <i class="fas fa-ban text-[10px]"></i>
-                        No Active S.Y.
-                    </span>
-                <% } %>
                 <!-- Notification Bell Button -->
                 <button type="button" onclick="toggleNotifPanel()" aria-label="View notifications" class="relative group p-2 hover:bg-slate-100 rounded-full transition focus-visible:ring-2 focus-visible:ring-indigo-500">
                     <i class="far fa-bell text-xl text-slate-700"></i>

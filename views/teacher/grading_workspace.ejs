@@ -89,11 +89,6 @@
             <!-- Assessment Title & Max Score -->
             <div class="flex items-center gap-2">
                 <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 font-extrabold text-[10px] uppercase tracking-wider hidden md:inline-block">SpeedGrader</span>
-                <% if (typeof currentSY !== 'undefined' && currentSY && currentSY.sy_range) { %>
-                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-extrabold text-[10px] uppercase tracking-wider hidden sm:inline-flex items-center gap-1" title="Active School Year">
-                        <i class="fas fa-calendar-check text-[9px]"></i> S.Y. <%= currentSY.sy_range %>
-                    </span>
-                <% } %>
                 <h1 class="text-xs sm:text-sm font-black text-white truncate max-w-[220px] lg:max-w-md" id="assessmentTitleHeader" title="<%= assessment.assessment_name %>">
                     <%= assessment.assessment_name %>
                 </h1>

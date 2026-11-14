@@ -160,12 +160,6 @@
                                 <h1 class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">
                                     Welcome, <%= user.first_name %>!
                                 </h1>
-                                <% if (typeof currentSY !== 'undefined' && currentSY) { %>
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black border shadow-2xs bg-emerald-50 border-emerald-200 text-emerald-800">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        <span>S.Y. <%= currentSY.sy_range %> · Active</span>
-                                    </span>
-                                <% } %>
                             </div>
                             <p class="text-xs text-slate-600 hidden sm:block font-medium">
                                 <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>

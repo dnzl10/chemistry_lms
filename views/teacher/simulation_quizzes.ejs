@@ -188,14 +188,6 @@
                                                     <h1
                                                         class="text-lg md:text-xl font-bold text-indigo-950 uppercase tracking-tight">
                                                         Simulation Quizzes</h1>
-                                                    <% if (activeSY) { %>
-                                                        <span
-                                                            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black border shadow-2xs <%= (isHistorical || isDraft) ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' %>">
-                                                            <span
-                                                                class="w-1.5 h-1.5 rounded-full <%= (isHistorical || isDraft) ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse' %>"></span>
-                                                            <span>S.Y. <%= activeSY.sy_range %><%= isHistorical ? ' · Archived' : (isDraft ? ' · Draft' : '') %></span>
-                                                        </span>
-                                                    <% } %>
                                                 </div>
                                                 <p class="text-xs text-slate-600 font-medium">
                                                     <i class="fas fa-circle text-emerald-500 text-[9px] mr-1"></i>
