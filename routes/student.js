@@ -2724,7 +2724,8 @@ router.get('/subjects/open/:id', async (req, res) => {
                     const allTopicAssessments = assessmentsRaw
                         .filter(a => a.topic_id === t.topic_id)
                         .map((a, aIndex) => {
-                            const isLocked = topicLocked ? 1 : (a.is_unlocked === 1 || aIndex === 0 ? 0 : 1);
+                            const asmtUnlocked = (Number(a.is_unlocked) === 1 || a.is_unlocked === true || a.is_unlocked === '1') ? 1 : 0;
+                            const isLocked = topicLocked ? 1 : (asmtUnlocked ? 0 : 1);
                             const isDone = doneAssessments.some(da => da.assessment_id === a.assessment_id) ? 1 : 0;
                             const isUpcoming = a.start_date && new Date(a.start_date) > now;
                             const isExpired = a.due_date && new Date(a.due_date) < now;
@@ -2795,8 +2796,8 @@ router.get('/subjects/open/:id', async (req, res) => {
             q.topics.forEach(t => {
                 if (t.is_locked) return; // skip locked topics
                 t.forums.forEach(f => { totalTasks++; if (f.is_done) completedTasks++; });
-                t.assessments.forEach(a => { totalTasks++; if (a.is_done) completedTasks++; });
-                t.assignments.forEach(a => { totalTasks++; if (a.is_done) completedTasks++; });
+                t.assessments.forEach(a => { if (a.is_locked && !a.is_done) return; totalTasks++; if (a.is_done) completedTasks++; });
+                t.assignments.forEach(a => { if (a.is_locked && !a.is_done) return; totalTasks++; if (a.is_done) completedTasks++; });
             });
         });
 
