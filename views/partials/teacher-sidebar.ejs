@@ -63,14 +63,6 @@
             Elem<span class="text-white">enta</span>
         </span>
         <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mt-1">Teacher Portal</p>
-        <% if (typeof currentSY !== 'undefined' && currentSY) { %>
-        <div class="mt-2.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center gap-1.5 shadow-xs" title="Current Academic Year: <%= currentSY.sy_range || currentSY.sy_code %>">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="text-[10px] font-bold tracking-tight text-emerald-300">
-                <%= currentSY.sy_code || currentSY.sy_range %> (Active)
-            </span>
-        </div>
-        <% } %>
     </div>
 
     <nav id="teacherNavTree" class="flex-1 px-3 mt-4 space-y-3 overflow-y-auto no-scrollbar pb-6 bg-[#06091A]" aria-label="Teacher Tree Navigation" role="tree">
