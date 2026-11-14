@@ -218,26 +218,7 @@
                     </div>
                     <% } %>
 
-                    <!-- Active Academic Year Banner -->
-                    <% if (typeof currentSY !== 'undefined' && currentSY) { %>
-                    <div class="mb-5 flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-cyan-500/10 border border-emerald-200/80 shadow-xs">
-                        <div class="flex items-center gap-3">
-                            <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-xs font-black uppercase tracking-wider text-emerald-800">Current Academic Year</span>
-                                    <span class="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md"><%= currentSY.sy_code || 'ACTIVE' %></span>
-                                </div>
-                                <p class="text-base font-black text-slate-800"><%= currentSY.sy_range %></p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 text-xs font-bold text-slate-600">
-                            <a href="/teacher/classes" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition text-xs shadow-xs">
-                                <i class="fas fa-chalkboard text-slate-400"></i> Manage Current SY Classes
-                            </a>
-                        </div>
-                    </div>
-                    <% } else { %>
+                    <% if (typeof currentSY === 'undefined' || !currentSY) { %>
                     <div class="mb-5 flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-xs">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
