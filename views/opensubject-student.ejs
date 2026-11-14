@@ -1963,7 +1963,7 @@
         <div class="bg-white rounded-3xl w-11/12 max-w-sm overflow-hidden shadow-2xl text-center border border-slate-100 animate-in fade-in zoom-in-95 duration-200 cursor-default">
             <div class="bg-gradient-to-br from-amber-50/80 via-slate-50 to-white p-7 sm:p-8 pb-5">
                 <div class="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto mb-4 shadow-sm text-2xl">
-                    <i class="fas fa-lock"></i>
+                    <i id="lockedNoticeModalIcon" class="fas fa-lock"></i>
                 </div>
                 <h3 id="lockedNoticeModalTitle" class="text-base font-black text-slate-800 mb-2">Access Restricted</h3>
                 <p id="lockedNoticeModalDesc" class="text-xs font-semibold text-slate-600 leading-relaxed">
@@ -2381,16 +2381,20 @@
     }
 
     /* ── Dedicated Locked Topic / Assessment Modal Controllers ── */
-    function openLockedNoticeModal(message, title) {
+    function openLockedNoticeModal(message, title, iconClass) {
         const modal = document.getElementById('lockedNoticeModal');
         if (!modal) return;
         const descEl = document.getElementById('lockedNoticeModalDesc');
         const titleEl = document.getElementById('lockedNoticeModalTitle');
+        const iconEl = document.getElementById('lockedNoticeModalIcon');
         if (descEl) {
             descEl.textContent = message || 'This topic or assessment is currently locked by your instructor.';
         }
         if (titleEl && title) {
             titleEl.textContent = title;
+        }
+        if (iconEl) {
+            iconEl.className = iconClass || 'fas fa-lock';
         }
         if (window.ModalManager) {
             ModalManager.open('lockedNoticeModal');
@@ -2780,15 +2784,11 @@
         }
 
         if (isLocked) {
-            openLockedNoticeModal('This topic or assessment is currently locked by your instructor.', 'Assessment Locked');
+            openLockedNoticeModal('This topic or assessment is currently locked by your instructor.', 'Assessment Locked', 'fas fa-lock');
             return;
         }
         if (!isAvailable) {
-            if (typeof showToast === 'function') {
-                showToast('This assessment is not currently available. Please check the start and due date window.', 'warning');
-            } else {
-                alert('This assessment is not currently available. Please check the start and due date window.');
-            }
+            openLockedNoticeModal('This assessment is not currently available. Please check the start and due date window.', 'Assessment Unavailable', 'fas fa-calendar-times');
             return;
         }
         const isDual = (competitiveEnabled == 1 || playMode === 'Competitive' || playMode === 'Versus');
@@ -2939,7 +2939,14 @@
                     openResultModal(_pendingAssessment.assessmentId);
                     return;
                 }
-                alert(data.error || 'Failed to generate assessment ticket.');
+                closeTicketModal();
+                if (data.error && (data.error.includes('expired') || data.error.includes('started') || data.error.includes('available'))) {
+                    openLockedNoticeModal('This assessment is not currently available. Please check the start and due date window.', 'Assessment Unavailable', 'fas fa-calendar-times');
+                } else if (data.error && data.error.includes('locked')) {
+                    openLockedNoticeModal('This topic or assessment is currently locked by your instructor.', 'Assessment Locked', 'fas fa-lock');
+                } else {
+                    openLockedNoticeModal(data.error || 'Failed to generate assessment ticket.', 'Assessment Notice', 'fas fa-exclamation-triangle');
+                }
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = originalText;
