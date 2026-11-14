@@ -303,11 +303,23 @@
 
         /* Topic row */
         .topic-row {
+            position: relative;
             border-bottom: 1px solid #f1f5f9;
             transition: background 0.15s;
         }
         .topic-row:last-child { border-bottom: none; }
         .topic-row:hover { background: #f8fafc; }
+        .topic-row.dropdown-active-row {
+            z-index: 40 !important;
+        }
+        .sub-table tr.dropdown-active-tr {
+            position: relative;
+            z-index: 45 !important;
+        }
+        .dropdown-active-trigger {
+            position: relative;
+            z-index: 50 !important;
+        }
 
         .topic-inner {
             display: flex;
@@ -5807,6 +5819,55 @@ async function toggleMaterialLockFromMenu(mid, currentLocked, topicId) {
    MATERIAL SUB-TAB: ELLIPSIS DROPDOWN & BATCH SELECTION HANDLERS
    ================================================================ */
 
+function positionDropdownMenu(menu) {
+    if (!menu) return;
+    // Reset positioning to measure natural height
+    menu.style.bottom = 'auto';
+    menu.style.top = '100%';
+    menu.style.marginTop = '6px';
+    menu.style.marginBottom = '0';
+
+    const menuRect = menu.getBoundingClientRect();
+    const menuHeight = menuRect.height || 210;
+    const trigger = menu.closest('.asmt-menu-container, .asgn-menu-container, .mat-menu-container') || menu.parentElement;
+    const triggerRect = trigger ? trigger.getBoundingClientRect() : menuRect;
+
+    // Boundary reference: the enclosing topic panel or quarter body, and viewport
+    const panel = menu.closest('.topic-panel') || menu.closest('.tab-content') || menu.closest('.quarter-body');
+    const panelRect = panel ? panel.getBoundingClientRect() : null;
+
+    const spaceBelowViewport = window.innerHeight - triggerRect.bottom;
+    const spaceBelowPanel = panelRect ? (panelRect.bottom - triggerRect.bottom) : spaceBelowViewport;
+    const spaceAbovePanel = panelRect ? (triggerRect.top - panelRect.top) : triggerRect.top;
+
+    // Flip upwards if opening downwards overflows either the panel or the viewport, and there's room above
+    const overflowsBelow = (spaceBelowPanel < menuHeight + 12) || (spaceBelowViewport < menuHeight + 12);
+    if (overflowsBelow && (spaceAbovePanel > spaceBelowPanel || spaceAbovePanel >= menuHeight)) {
+        menu.style.bottom = '100%';
+        menu.style.top = 'auto';
+        menu.style.marginBottom = '6px';
+        menu.style.marginTop = '0';
+    } else {
+        menu.style.bottom = 'auto';
+        menu.style.top = '100%';
+        menu.style.marginTop = '6px';
+        menu.style.marginBottom = '0';
+    }
+
+    // Elevate active topic row and table row so dropdown is never obscured by subsequent siblings
+    const topicRow = menu.closest('.topic-row');
+    if (topicRow) topicRow.classList.add('dropdown-active-row');
+    const tr = menu.closest('tr');
+    if (tr) tr.classList.add('dropdown-active-tr');
+    if (trigger) trigger.classList.add('dropdown-active-trigger');
+}
+
+function clearDropdownElevation() {
+    document.querySelectorAll('.dropdown-active-row').forEach(r => r.classList.remove('dropdown-active-row'));
+    document.querySelectorAll('.dropdown-active-tr').forEach(r => r.classList.remove('dropdown-active-tr'));
+    document.querySelectorAll('.dropdown-active-trigger').forEach(t => t.classList.remove('dropdown-active-trigger'));
+}
+
 function toggleMaterialDropdownMenu(event, matId) {
     if (event) {
         event.stopPropagation();
@@ -5820,19 +5881,7 @@ function toggleMaterialDropdownMenu(event, matId) {
 
     if (!isCurrentlyOpen) {
         menu.classList.remove('hidden');
-        // Reposition if menu overflows window bottom
-        const rect = menu.getBoundingClientRect();
-        if (rect.bottom > window.innerHeight) {
-            menu.style.bottom = '100%';
-            menu.style.top = 'auto';
-            menu.style.marginBottom = '6px';
-            menu.style.marginTop = '0';
-        } else {
-            menu.style.bottom = 'auto';
-            menu.style.top = '100%';
-            menu.style.marginTop = '6px';
-            menu.style.marginBottom = '0';
-        }
+        positionDropdownMenu(menu);
     }
 }
 
@@ -5840,6 +5889,7 @@ function closeAllMaterialMenus() {
     document.querySelectorAll('.mat-dropdown-menu').forEach(m => {
         m.classList.add('hidden');
     });
+    clearDropdownElevation();
 }
 
 function selectAllTopicMaterials(topicId) {
@@ -6087,19 +6137,7 @@ function toggleAssessmentDropdownMenu(event, asmtId) {
 
     if (!isCurrentlyOpen) {
         menu.classList.remove('hidden');
-        // Reposition if menu overflows window bottom
-        const rect = menu.getBoundingClientRect();
-        if (rect.bottom > window.innerHeight) {
-            menu.style.bottom = '100%';
-            menu.style.top = 'auto';
-            menu.style.marginBottom = '6px';
-            menu.style.marginTop = '0';
-        } else {
-            menu.style.bottom = 'auto';
-            menu.style.top = '100%';
-            menu.style.marginTop = '6px';
-            menu.style.marginBottom = '0';
-        }
+        positionDropdownMenu(menu);
     }
 }
 
@@ -6107,6 +6145,7 @@ function closeAllAssessmentMenus() {
     document.querySelectorAll('.asmt-dropdown-menu').forEach(m => {
         m.classList.add('hidden');
     });
+    clearDropdownElevation();
 }
 
 function selectAllTopicAssessments(topicId) {
@@ -6411,19 +6450,7 @@ function toggleAssignmentDropdownMenu(event, asgnId) {
 
     if (!isCurrentlyOpen) {
         menu.classList.remove('hidden');
-        // Reposition if menu overflows window bottom
-        const rect = menu.getBoundingClientRect();
-        if (rect.bottom > window.innerHeight) {
-            menu.style.bottom = '100%';
-            menu.style.top = 'auto';
-            menu.style.marginBottom = '6px';
-            menu.style.marginTop = '0';
-        } else {
-            menu.style.bottom = 'auto';
-            menu.style.top = '100%';
-            menu.style.marginTop = '6px';
-            menu.style.marginBottom = '0';
-        }
+        positionDropdownMenu(menu);
     }
 }
 
@@ -6431,6 +6458,7 @@ function closeAllAssignmentMenus() {
     document.querySelectorAll('.asgn-dropdown-menu').forEach(m => {
         m.classList.add('hidden');
     });
+    clearDropdownElevation();
 }
 
 function selectAllTopicAssignments(topicId) {
