@@ -1515,6 +1515,43 @@
         </div>
     </div>
 
+    <!-- ======= DEACTIVATE QUESTION CONFIRMATION MODAL ======= -->
+    <div class="modal-backdrop" id="deactivateQuestionConfirmModal" style="z-index: 250;">
+        <div class="modal-card" style="max-width: 440px; width: 92vw;">
+            <div class="modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
+                        <i class="fas fa-triangle-exclamation text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-slate-800 text-sm">Deactivate Question?</h3>
+                        <p class="text-[11px] text-slate-400">Question Bank Management</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeConfirmModal('deactivateQuestionConfirmModal')"
+                    class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 transition cursor-pointer">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-xs text-slate-600 leading-relaxed font-medium">
+                    Are you sure you want to deactivate this question? It will be removed from gameplay rotation.
+                </p>
+            </div>
+            <div
+                class="px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl flex items-center justify-end gap-2.5">
+                <button type="button" onclick="closeConfirmModal('deactivateQuestionConfirmModal')"
+                    class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-white cursor-pointer">
+                    Cancel
+                </button>
+                <button type="button" id="confirmDeactivateBtn" onclick="confirmDeactivateQuestion()"
+                    class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-1.5">
+                    <i class="fas fa-trash-can text-xs"></i> Deactivate
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ══════════════════════════════════════════════════════════════════════ -->
     <!-- RIGHT SLIDE-OUT DRAWER: LINK TO ASSESSMENT                            -->
     <!-- ══════════════════════════════════════════════════════════════════════ -->
@@ -2786,7 +2823,7 @@
             }
 
             // Backdrop click handlers for author modal and confirmation modals
-            ['authorModal', 'authorDiscardConfirmModal', 'authorSaveConfirmModal'].forEach(id => {
+            ['authorModal', 'authorDiscardConfirmModal', 'authorSaveConfirmModal', 'deactivateQuestionConfirmModal'].forEach(id => {
                 const modalEl = document.getElementById(id);
                 if (modalEl) {
                     modalEl.addEventListener('click', function (e) {
@@ -2802,12 +2839,26 @@
             });
 
             // ── Actions: Delete, Cancel, Link ──
-            async function deleteQuestion(qid) {
-                if (!confirm('Are you sure you want to deactivate this question? It will be removed from gameplay rotation.')) return;
+            let pendingDeactivateQid = null;
+
+            function deleteQuestion(qid) {
+                pendingDeactivateQid = qid;
+                openConfirmModal('deactivateQuestionConfirmModal');
+            }
+
+            async function confirmDeactivateQuestion() {
+                if (!pendingDeactivateQid) return;
+                const qid = pendingDeactivateQid;
+                const btn = document.getElementById('confirmDeactivateBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> Deactivating...';
+                }
                 try {
                     const res = await fetch(`/teacher/api/question/${qid}`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) {
+                        closeConfirmModal('deactivateQuestionConfirmModal');
                         showToast('Question deactivated successfully.', 'success');
                         setTimeout(() => location.reload(), 700);
                         await refreshQuestionBankContent();
@@ -2816,6 +2867,12 @@
                     }
                 } catch (e) {
                     showToast('Error: ' + e.message, 'error');
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-trash-can text-xs"></i> Deactivate';
+                    }
+                    pendingDeactivateQid = null;
                 }
             }
 
