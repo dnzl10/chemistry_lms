@@ -22,6 +22,14 @@
             </p>
         </div>
         <div class="flex items-center gap-2">
+            <button type="button" 
+                    id="notifSettingsBtn"
+                    onclick="toggleNotifSettings()" 
+                    title="Notification Settings & Sound" 
+                    aria-label="Notification Settings & Sound" 
+                    class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-cyan-500/20 text-indigo-300 hover:text-cyan-300 transition text-xs">
+                <i class="fas fa-cog text-sm"></i>
+            </button>
             <button onclick="if(window.NotificationHub) NotificationHub.markAllRead('notifPanelList', true)" title="Mark all as read" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-cyan-500/20 text-cyan-300 transition text-xs">
                 <i class="fas fa-check-double"></i>
             </button>
@@ -29,6 +37,28 @@
                 <i class="fas fa-times text-sm"></i>
             </button>
         </div>
+    </div>
+
+    <!-- Notification Settings Drawer (Sound selection & test) -->
+    <div id="notifSettingsDrawer" class="hidden px-6 py-3 bg-white/5 border-b border-white/10 flex items-center justify-between text-xs text-indigo-300 flex-shrink-0 transition-all">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-volume-up text-cyan-400 text-xs"></i>
+            <span class="text-[11px] font-bold text-slate-300">Sound:</span>
+            <select id="notifSoundSelect"
+                    onchange="if(window.SoundManager) window.SoundManager.setSoundPack(this.value)" 
+                    class="bg-white/10 text-white rounded-lg px-2.5 py-1 text-[11px] border border-white/10 focus:outline-none focus:ring-1 focus:ring-cyan-400 cursor-pointer">
+                <option value="soft" class="bg-slate-900 text-white">Soft Chime</option>
+                <option value="modern" class="bg-slate-900 text-white">Modern Pop</option>
+                <option value="pop" class="bg-slate-900 text-white">Subtle Tone</option>
+                <option value="mute" class="bg-slate-900 text-white">Mute Audio</option>
+            </select>
+        </div>
+        <button type="button" 
+                onclick="if(window.SoundManager) window.SoundManager.playSound()" 
+                class="hover:text-cyan-300 text-[11px] font-bold flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 border border-white/10 transition cursor-pointer" 
+                title="Test audio cue">
+            <i class="fas fa-play text-[9px]"></i> Test Sound
+        </button>
     </div>
 
     <div id="notifPanelList" class="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-2">
@@ -126,29 +156,6 @@
         <% } %>
     </div>
 
-    <div class="px-6 py-3 border-t border-white/10 flex items-center justify-between text-xs text-indigo-300 flex-shrink-0">
-        <div class="flex items-center gap-2">
-            <i class="fas fa-volume-up text-cyan-400 text-xs"></i>
-            <select onchange="if(window.SoundManager) window.SoundManager.setSoundPack(this.value)" 
-                    class="bg-white/10 text-white rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-cyan-400">
-                <option value="soft" class="bg-slate-900 text-white">Soft Chime</option>
-                <option value="modern" class="bg-slate-900 text-white">Modern Pop</option>
-                <option value="pop" class="bg-slate-900 text-white">Subtle Tone</option>
-                <option value="mute" class="bg-slate-900 text-white">Mute Audio</option>
-            </select>
-        </div>
-        <button type="button" onclick="if(window.SoundManager) window.SoundManager.playSound()" class="hover:text-cyan-300 text-[11px] font-bold flex items-center gap-1" title="Test audio cue">
-            <i class="fas fa-play text-[9px]"></i> Test Sound
-        </button>
-    </div>
-
-    <% if (locals.user && locals.user.role === 'Teacher') { %>
-    <div class="px-6 py-4 border-t border-white/10 flex-shrink-0">
-        <a href="/teacher/reports" class="block w-full py-3 text-center bg-gradient-to-r from-cyan-500 to-indigo-600 text-white text-xs font-black rounded-2xl hover:opacity-90 transition uppercase tracking-wider shadow-lg shadow-cyan-900/30">
-            View Full Reports
-        </a>
-    </div>
-    <% } %>
 </div>
 
 <!-- Backdrop -->
@@ -158,14 +165,46 @@
 <script src="/js/soundManager.js"></script>
 <script src="/js/notificationHub.js"></script>
 <script>
+    function toggleNotifSettings() {
+        const drawer = document.getElementById('notifSettingsDrawer');
+        const btn = document.getElementById('notifSettingsBtn');
+        if (!drawer) return;
+        const isHidden = drawer.classList.contains('hidden');
+        if (isHidden) {
+            if (window.SoundManager) {
+                const currentPack = window.SoundManager.getSoundPack();
+                const sel = document.getElementById('notifSoundSelect');
+                if (sel) sel.value = currentPack;
+            }
+            drawer.classList.remove('hidden');
+            if (btn) {
+                btn.classList.add('bg-cyan-500/20', 'text-cyan-300');
+                btn.classList.remove('text-indigo-300');
+            }
+        } else {
+            drawer.classList.add('hidden');
+            if (btn) {
+                btn.classList.remove('bg-cyan-500/20', 'text-cyan-300');
+                btn.classList.add('text-indigo-300');
+            }
+        }
+    }
+
     function toggleNotifPanel() {
         const panel = document.getElementById('notifPanel');
         const backdrop = document.getElementById('notifBackdrop');
+        const drawer = document.getElementById('notifSettingsDrawer');
+        const btn = document.getElementById('notifSettingsBtn');
         if (!panel || !backdrop) return;
         const isOpen = !panel.classList.contains('translate-x-full');
         if (isOpen) {
             panel.classList.add('translate-x-full');
             backdrop.classList.add('hidden');
+            if (drawer) drawer.classList.add('hidden');
+            if (btn) {
+                btn.classList.remove('bg-cyan-500/20', 'text-cyan-300');
+                btn.classList.add('text-indigo-300');
+            }
         } else {
             panel.classList.remove('translate-x-full');
             backdrop.classList.remove('hidden');
