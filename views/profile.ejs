@@ -386,6 +386,76 @@
             .msg-body.in-thread .msg-thread { display: flex; width: 100%; }
             .msg-back-btn { display: flex; }
         }
+
+        /* ── Responsive Profile Layout for Mobile and Tablet ── */
+        @media (max-width: 960px) {
+            .profile-shell {
+                flex-direction: column !important;
+                border-radius: 20px !important;
+                min-height: auto !important;
+            }
+            .profile-left {
+                width: 100% !important;
+                border-right: none !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                padding: 16px 20px !important;
+            }
+            .profile-left-section-label,
+            .profile-left-divider,
+            .profile-left-exp-card {
+                display: none !important;
+            }
+            .profile-nav-group {
+                display: flex !important;
+                flex-direction: row !important;
+                overflow-x: auto !important;
+                gap: 8px !important;
+                padding-bottom: 4px !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            .profile-nav-item {
+                width: auto !important;
+                white-space: nowrap !important;
+                border-radius: 12px !important;
+                padding: 8px 14px !important;
+                font-size: 13px !important;
+                border: 1px solid #e2e8f0 !important;
+                background: #f8fafc;
+            }
+            .profile-nav-item.active {
+                background: #eff6ff !important;
+                border-color: #93c5fd !important;
+            }
+            .profile-nav-item.active::before {
+                display: none !important;
+            }
+            .info-grid {
+                grid-template-columns: 1fr !important;
+                gap: 24px !important;
+            }
+            .photo-section {
+                order: -1 !important;
+                margin-bottom: 8px !important;
+            }
+            .profile-content {
+                padding: 20px 16px !important;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .field-input-row {
+                grid-template-columns: 1fr !important;
+            }
+            .profile-topbar {
+                padding: 14px 16px !important;
+            }
+            .profile-topbar-title h2 {
+                font-size: 17px !important;
+            }
+            .stat-pill {
+                min-width: 100% !important;
+            }
+        }
         /* Conversation list */
         .msg-convos {
             width: 230px;
@@ -642,32 +712,34 @@
                         </div>
                     </div>
 
-                    <div class="w-full h-px bg-slate-100 mb-3"></div>
+                    <div class="w-full h-px bg-slate-100 mb-3 profile-left-divider"></div>
 
-                    <span class="profile-left-section-label">Overview</span>
-                    <button class="profile-nav-item active" id="navInfo" onclick="switchSection('info', this)">
-                        <i class="fas fa-address-card w-4 text-blue-400 text-sm"></i> Information
-                    </button>
-                    <button class="profile-nav-item" id="navProgress" onclick="switchSection('progress', this)">
-                        <i class="fas fa-chart-bar w-4 text-violet-400 text-sm"></i> Progress & EXP
-                    </button>
+                    <div class="profile-nav-group flex flex-col gap-1">
+                        <span class="profile-left-section-label">Overview</span>
+                        <button class="profile-nav-item active" id="navInfo" onclick="switchSection('info', this)">
+                            <i class="fas fa-address-card w-4 text-blue-400 text-sm"></i> Information
+                        </button>
+                        <button class="profile-nav-item" id="navProgress" onclick="switchSection('progress', this)">
+                            <i class="fas fa-chart-bar w-4 text-violet-400 text-sm"></i> Progress & EXP
+                        </button>
 
-                    <span class="profile-left-section-label" style="margin-top:8px;">Communication</span>
-                    <button class="profile-nav-item" id="navMsg" onclick="openMessagingModal()">
-                        <i class="fas fa-comments w-4 text-emerald-400 text-sm"></i> Messages
-                        <span class="badge-dot" id="unreadBadge" style="display:none">0</span>
-                    </button>
+                        <span class="profile-left-section-label" style="margin-top:8px;">Communication</span>
+                        <button class="profile-nav-item" id="navMsg" onclick="openMessagingModal()">
+                            <i class="fas fa-comments w-4 text-emerald-400 text-sm"></i> Messages
+                            <span class="badge-dot" id="unreadBadge" style="display:none">0</span>
+                        </button>
 
-                    <span class="profile-left-section-label" style="margin-top:8px;">Actions</span>
-                    <button class="profile-nav-item" onclick="openScoresModal()">
-                        <i class="fas fa-star w-4 text-amber-400 text-sm"></i> Scores / Grades
-                    </button>
+                        <span class="profile-left-section-label" style="margin-top:8px;">Actions</span>
+                        <button class="profile-nav-item" onclick="openScoresModal()">
+                            <i class="fas fa-star w-4 text-amber-400 text-sm"></i> Scores / Grades
+                        </button>
 
-                    <button class="profile-nav-item" onclick="toggleQR()">
-                        <i class="fas fa-qrcode w-4 text-indigo-400 text-sm"></i> My QR Code
-                    </button>
+                        <button class="profile-nav-item" onclick="toggleQR()">
+                            <i class="fas fa-qrcode w-4 text-indigo-400 text-sm"></i> My QR Code
+                        </button>
+                    </div>
 
-                    <div class="mt-auto px-4 pt-6">
+                    <div class="mt-auto px-4 pt-6 profile-left-exp-card">
                         <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white text-center">
                             <div class="text-2xl font-black mb-0.5" id="sidebarLevelDisplay">Lv. <%= (locals.levelStats && levelStats.calculatedLevel) || user.current_level || 1 %> / 12</div>
                             <div class="text-[10px] font-bold uppercase tracking-widest opacity-80" id="sidebarLevelTitle"><%= (locals.levelStats && levelStats.levelTitle) || 'Cadet' %></div>
@@ -904,7 +976,7 @@
                     <div class="profile-content section-view" id="section-progress">
 
                         <!-- Summary cards -->
-                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                             <div style="background:#eff6ff;border-radius:16px;padding:18px;border:1.5px solid #dbeafe;">
                                 <div style="font-size:10px;font-weight:800;color:#3b82f6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Level</div>
                                 <div style="font-size:30px;font-weight:900;color:#1e293b;" id="progLevel">Lv. <%= (locals.levelStats && levelStats.calculatedLevel) || user.current_level || 1 %></div>
@@ -1067,7 +1139,7 @@
 
         <div style="padding:20px 24px;">
             <!-- Summary bar -->
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-5">
                 <div style="background:#eff6ff;border-radius:14px;padding:14px 16px;border:1.5px solid #dbeafe;text-align:center;">
                     <div style="font-size:24px;font-weight:900;color:#2563eb;" id="modalLevel">Lv. <%= (locals.levelStats && levelStats.calculatedLevel) || user.current_level || 1 %></div>
                     <div style="font-size:10px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.07em;" id="modalLevelSubtitle"><%= (locals.levelStats && levelStats.levelTitle) || 'Level' %></div>
