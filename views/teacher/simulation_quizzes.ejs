@@ -198,13 +198,6 @@
                                         </div>
 
                                         <div class="flex items-center gap-3 md:gap-6">
-                                            <!-- Create Custom Quiz Button -->
-                                            <button onclick="openNewQuizModal()"
-                                                class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all">
-                                                <i class="fas fa-plus text-xs"></i>
-                                                <span>Create Custom Quiz</span>
-                                            </button>
-
                                             <!-- Messages Navigation Button -->
                                             <a href="<%= (typeof isAdmin !== 'undefined' && isAdmin) ? '/admin/dashboard' : '/teacher/messages' %>"
                                                 id="messagesBtn" aria-label="Open messages and conversations"
@@ -286,7 +279,7 @@
                                     </header>
 
                                     <!-- Scrollable Dashboard Body -->
-                                    <div class="flex-1 overflow-y-auto pt-24 px-4 md:px-8 pb-16 space-y-6"
+                                    <div class="flex-1 overflow-y-auto pt-24 px-4 md:px-8 pb-24 space-y-6"
                                         id="mainScroll">
 
                                         <!-- Stats KPI Overview Row -->
@@ -529,6 +522,16 @@
                                             </div>
 
                                         </div>
+
+                                    <!-- Floating Create Custom Quiz Button -->
+                                    <button type="button"
+                                        onclick="openNewQuizModal()"
+                                        id="floatingCreateQuizBtn"
+                                        aria-label="Create Custom Quiz"
+                                        class="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-30 flex items-center gap-2.5 px-5 py-3.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white font-bold text-sm rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer group">
+                                        <i class="fas fa-plus text-xs group-hover:rotate-90 transition-transform duration-200"></i>
+                                        <span>Create Custom Quiz</span>
+                                    </button>
                                 </main>
         </div>
 
