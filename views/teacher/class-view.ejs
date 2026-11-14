@@ -2532,7 +2532,7 @@ Students are automatically enrolled into their official section catalog based on
                                                 <table class="sub-table" id="mat-table-<%= topic.topic_id %>">
                                                     <thead>
                                                         <tr>
-                                                            <th style="width:36px; text-align:center;">
+                                                            <th class="mat-col-cb-<%= topic.topic_id %> hidden" style="width:36px; text-align:center;">
                                                                 <input type="checkbox" 
                                                                        class="mat-master-cb w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
                                                                        id="mat-master-cb-<%= topic.topic_id %>"
@@ -2551,7 +2551,7 @@ Students are automatically enrolled into their official section catalog based on
                                                     <% if (topic.materials && topic.materials.length > 0) { %>
                                                         <% topic.materials.forEach(function(mat, mi) { %>
                                                         <tr data-search="<%= mat.title.toLowerCase() %>" id="mat-row-<%= mat.material_id %>">
-                                                            <td style="text-align:center;">
+                                                            <td class="mat-col-cb-<%= topic.topic_id %> hidden" style="text-align:center;">
                                                                 <input type="checkbox" 
                                                                        class="mat-row-cb mat-row-cb-<%= topic.topic_id %> w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
                                                                        id="mat-cb-<%= mat.material_id %>"
@@ -5843,6 +5843,9 @@ function closeAllMaterialMenus() {
 }
 
 function selectAllTopicMaterials(topicId) {
+    // Reveal checkboxes when selection is triggered
+    document.querySelectorAll('.mat-col-cb-' + topicId).forEach(el => el.classList.remove('hidden'));
+
     const checkboxes = document.querySelectorAll('.mat-row-cb-' + topicId);
     checkboxes.forEach(cb => {
         cb.checked = true;
@@ -5876,6 +5879,9 @@ function deselectAllTopicMaterials(topicId) {
         masterCb.checked = false;
         masterCb.indeterminate = false;
     }
+
+    // Hide checkboxes when selection is not active
+    document.querySelectorAll('.mat-col-cb-' + topicId).forEach(el => el.classList.add('hidden'));
 
     // Reset: hide Deselect All option and restore Select All
     document.querySelectorAll('.mat-menu-deselect-all-btn-' + topicId).forEach(btn => btn.classList.add('hidden'));
@@ -5925,11 +5931,15 @@ function onMaterialRowCheckboxChange(topicId) {
         }
     }
 
-    // Adjust Deselect All vs Select All options
-    if (checkedCount === total && total > 0) {
+    if (checkedCount === 0) {
+        // When selection feature is not active, keep checkboxes hidden
+        document.querySelectorAll('.mat-col-cb-' + topicId).forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.mat-menu-deselect-all-btn-' + topicId).forEach(btn => btn.classList.add('hidden'));
+        document.querySelectorAll('.mat-menu-select-all-btn-' + topicId).forEach(btn => btn.classList.remove('hidden'));
+    } else if (checkedCount === total && total > 0) {
         document.querySelectorAll('.mat-menu-deselect-all-btn-' + topicId).forEach(btn => btn.classList.remove('hidden'));
         document.querySelectorAll('.mat-menu-select-all-btn-' + topicId).forEach(btn => btn.classList.add('hidden'));
-    } else if (checkedCount === 0) {
+    } else {
         document.querySelectorAll('.mat-menu-deselect-all-btn-' + topicId).forEach(btn => btn.classList.add('hidden'));
         document.querySelectorAll('.mat-menu-select-all-btn-' + topicId).forEach(btn => btn.classList.remove('hidden'));
     }
