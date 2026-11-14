@@ -700,10 +700,10 @@
                                         </div>
                                     </div>
                                     <% }) %>
-                                <% } %>
+                                <% } else { %>
 
                                 <!-- Empty State -->
-                                <div id="emptyDiscussions" class="<%= discussions && discussions.length > 0 ? 'hidden' : '' %> empty-state py-12">
+                                <div id="emptyDiscussions" class="empty-state py-12">
                                     <div class="empty-icon"><i class="fas fa-comments text-xl"></i></div>
                                     <h4 class="font-extrabold text-sm text-slate-700 mt-2">
                                         <% if (typeof isExpired !== 'undefined' && isExpired) { %>
@@ -725,6 +725,7 @@
                                     </button>
                                     <% } %>
                                 </div>
+                                <% } %>
 
                                 <!-- Search No Results -->
                                 <div id="searchNoResults" class="hidden empty-state py-12">
