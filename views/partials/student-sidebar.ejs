@@ -26,6 +26,7 @@
         (function() {
             try {
                 if (window.innerWidth >= 768 && localStorage.getItem('elementa_student_sidebar_collapsed') === '1') {
+                    document.documentElement.classList.add('sidebar-is-collapsed');
                     var sb = document.getElementById('sidebar');
                     if (sb) sb.classList.add('sidebar-collapsed');
                 }

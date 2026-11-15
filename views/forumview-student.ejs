@@ -1125,22 +1125,7 @@
         }
 
         // ── Layout Controllers ───────────────────────────────────────────────
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            const main = document.getElementById('mainContent');
-            const header = document.querySelector('header');
-            
-            if (window.innerWidth < 768) {
-                sidebar.classList.toggle('sidebar-open');
-                sidebar.classList.toggle('sidebar-collapsed');
-                overlay.classList.toggle('hidden');
-            } else {
-                sidebar.classList.toggle('sidebar-collapsed');
-                if (main) main.classList.toggle('sidebar-collapsed-main');
-                if (header) header.classList.toggle('sidebar-collapsed-header');
-            }
-        }
+        // toggleSidebar is canonically managed by partials/student-nav-scripts
 
         function toggleNotifications() {
             const panel = document.getElementById('notification-panel');

@@ -1,3 +1,13 @@
+<script>
+    /* Immediate zero-flicker pre-paint desktop sidebar collapse restoration */
+    (function() {
+        try {
+            if (window.innerWidth >= 768 && localStorage.getItem('elementa_student_sidebar_collapsed') === '1') {
+                document.documentElement.classList.add('sidebar-is-collapsed');
+            }
+        } catch(e) {}
+    })();
+</script>
 <style>
     /* ========================================================
        Standardized Student Side Navigation & Tree UI Styles
@@ -26,12 +36,15 @@
     }
 
     @media (min-width: 768px) {
+        html.sidebar-is-collapsed #sidebar,
         #sidebar.sidebar-collapsed {
             transform: translateX(-100%);
         }
+        html.sidebar-is-collapsed #mainContent,
         #mainContent.sidebar-collapsed-main {
             margin-left: 0 !important;
         }
+        html.sidebar-is-collapsed header,
         header.sidebar-collapsed-header {
             left: 0 !important;
         }
