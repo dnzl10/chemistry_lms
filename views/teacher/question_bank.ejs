@@ -543,7 +543,7 @@
                     <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-xs">
                         <div class="flex items-center gap-2.5">
                             <i class="fas fa-shield-alt text-amber-600 text-sm"></i>
-                            <span>Action blocked: Question bank entries, telemetry, and remediation records are restricted to the currently active School Year.</span>
+                            <span>Action blocked: Question bank entries and telemetry records are restricted to the currently active School Year.</span>
                         </div>
                         <a href="/teacher/question-bank" class="text-amber-700 hover:text-amber-900 font-bold whitespace-nowrap">Dismiss</a>
                     </div>
@@ -557,7 +557,7 @@
                             </div>
                             <div>
                                 <p class="text-xs font-black uppercase tracking-wider text-amber-800">No Active School Year Open</p>
-                                <p class="text-xs font-semibold text-amber-900/80 mt-0.5">Question bank challenges, telemetry insights, and remediation actions are hidden until an active School Year is opened.</p>
+                                <p class="text-xs font-semibold text-amber-900/80 mt-0.5">Question bank challenges and telemetry insights are hidden until an active School Year is opened.</p>
                             </div>
                         </div>
                     </div>
@@ -1152,13 +1152,11 @@
                                                     <th class="pb-2.5">Challenge Prompt</th>
                                                     <th class="pb-2.5 text-center">Students Who Missed</th>
                                                     <th class="pb-2.5 text-center">Error Rate</th>
-                                                    <th class="pb-2.5 text-center">Focus Document</th>
-                                                    <th class="pb-2.5 text-right">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="strugglingTableBody">
                                                 <tr>
-                                                    <td colspan="6" class="py-6 text-center text-slate-400 text-xs">
+                                                    <td colspan="4" class="py-6 text-center text-slate-400 text-xs">
                                                         Loading class question telemetry…</td>
                                                 </tr>
                                             </tbody>
@@ -1826,124 +1824,6 @@
                     Close
                 </button>
             </div>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════════════════════════════ -->
-    <!-- ASSIGN REVIEW DOCUMENT MODAL FOR STRUGGLING QUESTIONS                  -->
-    <!-- ══════════════════════════════════════════════════════════════════════ -->
-    <div class="modal-backdrop" id="assignRemediationModal">
-        <div class="modal-card max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
-            <!-- Modal Header -->
-            <div
-                class="modal-header bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-200">
-                        <i class="fas fa-file-circle-check text-lg"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-extrabold text-slate-800 text-base" id="remedModalTitle">Assign Study Document
-                            to Struggling Students</h3>
-                        <p class="text-xs text-slate-400">Targeted review material for students who missed this arcade
-                            question</p>
-                    </div>
-                </div>
-                <button onclick="closeAssignRemediationModal()"
-                    class="w-8 h-8 rounded-lg hover:bg-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <form id="assignRemediationForm" onsubmit="submitRemediationAssignment(event)" class="p-6 space-y-5">
-                <input type="hidden" id="remedQuestionId" value="">
-                <input type="hidden" id="remedClassId" value="">
-
-                <!-- 1. Question Context Card -->
-                <div class="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-2">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-200/80 text-amber-900"
-                            id="remedQuestionCodeBadge">
-                            #Q
-                        </span>
-                        <span class="text-xs font-bold text-amber-800" id="remedMachineName">
-                            Level 1: Station
-                        </span>
-                    </div>
-                    <h4 class="text-sm font-bold text-slate-800" id="remedQuestionPrompt">
-                        Question prompt loading…
-                    </h4>
-
-                    <!-- Struggling Students Pills List -->
-                    <div class="pt-2 border-t border-amber-200/50">
-                        <span class="text-[11px] font-bold text-slate-600 block mb-1.5" id="remedStudentsCountHeader">
-                            <i class="fas fa-users-viewfinder mr-1 text-amber-600"></i> Students who missed this in this
-                            class:
-                        </span>
-                        <div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto" id="remedStrugglingStudentsChips">
-                            <!-- Student chips injected here -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. Learning Material Selection -->
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                            Choose Uploaded Document from Topics <span class="text-rose-500">*</span>
-                        </label>
-                        <p class="text-[11px] text-slate-400">Select which learning material students must review to
-                            master this concept</p>
-                    </div>
-
-                    <!-- Topic & Keyword Filter Bar -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <select id="remedTopicFilter" onchange="filterRemediationMaterialsList()"
-                            class="filter-select text-xs">
-                            <option value="">All Topics</option>
-                            <!-- Dynamic topic options -->
-                        </select>
-
-                        <div class="relative">
-                            <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-                            <input type="text" id="remedDocSearch" oninput="filterRemediationMaterialsList()"
-                                placeholder="Search documents by title…" class="search-input w-full text-xs py-2 pl-8">
-                        </div>
-                    </div>
-
-                    <!-- Materials List Scrollable Area -->
-                    <div class="border border-slate-200 rounded-2xl max-h-56 overflow-y-auto p-2 space-y-1.5 bg-slate-50/50"
-                        id="remedMaterialsContainer">
-                        <!-- Dynamic material cards with radio button -->
-                        <div class="py-8 text-center text-slate-400 text-xs">
-                            <i class="fas fa-spinner fa-spin text-base text-amber-500 mb-1 block"></i>
-                            Loading uploaded materials…
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. Teacher Advice Note -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Teacher Instructions / Study Note (Optional)
-                    </label>
-                    <textarea id="remedAdviceText" rows="2"
-                        placeholder="e.g. Please read the document covering reactant balance before your next attempt at this station."
-                        class="search-input w-full text-xs py-2"></textarea>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-                    <button type="button" onclick="closeAssignRemediationModal()"
-                        class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer">
-                        Cancel
-                    </button>
-                    <button type="submit" id="btnSubmitRemediation"
-                        class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs shadow-md shadow-amber-200 cursor-pointer">
-                        <i class="fas fa-paper-plane mr-1.5"></i> Assign Document to Students
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -3036,7 +2916,7 @@
                 if (nextBtn) nextBtn.disabled = (strugglingPage >= totalPages);
 
                 if (!total) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">
+                    tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400">
                 <i class="fas fa-circle-check text-emerald-400 text-3xl mb-2 block"></i>
                 <span class="font-bold text-slate-600 block">No Struggling Questions</span>
                 <span class="text-xs text-slate-400">All questions answered in this class had 100% accuracy or no gameplay recorded yet.</span>
@@ -3050,24 +2930,15 @@
                 tbody.innerHTML = pageItems.map(q => {
                     const errRate = q.error_rate_pct !== undefined ? q.error_rate_pct : 0;
                     const badgeClass = errRate >= 50 ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800';
-                    const assignedDoc = q.assigned_material_title ? `
-                <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 inline-flex items-center gap-1.5 shadow-xs" title="${escapeHtml(q.assigned_material_title)}">
-                    <i class="fas fa-file-circle-check text-amber-600"></i>
-                    <span class="max-w-[130px] truncate">${escapeHtml(q.assigned_material_title)}</span>
-                </span>
-            ` : `<span class="text-[11px] text-slate-400 italic">None assigned</span>`;
-
-                    const validQId = (q.question_id && !isNaN(parseInt(q.question_id, 10))) ? parseInt(q.question_id, 10) : 0;
-                    const rowClick = validQId ? `openAssignRemediationModal(${validQId})` : `showToast('Question record reference is missing for this challenge.', 'warning')`;
 
                     return `
-                <tr onclick="${rowClick}" class="border-b border-slate-50 hover:bg-amber-50/50 transition cursor-pointer group">
+                <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition">
                     <td class="py-3 text-xs font-bold text-slate-800">
                         <span class="font-mono text-cyan-700 block">${escapeHtml(q.question_code || 'Q')}</span>
                         <span class="text-[10px] text-slate-400 font-semibold">Level ${q.level_number}: ${escapeHtml(q.machine_name || '')}</span>
                     </td>
                     <td class="py-3 text-xs text-slate-700 max-w-sm">
-                        <p class="font-semibold line-clamp-2 group-hover:text-amber-900 transition">${escapeHtml(q.question_prompt || '')}</p>
+                        <p class="font-semibold line-clamp-2 text-slate-800">${escapeHtml(q.question_prompt || '')}</p>
                         <p class="text-[10px] text-slate-400 font-mono mt-0.5">Answer: <span class="text-slate-600 font-bold">${escapeHtml(q.correct_answer || '')}</span></p>
                     </td>
                     <td class="py-3 text-center">
@@ -3080,15 +2951,6 @@
                         <span class="px-2.5 py-1 rounded-full text-xs font-black ${badgeClass}">
                             ${errRate}% error
                         </span>
-                    </td>
-                    <td class="py-3 text-center">
-                        ${assignedDoc}
-                    </td>
-                    <td class="py-3 text-right">
-                        <button onclick="event.stopPropagation(); ${rowClick}" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition transform hover:-translate-y-0.5 cursor-pointer ml-auto">
-                            <i class="fas fa-file-circle-plus"></i>
-                            <span>${q.assigned_material_title ? 'Change' : 'Set Doc'}</span>
-                        </button>
                     </td>
                 </tr>
             `;
@@ -3464,246 +3326,6 @@
                 </tr>
             `;
                 }).join('');
-            }
-
-            // ══════════════════════════════════════════════════════════════════════
-            // REMEDIATION ASSIGNMENT ENGINE (Struggling Questions Focus Documents)
-            // ══════════════════════════════════════════════════════════════════════
-            let selectedRemediationMaterialId = null;
-            let currentRemediationMaterials = [];
-
-            async function openAssignRemediationModal(questionId) {
-                const select = document.getElementById('telemetryClassSelect');
-                if (!select || !select.value) {
-                    showToast('Please select a class first.', 'error');
-                    return;
-                }
-
-                const classId = parseInt(select.value, 10);
-                const qId = parseInt(questionId, 10);
-
-                if (!qId || isNaN(qId)) {
-                    showToast('Question record could not be identified for this challenge.', 'error');
-                    return;
-                }
-                if (!classId || isNaN(classId)) {
-                    showToast('Please select a valid class first.', 'error');
-                    return;
-                }
-
-                const className = select.options[select.selectedIndex].text;
-
-                document.getElementById('remedQuestionId').value = qId;
-                document.getElementById('remedClassId').value = classId;
-                document.getElementById('remedAdviceText').value = '';
-                selectedRemediationMaterialId = null;
-
-                // Open modal and show loading state
-                document.getElementById('assignRemediationModal').classList.add('open');
-                document.getElementById('remedQuestionCodeBadge').textContent = 'Loading…';
-                document.getElementById('remedMachineName').textContent = '';
-                document.getElementById('remedQuestionPrompt').textContent = 'Fetching question telemetry…';
-                document.getElementById('remedStudentsCountHeader').innerHTML = `<i class="fas fa-spinner fa-spin mr-1 text-amber-600"></i> Loading struggling students in ${className}…`;
-                document.getElementById('remedStrugglingStudentsChips').innerHTML = '';
-                document.getElementById('remedMaterialsContainer').innerHTML = `
-            <div class="py-8 text-center text-slate-400 text-xs">
-                <i class="fas fa-spinner fa-spin text-base text-amber-500 mb-1 block"></i>
-                Loading uploaded learning materials…
-            </div>
-        `;
-
-                try {
-                    const res = await fetch(`/teacher/api/telemetry/question/${qId}/struggling-students?classId=${classId}`);
-                    const data = await res.json();
-                    if (!data.success) {
-                        showToast(data.error || 'Failed to fetch question telemetry', 'error');
-                        closeAssignRemediationModal();
-                        return;
-                    }
-
-                    const q = data.question;
-                    const students = data.students || [];
-                    const currentRem = data.current_remediation;
-                    currentRemediationMaterials = (data.materials && data.materials.length) ? data.materials : (typeof UPLOADED_MATERIALS !== 'undefined' ? UPLOADED_MATERIALS : []);
-
-                    // 1. Populate Question Details
-                    document.getElementById('remedQuestionCodeBadge').textContent = `#${q.question_code || ('Q' + q.question_id)}`;
-                    document.getElementById('remedMachineName').textContent = `Level ${q.level_number || 1}: ${q.machine_name || 'Station'}`;
-                    document.getElementById('remedQuestionPrompt').textContent = q.prompt || '';
-
-                    // 2. Populate Struggling Students Chips
-                    document.getElementById('remedStudentsCountHeader').innerHTML = `
-                <i class="fas fa-users-viewfinder mr-1 text-amber-600"></i> 
-                ${students.length} student(s) in <span class="text-amber-900">${className}</span> who missed this question:
-            `;
-
-                    if (students.length === 0) {
-                        document.getElementById('remedStrugglingStudentsChips').innerHTML = `
-                    <span class="text-xs text-slate-400 italic">No students recorded with missed attempts in this session.</span>
-                `;
-                    } else {
-                        document.getElementById('remedStrugglingStudentsChips').innerHTML = students.map(s => {
-                            const initial = (s.first_name ? s.first_name[0] : 'S').toUpperCase();
-                            return `
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-rose-200 text-xs font-bold text-slate-700 shadow-xs">
-                            <span class="w-4 h-4 rounded-full bg-rose-100 text-rose-700 text-[10px] flex items-center justify-center font-black">${initial}</span>
-                            <span>${escapeHtml(s.first_name)} ${escapeHtml(s.last_name)}</span>
-                            <span class="text-[10px] text-rose-600 font-extrabold">(${s.wrong_count}x)</span>
-                        </span>
-                    `;
-                        }).join('');
-                    }
-
-                    // 3. Populate Topic Filter Dropdown
-                    const topicsSet = new Set();
-                    currentRemediationMaterials.forEach(m => {
-                        if (m.topic_name) topicsSet.add(m.topic_name);
-                    });
-
-                    const topicFilterSelect = document.getElementById('remedTopicFilter');
-                    topicFilterSelect.innerHTML = '<option value="">All Topics</option>' +
-                        Array.from(topicsSet).sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
-
-                    // Pre-select current remediation if already assigned
-                    if (currentRem && currentRem.material_id) {
-                        selectedRemediationMaterialId = currentRem.material_id;
-                        document.getElementById('remedAdviceText').value = currentRem.advice_text || '';
-                    }
-
-                    // 4. Render Materials List
-                    filterRemediationMaterialsList();
-
-                } catch (e) {
-                    console.error('Error opening remediation modal:', e);
-                    showToast('Network error loading question details', 'error');
-                    closeAssignRemediationModal();
-                }
-            }
-
-            function closeAssignRemediationModal() {
-                document.getElementById('assignRemediationModal').classList.remove('open');
-            }
-
-            function filterRemediationMaterialsList() {
-                const topic = document.getElementById('remedTopicFilter').value;
-                const query = (document.getElementById('remedDocSearch').value || '').toLowerCase().trim();
-
-                const filtered = currentRemediationMaterials.filter(m => {
-                    const matchTopic = !topic || m.topic_name === topic;
-                    const matchQuery = !query || (m.title && m.title.toLowerCase().includes(query)) || (m.topic_name && m.topic_name.toLowerCase().includes(query));
-                    return matchTopic && matchQuery;
-                });
-
-                renderRemediationMaterialsList(filtered);
-            }
-
-            function renderRemediationMaterialsList(list) {
-                const container = document.getElementById('remedMaterialsContainer');
-                if (!list || !list.length) {
-                    container.innerHTML = `
-                <div class="py-8 text-center text-slate-400 text-xs">
-                    <i class="fas fa-folder-open text-2xl text-slate-300 mb-2 block"></i>
-                    No uploaded learning materials found matching your filter.
-                </div>
-            `;
-                    return;
-                }
-
-                container.innerHTML = list.map(m => {
-                    const isSelected = selectedRemediationMaterialId === m.material_id;
-                    const cardBg = isSelected
-                        ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-300'
-                        : 'bg-white border-slate-200/90 hover:bg-slate-50';
-
-                    // Distinct file type badge & icon
-                    let typeIcon = '<i class="fas fa-file-lines text-slate-500"></i>';
-                    const mType = (m.material_type || '').toLowerCase();
-                    if (mType.includes('pdf')) {
-                        typeIcon = '<i class="fas fa-file-pdf text-rose-500"></i>';
-                    } else if (mType.includes('word') || mType.includes('doc')) {
-                        typeIcon = '<i class="fas fa-file-word text-blue-500"></i>';
-                    } else if (mType.includes('presentation') || mType.includes('ppt')) {
-                        typeIcon = '<i class="fas fa-file-powerpoint text-amber-500"></i>';
-                    } else if (mType.includes('video')) {
-                        typeIcon = '<i class="fas fa-file-video text-purple-500"></i>';
-                    } else if (mType.includes('img') || mType.includes('image')) {
-                        typeIcon = '<i class="fas fa-file-image text-emerald-500"></i>';
-                    } else if (mType.includes('link')) {
-                        typeIcon = '<i class="fas fa-link text-cyan-500"></i>';
-                    }
-
-                    return `
-                <div onclick="selectRemediationMaterial(${m.material_id})" class="p-3 rounded-xl border cursor-pointer transition flex items-center justify-between gap-3 ${cardBg}">
-                    <div class="flex items-center gap-3 overflow-hidden">
-                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm flex-shrink-0">
-                            ${typeIcon}
-                        </div>
-                        <div class="truncate">
-                            <h5 class="text-xs font-bold text-slate-800 truncate">${escapeHtml(m.title)}</h5>
-                            <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1 mt-0.5">
-                                <i class="fas fa-book-bookmark text-[9px] text-amber-600"></i>
-                                ${escapeHtml(m.topic_name || 'Chemistry Topic')}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center flex-shrink-0">
-                        <input type="radio" name="remedMaterialRadio" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-amber-600 focus:ring-amber-500 border-slate-300 pointer-events-none">
-                    </div>
-                </div>
-            `;
-                }).join('');
-            }
-
-            function selectRemediationMaterial(materialId) {
-                selectedRemediationMaterialId = materialId;
-                filterRemediationMaterialsList();
-            }
-
-            async function submitRemediationAssignment(e) {
-                e.preventDefault();
-
-                const questionId = document.getElementById('remedQuestionId').value;
-                const classId = document.getElementById('remedClassId').value;
-                const adviceText = document.getElementById('remedAdviceText').value.trim();
-
-                if (!selectedRemediationMaterialId) {
-                    showToast('Please select an uploaded document from the list above.', 'error');
-                    return;
-                }
-
-                const submitBtn = document.getElementById('btnSubmitRemediation');
-                const origBtnText = submitBtn.innerHTML;
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i> Assigning…';
-
-                try {
-                    const res = await fetch('/teacher/api/telemetry/assign-remediation', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            class_id: classId,
-                            question_id: questionId,
-                            material_id: selectedRemediationMaterialId,
-                            advice_text: adviceText
-                        })
-                    });
-
-                    const data = await res.json();
-                    if (data.success) {
-                        showToast(`Assigned "${data.material_title}" to ${data.student_count} student(s) in ${data.class_name}!`, 'success');
-                        closeAssignRemediationModal();
-                        loadClassTelemetry(); // Refresh struggling questions table
-                    } else {
-                        showToast(data.error || 'Failed to assign remediation document', 'error');
-                    }
-                } catch (err) {
-                    console.error('Error assigning remediation:', err);
-                    showToast('Network error while assigning document', 'error');
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = origBtnText;
-                }
             }
 
             function escapeHtml(str) {
