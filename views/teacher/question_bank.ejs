@@ -433,10 +433,6 @@
 
     <div class="flex min-h-screen relative overflow-x-hidden">
 
-        <!-- Sidebar overlay (mobile) -->
-        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-cyan-900/50 z-40 hidden md:hidden">
-        </div>
-
         <!-- ===== SIDEBAR (Aligned directly with class_list.ejs) ===== -->
         <%- include('../partials/teacher-sidebar', { activeNav: 'question_bank' }) %>
 
@@ -2092,19 +2088,7 @@
                 setTimeout(() => { toast.className = ''; }, 3200);
             }
 
-            // ── Shell Navigation Toggles (From class_list.ejs) ──
-            function toggleSidebar() {
-                const sidebar = document.getElementById('sidebar');
-                const overlay = document.getElementById('sidebarOverlay');
-                const isHidden = sidebar.classList.contains('-translate-x-full');
-                if (isHidden) {
-                    sidebar.classList.remove('-translate-x-full');
-                    overlay.classList.remove('hidden');
-                } else {
-                    sidebar.classList.add('-translate-x-full');
-                    overlay.classList.add('hidden');
-                }
-            }
+            // ── Shell Navigation Toggles: toggleSidebar canonically managed by partials/teacher-nav-scripts ──
 
             function toggleProfileDropdown() {
                 document.getElementById('profileDropdown').classList.toggle('open');

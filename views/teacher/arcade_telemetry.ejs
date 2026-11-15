@@ -809,13 +809,7 @@
 
 <script type="application/json" id="telemetry-scatter-sync-data"><%- JSON.stringify(scatter || []).replace(/<\//g, '<\\/') %></script>
 <script>
-/* ── Sidebar & Profile Toggle ── */
-function toggleSidebar() {
-    const sb = document.getElementById('sidebar');
-    const ov = document.getElementById('sidebarOverlay');
-    sb.classList.toggle('-translate-x-full');
-    ov.classList.toggle('hidden');
-}
+/* ── Sidebar & Profile Toggle: toggleSidebar canonically managed by partials/teacher-nav-scripts ── */
 
 function toggleProfileDropdown() {
     // Basic stub or redirect to profile
@@ -1414,6 +1408,5 @@ async function sendKioskCommand(kioskId, action) {
 }
 </script>
 <%- include('../partials/notification-panel') %>
-<%- include('../partials/teacher-nav-scripts') %>
 </body>
 </html>

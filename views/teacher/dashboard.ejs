@@ -907,13 +907,7 @@
     </div>
 
     <script>
-        // 1. Sidebar Toggle Logic
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        }
+        // 1. Sidebar Toggle Logic is canonically managed by partials/teacher-nav-scripts
 
         // 2. Performance Chart Initialization (Chart.js) - 100% Dynamic & Accurate Weekly Trends
         const weeklyTrends = <%- JSON.stringify(typeof weeklyTrends !== 'undefined' ? weeklyTrends : { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], scores: [0, 0, 0, 0, 0, 0, 0], counts: [0, 0, 0, 0, 0, 0, 0] }) %>;

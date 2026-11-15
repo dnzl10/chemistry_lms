@@ -26,6 +26,7 @@
         } else {
             if (sidebar) {
                 const isCollapsed = sidebar.classList.toggle('sidebar-collapsed');
+                document.documentElement.classList.toggle('sidebar-is-collapsed', isCollapsed);
                 if (main) main.classList.toggle('sidebar-collapsed-main', isCollapsed);
                 if (header) header.classList.toggle('sidebar-collapsed-header', isCollapsed);
                 try {
@@ -165,13 +166,39 @@
             });
         }
 
-        // 6. Watch sidebar class changes to persist collapsed state
+        // 6. Ensure full desktop collapse synchronization on page load
+        if (window.innerWidth >= 768) {
+            const isStoredCollapsed = localStorage.getItem(TEACHER_SIDEBAR_COLLAPSE_KEY) === '1';
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('mainContent') || document.querySelector('main');
+            const header = document.querySelector('header');
+            if (isStoredCollapsed) {
+                document.documentElement.classList.add('sidebar-is-collapsed');
+                if (sidebar) sidebar.classList.add('sidebar-collapsed');
+                if (main) main.classList.add('sidebar-collapsed-main');
+                if (header) header.classList.add('sidebar-collapsed-header');
+            } else {
+                document.documentElement.classList.remove('sidebar-is-collapsed');
+                if (sidebar) sidebar.classList.remove('sidebar-collapsed');
+                if (main) main.classList.remove('sidebar-collapsed-main');
+                if (header) header.classList.remove('sidebar-collapsed-header');
+            }
+        }
+
+        // 7. Watch sidebar class changes to persist collapsed state regardless of which toggle function triggers it
         const sidebar = document.getElementById('sidebar');
         if (sidebar && !sidebar.dataset.collapseObserver) {
             sidebar.dataset.collapseObserver = 'true';
             if (window.MutationObserver) {
                 const obs = new MutationObserver(() => {
                     const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+                    document.documentElement.classList.toggle('sidebar-is-collapsed', isCollapsed);
+                    const main = document.getElementById('mainContent') || document.querySelector('main');
+                    const header = document.querySelector('header');
+                    if (window.innerWidth >= 768) {
+                        if (main) main.classList.toggle('sidebar-collapsed-main', isCollapsed);
+                        if (header) header.classList.toggle('sidebar-collapsed-header', isCollapsed);
+                    }
                     try {
                         localStorage.setItem(TEACHER_SIDEBAR_COLLAPSE_KEY, isCollapsed ? '1' : '0');
                     } catch (e) {}
@@ -180,7 +207,29 @@
             }
         }
 
-        // 7. Remove initial-load animation suppression smoothly after layout stabilizes
+        // 8. Handle desktop-mobile window resize transitions
+        if (!window.__teacherSidebarResizeBound) {
+            window.__teacherSidebarResizeBound = true;
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= 768) {
+                    const isStoredCollapsed = localStorage.getItem(TEACHER_SIDEBAR_COLLAPSE_KEY) === '1';
+                    document.documentElement.classList.toggle('sidebar-is-collapsed', isStoredCollapsed);
+                    const sb = document.getElementById('sidebar');
+                    const m = document.getElementById('mainContent') || document.querySelector('main');
+                    const h = document.querySelector('header');
+                    const ov = document.getElementById('sidebarOverlay');
+                    if (sb) {
+                        sb.classList.remove('sidebar-open');
+                        sb.classList.toggle('sidebar-collapsed', isStoredCollapsed);
+                    }
+                    if (ov) ov.classList.add('hidden');
+                    if (m) m.classList.toggle('sidebar-collapsed-main', isStoredCollapsed);
+                    if (h) h.classList.toggle('sidebar-collapsed-header', isStoredCollapsed);
+                }
+            }, { passive: true });
+        }
+
+        // 9. Remove initial-load animation suppression smoothly after layout stabilizes
         requestAnimationFrame(() => {
             setTimeout(() => {
                 if (sidebar) sidebar.classList.remove('tree-nav-initial-load');

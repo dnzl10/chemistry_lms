@@ -1355,15 +1355,8 @@ let replyParentId  = null;   // null = top-level reply
 let deletingReplyId = null;
 
 /* ════════════════════════════════════════════
-   SIDEBAR
+   SIDEBAR: canonically managed by partials/teacher-nav-scripts
 ════════════════════════════════════════════ */
-function toggleSidebar() {
-    const s = document.getElementById('sidebar');
-    const o = document.getElementById('sidebarOverlay');
-    const hidden = s.classList.contains('-translate-x-full');
-    s.classList.toggle('-translate-x-full', !hidden);
-    o.classList.toggle('hidden', !hidden);
-}
 
 /* ════════════════════════════════════════════
    TOAST

@@ -2465,14 +2465,7 @@
         let EXP_GROWTH = _initialReportsData.expGrowth || { labels: [], datasets: [] };
         let SELECTED_CLASS = _initialReportsData.selectedClassId || '';
 
-        /* ── Sidebar ── */
-        function toggleSidebar() {
-            const sb = document.getElementById('sidebar');
-            const ov = document.getElementById('sidebarOverlay');
-            const open = !sb.classList.contains('-translate-x-full');
-            sb.classList.toggle('-translate-x-full', open);
-            ov.classList.toggle('hidden', open);
-        }
+        /* ── Sidebar: canonically managed by partials/teacher-nav-scripts ── */
 
         /* ── Toast ── */
         function rpToast(msg, type = 'success') {

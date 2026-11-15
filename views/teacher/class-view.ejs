@@ -5390,14 +5390,7 @@ Students are automatically enrolled into their official section catalog based on
 
 <!-- ===== SCRIPTS ===== -->
 <script>
-/* ---- Sidebar toggle ---- */
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const isOpen  = !sidebar.classList.contains('-translate-x-full');
-    sidebar.classList.toggle('-translate-x-full', isOpen);
-    overlay.classList.toggle('hidden', isOpen);
-}
+/* ---- Sidebar toggle: canonically managed by partials/teacher-nav-scripts ---- */
 
 /* ---- Compute + populate summary stats ---- */
 (function() {

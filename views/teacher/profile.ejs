@@ -777,14 +777,7 @@ function showToast(msg, type = 'success') {
     setTimeout(() => { el.className = ''; }, 3200);
 }
 
-/* ── Sidebar toggle ── */
-function toggleSidebar() {
-    const s = document.getElementById('sidebar');
-    const o = document.getElementById('sidebarOverlay');
-    const hidden = s.classList.contains('-translate-x-full');
-    s.classList.toggle('-translate-x-full', !hidden);
-    o.classList.toggle('hidden', !hidden);
-}
+/* ── Sidebar toggle: canonically managed by partials/teacher-nav-scripts ── */
 
 /* ── Profile dropdown ── */
 function toggleProfileDropdown() {

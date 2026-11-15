@@ -1799,18 +1799,7 @@
             }, 3500);
         }
 
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            const main = document.getElementById('mainContent');
-            if (window.innerWidth < 768) {
-                if (sidebar) sidebar.classList.toggle('sidebar-open');
-                if (overlay) overlay.classList.toggle('hidden');
-            } else {
-                if (sidebar) sidebar.classList.toggle('sidebar-collapsed');
-                if (main) main.classList.toggle('sidebar-collapsed-main');
-            }
-        }
+        // toggleSidebar is canonically managed by partials/teacher-nav-scripts
 
         function toggleUserMenu(event) {
             event.stopPropagation();

@@ -861,14 +861,7 @@
 ================================================================ -->
 <script>
 
-/* ── Sidebar ── */
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const isOpen  = !sidebar.classList.contains('-translate-x-full');
-    sidebar.classList.toggle('-translate-x-full', isOpen);
-    overlay.classList.toggle('hidden', isOpen);
-}
+/* ── Sidebar: canonically managed by partials/teacher-nav-scripts ── */
 
 /* ── Toast ── */
 function showToast(msg, type = 'success') {

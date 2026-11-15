@@ -967,14 +967,7 @@
 const TOPIC_ID    = <%= attempt.topic_id %>;
 const ATTEMPT_ID  = <%= attempt.score_id %>;
 
-/* ── Sidebar ── */
-function toggleSidebar() {
-    const sb = document.getElementById('sidebar');
-    const ov = document.getElementById('sidebarOverlay');
-    const open = !sb.classList.contains('-translate-x-full');
-    sb.classList.toggle('-translate-x-full', open);
-    ov.classList.toggle('hidden', open);
-}
+/* ── Sidebar: canonically managed by partials/teacher-nav-scripts ── */
 
 /* ── Toast ── */
 function anToast(msg, type = 'success') {
@@ -1178,6 +1171,5 @@ document.querySelectorAll('.modal-backdrop').forEach(mb => {
 });
 </script>
 <%- include('../partials/notification-panel') %>
-<%- include('../partials/teacher-nav-scripts') %>
 </body>
 </html>

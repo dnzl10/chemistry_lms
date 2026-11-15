@@ -764,18 +764,16 @@
             </div>
         </div>
 
-        <% if (!isAdmin) { %>
-            <%- include('../partials/teacher-nav-scripts') %>
-                <% } else { %>
-                    <script>
-                        function toggleSidebar() {
-                            const sidebar = document.getElementById('sidebar');
-                            const overlay = document.getElementById('sidebarOverlay');
-                            if (sidebar) sidebar.classList.toggle('-translate-x-full');
-                            if (overlay) overlay.classList.toggle('hidden');
-                        }
-                    </script>
-                    <% } %>
+        <% if (isAdmin) { %>
+            <script>
+                function toggleSidebar() {
+                    const sidebar = document.getElementById('sidebar');
+                    const overlay = document.getElementById('sidebarOverlay');
+                    if (sidebar) sidebar.classList.toggle('-translate-x-full');
+                    if (overlay) overlay.classList.toggle('hidden');
+                }
+            </script>
+        <% } %>
 
                         <script type="application/json"
                             id="sim-quizzes-sync-data"><%- JSON.stringify(simulations || []).replace(/<\//g, '<\\/') %></script>
@@ -1332,7 +1330,6 @@
                         </script>
 
                         <%- include('../partials/notification-panel') %>
-                            <%- include('../partials/teacher-nav-scripts') %>
     </body>
 
     </html>
