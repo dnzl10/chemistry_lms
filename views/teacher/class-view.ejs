@@ -5708,6 +5708,7 @@ async function toggleQuarterLock(qid, currentLocked) {
         btn.className = 'lock-btn ' + (newVal ? 'locked' : 'unlocked');
         btn.querySelector('i').className = 'fas fa-' + (newVal ? 'lock' : 'lock-open') + ' text-xs';
         btn.title = newVal ? 'Unlock quarter' : 'Lock quarter';
+        btn.setAttribute('onclick', `event.stopPropagation(); toggleQuarterLock(${qid}, ${newVal})`);
 
         /* If locking — visually dim all topic lock buttons since they cascade */
         if (newVal) {

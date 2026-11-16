@@ -482,7 +482,8 @@
                         let totalTopicsCount = 0;
                         if (typeof quarters !== 'undefined' && quarters) {
                             quarters.forEach(q => {
-                                if (q.topics) {
+                                const qLocked = q && (q.is_locked === 1 || q.is_locked === '1' || q.is_locked === true || Number(q.is_locked) === 1);
+                                if (!qLocked && q.topics) {
                                     q.topics.forEach(t => {
                                         const isLocked = t && (t.is_locked === 1 || t.is_locked === '1' || t.is_locked === true || Number(t.is_locked) === 1);
                                         if (!isLocked) {
@@ -890,22 +891,34 @@
 
                         <%# ── Quarter Accordion Button ── %>
                         <% 
+                            const quarterIsLocked = (quarter.is_locked === 1 || quarter.is_locked === '1' || quarter.is_locked === true || Number(quarter.is_locked) === 1);
                             const allTopics = (quarter.topics || []).filter(Boolean);
-                            const unlockedTopics = allTopics.filter(t => !(t.is_locked === 1 || t.is_locked === '1' || t.is_locked === true || Number(t.is_locked) === 1));
-                            const lockedTopicsCount = allTopics.length - unlockedTopics.length;
+                            const unlockedTopics = quarterIsLocked ? [] : allTopics.filter(t => !(t.is_locked === 1 || t.is_locked === '1' || t.is_locked === true || Number(t.is_locked) === 1));
+                            const lockedTopicsCount = quarterIsLocked ? allTopics.length : (allTopics.length - unlockedTopics.length);
                         %>
                         <button
                             id="qbtn-<%= quarter.quarter_id %>"
                             onclick="toggleQuarter('<%= quarter.quarter_id %>')"
-                            class="quarter-btn <%= qIndex === 0 ? 'open' : '' %> w-full px-6 py-5 flex items-center justify-between group"
-                            style="background: <%= qIndex === 0 ? 'linear-gradient(90deg,#ecfeff,#eef2ff)' : 'white' %>; transition: background 0.2s;">
+                            class="quarter-btn <%= (qIndex === 0 && !quarterIsLocked) ? 'open' : '' %> w-full px-6 py-5 flex items-center justify-between group"
+                            style="background: <%= (qIndex === 0 && !quarterIsLocked) ? 'linear-gradient(90deg,#ecfeff,#eef2ff)' : 'white' %>; transition: background 0.2s;">
                             <div class="flex items-center gap-4">
-                            <div class="q-number-badge"><%= quarter.quarter_number %></div>
+                            <div class="q-number-badge <%= quarterIsLocked ? 'bg-slate-200 text-slate-500 border border-slate-300' : '' %>"><%= quarter.quarter_number %></div>
                             <div class="text-left">
-                                <h4 class="font-black text-slate-800 text-base tracking-tight">Quarter <%= quarter.quarter_number %></h4>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h4 class="font-black text-slate-800 text-base tracking-tight">Quarter <%= quarter.quarter_number %></h4>
+                                    <% if (quarterIsLocked) { %>
+                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200 inline-flex items-center gap-1">
+                                            <i class="fas fa-lock text-[9px]"></i> Locked
+                                        </span>
+                                    <% } %>
+                                </div>
                                 <p class="text-xs text-indigo-400 font-bold uppercase tracking-widest mt-0.5 flex items-center gap-2 flex-wrap">
                                 <span><i class="fas fa-book-open mr-1"></i><%= allTopics.length %> <%= allTopics.length === 1 ? 'Topic' : 'Topics' %></span>
-                                <% if (lockedTopicsCount > 0) { %>
+                                <% if (quarterIsLocked) { %>
+                                <span class="text-[10px] font-extrabold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full normal-case tracking-normal">
+                                    Quarter Locked &bull; All Topics & Activities Restricted
+                                </span>
+                                <% } else if (lockedTopicsCount > 0) { %>
                                 <span class="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full normal-case tracking-normal">
                                     <%= unlockedTopics.length %> Unlocked &bull; <%= lockedTopicsCount %> Restricted
                                 </span>
@@ -915,7 +928,7 @@
                             </div>
                             <div class="flex items-center gap-2">
                             <span class="text-xs font-bold text-indigo-300 hidden group-hover:inline">
-                                <%= qIndex === 0 ? 'Collapse' : 'Expand' %>
+                                <%= (qIndex === 0 && !quarterIsLocked) ? 'Collapse' : 'Expand' %>
                             </span>
                             <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center">
                                 <i class="fas fa-chevron-down chevron-icon text-indigo-400 text-xs"></i>
@@ -925,13 +938,25 @@
 
                         <%# ── Quarter Content Panel ── %>
                         <div id="q-<%= quarter.quarter_id %>"
-                            class="quarter-panel <%= qIndex === 0 ? '' : 'hidden' %> border-t border-indigo-50 p-6 space-y-5"
+                            class="quarter-panel <%= (qIndex === 0 && !quarterIsLocked) ? '' : 'hidden' %> border-t border-indigo-50 p-6 space-y-5"
                             style="background: #fafafa;">
+
+                            <% if (quarterIsLocked) { %>
+                            <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-semibold flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-extrabold text-rose-950 text-sm">Quarter <%= quarter.quarter_number %> is Locked</p>
+                                    <p class="text-[11px] text-rose-700 mt-0.5">This quarter is currently locked by your instructor. All topics, assessments, assignments, forums, and learning materials under this quarter are restricted.</p>
+                                </div>
+                            </div>
+                            <% } %>
 
                             <% if (allTopics.length > 0) { %>
                             <% allTopics.forEach((topic, topicIndex) => {
                                 const tabId = `tab-${quarter.quarter_id}-${topic.topic_id || topicIndex}`;
-                                const topicIsLocked = (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1);
+                                const topicIsLocked = quarterIsLocked || (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1);
                             %>
 
                             <div class="topic-card-item bg-white rounded-2xl border <%= topicIsLocked ? 'border-amber-200/90' : 'border-slate-100' %> overflow-hidden transition-all"
@@ -951,7 +976,7 @@
                                         <div class="flex w-full items-center flex-wrap gap-2">
                                             <div class="topic-accent"></div>
                                             <h5 class="text-base font-black text-slate-800 flex-1 break-words"><%= topic.topic_name %></h5>
-                                            <% if (topic.auto_unlock_at && topicIsLocked) { %>
+                                            <% if (topic.auto_unlock_at && topicIsLocked && !quarterIsLocked) { %>
                                             <span style="display:inline-flex;align-items:center;gap:4px;background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-size:11px;font-weight:700;padding:3px 9px;border-radius:9999px;" title="This topic is scheduled to unlock automatically">
                                                 <i class="fas fa-clock" style="font-size:10px;"></i> Unlocks <%= new Date(String(topic.auto_unlock_at).replace(' ', 'T')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
                                             </span>
@@ -962,7 +987,7 @@
                                             </span>
                                             <% } %>
                                             <% if(topicIsLocked) { %>
-                                            <span class="topic-lock-badge cursor-pointer" onclick="openLockedNoticeModal('This topic is currently locked by your instructor. Assessments, Assignments, and Forums are restricted, but unlocked Learning Materials (Links &amp; Resources) remain accessible for study.', 'Topic Restricted')" title="Click for details"><i class="fas fa-lock"></i> Locked</span>
+                                            <span class="topic-lock-badge cursor-pointer" onclick="openLockedNoticeModal('<%= quarterIsLocked ? 'This topic and all its contents are locked because Quarter ' + quarter.quarter_number + ' is currently locked by your instructor.' : 'This topic is currently locked by your instructor. All assessments, assignments, forums, and learning materials under this topic are restricted.' %>', '<%= quarterIsLocked ? 'Quarter & Topic Restricted' : 'Topic Restricted' %>')" title="Click for details"><i class="fas fa-lock"></i> Locked</span>
                                             <% } else { %>
                                             <span style="display:inline-flex;align-items:center;gap:4px;background:#d1fae5;color:#065f46;font-size:12px;font-weight:800;padding:3px 10px;border-radius:9999px;">
                                                 <i class="fas fa-unlock" style="font-size:12px;"></i> Unlocked
@@ -973,11 +998,8 @@
                                         <div class="w-full mt-2 p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-900">
                                             <i class="fas fa-shield-halved text-amber-600 mt-0.5 flex-shrink-0"></i>
                                             <div class="leading-relaxed">
-                                                <span class="font-extrabold">Topic Activities Restricted:</span>
-                                                Assessments, Assignments, and Forums are locked while this topic is locked. You can still access unlocked
-                                                <button type="button" onclick="switchTab('<%= tabId %>', 'links')" class="font-extrabold text-amber-800 underline hover:text-amber-950 cursor-pointer">Links</button>
-                                                and
-                                                <button type="button" onclick="switchTab('<%= tabId %>', 'resources')" class="font-extrabold text-amber-800 underline hover:text-amber-950 cursor-pointer">Resources</button>.
+                                                <span class="font-extrabold"><%= quarterIsLocked ? 'Quarter Restricted:' : 'Topic Restricted:' %></span>
+                                                <%= quarterIsLocked ? 'Quarter ' + quarter.quarter_number + ' has been locked by your instructor. All topics, assessments, assignments, forums, and learning materials under this quarter are restricted.' : 'This topic has been locked by your instructor. All assessments, assignments, forums, and learning materials under this topic are restricted.' %>
                                             </div>
                                         </div>
                                         <% } %>
@@ -1089,7 +1111,7 @@
                                             <%# 1. Pre-Test Row %>
                                             <% if (itemObj.type === 'preTest') { 
                                                 const preTest = itemObj.data;
-                                                const isLocked = topic.is_locked || preTest.is_unlocked != 1;
+                                                const isLocked = topicIsLocked || topic.is_locked || preTest.is_unlocked != 1;
                                                 const isDone = preTest.is_done == 1 || (preTest.submission && (preTest.submission.score_id || preTest.submission.submitted_at));
                                                 const isAvailable = preTest.is_available;
                                             %>
@@ -1146,7 +1168,7 @@
                                             </div>
                                             <% } else if (itemObj.type === 'postTest') { 
                                                 const postTest = itemObj.data;
-                                                const isLocked = topic.is_locked || postTest.is_unlocked != 1;
+                                                const isLocked = topicIsLocked || topic.is_locked || postTest.is_unlocked != 1;
                                                 const isDone = postTest.is_done == 1 || (postTest.submission && (postTest.submission.score_id || postTest.submission.submitted_at));
                                                 const isAvailable = postTest.is_available;
                                             %>
@@ -1203,7 +1225,7 @@
                                             </div>
                                             <% } else if (itemObj.type === 'competitive') { 
                                                 const competitive = itemObj.data;
-                                                const isLocked = topic.is_locked || competitive.is_unlocked != 1;
+                                                const isLocked = topicIsLocked || topic.is_locked || competitive.is_unlocked != 1;
                                                 const isDone = competitive.is_done == 1 || (competitive.submission && (competitive.submission.score_id || competitive.submission.submitted_at));
                                                 const isAvailable = competitive.is_available;
                                             %>
@@ -1260,7 +1282,7 @@
                                             </div>
                                             <% } else if (itemObj.type === 'other') { 
                                                 const ass = itemObj.data;
-                                                const assLocked = topic.is_locked || ass.is_unlocked != 1;
+                                                const assLocked = topicIsLocked || topic.is_locked || ass.is_unlocked != 1;
                                                 const isDone = ass.is_done == 1 || (ass.submission && (ass.submission.score_id || ass.submission.submitted_at));
                                                 const isAvailable = ass.is_available;
                                                 const isCompetitive = (ass.competitive_enabled == 1 || ass.assessment_type === 'Competitive');
@@ -1347,7 +1369,7 @@
                                     <% if(topic.assignments && topic.assignments.length > 0) { %>
                                     <div class="space-y-4">
                                         <% topic.assignments.forEach(asgn => {
-                                            const asgnLocked = (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1) || (asgn.is_unlocked != 1 && asgn.is_unlocked !== '1' && asgn.is_unlocked !== true);
+                                            const asgnLocked = topicIsLocked || (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1) || (asgn.is_unlocked != 1 && asgn.is_unlocked !== '1' && asgn.is_unlocked !== true);
                                             const isDone = asgn.is_done;
                                             const sub = asgn.submission;
                                             const catColors = {
@@ -1596,7 +1618,7 @@
                                     <% if(topic.forums && topic.forums.length > 0) { %>
                                     <div class="space-y-3">
                                         <% topic.forums.forEach((forum, forumIdx) => {
-                                            const forumLocked = (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1) || (forum.is_unlocked != 1 && forum.is_unlocked !== '1' && forum.is_unlocked !== true);
+                                            const forumLocked = topicIsLocked || (topic.is_locked === 1 || topic.is_locked === '1' || topic.is_locked === true || Number(topic.is_locked) === 1) || (forum.is_unlocked != 1 && forum.is_unlocked !== '1' && forum.is_unlocked !== true);
                                         %>
                                         <div class="forum-row <%= forumLocked ? 'locked' : '' %> <%= forumIdx >= 5 ? 'hidden' : '' %>"
                                              data-forum-item="<%= tabId %>"
@@ -1684,7 +1706,7 @@
                                         <% linkMaterials.forEach((mat, linkIdx) => {
                                             const rawPath = mat.file_path_or_url || '';
                                             const realUrl = rawPath.replace(/^\/material_uploads\//, '');
-                                            const isLocked = (mat.is_locked === 1 || mat.is_locked === '1' || mat.is_locked === true || Number(mat.is_locked) === 1);
+                                            const isLocked = topicIsLocked || (mat.is_locked === 1 || mat.is_locked === '1' || mat.is_locked === true || Number(mat.is_locked) === 1);
 
                                             let domain = '';
                                             let domainIcon = 'fa-link';
@@ -1753,7 +1775,7 @@
                                     <% if (fileMaterials.length > 0) { %>
                                     <div class="space-y-3">
                                         <% fileMaterials.forEach((mat, matIdx) => {
-                                            const matLocked = (mat.is_locked === 1 || mat.is_locked === '1' || mat.is_locked === true || Number(mat.is_locked) === 1);
+                                            const matLocked = topicIsLocked || (mat.is_locked === 1 || mat.is_locked === '1' || mat.is_locked === true || Number(mat.is_locked) === 1);
                                             const matViewed = mat.is_interacted;
 
                                             const rawPath = mat.file_path_or_url || '';

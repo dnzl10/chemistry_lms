@@ -3690,6 +3690,21 @@ router.post('/am/quarters/:id/toggle-lock', requireAdmin, async (req, res) => {
         if (!q) return res.json({ success: false, message: 'Quarter not found.' });
 
         await db.query(`UPDATE quarters SET is_locked = ? WHERE quarter_id = ?`, [isLocked, quarterId]);
+        if (isLocked === 1) {
+            await db.query(
+                `UPDATE topics 
+                 SET is_locked = 1,
+                     auto_unlock_at = NULL 
+                 WHERE quarter_id = ?`,
+                [quarterId]
+            );
+            await db.query(
+                `UPDATE learning_materials 
+                 SET is_locked = 1 
+                 WHERE topic_id IN (SELECT topic_id FROM topics WHERE quarter_id = ?)`,
+                [quarterId]
+            );
+        }
 
         await logActivity(req.user.user_id, 'Admin', 'TOGGLE_QUARTER_LOCK',
             `Quarter ID ${quarterId} set to ${isLocked ? 'locked' : 'unlocked'}`);

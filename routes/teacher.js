@@ -1772,11 +1772,26 @@ router.patch('/api/quarter/:qid/lock', isTeacher, async (req, res) => {
         await verifyTeacherQuarterInCurrentSY(db, req.user.user_id, req.params.qid);
         const { is_locked } = req.body;
         if (is_locked === undefined) throw new Error('is_locked missing');
-        await db.execute(`UPDATE quarters SET is_locked = ? WHERE quarter_id = ?`, [is_locked, req.params.qid]);
-        if (Number(is_locked) === 1) {
-            await db.execute(`UPDATE topics SET is_locked = 1 WHERE quarter_id = ?`, [req.params.qid]);
+        const lockVal = (Number(is_locked) === 1 || is_locked === true || is_locked === '1') ? 1 : 0;
+        await db.execute(`UPDATE quarters SET is_locked = ? WHERE quarter_id = ?`, [lockVal, req.params.qid]);
+        if (lockVal === 1) {
+            // When quarter is locked: lock all topics and clear any auto_unlock_at so background scheduler will not reverse it
+            await db.execute(
+                `UPDATE topics 
+                 SET is_locked = 1,
+                     auto_unlock_at = NULL 
+                 WHERE quarter_id = ?`,
+                [req.params.qid]
+            );
+            // Also lock all learning materials under all topics in this quarter
+            await db.execute(
+                `UPDATE learning_materials 
+                 SET is_locked = 1 
+                 WHERE topic_id IN (SELECT topic_id FROM topics WHERE quarter_id = ?)`,
+                [req.params.qid]
+            );
         }
-        res.json({ success: true });
+        res.json({ success: true, is_locked: lockVal });
     } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });
 

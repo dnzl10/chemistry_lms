@@ -65,7 +65,10 @@ async function verifyStudentAssessmentAccess(studentId, assessmentId, syCtx) {
     }
 
     const [[asmtMeta]] = await db.query(`
-        SELECT a.assessment_id, a.sy_id, a.target_audience, COALESCE(q1.subject_id, q2.subject_id) AS subject_id
+        SELECT a.assessment_id, a.sy_id, a.target_audience, a.is_unlocked,
+               COALESCE(t.is_locked, 0) AS topic_is_locked,
+               COALESCE(q1.is_locked, q2.is_locked, 0) AS quarter_is_locked,
+               COALESCE(q1.subject_id, q2.subject_id) AS subject_id
         FROM assessments a
         LEFT JOIN quarters q1 ON a.quarter_id = q1.quarter_id
         LEFT JOIN topics t ON a.topic_id = t.topic_id
@@ -83,6 +86,14 @@ async function verifyStudentAssessmentAccess(studentId, assessmentId, syCtx) {
         !syCtx.enrolledSubjectIds.includes(Number(asmtMeta.subject_id))
     ) {
         return { allowed: false, status: 403, error: 'Forbidden: Assessment does not belong to your Current School Year enrollment.' };
+    }
+
+    if (
+        Number(asmtMeta.quarter_is_locked) === 1 ||
+        Number(asmtMeta.topic_is_locked) === 1 ||
+        (asmtMeta.is_unlocked !== null && Number(asmtMeta.is_unlocked) === 0)
+    ) {
+        return { allowed: false, status: 403, error: 'Forbidden: This activity is currently locked by your instructor.' };
     }
 
     const audience = asmtMeta.target_audience || null;
@@ -2710,16 +2721,21 @@ router.get('/subjects/open/:id', async (req, res) => {
         // 9. BUILD NESTED QUARTERS/TOPICS
         const now = new Date();
         const quarters = quartersRaw.map((q, qIndex) => {
+            const quarterLocked = q.is_locked === 1 || q.is_locked === '1' || q.is_locked === true || Number(q.is_locked) === 1;
+
             const topics = topicsRaw
                 .filter(t => t.quarter_id === q.quarter_id)
                 .map((t, tIndex) => {
-                    const topicLocked = t.is_locked === 1 || t.is_locked === '1' || t.is_locked === true || Number(t.is_locked) === 1;
+                    const topicLocked = quarterLocked || t.is_locked === 1 || t.is_locked === '1' || t.is_locked === true || Number(t.is_locked) === 1;
 
-                    const materials = materialsRaw.filter(m => m.topic_id === t.topic_id).map(m => ({
-                        ...m,
-                        is_locked: (m.is_locked === 1 || m.is_locked === '1' || m.is_locked === true || Number(m.is_locked) === 1) ? 1 : 0,
-                        is_interacted: interactedMaterialIds.has(m.material_id)
-                    }));
+                    const materials = materialsRaw.filter(m => m.topic_id === t.topic_id).map(m => {
+                        const matLocked = topicLocked || (m.is_locked === 1 || m.is_locked === '1' || m.is_locked === true || Number(m.is_locked) === 1);
+                        return {
+                            ...m,
+                            is_locked: matLocked ? 1 : 0,
+                            is_interacted: interactedMaterialIds.has(m.material_id)
+                        };
+                    });
 
                     const allTopicAssessments = assessmentsRaw
                         .filter(a => a.topic_id === t.topic_id)
@@ -2730,7 +2746,7 @@ router.get('/subjects/open/:id', async (req, res) => {
                             const isUpcoming = a.start_date && new Date(a.start_date) > now;
                             const isExpired = a.due_date && new Date(a.due_date) < now;
                             const isInGrace = isExpired && a.allow_grace && a.grace_period_minutes && (new Date(a.due_date).getTime() + a.grace_period_minutes * 60000 > now.getTime());
-                            const isAvailable = (!isUpcoming && !isExpired) || isInGrace;
+                            const isAvailable = (!topicLocked) && ((!isUpcoming && !isExpired) || isInGrace);
                             const canSubmit = isAvailable && (!isDone || a.allow_resubmission);
 
                             const sub = submissionMap.get(a.assessment_id) || null;
@@ -2787,12 +2803,17 @@ router.get('/subjects/open/:id', async (req, res) => {
                     };
                 });
 
-            return { ...q, topics };
+            return {
+                ...q,
+                is_locked: quarterLocked ? 1 : 0,
+                topics
+            };
         });
 
         // 10. CALCULATE PROGRESS PERCENT
         let totalTasks = 0, completedTasks = 0;
         quarters.forEach(q => {
+            if (q.is_locked) return; // skip locked quarters
             q.topics.forEach(t => {
                 if (t.is_locked) return; // skip locked topics
                 t.forums.forEach(f => { totalTasks++; if (f.is_done) completedTasks++; });
@@ -3339,7 +3360,9 @@ router.post('/api/material-interaction', async (req, res) => {
 
         // Verify the material exists, belongs to Current SY & enrolled subject, and is not locked before logging
         const [[material]] = await db.query(`
-            SELECT lm.material_id, lm.is_locked, lm.sy_id, q.subject_id
+            SELECT lm.material_id, lm.is_locked, lm.sy_id, q.subject_id,
+                   COALESCE(t.is_locked, 0) AS topic_is_locked,
+                   COALESCE(q.is_locked, 0) AS quarter_is_locked
             FROM learning_materials lm
             JOIN topics t ON lm.topic_id = t.topic_id
             JOIN quarters q ON t.quarter_id = q.quarter_id
@@ -3353,7 +3376,13 @@ router.post('/api/material-interaction', async (req, res) => {
         ) {
             return res.status(403).json({ error: 'Forbidden: Material does not belong to your Current School Year enrollment.' });
         }
-        if (material.is_locked) return res.status(403).json({ error: 'Material is locked' });
+        if (
+            Number(material.is_locked) === 1 ||
+            Number(material.topic_is_locked) === 1 ||
+            Number(material.quarter_is_locked) === 1
+        ) {
+            return res.status(403).json({ error: 'Material is locked' });
+        }
 
         await db.query(
             `INSERT INTO student_material_interactions (student_id, material_id, interaction_type)
@@ -4773,8 +4802,12 @@ async function checkForumDeadlineExpired(forumId) {
 async function verifyStudentForumAccess(studentId, forumId, currentSyId) {
     if (!currentSyId || !forumId) return null;
     const [[forumRow]] = await db.query(`
-        SELECT ft.forum_id, ft.subject_id, ft.class_id, ft.sy_id, ft.teacher_id
+        SELECT ft.forum_id, ft.subject_id, ft.class_id, ft.sy_id, ft.teacher_id,
+               COALESCE(t.is_locked, 0) AS topic_is_locked,
+               COALESCE(q.is_locked, 0) AS quarter_is_locked
         FROM forum_topics ft
+        LEFT JOIN topics t ON ft.topic_id = t.topic_id
+        LEFT JOIN quarters q ON t.quarter_id = q.quarter_id
         WHERE ft.forum_id = ?
           AND ft.sy_id = ?
           AND EXISTS (
@@ -4789,7 +4822,11 @@ async function verifyStudentForumAccess(studentId, forumId, currentSyId) {
           )
         LIMIT 1
     `, [forumId, currentSyId, studentId, currentSyId]);
-    return forumRow || null;
+    if (!forumRow) return null;
+    if (Number(forumRow.quarter_is_locked) === 1 || Number(forumRow.topic_is_locked) === 1) {
+        return null;
+    }
+    return forumRow;
 }
 
 /**

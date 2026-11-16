@@ -178,6 +178,7 @@ class TopicScheduleService {
                 JOIN subjects s ON q.subject_id = s.subject_id
                 WHERE t.auto_unlock_at IS NOT NULL
                   AND DATE_FORMAT(t.auto_unlock_at, '%Y-%m-%d %H:%i:%s') <= ?
+                  AND (q.is_locked = 0 OR q.is_locked IS NULL)
             `, [nowManila]);
 
             for (const row of dueUnlocks) {
@@ -186,13 +187,6 @@ class TopicScheduleService {
                     `UPDATE topics SET is_locked = 0, auto_unlock_at = NULL WHERE topic_id = ?`,
                     [row.topic_id]
                 );
-
-                if (Number(row.quarter_is_locked) === 1) {
-                    await db.query(
-                        `UPDATE quarters SET is_locked = 0 WHERE quarter_id = ?`,
-                        [row.quarter_id]
-                    );
-                }
 
                 unlockedTopics.push({
                     topic_id: row.topic_id,
