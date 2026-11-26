@@ -2,7 +2,7 @@
     var user = locals.user || {};
     var currentSY = locals.currentSY || locals.enrolledSY || null;
     var syMode = locals.syMode || (currentSY ? 'current' : 'unenrolled');
-    var announcements = locals.announcements || [];
+    var announcements = (locals.announcements || []).filter(function(a) { return !a.due_date || new Date(a.due_date) >= new Date(); });
     var upcomingTasks = locals.upcomingTasks || [];
     var subjects = locals.subjects || [];
     var events = locals.events || [];

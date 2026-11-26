@@ -298,6 +298,7 @@ router.get('/dashboard', async (req, res) => {
                     JOIN users u ON a.teacher_id = u.user_id
                     WHERE a.sy_id = ?
                       AND a.scope = 'global'
+                      AND (a.due_date IS NULL OR a.due_date >= NOW())
                     ORDER BY a.is_critical DESC, a.is_priority DESC, a.created_at DESC
                     LIMIT 5
                 `, [targetSyId]);
@@ -308,6 +309,7 @@ router.get('/dashboard', async (req, res) => {
                 JOIN users u ON a.teacher_id = u.user_id
                 LEFT JOIN classes c ON a.class_id = c.class_id
                 WHERE a.sy_id = ?
+                  AND (a.due_date IS NULL OR a.due_date >= NOW())
                   AND (
                       a.scope = 'global'
                       OR (a.scope = 'subject' AND a.class_id IS NULL AND a.subject_id IN (?))
@@ -717,6 +719,7 @@ router.get('/dashboard', async (req, res) => {
                     FROM announcements a
                     WHERE a.sy_id = ?
                       AND a.scope = 'global'
+                      AND (a.due_date IS NULL OR a.due_date >= NOW())
                     ORDER BY a.created_at DESC
                     LIMIT 20
                 `, [targetSyId]);
@@ -735,6 +738,7 @@ router.get('/dashboard', async (req, res) => {
                     LEFT JOIN classes c ON a.class_id = c.class_id
                     LEFT JOIN subjects s ON COALESCE(a.subject_id, c.subject_id) = s.subject_id
                     WHERE a.sy_id = ?
+                      AND (a.due_date IS NULL OR a.due_date >= NOW())
                       AND (
                           a.scope = 'global'
                           OR (a.scope = 'subject' AND a.class_id IS NULL AND a.subject_id IN (?))
@@ -2589,6 +2593,7 @@ router.get('/subjects/open/:id', async (req, res) => {
             JOIN users u ON a.teacher_id = u.user_id
             LEFT JOIN classes c ON a.class_id = c.class_id
             WHERE a.sy_id = ?
+              AND (a.due_date IS NULL OR a.due_date >= NOW())
               AND (
                   a.scope = 'global'
                   OR (a.scope = 'subject' AND a.class_id IS NULL AND a.subject_id = ?)
