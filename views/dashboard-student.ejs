@@ -372,7 +372,7 @@
                                                             <div class="flex items-center gap-2 mt-1">
                                                                 <span class="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-slate-100 text-xs font-bold <%= theme.text %> shadow-xs">
                                                                     <i class="far fa-clock"></i>
-                                                                    Due: <%= new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>
+                                                                    <%= task.due_date ? ('Due: ' + new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) : 'Open / No Deadline' %>
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -1490,7 +1490,7 @@
                                     <div class="flex items-center gap-2 mt-1">
                                         <span class="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-slate-100 text-xs font-bold <%= theme.text %> shadow-xs">
                                             <i class="far fa-clock"></i>
-                                            Due: <%= new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                                            <%= task.due_date ? ('Due: ' + new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })) : 'Open / No Deadline' %>
                                         </span>
                                     </div>
                                 </div>

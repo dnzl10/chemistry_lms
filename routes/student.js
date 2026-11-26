@@ -350,13 +350,14 @@ router.get('/dashboard', async (req, res) => {
                 WHERE a.sy_id = ?
                   AND (cs.sy_id IS NULL OR cs.sy_id = c.sy_id)
                   AND cs.class_id IN (?)
+                  AND (a.assessment_type IS NULL OR LOWER(a.assessment_type) != 'assignment')
                   AND a.is_unlocked = 1
                   AND (t.is_locked = 0 OR t.is_locked IS NULL)
                   AND (q.is_locked = 0 OR q.is_locked IS NULL)
                   AND (a.start_date IS NULL OR a.start_date <= NOW())
-                  AND a.due_date IS NOT NULL
                   AND (
-                      a.due_date >= NOW() 
+                      a.due_date IS NULL
+                      OR a.due_date >= NOW() 
                       OR (a.allow_grace = 1 AND a.grace_period_minutes > 0 AND DATE_ADD(a.due_date, INTERVAL a.grace_period_minutes MINUTE) >= NOW())
                   )
                   AND (
@@ -386,7 +387,10 @@ router.get('/dashboard', async (req, res) => {
                         AND eat.assessment_id = a.assessment_id 
                         AND eat.status = 'Consumed'
                   )
-                ORDER BY a.due_date ASC
+                ORDER BY 
+                    CASE WHEN a.due_date IS NULL THEN 1 ELSE 0 END, 
+                    a.due_date ASC, 
+                    a.assessment_id DESC
                 LIMIT 50
             `, [targetSyId, studentId, targetSyId, enrolledClassIds]);
         };
